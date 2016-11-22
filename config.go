@@ -6,6 +6,12 @@ import (
 	"github.com/jackc/pgx"
 )
 
+// Prest basic config
+type Prest struct {
+	// HTTPPort Declare which http port the PREST used
+	HTTPPort int `env:"PREST_HTTP_PORT" envDefault:"3000"`
+}
+
 // PrestPg PostgreSQL connection config
 func PrestPg() pgx.ConnConfig {
 	var config pgx.ConnConfig
