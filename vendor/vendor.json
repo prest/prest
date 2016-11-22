@@ -1,0 +1,13 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "Ey43PxsWUsxAHKTv3n8clTgYVkQ=",
+			"path": "github.com/jackc/pgx",
+			"revision": "2a0504599e9e20e2a1e9413d7cff75e7dc039e8f",
+			"revisionTime": "2016-11-04T19:07:43Z"
+		}
+	],
+	"rootPath": "github.com/nuveo/prest"
+}
