@@ -3,6 +3,30 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "yvBo82+sKNvyAHFgKBGPRzp5rNc=",
+			"path": "github.com/caarlos0/env",
+			"revision": "d0de832ed2fbc4e7bfaa30ab5cf0b3417d15f529",
+			"revisionTime": "2016-10-13T20:18:42Z"
+		},
+		{
+			"checksumSHA1": "dnj6px0tS6k2tKIqK4wCW+4bXjk=",
+			"path": "github.com/codegangsta/negroni",
+			"revision": "c7477ad8e330bef55bf1ebe300cf8aa67c492d1b",
+			"revisionTime": "2015-03-19T17:13:04Z"
+		},
+		{
+			"checksumSHA1": "iIUYZyoanCQQTUaWsu8b+iOSPt4=",
+			"path": "github.com/gorilla/context",
+			"revision": "1c83b3eabd45b6d76072b66b746c20815fb2872d",
+			"revisionTime": "2015-08-20T05:12:45Z"
+		},
+		{
+			"checksumSHA1": "SFyZRbcgdCFpvOrPYNv3UJ3rO4Q=",
+			"path": "github.com/gorilla/mux",
+			"revision": "9c068cf16d982f8bd444b8c352acbeec34c4fe5b",
+			"revisionTime": "2015-11-11T10:35:30Z"
+		},
+		{
 			"checksumSHA1": "Ey43PxsWUsxAHKTv3n8clTgYVkQ=",
 			"path": "github.com/jackc/pgx",
 			"revision": "2a0504599e9e20e2a1e9413d7cff75e7dc039e8f",
