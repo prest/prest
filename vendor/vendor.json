@@ -27,10 +27,28 @@
 			"revisionTime": "2015-11-11T10:35:30Z"
 		},
 		{
-			"checksumSHA1": "Ey43PxsWUsxAHKTv3n8clTgYVkQ=",
-			"path": "github.com/jackc/pgx",
-			"revision": "2a0504599e9e20e2a1e9413d7cff75e7dc039e8f",
-			"revisionTime": "2016-11-04T19:07:43Z"
+			"checksumSHA1": "p/qzxBRYGQTr4JKDAN8JxtSv5iU=",
+			"path": "github.com/jmoiron/sqlx",
+			"revision": "05b81a7d5d38058e42148dc01f17daf4acba4640",
+			"revisionTime": "2016-09-14T23:45:33Z"
+		},
+		{
+			"checksumSHA1": "NJHTyLwheqVk7+syzj9UN7p1dKs=",
+			"path": "github.com/jmoiron/sqlx/reflectx",
+			"revision": "05b81a7d5d38058e42148dc01f17daf4acba4640",
+			"revisionTime": "2016-09-14T23:45:33Z"
+		},
+		{
+			"checksumSHA1": "7bAzBvQxvXBLOZfy+5MSa5z7lkQ=",
+			"path": "github.com/lib/pq",
+			"revision": "fcb9ef54da7cae1ea08f0b5a92f236d83e59294a",
+			"revisionTime": "2016-10-07T18:28:02Z"
+		},
+		{
+			"checksumSHA1": "xppHi82MLqVx1eyQmbhTesAEjx8=",
+			"path": "github.com/lib/pq/oid",
+			"revision": "fcb9ef54da7cae1ea08f0b5a92f236d83e59294a",
+			"revisionTime": "2016-10-07T18:28:02Z"
 		}
 	],
 	"rootPath": "github.com/nuveo/prest"
