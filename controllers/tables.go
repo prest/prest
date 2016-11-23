@@ -8,7 +8,7 @@ import (
 	"github.com/nuveo/prest/statements"
 )
 
-// GetDatabases list all (or filter) databases
+// GetTables list all (or filter) tables
 func GetTables(w http.ResponseWriter, r *http.Request) {
 	object, err := postgres.Query(statements.Tables)
 	if err != nil {
