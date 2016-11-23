@@ -10,8 +10,6 @@ import (
 
 // GetDatabases list all (or filter) databases
 func GetDatabases(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	object, err := postgres.Query(statements.Databases)
 	if err != nil {
 		log.Println(err)
