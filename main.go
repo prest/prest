@@ -6,19 +6,19 @@ import (
 	"github.com/caarlos0/env"
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
-	"github.com/jackc/pgx"
 
 	"github.com/nuveo/prest/config"
+	"github.com/nuveo/prest/controllers"
 )
-
-var conn *pgx.Conn
 
 func main() {
 	cfg := config.Prest{}
 	env.Parse(&cfg)
 
-	router := mux.NewRouter()
 	n := negroni.Classic()
-	n.UseHandler(router)
+	r := mux.NewRouter()
+	r.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
+
+	n.UseHandler(r)
 	n.Run(fmt.Sprintf(":%v", cfg.HTTPPort))
 }
