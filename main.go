@@ -20,6 +20,7 @@ func main() {
 	n.Use(negroni.HandlerFunc(handlerSet))
 	r := mux.NewRouter()
 	r.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
+	r.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
 	r.HandleFunc("/tables", controllers.GetTables).Methods("GET")
 
 	n.UseHandler(r)
