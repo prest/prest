@@ -3,6 +3,9 @@ package postgres
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/caarlos0/env"
 	"github.com/jmoiron/sqlx"
@@ -22,6 +25,17 @@ func Conn() (db *sqlx.DB) {
 	if err != nil {
 		panic(fmt.Sprintf("Unable to connection to database: %v\n", err))
 	}
+	return
+}
+
+// WhereByRequest create interface for queries + where
+func WhereByRequest(r *http.Request) (whereSyntax string) {
+	u, _ := url.Parse(r.URL.String())
+	where := []string{}
+	for key, val := range u.Query() {
+		where = append(where, fmt.Sprintf("%s='%s'", key, val[0]))
+	}
+	whereSyntax = strings.Join(where, " and ")
 	return
 }
 
