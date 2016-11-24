@@ -22,7 +22,7 @@ ORDER BY
 	schema_name ASC`
 
 	// Tables list all tables
-	Tables = `
+	TablesSelect = `
 SELECT
 	n.nspname as "schema",
 	c.relname as "name",
@@ -39,11 +39,14 @@ SELECT
 FROM
 	pg_catalog.pg_class c
 LEFT JOIN
-	pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+	pg_catalog.pg_namespace n ON n.oid = c.relnamespace `
+	TablesWhere = `
 WHERE
 	c.relkind IN ('r','v','m','S','s','') AND
 	n.nspname !~ '^pg_toast' AND
 	n.nspname NOT IN ('information_schema', 'pg_catalog') AND
-	has_schema_privilege(n.nspname, 'USAGE')
+	has_schema_privilege(n.nspname, 'USAGE') `
+	TablesOrderBy = `
 ORDER BY 1, 2`
+	Tables = TablesSelect + TablesWhere + TablesOrderBy
 )
