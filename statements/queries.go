@@ -15,13 +15,15 @@ ORDER BY
 	datname ASC`
 	Databases = DatabasesSelect + DatabasesWhere + DatabasesOrderBy
 	// Schemas list all schema on data base
-	Schemas = `
+	SchemasSelect = `
 SELECT
 	schema_name
 FROM
-	information_schema.schemata
+	information_schema.schemata`
+	SchemasOrderBy = `
 ORDER BY
 	schema_name ASC`
+	Schemas = SchemasSelect + SchemasOrderBy
 
 	// Tables list all tables
 	TablesSelect = `
