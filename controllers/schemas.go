@@ -16,6 +16,7 @@ func GetSchemas(w http.ResponseWriter, r *http.Request) {
 	if requestWhere != "" {
 		sqlSchemas = fmt.Sprint(
 			statements.SchemasSelect,
+			"WHERE",
 			requestWhere,
 			statements.SchemasOrderBy)
 	}
