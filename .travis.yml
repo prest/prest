@@ -1,0 +1,19 @@
+sudo: required
+
+language: go
+
+go:
+    - 1.7.3
+
+services:
+    - postgresql
+
+before_install:
+   - go get -u github.com/kardianos/govendor
+   - govendor sync
+
+before_script:
+    - psql -c 'create database prest;' -U postgres
+
+script:
+    - go test -v -race ./...
