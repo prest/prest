@@ -18,7 +18,7 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 			statements.TablesSelect,
 			statements.TablesWhere,
 			" AND ",
-			postgres.WhereByRequest(r),
+			requestWhere,
 			statements.TablesOrderBy)
 	}
 
