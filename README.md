@@ -1,4 +1,6 @@
 # pREST
+[![Build Status](https://travis-ci.org/nuveo/prest.svg?branch=master)](https://travis-ci.org/nuveo/prest)
+
 Serve a RESTful API from any PostgreSQL database
 
 ## Problem
