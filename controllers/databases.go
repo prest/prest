@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -10,7 +11,17 @@ import (
 
 // GetDatabases list all (or filter) databases
 func GetDatabases(w http.ResponseWriter, r *http.Request) {
-	object, err := postgres.Query(statements.Databases)
+	requestWhere := postgres.WhereByRequest(r)
+	sqlDatabases := statements.Databases
+	if requestWhere != "" {
+		sqlDatabases = fmt.Sprint(
+			statements.DatabasesSelect,
+			statements.DatabasesWhere,
+			"AND",
+			requestWhere,
+			statements.DatabasesOrderBy)
+	}
+	object, err := postgres.Query(sqlDatabases)
 	if err != nil {
 		log.Println(err)
 	}
