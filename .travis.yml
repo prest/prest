@@ -9,8 +9,7 @@ services:
     - postgresql
 
 env:
-   - PREST_PG_USER=postgres
-   - PREST_PG_DATABASE=prest
+   - PREST_PG_USER=postgres PREST_PG_DATABASE=prest
 
 before_install:
    - go get -u github.com/kardianos/govendor
