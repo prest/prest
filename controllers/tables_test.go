@@ -15,7 +15,7 @@ func TestGetTables(t *testing.T) {
 	})
 
 	Convey("Get tables with custom where clause", t, func() {
-		r, err := http.NewRequest("GET", "/tables?name=prest", nil)
+		r, err := http.NewRequest("GET", "/tables?c.relname=prest", nil)
 		So(err, ShouldBeNil)
 		validate(r, GetTables)
 	})
