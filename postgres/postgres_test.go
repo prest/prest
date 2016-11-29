@@ -12,7 +12,9 @@ func TestWhereByRequest(t *testing.T) {
 		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool", nil)
 		So(err, ShouldBeNil)
 		where := WhereByRequest(r)
-		So(where, ShouldEqual, "dbname='prest' and test='cool'")
+		So(where, ShouldContainSubstring, "dbname='prest'")
+		So(where, ShouldContainSubstring, "test='cool'")
+		So(where, ShouldContainSubstring, "and")
 	})
 }
 
