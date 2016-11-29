@@ -17,7 +17,7 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 		sqlDatabases = fmt.Sprint(
 			statements.DatabasesSelect,
 			statements.DatabasesWhere,
-			"AND",
+			" AND ",
 			requestWhere,
 			statements.DatabasesOrderBy)
 	}

@@ -8,9 +8,9 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-func validate(r *http.Request) {
+func validate(r *http.Request, h http.HandlerFunc) {
 	w := httptest.NewRecorder()
-	GetDatabases(w, r)
+	h(w, r)
 	So(w.Code, ShouldEqual, 200)
 	_, err := ioutil.ReadAll(w.Body)
 	So(err, ShouldBeNil)
