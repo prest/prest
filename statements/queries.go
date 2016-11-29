@@ -67,4 +67,30 @@ WHERE
 ORDER BY 1, 2`
 	// Tables default query
 	Tables = TablesSelect + TablesWhere + TablesOrderBy
+	// list all tables in schema and database
+
+	// SchemaTablesSelect clause
+	SchemaTablesSelect = `
+SELECT
+	t.tablename as "name",
+	t.schemaname as "schema",
+	sc.catalog_name as "database"
+FROM
+	pg_catalog.pg_tables t
+INNER JOIN
+	information_schema.schemata sc ON sc.schema_name = t.schemaname`
+
+	// SchemaTablesWhere clause
+	SchemaTablesWhere = `
+WHERE
+	sc.catalog_name = $1 AND
+	t.schemaname = $2`
+
+	// SchemaTablesOrderBy clause
+	SchemaTablesOrderBy = `
+ORDER BY
+	t.tablename ASC`
+
+	// SchemaTables defalt query
+	SchemaTables = SchemaTablesSelect + SchemaTablesWhere + SchemaTablesOrderBy
 )
