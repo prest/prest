@@ -42,10 +42,16 @@ func WhereByRequest(r *http.Request) (whereSyntax string) {
 // Query process queries
 func Query(SQL string) (jsonData []byte, err error) {
 	db := Conn()
-	rows, _ := db.Queryx(SQL)
+	rows, err := db.Queryx(SQL)
+	if err != nil {
+		return nil, err
+	}
 	defer rows.Close()
 
-	columns, _ := rows.Columns()
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
 
 	count := len(columns)
 	tableData := make([]map[string]interface{}, 0)
