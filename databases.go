@@ -24,6 +24,8 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 	object, err := postgres.Query(sqlDatabases)
 	if err != nil {
 		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	w.Write(object)
