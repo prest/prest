@@ -15,3 +15,12 @@ func TestWhereByRequest(t *testing.T) {
 		So(where, ShouldEqual, "dbname='prest' and test='cool'")
 	})
 }
+
+func TestConnection(t *testing.T) {
+	Convey("Verify database connection", t, func() {
+		sqlx := Conn()
+		So(sqlx, ShouldNotBeNil)
+		err := sqlx.Ping()
+		So(err, ShouldBeNil)
+	})
+}
