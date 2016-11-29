@@ -26,3 +26,12 @@ func TestConnection(t *testing.T) {
 		So(err, ShouldBeNil)
 	})
 }
+
+func TestQuery(t *testing.T) {
+	Convey("Query execution", t, func() {
+		sql := "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name ASC"
+		json, err := Query(sql)
+		So(err, ShouldBeNil)
+		So(len(json), ShouldBeGreaterThan, 0)
+	})
+}
