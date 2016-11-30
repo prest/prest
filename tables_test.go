@@ -28,20 +28,14 @@ func TestGetTables(t *testing.T) {
 func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}", GetTablesByDatabaseAndSchema).Methods("GET")
-
+	server := httptest.NewServer(router)
+	server.Start()
+	defer server.Close()
 	Convey("Get tables by database and schema without custom where clause", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public", nil)
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, r)
-		So(err, ShouldBeNil)
-		validate(w, r, GetTablesByDatabaseAndSchema)
+		doValidRequest(server.URL + "/prest/public")
 	})
 
 	Convey("Get tables by database and schema with custom where clause", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public?t.tablename=test", nil)
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, r)
-		So(err, ShouldBeNil)
-		validate(w, r, GetTablesByDatabaseAndSchema)
+		doValidRequest(server.URL + "/prest/public?t.tablename=test")
 	})
 }

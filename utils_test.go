@@ -15,3 +15,11 @@ func validate(w *httptest.ResponseRecorder, r *http.Request, h http.HandlerFunc)
 	_, err := ioutil.ReadAll(w.Body)
 	So(err, ShouldBeNil)
 }
+
+func doValidRequest(url string) {
+	resp, err := http.Get(url)
+	So(err, ShouldBeNil)
+	So(resp.StatusCode, ShouldEqual, 200)
+	_, err = ioutil.ReadAll(resp.Body)
+	So(err, ShouldBeNil)
+}
