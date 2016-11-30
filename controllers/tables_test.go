@@ -29,7 +29,6 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}", GetTablesByDatabaseAndSchema).Methods("GET")
 	server := httptest.NewServer(router)
-	server.Start()
 	defer server.Close()
 	Convey("Get tables by database and schema without custom where clause", t, func() {
 		doValidRequest(server.URL + "/prest/public")
