@@ -20,3 +20,17 @@ func TestGetTables(t *testing.T) {
 		validate(r, GetTables)
 	})
 }
+
+func TestGetTablesByDatabaseAndSchema(t *testing.T) {
+	Convey("Get tables by database and schema without custom where clause", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public", nil)
+		So(err, ShouldBeNil)
+		validate(r, GetTablesByDatabaseAndSchema)
+	})
+
+	Convey("Get tables by database and schema with custom where clause", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public?t.tablename=test", nil)
+		So(err, ShouldBeNil)
+		validate(r, GetTablesByDatabaseAndSchema)
+	})
+}

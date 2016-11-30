@@ -40,9 +40,9 @@ func WhereByRequest(r *http.Request) (whereSyntax string) {
 }
 
 // Query process queries
-func Query(SQL string) (jsonData []byte, err error) {
+func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 	db := Conn()
-	rows, err := db.Queryx(SQL)
+	rows, err := db.Queryx(SQL, params...)
 	if err != nil {
 		return nil, err
 	}
