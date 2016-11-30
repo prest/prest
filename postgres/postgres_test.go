@@ -34,4 +34,11 @@ func TestQuery(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(len(json), ShouldBeGreaterThan, 0)
 	})
+
+	Convey("Query execution with params", t, func() {
+		sql := "SELECT schema_name FROM information_schema.schemata WHERE schema_name = $1 ORDER BY schema_name ASC"
+		json, err := Query(sql, "public")
+		So(err, ShouldBeNil)
+		So(len(json), ShouldBeGreaterThan, 0)
+	})
 }
