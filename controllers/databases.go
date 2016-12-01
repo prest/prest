@@ -21,6 +21,7 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 			requestWhere,
 			statements.DatabasesOrderBy)
 	}
+	sqlDatabases = fmt.Sprint(sqlDatabases, " ", postgres.PaginateIfPossible(r))
 	object, err := postgres.Query(sqlDatabases)
 	if err != nil {
 		log.Println(err)
