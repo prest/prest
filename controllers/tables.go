@@ -58,6 +58,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 			requestWhere,
 			statements.SchemaTablesOrderBy)
 	}
+	sqlSchemaTables = fmt.Sprint(sqlSchemaTables, " ", postgres.PaginateIfPossible(r))
 
 	object, err := postgres.Query(sqlSchemaTables, database, schema)
 	if err != nil {
@@ -100,6 +101,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 			" WHERE ",
 			requestWhere)
 	}
+	sqlSelect = fmt.Sprint(sqlSelect, " ", postgres.PaginateIfPossible(r))
 
 	object, err := postgres.Query(sqlSelect)
 	if err != nil {

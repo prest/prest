@@ -23,6 +23,13 @@ func TestGetTables(t *testing.T) {
 		So(err, ShouldBeNil)
 		validate(w, r, GetTables)
 	})
+
+	Convey("Get tables with custom where clause and pagination", t, func() {
+		r, err := http.NewRequest("GET", "/tables?c.relname=test&_page=1&_page_size=20", nil)
+		w := httptest.NewRecorder()
+		So(err, ShouldBeNil)
+		validate(w, r, GetTables)
+	})
 }
 
 func TestGetTablesByDatabaseAndSchema(t *testing.T) {
@@ -37,6 +44,10 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 	Convey("Get tables by database and schema with custom where clause", t, func() {
 		doValidRequest(server.URL + "/prest/public?t.tablename=test")
 	})
+
+	Convey("Get tables by database and schema with custom where clause and pagination", t, func() {
+		doValidRequest(server.URL + "/prest/public?t.tablename=test&_page=1&_page_size=20")
+	})
 }
 
 func TestSelectFromTable(t *testing.T) {
@@ -50,5 +61,9 @@ func TestSelectFromTable(t *testing.T) {
 
 	Convey("execute select in a table with custom where clause", t, func() {
 		doValidRequest(server.URL + "/prest/public/test?name=nuveo")
+	})
+
+	Convey("execute select in a table with custom where clause and pagination", t, func() {
+		doValidRequest(server.URL + "/prest/public/test?name=nuveo&_page=1&_page_size=20")
 	})
 }

@@ -20,6 +20,7 @@ func GetSchemas(w http.ResponseWriter, r *http.Request) {
 			requestWhere,
 			statements.SchemasOrderBy)
 	}
+	sqlSchemas = fmt.Sprint(sqlSchemas, " ", postgres.PaginateIfPossible(r))
 	object, err := postgres.Query(sqlSchemas)
 	if err != nil {
 		log.Println(err)

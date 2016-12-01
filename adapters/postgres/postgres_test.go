@@ -8,7 +8,7 @@ import (
 )
 
 func TestWhereByRequest(t *testing.T) {
-	Convey("Where by request", t, func() {
+	Convey("Where by request without paginate", t, func() {
 		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool", nil)
 		So(err, ShouldBeNil)
 		where := WhereByRequest(r)
@@ -40,5 +40,14 @@ func TestQuery(t *testing.T) {
 		json, err := Query(sql, "public")
 		So(err, ShouldBeNil)
 		So(len(json), ShouldBeGreaterThan, 0)
+	})
+}
+
+func TestPaginateIfPossible(t *testing.T) {
+	Convey("Paginate if possible", t, func() {
+		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool&_page=1&_page_size=20", nil)
+		So(err, ShouldBeNil)
+		where := PaginateIfPossible(r)
+		So(where, ShouldContainSubstring, "LIMIT 20 OFFSET(1 - 1) * 20")
 	})
 }
