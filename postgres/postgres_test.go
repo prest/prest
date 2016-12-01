@@ -16,16 +16,6 @@ func TestWhereByRequest(t *testing.T) {
 		So(where, ShouldContainSubstring, "test='cool'")
 		So(where, ShouldContainSubstring, "and")
 	})
-
-	Convey("Where by request without paginate", t, func() {
-		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool&_page=1&_page_size=20", nil)
-		So(err, ShouldBeNil)
-		where := WhereByRequest(r)
-		So(where, ShouldContainSubstring, "dbname='prest'")
-		So(where, ShouldContainSubstring, "test='cool'")
-		So(where, ShouldContainSubstring, "and")
-		So(where, ShouldContainSubstring, "LIMIT 20 OFFSET(1 - 1) * 20")
-	})
 }
 
 func TestConnection(t *testing.T) {
@@ -50,5 +40,14 @@ func TestQuery(t *testing.T) {
 		json, err := Query(sql, "public")
 		So(err, ShouldBeNil)
 		So(len(json), ShouldBeGreaterThan, 0)
+	})
+}
+
+func TestPaginateIfPossible(t *testing.T) {
+	Convey("Paginate if possible", t, func() {
+		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool&_page=1&_page_size=20", nil)
+		So(err, ShouldBeNil)
+		where := PaginateIfPossible(r)
+		So(where, ShouldContainSubstring, "LIMIT 20 OFFSET(1 - 1) * 20")
 	})
 }

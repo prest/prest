@@ -44,9 +44,7 @@ func WhereByRequest(r *http.Request) (whereSyntax string) {
 		}
 	}
 
-	filter := strings.Join(where, " and ")
-	paginatedQuery := paginateIfPossible(u.Query())
-	whereSyntax = fmt.Sprint(filter, paginatedQuery)
+	whereSyntax = strings.Join(where, " and ")
 	return
 }
 
@@ -92,7 +90,10 @@ func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 	return
 }
 
-func paginateIfPossible(values url.Values) (paginatedQuery string) {
+// PaginateIfPossible func
+func PaginateIfPossible(r *http.Request) (paginatedQuery string) {
+	u, _ := url.Parse(r.URL.String())
+	values := u.Query()
 	if _, ok := values[pageNumberKey]; !ok {
 		paginatedQuery = ""
 		return
