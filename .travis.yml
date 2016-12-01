@@ -22,6 +22,7 @@ before_install:
 
 before_script:
     - psql -c 'create database prest;' -U postgres
+    - psql prest -c 'create table test(name text);' -U postgres
 
 script:
     - go test -v -race ./...
