@@ -15,6 +15,12 @@ import (
 	"github.com/nuveo/prest/config"
 )
 
+const (
+	pageNumberKey   = "_page"
+	pageSizeKey     = "_page_size"
+	defaultPageSize = "10"
+)
+
 // Conn connect on PostgreSQL
 // Used sqlx
 func Conn() (db *sqlx.DB) {
@@ -33,9 +39,14 @@ func WhereByRequest(r *http.Request) (whereSyntax string) {
 	u, _ := url.Parse(r.URL.String())
 	where := []string{}
 	for key, val := range u.Query() {
-		where = append(where, fmt.Sprintf("%s='%s'", key, val[0]))
+		if !strings.HasPrefix(key, "_") {
+			where = append(where, fmt.Sprintf("%s='%s'", key, val[0]))
+		}
 	}
-	whereSyntax = strings.Join(where, " and ")
+
+	filter := strings.Join(where, " and ")
+	paginatedQuery := paginateIfPossible(u.Query())
+	whereSyntax = fmt.Sprint(filter, paginatedQuery)
 	return
 }
 
@@ -78,5 +89,19 @@ func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 	}
 	jsonData, err = json.Marshal(tableData)
 
+	return
+}
+
+func paginateIfPossible(values url.Values) (paginatedQuery string) {
+	if _, ok := values[pageNumberKey]; !ok {
+		paginatedQuery = ""
+		return
+	}
+	pageNumber := values[pageNumberKey][0]
+	pageSize := defaultPageSize
+	if size, ok := values[pageSizeKey]; ok {
+		pageSize = size[0]
+	}
+	paginatedQuery = fmt.Sprintf("LIMIT %s OFFSET(%s - 1) * %s", pageSize, pageNumber, pageSize)
 	return
 }
