@@ -45,7 +45,7 @@ func TestSelectFromTable(t *testing.T) {
 	server := httptest.NewServer(router)
 	defer server.Close()
 	Convey("execute select in a table without custom where clause", t, func() {
-		doValidRequest(server.URL + "/prest/public")
+		doValidRequest(server.URL + "/prest/public/test")
 	})
 
 	Convey("execute select in a table with custom where clause", t, func() {
