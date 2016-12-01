@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/auth0/go-jwt-middleware"
 	"github.com/caarlos0/env"
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/controllers"
 )
@@ -18,6 +20,9 @@ func main() {
 
 	n := negroni.Classic()
 	n.Use(negroni.HandlerFunc(handlerSet))
+	if cfg.JWTKey != "" {
+		n.Use(jwtMiddleware(cfg.JWTKey))
+	}
 	r := mux.NewRouter()
 	r.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
 	r.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
@@ -32,4 +37,14 @@ func main() {
 func handlerSet(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	w.Header().Set("Content-Type", "application/json")
 	next(w, r)
+}
+
+func jwtMiddleware(key string) negroni.Handler {
+	jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
+		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
+			return []byte(key), nil
+		},
+		SigningMethod: jwt.SigningMethodHS256,
+	})
+	return negroni.HandlerFunc(jwtMiddleware.HandlerWithNext)
 }
