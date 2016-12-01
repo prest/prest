@@ -91,6 +91,12 @@ WHERE
 ORDER BY
 	t.tablename ASC`
 
-	// SchemaTables defalt query
+	// SchemaTables default query
 	SchemaTables = SchemaTablesSelect + SchemaTablesWhere + SchemaTablesOrderBy
+
+	// SelectInTable default query
+	SelectInTable = `
+SELECT
+	*
+FROM`
 )
