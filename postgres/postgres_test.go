@@ -8,13 +8,23 @@ import (
 )
 
 func TestWhereByRequest(t *testing.T) {
-	Convey("Where by request", t, func() {
+	Convey("Where by request without paginate", t, func() {
 		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool", nil)
 		So(err, ShouldBeNil)
 		where := WhereByRequest(r)
 		So(where, ShouldContainSubstring, "dbname='prest'")
 		So(where, ShouldContainSubstring, "test='cool'")
 		So(where, ShouldContainSubstring, "and")
+	})
+
+	Convey("Where by request without paginate", t, func() {
+		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool&_page=1&_page_size=20", nil)
+		So(err, ShouldBeNil)
+		where := WhereByRequest(r)
+		So(where, ShouldContainSubstring, "dbname='prest'")
+		So(where, ShouldContainSubstring, "test='cool'")
+		So(where, ShouldContainSubstring, "and")
+		So(where, ShouldContainSubstring, "LIMIT 20 OFFSET(1 - 1) * 20")
 	})
 }
 
