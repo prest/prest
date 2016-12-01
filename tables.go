@@ -68,3 +68,45 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 
 	w.Write(object)
 }
+
+// SelectFromTables perform select in database
+func SelectFromTables(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	database, ok := vars["database"]
+	if !ok {
+		log.Println("Unable to parse database in URI")
+		http.Error(w, "Unable to parse database in URI", http.StatusInternalServerError)
+		return
+	}
+	schema, ok := vars["schema"]
+	if !ok {
+		log.Println("Unable to parse schema in URI")
+		http.Error(w, "Unable to parse schema in URI", http.StatusInternalServerError)
+		return
+	}
+	table, ok := vars["table"]
+	if !ok {
+		log.Println("Unable to parse table in URI")
+		http.Error(w, "Unable to parse table in URI", http.StatusInternalServerError)
+		return
+	}
+
+	query := fmt.Sprintf("%s %s.%s.%s", statements.SelectInTable, database, schema, table)
+	requestWhere := postgres.WhereByRequest(r)
+	sqlSelect := query
+	if requestWhere != "" {
+		sqlSelect = fmt.Sprint(
+			query,
+			" WHERE ",
+			requestWhere)
+	}
+
+	object, err := postgres.Query(sqlSelect)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(object)
+}
