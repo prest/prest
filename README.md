@@ -79,3 +79,11 @@ JSON DATA:
     }
 }
 ```
+
+### Delete - DELETE
+
+Using query string to make filter (WHERE), example:
+
+```
+http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD1=xyz
+```
