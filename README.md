@@ -61,3 +61,21 @@ JSON DATA:
     }
 }
 ```
+
+### Update - PATCH/PUT
+
+Using query string to make filter (WHERE), example:
+
+```
+http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD1=xyz
+```
+
+JSON DATA:
+```
+{
+    "data": {
+        "FIELD1": "string value",
+        "FIELD2": 1234567890
+    }
+}
+```
