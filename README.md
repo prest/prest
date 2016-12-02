@@ -45,3 +45,19 @@ http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_page=2&_page_size=10 (pagination, p
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD=VALUE (filter)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_renderer=xml (JSON by default)
 ```
+
+### Insert - POST
+
+```
+http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE
+```
+
+JSON DATA:
+```
+{
+    "data": {
+        "FIELD1": "string value",
+        "FIELD2": 1234567890
+    }
+}
+```
