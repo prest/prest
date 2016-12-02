@@ -6,6 +6,26 @@ Serve a RESTful API from any PostgreSQL database
 ## Problem
 There is the PostgREST written in haskell, keep a haskell software in production is not easy job, with this need that was born the pREST.
 
+## Install
+
+    go install github.com/nuveo/prest
+    
+## Run
+
+Params:
+
+- PREST\_HTTP_PORT (default 3000)
+- PREST\_PG_HOST (default 127.0.0.1)
+- PREST\_PG_USER
+- PREST\_PG_PASS
+- PREST\_PG_DATABASE
+- PREST\_JWT_KEY
+
+```
+PREST_PG_USER=postgres PREST_PG_DATABASE=prest PREST_HTTP_PORT=3010 prest # Binary installed
+```
+
+
 ## API`s
 
 ```
