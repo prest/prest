@@ -12,6 +12,9 @@ import (
 	// Used pg drive on sqlx
 	_ "github.com/lib/pq"
 
+	"database/sql"
+
+	"github.com/nuveo/prest/api"
 	"github.com/nuveo/prest/config"
 )
 
@@ -104,5 +107,36 @@ func PaginateIfPossible(r *http.Request) (paginatedQuery string) {
 		pageSize = size[0]
 	}
 	paginatedQuery = fmt.Sprintf("LIMIT %s OFFSET(%s - 1) * %s", pageSize, pageNumber, pageSize)
+	return
+}
+
+// Insert execute insert sql into a table
+func Insert(database, schema, table string, body api.Request) (jsonData []byte, err error) {
+	var result sql.Result
+	var rowsAffected int64
+
+	fields := make([]string, 0)
+	values := make([]string, 0)
+	for key, value := range body.Data {
+		fields = append(fields, key)
+		values = append(values, value)
+	}
+	colsName := strings.Join(fields, ", ")
+	colsValue := strings.Join(values, "', '")
+	sql := fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES ('%s')", database, schema, table, colsName, colsValue)
+
+	db := Conn()
+	result, err = db.Exec(sql)
+	if err != nil {
+		return
+	}
+	rowsAffected, err = result.RowsAffected()
+	if err != nil {
+		return
+	}
+
+	data := make(map[string]interface{})
+	data["rows_affected"] = rowsAffected
+	jsonData, err = json.Marshal(data)
 	return
 }
