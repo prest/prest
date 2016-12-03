@@ -29,6 +29,8 @@ PREST_PG_USER=postgres PREST_PG_DATABASE=prest PREST_HTTP_PORT=3010 prest # Bina
 ## API`s
 HEADER:
 
+- To start JWT middleware the `PREST_JWT_KEY` environment variable must be set
+
 ```
 Authorization: JWT eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
 ```
