@@ -5,8 +5,11 @@ import (
 	"log"
 	"net/http"
 
+	"encoding/json"
+
 	"github.com/gorilla/mux"
 	"github.com/nuveo/prest/adapters/postgres"
+	"github.com/nuveo/prest/api"
 	"github.com/nuveo/prest/statements"
 )
 
@@ -104,6 +107,44 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	sqlSelect = fmt.Sprint(sqlSelect, " ", postgres.PaginateIfPossible(r))
 
 	object, err := postgres.Query(sqlSelect)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(object)
+}
+
+// InsertInTables perform insert in specific table
+func InsertInTables(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	database, ok := vars["database"]
+	if !ok {
+		log.Println("Unable to parse database in URI")
+		http.Error(w, "Unable to parse database in URI", http.StatusInternalServerError)
+		return
+	}
+	schema, ok := vars["schema"]
+	if !ok {
+		log.Println("Unable to parse schema in URI")
+		http.Error(w, "Unable to parse schema in URI", http.StatusInternalServerError)
+		return
+	}
+	table, ok := vars["table"]
+	if !ok {
+		log.Println("Unable to parse table in URI")
+		http.Error(w, "Unable to parse table in URI", http.StatusInternalServerError)
+		return
+	}
+	req := api.Request{}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	object, err := postgres.Insert(database, schema, table, req)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
