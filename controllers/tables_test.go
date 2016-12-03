@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
+	"github.com/nuveo/prest/api"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -38,32 +39,47 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 	server := httptest.NewServer(router)
 	defer server.Close()
 	Convey("Get tables by database and schema without custom where clause", t, func() {
-		doValidRequest(server.URL + "/prest/public")
+		doValidGetRequest(server.URL + "/prest/public")
 	})
 
 	Convey("Get tables by database and schema with custom where clause", t, func() {
-		doValidRequest(server.URL + "/prest/public?t.tablename=test")
+		doValidGetRequest(server.URL + "/prest/public?t.tablename=test")
 	})
 
 	Convey("Get tables by database and schema with custom where clause and pagination", t, func() {
-		doValidRequest(server.URL + "/prest/public?t.tablename=test&_page=1&_page_size=20")
+		doValidGetRequest(server.URL + "/prest/public?t.tablename=test&_page=1&_page_size=20")
 	})
 }
 
-func TestSelectFromTable(t *testing.T) {
+func TestSelectFromTables(t *testing.T) {
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}/{table}", SelectFromTables).Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
 	Convey("execute select in a table without custom where clause", t, func() {
-		doValidRequest(server.URL + "/prest/public/test")
+		doValidGetRequest(server.URL + "/prest/public/test")
 	})
 
 	Convey("execute select in a table with custom where clause", t, func() {
-		doValidRequest(server.URL + "/prest/public/test?name=nuveo")
+		doValidGetRequest(server.URL + "/prest/public/test?name=nuveo")
 	})
 
 	Convey("execute select in a table with custom where clause and pagination", t, func() {
-		doValidRequest(server.URL + "/prest/public/test?name=nuveo&_page=1&_page_size=20")
+		doValidGetRequest(server.URL + "/prest/public/test?name=nuveo&_page=1&_page_size=20")
+	})
+}
+
+func TestInsertInTables(t *testing.T) {
+	router := mux.NewRouter()
+	router.HandleFunc("/{database}/{schema}/{table}", InsertInTables).Methods("POST")
+	server := httptest.NewServer(router)
+	defer server.Close()
+	Convey("execute select in a table without custom where clause", t, func() {
+		r := api.Request{
+			Data: map[string]string{
+				"name": "prest",
+			},
+		}
+		doValidPostRequest(server.URL+"/prest/public/test", r)
 	})
 }
