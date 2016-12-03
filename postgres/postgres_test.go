@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/nuveo/prest/api"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -49,5 +50,18 @@ func TestPaginateIfPossible(t *testing.T) {
 		So(err, ShouldBeNil)
 		where := PaginateIfPossible(r)
 		So(where, ShouldContainSubstring, "LIMIT 20 OFFSET(1 - 1) * 20")
+	})
+}
+
+func TestInsert(t *testing.T) {
+	Convey("Insert data into a table", t, func() {
+		r := api.Request{
+			Data: map[string]string{
+				"name": "prest",
+			},
+		}
+		json, err := Insert("prest", "public", "test", r)
+		So(err, ShouldBeNil)
+		So(len(json), ShouldBeGreaterThan, 0)
 	})
 }
