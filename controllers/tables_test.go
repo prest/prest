@@ -83,3 +83,16 @@ func TestInsertInTables(t *testing.T) {
 		doValidPostRequest(server.URL+"/prest/public/test", r)
 	})
 }
+
+func TestDeleteFromTable(t *testing.T) {
+	router := mux.NewRouter()
+	router.HandleFunc("/{database}/{schema}/{table}", DeleteFromTable).Methods("DELETE")
+	server := httptest.NewServer(router)
+	defer server.Close()
+	Convey("excute delete in a table without where clause", t, func() {
+		doValidDeleteRequest(server.URL + "/prest/public/test")
+	})
+	Convey("excute delete in a table with where clause", t, func() {
+		doValidDeleteRequest(server.URL + "/prest/public/test?name=nuveo")
+	})
+}
