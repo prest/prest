@@ -187,3 +187,44 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 
 	w.Write(object)
 }
+
+// UpdateTable perform update table
+func UpdateTable(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	database, ok := vars["database"]
+	if !ok {
+		log.Println("Unable to parse database in URI")
+		http.Error(w, "Unable to parse database in URI", http.StatusInternalServerError)
+		return
+	}
+	schema, ok := vars["schema"]
+	if !ok {
+		log.Println("Unable to parse schema in URI")
+		http.Error(w, "Unable to parse schema in URI", http.StatusInternalServerError)
+		return
+	}
+	table, ok := vars["table"]
+	if !ok {
+		log.Println("Unable to parse table in URI")
+		http.Error(w, "Unable to parse table in URI", http.StatusInternalServerError)
+		return
+	}
+
+	where := postgres.WhereByRequest(r)
+	req := api.Request{}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	object, err := postgres.Update(database, schema, table, where, req)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(object)
+}
