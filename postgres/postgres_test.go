@@ -65,3 +65,11 @@ func TestInsert(t *testing.T) {
 		So(len(json), ShouldBeGreaterThan, 0)
 	})
 }
+
+func TestDelete(t *testing.T) {
+	Convey("Delete data from table", t, func() {
+		json, err := Delete("prest", "public", "test", "name='nuveo'")
+		So(err, ShouldBeNil)
+		So(len(json), ShouldBeGreaterThan, 0)
+	})
+}
