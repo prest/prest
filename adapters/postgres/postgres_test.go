@@ -73,3 +73,16 @@ func TestDelete(t *testing.T) {
 		So(len(json), ShouldBeGreaterThan, 0)
 	})
 }
+
+func TestUpdate(t *testing.T) {
+	Convey("Update data into a table", t, func() {
+		r := api.Request{
+			Data: map[string]string{
+				"name": "prest",
+			},
+		}
+		json, err := Update("prest", "public", "test", "name='prest'", r)
+		So(err, ShouldBeNil)
+		So(len(json), ShouldBeGreaterThan, 0)
+	})
+}
