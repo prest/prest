@@ -37,3 +37,14 @@ func doValidPostRequest(url string, r api.Request) {
 	_, err = ioutil.ReadAll(resp.Body)
 	So(err, ShouldBeNil)
 }
+
+func doValidDeleteRequest(url string) {
+	req, err := http.NewRequest("DELETE", url, nil)
+	So(err, ShouldBeNil)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	So(err, ShouldBeNil)
+	So(resp.StatusCode, ShouldEqual, 200)
+	_, err = ioutil.ReadAll(resp.Body)
+	So(err, ShouldBeNil)
+}
