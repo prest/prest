@@ -169,3 +169,39 @@ func Delete(database, schema, table, where string) (jsonData []byte, err error) 
 	jsonData, err = json.Marshal(data)
 	return
 }
+
+// Update execute update sql into a table
+func Update(database, schema, table, where string, body api.Request) (jsonData []byte, err error) {
+	var result sql.Result
+	var rowsAffected int64
+
+	fields := []string{}
+	for key, value := range body.Data {
+		fields = append(fields, fmt.Sprintf("%s='%s'", key, value))
+	}
+	setSyntax := strings.Join(fields, ", ")
+
+	sql := fmt.Sprintf("UPDATE %s.%s.%s SET %s", database, schema, table, setSyntax)
+
+	if where != "" {
+		sql = fmt.Sprint(
+			sql,
+			" WHERE ",
+			where)
+	}
+
+	db := Conn()
+	result, err = db.Exec(sql)
+	if err != nil {
+		return
+	}
+	rowsAffected, err = result.RowsAffected()
+	if err != nil {
+		return
+	}
+
+	data := make(map[string]interface{})
+	data["rows_affected"] = rowsAffected
+	jsonData, err = json.Marshal(data)
+	return
+}
