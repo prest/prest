@@ -140,3 +140,32 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 	jsonData, err = json.Marshal(data)
 	return
 }
+
+// Delete execute delete sql into a table
+func Delete(database, schema, table, where string) (jsonData []byte, err error) {
+	var result sql.Result
+	var rowsAffected int64
+
+	sql := fmt.Sprintf("DELETE FROM %s.%s.%s", database, schema, table)
+	if where != "" {
+		sql = fmt.Sprint(
+			sql,
+			" WHERE ",
+			where)
+	}
+
+	db := Conn()
+	result, err = db.Exec(sql)
+	if err != nil {
+		return
+	}
+	rowsAffected, err = result.RowsAffected()
+	if err != nil {
+		return
+	}
+
+	data := make(map[string]interface{})
+	data["rows_affected"] = rowsAffected
+	jsonData, err = json.Marshal(data)
+	return
+}
