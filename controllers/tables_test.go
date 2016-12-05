@@ -97,21 +97,26 @@ func TestDeleteFromTable(t *testing.T) {
 	})
 }
 
-func TestDeleteFromTable(t *testing.T) {
+func TestUpdateFromTable(t *testing.T) {
 	router := mux.NewRouter()
-	r.HandleFunc("/{database}/{schema}/{table}", UpdateTable).Methods("PUT", "PATCH")
+	router.HandleFunc("/{database}/{schema}/{table}", UpdateTable).Methods("PUT", "PATCH")
 	server := httptest.NewServer(router)
 	defer server.Close()
+	r := api.Request{
+		Data: map[string]string{
+			"name": "prest",
+		},
+	}
 	Convey("excute update in a table without where clause using PUT", t, func() {
-		doValidPutRequest(server.URL + "/prest/public/test")
+		doValidPutRequest(server.URL+"/prest/public/test", r)
 	})
 	Convey("excute update in a table with where clause using PUT", t, func() {
-		doValidPutRequest(server.URL + "/prest/public/test?name=nuveo")
+		doValidPutRequest(server.URL+"/prest/public/test?name=nuveo", r)
 	})
 	Convey("excute update in a table without where clause using PATCH", t, func() {
-		doValidPatchRequest(server.URL + "/prest/public/test")
+		doValidPatchRequest(server.URL+"/prest/public/test", r)
 	})
 	Convey("excute update in a table with where clause using PATCH", t, func() {
-		doValidPatchRequest(server.URL + "/prest/public/test?name=nuveo")
+		doValidPatchRequest(server.URL+"/prest/public/test?name=nuveo", r)
 	})
 }
