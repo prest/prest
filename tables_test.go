@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/nuveo/prest/api"
+	"github.com/nuveo/prest/controllers"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -94,5 +95,24 @@ func TestDeleteFromTable(t *testing.T) {
 	})
 	Convey("excute delete in a table with where clause", t, func() {
 		doValidDeleteRequest(server.URL + "/prest/public/test?name=nuveo")
+	})
+}
+
+func TestDeleteFromTable(t *testing.T) {
+	router := mux.NewRouter()
+	r.HandleFunc("/{database}/{schema}/{table}", controllers.UpdateTable).Methods("PUT", "PATCH")
+	server := httptest.NewServer(router)
+	defer server.Close()
+	Convey("excute update in a table without where clause using PUT", t, func() {
+		doValidPutRequest(server.URL + "/prest/public/test")
+	})
+	Convey("excute update in a table with where clause using PUT", t, func() {
+		doValidPutRequest(server.URL + "/prest/public/test?name=nuveo")
+	})
+	Convey("excute update in a table without where clause using PATCH", t, func() {
+		doValidPatchRequest(server.URL + "/prest/public/test")
+	})
+	Convey("excute update in a table with where clause using PATCH", t, func() {
+		doValidPatchRequest(server.URL + "/prest/public/test?name=nuveo")
 	})
 }
