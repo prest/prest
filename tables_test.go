@@ -7,7 +7,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/nuveo/prest/api"
-	"github.com/nuveo/prest/controllers"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -100,7 +99,7 @@ func TestDeleteFromTable(t *testing.T) {
 
 func TestDeleteFromTable(t *testing.T) {
 	router := mux.NewRouter()
-	r.HandleFunc("/{database}/{schema}/{table}", controllers.UpdateTable).Methods("PUT", "PATCH")
+	r.HandleFunc("/{database}/{schema}/{table}", UpdateTable).Methods("PUT", "PATCH")
 	server := httptest.NewServer(router)
 	defer server.Close()
 	Convey("excute update in a table without where clause using PUT", t, func() {
