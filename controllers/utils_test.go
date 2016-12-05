@@ -48,3 +48,29 @@ func doValidDeleteRequest(url string) {
 	_, err = ioutil.ReadAll(resp.Body)
 	So(err, ShouldBeNil)
 }
+
+func doValidPutRequest(url string, r api.Request) {
+	byt, err := json.Marshal(r)
+	So(err, ShouldBeNil)
+	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(byt))
+	So(err, ShouldBeNil)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	So(err, ShouldBeNil)
+	So(resp.StatusCode, ShouldEqual, 200)
+	_, err = ioutil.ReadAll(resp.Body)
+	So(err, ShouldBeNil)
+}
+
+func doValidPatchRequest(url string, r api.Request) {
+	byt, err := json.Marshal(r)
+	So(err, ShouldBeNil)
+	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(byt))
+	So(err, ShouldBeNil)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	So(err, ShouldBeNil)
+	So(resp.StatusCode, ShouldEqual, 200)
+	_, err = ioutil.ReadAll(resp.Body)
+	So(err, ShouldBeNil)
+}
