@@ -15,12 +15,6 @@
 			"revisionTime": "2016-10-13T20:18:42Z"
 		},
 		{
-			"checksumSHA1": "dnj6px0tS6k2tKIqK4wCW+4bXjk=",
-			"path": "github.com/codegangsta/negroni",
-			"revision": "c7477ad8e330bef55bf1ebe300cf8aa67c492d1b",
-			"revisionTime": "2015-03-19T17:13:04Z"
-		},
-		{
 			"checksumSHA1": "EsJksAKyY2+r3mY+rdNocSCe1wg=",
 			"path": "github.com/dgrijalva/jwt-go",
 			"revision": "24c63f56522a87ec5339cc3567883f1039378fdb",
@@ -33,28 +27,28 @@
 			"revisionTime": "2016-09-20T06:05:35Z"
 		},
 		{
-			"checksumSHA1": "iIUYZyoanCQQTUaWsu8b+iOSPt4=",
+			"checksumSHA1": "g/V4qrXjUGG9B+e3hB+4NAYJ5Gs=",
 			"path": "github.com/gorilla/context",
-			"revision": "1c83b3eabd45b6d76072b66b746c20815fb2872d",
-			"revisionTime": "2015-08-20T05:12:45Z"
+			"revision": "08b5f424b9271eedf6f9f0ce86cb9396ed337a42",
+			"revisionTime": "2016-08-17T18:46:32Z"
 		},
 		{
-			"checksumSHA1": "SFyZRbcgdCFpvOrPYNv3UJ3rO4Q=",
+			"checksumSHA1": "urMd7A9QPAJYY0GZJL9qBhlUmD8=",
 			"path": "github.com/gorilla/mux",
-			"revision": "9c068cf16d982f8bd444b8c352acbeec34c4fe5b",
-			"revisionTime": "2015-11-11T10:35:30Z"
+			"revision": "757bef944d0f21880861c2dd9c871ca543023cba",
+			"revisionTime": "2016-09-20T23:08:13Z"
 		},
 		{
 			"checksumSHA1": "p/qzxBRYGQTr4JKDAN8JxtSv5iU=",
 			"path": "github.com/jmoiron/sqlx",
-			"revision": "05b81a7d5d38058e42148dc01f17daf4acba4640",
-			"revisionTime": "2016-09-14T23:45:33Z"
+			"revision": "5f97679e23f75f42b265fec8d3bdb1c8de90b79d",
+			"revisionTime": "2016-10-29T03:41:37Z"
 		},
 		{
 			"checksumSHA1": "NJHTyLwheqVk7+syzj9UN7p1dKs=",
 			"path": "github.com/jmoiron/sqlx/reflectx",
-			"revision": "05b81a7d5d38058e42148dc01f17daf4acba4640",
-			"revisionTime": "2016-09-14T23:45:33Z"
+			"revision": "5f97679e23f75f42b265fec8d3bdb1c8de90b79d",
+			"revisionTime": "2016-10-29T03:41:37Z"
 		},
 		{
 			"checksumSHA1": "tewA7jXVGCw1zb5mA0BDecWi4iQ=",
@@ -63,16 +57,16 @@
 			"revisionTime": "2016-01-05T22:08:40Z"
 		},
 		{
-			"checksumSHA1": "7bAzBvQxvXBLOZfy+5MSa5z7lkQ=",
+			"checksumSHA1": "88ochAZ1SsbAH6DgBQ5eTUChFE0=",
 			"path": "github.com/lib/pq",
-			"revision": "fcb9ef54da7cae1ea08f0b5a92f236d83e59294a",
-			"revisionTime": "2016-10-07T18:28:02Z"
+			"revision": "ae8357db35d721c58dcdc911318b55bef6b1b001",
+			"revisionTime": "2016-10-14T01:16:34Z"
 		},
 		{
 			"checksumSHA1": "xppHi82MLqVx1eyQmbhTesAEjx8=",
 			"path": "github.com/lib/pq/oid",
-			"revision": "fcb9ef54da7cae1ea08f0b5a92f236d83e59294a",
-			"revisionTime": "2016-10-07T18:28:02Z"
+			"revision": "ae8357db35d721c58dcdc911318b55bef6b1b001",
+			"revisionTime": "2016-10-14T01:16:34Z"
 		},
 		{
 			"checksumSHA1": "6AYg4fjEvFuAVN3wHakGApjhZAM=",
@@ -109,6 +103,12 @@
 			"path": "github.com/smartystreets/goconvey/convey/reporting",
 			"revision": "5db88ed452e937f2fd557de6f4f1af7f2eabed0b",
 			"revisionTime": "2016-08-23T18:01:44Z"
+		},
+		{
+			"checksumSHA1": "X2ZRQ4fqi/jVJSZcc2ttuHO33Ek=",
+			"path": "github.com/urfave/negroni",
+			"revision": "e0e50f7dc431c043cb33f91b09c3419d48b7cff5",
+			"revisionTime": "2016-11-02T02:38:13Z"
 		}
 	],
 	"rootPath": "github.com/nuveo/prest"
