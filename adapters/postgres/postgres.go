@@ -30,7 +30,7 @@ func Conn() (db *sqlx.DB) {
 	cfg := config.Prest{}
 	env.Parse(&cfg)
 
-	db, err := sqlx.Connect("postgres", fmt.Sprintf("user=%s dbname=%s sslmode=disable", cfg.PGUser, cfg.PGDatabase))
+	db, err := sqlx.Connect("postgres", fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=disable", cfg.PGUser, cfg.PGDatabase, cfg.PGHost, cfg.PGPort))
 	if err != nil {
 		panic(fmt.Sprintf("Unable to connection to database: %v\n", err))
 	}
