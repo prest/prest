@@ -1,0 +1,21 @@
+version: "2"
+services:
+    prest:
+        build: .
+        links: 
+            - "postgres:postgres"
+        environment: 
+            - PREST_PG_HOST=postgres
+            - PREST_PG_USER=postgres
+            - PREST_PG_DATABASE=prest
+        depends_on:
+            - postgres
+        ports: 
+            - "3000:3000"
+    postgres:
+        image: postgres:9.6
+        volumes: 
+            - "./data:/var/lib/postgresql/data"
+        environment: 
+            - POSTGRES_DB=prest
+            - POSTGRES_USER=postgres
