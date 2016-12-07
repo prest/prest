@@ -2,20 +2,22 @@ version: "2"
 services:
     prest:
         build: .
-        links: 
+        links:
             - "postgres:postgres"
-        environment: 
+        environment:
             - PREST_PG_HOST=postgres
             - PREST_PG_USER=postgres
+            - PREST_PG_PASS=prest
             - PREST_PG_DATABASE=prest
+            - PREST_PG_PORT=5432
         depends_on:
             - postgres
-        ports: 
+        ports:
             - "3000:3000"
     postgres:
         image: postgres:9.6
-        volumes: 
+        volumes:
             - "./data:/var/lib/postgresql/data"
-        environment: 
+        environment:
+            - POSTGRES_PASSWORD=prest
             - POSTGRES_DB=prest
-            - POSTGRES_USER=postgres
