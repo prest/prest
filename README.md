@@ -2,6 +2,7 @@
 [![Build Status](https://travis-ci.org/nuveo/prest.svg?branch=master)](https://travis-ci.org/nuveo/prest)
 [![GoDoc](https://godoc.org/github.com/nuveo/prest?status.png)](https://godoc.org/github.com/nuveo/prest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/nuveo/prest)](https://goreportcard.com/report/github.com/nuveo/prest)
+[![codecov](https://codecov.io/gh/nuveo/prest/branch/master/graph/badge.svg)](https://codecov.io/gh/nuveo/prest)
 
 Serve a RESTful API from any PostgreSQL database
 
