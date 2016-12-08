@@ -24,7 +24,7 @@ before_script:
     - psql prest -c 'create table test(name text);' -U postgres
 
 script:
-    - go test -v -race ./...
+    - go test -v -race ./... -coverprofile=coverage.txt -covermode=atomic
 
 after_success:
     - bash <(curl -s https://codecov.io/bash)
