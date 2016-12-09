@@ -42,8 +42,7 @@ Authorization: JWT eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkw
 ### Filter (WHERE) with JSONb field
 
 ```
-http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD->>JSONFIELD=VALUE (filter)
-
+http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD->>JSONFIELD:jsonb=VALUE (filter)
 ```
 
 ### Select - GET
