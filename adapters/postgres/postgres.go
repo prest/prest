@@ -43,6 +43,18 @@ func WhereByRequest(r *http.Request) (whereSyntax string) {
 	where := []string{}
 	for key, val := range u.Query() {
 		if !strings.HasPrefix(key, "_") {
+			keyInfo := strings.Split(key, ":")
+			if len(keyInfo) > 1 {
+				switch keyInfo[1] {
+				case "jsonb":
+					jsonField := strings.Split(keyInfo[0], "->>")
+					where = append(where, fmt.Sprintf("%s->>'%s'='%s'", jsonField[0], jsonField[1], val[0]))
+				default:
+					where = append(where, fmt.Sprintf("%s='%s'", keyInfo[0], val[0]))
+
+				}
+				continue
+			}
 			where = append(where, fmt.Sprintf("%s='%s'", key, val[0]))
 		}
 	}
