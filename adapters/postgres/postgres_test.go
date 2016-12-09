@@ -17,6 +17,15 @@ func TestWhereByRequest(t *testing.T) {
 		So(where, ShouldContainSubstring, "test='cool'")
 		So(where, ShouldContainSubstring, "and")
 	})
+
+	Convey("Where by request with jsonb field", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?name=nuveo&data->>description:jsonb=bla", nil)
+		So(err, ShouldBeNil)
+		where := WhereByRequest(r)
+		So(where, ShouldContainSubstring, "name='nuveo'")
+		So(where, ShouldContainSubstring, "data->>'description'='bla'")
+		So(where, ShouldContainSubstring, "and")
+	})
 }
 
 func TestConnection(t *testing.T) {
