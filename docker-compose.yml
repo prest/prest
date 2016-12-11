@@ -19,5 +19,5 @@ services:
         volumes:
             - "./data:/var/lib/postgresql/data"
         environment:
-            - POSTGRES_PASSWORD=prest
+            - POSTGRES_USER=prest
             - POSTGRES_DB=prest
