@@ -15,7 +15,7 @@ services:
         ports:
             - "3000:3000"
     postgres:
-        image: postgres:9.6
+        build: ./docker/postgres/
         volumes:
             - "./data:/var/lib/postgresql/data"
         environment:
