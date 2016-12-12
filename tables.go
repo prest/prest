@@ -26,7 +26,7 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 			statements.TablesOrderBy)
 	}
 
-	object, err := postgres.Query(sqlTables, values)
+	object, err := postgres.Query(sqlTables, values...)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -63,7 +63,12 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	}
 	sqlSchemaTables = fmt.Sprint(sqlSchemaTables, " ", postgres.PaginateIfPossible(r))
 
-	object, err := postgres.Query(sqlSchemaTables, database, schema, values)
+	valuesAux := make([]interface{}, 0)
+	valuesAux = append(valuesAux, database)
+	valuesAux = append(valuesAux, schema)
+	valuesAux = append(valuesAux, values...)
+
+	object, err := postgres.Query(sqlSchemaTables, valuesAux...)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -106,7 +111,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 	sqlSelect = fmt.Sprint(sqlSelect, " ", postgres.PaginateIfPossible(r))
 
-	object, err := postgres.Query(sqlSelect, values)
+	object, err := postgres.Query(sqlSelect, values...)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -178,7 +183,7 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 
 	where, values := postgres.WhereByRequest(r, 1)
 
-	object, err := postgres.Delete(database, schema, table, where)
+	object, err := postgres.Delete(database, schema, table, where, values)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -210,7 +215,6 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	where, values := postgres.WhereByRequest(r, 1)
 	req := api.Request{}
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -218,8 +222,10 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	n := len(req.Data) + 1
+	where, values := postgres.WhereByRequest(r, n)
 
-	object, err := postgres.Update(database, schema, table, where, req)
+	object, err := postgres.Update(database, schema, table, where, values, req)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
