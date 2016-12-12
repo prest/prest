@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -13,18 +14,20 @@ func TestWhereByRequest(t *testing.T) {
 		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool", nil)
 		So(err, ShouldBeNil)
 		where := WhereByRequest(r)
-		So(where, ShouldContainSubstring, "dbname='prest'")
-		So(where, ShouldContainSubstring, "test='cool'")
-		So(where, ShouldContainSubstring, "and")
+
+		fmt.Println(where)
+		So(where["dbname=?"], ShouldEqual, "prest")
+		So(where["test=?"], ShouldEqual, "cool")
 	})
 
 	Convey("Where by request with jsonb field", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test?name=nuveo&data->>description:jsonb=bla", nil)
 		So(err, ShouldBeNil)
 		where := WhereByRequest(r)
-		So(where, ShouldContainSubstring, "name='nuveo'")
-		So(where, ShouldContainSubstring, "data->>'description'='bla'")
-		So(where, ShouldContainSubstring, "and")
+
+		fmt.Println(where)
+		So(where["data->>'description'=?"], ShouldEqual, "bla")
+		So(where["name=?"], ShouldEqual, "nuveo")
 	})
 }
 
