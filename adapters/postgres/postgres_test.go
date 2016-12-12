@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -14,14 +15,14 @@ func TestWhereByRequest(t *testing.T) {
 		So(err, ShouldBeNil)
 		where, values := WhereByRequest(r, 1)
 
-		//fmt.Println(where)
-		//fmt.Println(values)
+		fmt.Println(where)
+		fmt.Println(values)
 
-		So(where, ShouldContainSubstring, "dbname=$1")
-		So(where, ShouldContainSubstring, "test=$2")
+		So(where, ShouldContainSubstring, "dbname=$")
+		So(where, ShouldContainSubstring, "test=$")
 		So(where, ShouldContainSubstring, " AND ")
-		So(values[0], ShouldEqual, "prest")
-		So(values[1], ShouldEqual, "cool")
+		So(values, ShouldContain, "prest")
+		So(values, ShouldContain, "cool")
 	})
 
 	Convey("Where by request with jsonb field", t, func() {
@@ -32,12 +33,12 @@ func TestWhereByRequest(t *testing.T) {
 		//fmt.Println(where)
 		//fmt.Println(values)
 
-		So(where, ShouldContainSubstring, "name=$1")
-		So(where, ShouldContainSubstring, "data->>'description'=$2")
+		So(where, ShouldContainSubstring, "name=$")
+		So(where, ShouldContainSubstring, "data->>'description'=$")
 		So(where, ShouldContainSubstring, " AND ")
 
-		So(values[0], ShouldEqual, "nuveo")
-		So(values[1], ShouldEqual, "bla")
+		So(values, ShouldContain, "nuveo")
+		So(values, ShouldContain, "bla")
 	})
 }
 
@@ -90,7 +91,7 @@ func TestInsert(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	Convey("Delete data from table", t, func() {
-		json, err := Delete("prest", "public", "test", "name='nuveo'")
+		json, err := Delete("prest", "public", "test", "name=$1", []interface{}{"nuveo"})
 		So(err, ShouldBeNil)
 		So(len(json), ShouldBeGreaterThan, 0)
 	})
@@ -103,7 +104,7 @@ func TestUpdate(t *testing.T) {
 				"name": "prest",
 			},
 		}
-		json, err := Update("prest", "public", "test", "name='prest'", r)
+		json, err := Update("prest", "public", "test", "name=$1", []interface{}{"prest"}, r)
 		So(err, ShouldBeNil)
 		So(len(json), ShouldBeGreaterThan, 0)
 	})

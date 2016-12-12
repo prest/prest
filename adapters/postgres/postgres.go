@@ -38,7 +38,7 @@ func Conn() (db *sqlx.DB) {
 }
 
 // WhereByRequest create interface for queries + where
-func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []string) {
+func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []interface{}) {
 	//whereMap := make(map[string]string)
 	whereKey := []string{}
 	whereValues := []string{}
@@ -63,8 +63,8 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 			whereKey = append(whereKey, fmt.Sprintf("%s=$%d", key, pid))
 			whereValues = append(whereValues, val[0])
 
+			pid++
 		}
-		pid++
 	}
 
 	for i := 0; i < len(whereKey); i++ {
@@ -85,19 +85,23 @@ func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 	db := Conn()
 
 	prepare, err := db.Prepare(SQL)
+	fmt.Println("SQL:", SQL)
+	fmt.Println("Prepare ERR:", err)
+	fmt.Printf("values: %#v\n", params)
+
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	rows, err := prepare.Query(params...)
 	if err != nil {
-		return nil, err
+		return
 	}
 	defer rows.Close()
 
 	columns, err := rows.Columns()
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	count := len(columns)
@@ -177,7 +181,7 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 }
 
 // Delete execute delete sql into a table
-func Delete(database, schema, table, where string) (jsonData []byte, err error) {
+func Delete(database, schema, table, where string, whereValues []interface{}) (jsonData []byte, err error) {
 	var result sql.Result
 	var rowsAffected int64
 
@@ -190,7 +194,7 @@ func Delete(database, schema, table, where string) (jsonData []byte, err error) 
 	}
 
 	db := Conn()
-	result, err = db.Exec(sql)
+	result, err = db.Exec(sql, whereValues...)
 	if err != nil {
 		return
 	}
@@ -206,13 +210,17 @@ func Delete(database, schema, table, where string) (jsonData []byte, err error) 
 }
 
 // Update execute update sql into a table
-func Update(database, schema, table, where string, body api.Request) (jsonData []byte, err error) {
+func Update(database, schema, table, where string, whereValues []interface{}, body api.Request) (jsonData []byte, err error) {
 	var result sql.Result
 	var rowsAffected int64
 
 	fields := []string{}
+	values := make([]interface{}, 0)
+	pid := len(whereValues) + 1 // placeholder id
 	for key, value := range body.Data {
-		fields = append(fields, fmt.Sprintf("%s='%s'", key, value))
+		fields = append(fields, fmt.Sprintf("%s=$%d", key, pid))
+		values = append(values, value)
+		pid++
 	}
 	setSyntax := strings.Join(fields, ", ")
 
@@ -223,13 +231,32 @@ func Update(database, schema, table, where string, body api.Request) (jsonData [
 			sql,
 			" WHERE ",
 			where)
+		values = append(values, whereValues...)
 	}
 
+	fmt.Println("SQL:", sql)
+
+	fmt.Printf("values: %#v\n", values)
+	fmt.Printf("values2: %v\n", values)
+
 	db := Conn()
-	result, err = db.Exec(sql)
+	//result, err = db.Exec(sql, values)
+	stmt, err := db.Prepare(sql)
 	if err != nil {
 		return
 	}
+
+	valuesAux := make([]interface{}, 0, len(values))
+
+	for i := 0; i < len(values); i++ {
+		valuesAux = append(valuesAux, values[i])
+	}
+
+	result, err = stmt.Exec(valuesAux...)
+	if err != nil {
+		return
+	}
+
 	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return
