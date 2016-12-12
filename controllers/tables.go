@@ -222,8 +222,8 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	n := len(req.Data) + 1
-	where, values := postgres.WhereByRequest(r, n)
+
+	where, values := postgres.WhereByRequest(r, 1)
 
 	object, err := postgres.Update(database, schema, table, where, values, req)
 	if err != nil {
