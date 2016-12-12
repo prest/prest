@@ -15,7 +15,7 @@ import (
 
 // GetTables list all (or filter) tables
 func GetTables(w http.ResponseWriter, r *http.Request) {
-	requestWhere := postgres.WhereByRequest(r)
+	requestWhere, values := postgres.WhereByRequest(r, 1)
 	sqlTables := statements.Tables
 	if requestWhere != "" {
 		sqlTables = fmt.Sprint(
@@ -26,7 +26,7 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 			statements.TablesOrderBy)
 	}
 
-	object, err := postgres.Query(sqlTables)
+	object, err := postgres.Query(sqlTables, values)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -51,7 +51,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unable to parse schema in URI", http.StatusInternalServerError)
 		return
 	}
-	requestWhere := postgres.WhereByRequest(r)
+	requestWhere, values := postgres.WhereByRequest(r, 3)
 	sqlSchemaTables := statements.SchemaTables
 	if requestWhere != "" {
 		sqlSchemaTables = fmt.Sprint(
@@ -63,7 +63,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	}
 	sqlSchemaTables = fmt.Sprint(sqlSchemaTables, " ", postgres.PaginateIfPossible(r))
 
-	object, err := postgres.Query(sqlSchemaTables, database, schema)
+	object, err := postgres.Query(sqlSchemaTables, database, schema, values)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -96,7 +96,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := fmt.Sprintf("%s %s.%s.%s", statements.SelectInTable, database, schema, table)
-	requestWhere := postgres.WhereByRequest(r)
+	requestWhere, values := postgres.WhereByRequest(r, 1)
 	sqlSelect := query
 	if requestWhere != "" {
 		sqlSelect = fmt.Sprint(
@@ -106,7 +106,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 	sqlSelect = fmt.Sprint(sqlSelect, " ", postgres.PaginateIfPossible(r))
 
-	object, err := postgres.Query(sqlSelect)
+	object, err := postgres.Query(sqlSelect, values)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -176,7 +176,7 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	where := postgres.WhereByRequest(r)
+	where, values := postgres.WhereByRequest(r, 1)
 
 	object, err := postgres.Delete(database, schema, table, where)
 	if err != nil {
@@ -210,7 +210,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	where := postgres.WhereByRequest(r)
+	where, values := postgres.WhereByRequest(r, 1)
 	req := api.Request{}
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {

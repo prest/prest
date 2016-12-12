@@ -11,7 +11,7 @@ import (
 
 // GetSchemas list all (or filter) schemas
 func GetSchemas(w http.ResponseWriter, r *http.Request) {
-	requestWhere := postgres.WhereByRequest(r)
+	requestWhere, values := postgres.WhereByRequest(r, 1)
 	sqlSchemas := statements.Schemas
 	if requestWhere != "" {
 		sqlSchemas = fmt.Sprint(
@@ -21,7 +21,7 @@ func GetSchemas(w http.ResponseWriter, r *http.Request) {
 			statements.SchemasOrderBy)
 	}
 	sqlSchemas = fmt.Sprint(sqlSchemas, " ", postgres.PaginateIfPossible(r))
-	object, err := postgres.Query(sqlSchemas)
+	object, err := postgres.Query(sqlSchemas, values)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
