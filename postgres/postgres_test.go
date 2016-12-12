@@ -12,12 +12,14 @@ func TestWhereByRequest(t *testing.T) {
 	Convey("Where by request without paginate", t, func() {
 		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool", nil)
 		So(err, ShouldBeNil)
-		where, values := WhereByRequest(r)
+		where, values := WhereByRequest(r, 1)
 
 		//fmt.Println(where)
 		//fmt.Println(values)
 
-		So(where, ShouldEqual, "dbname=%1 AND test=%2")
+		So(where, ShouldContainSubstring, "dbname=$1")
+		So(where, ShouldContainSubstring, "test=$2")
+		So(where, ShouldContainSubstring, " AND ")
 		So(values[0], ShouldEqual, "prest")
 		So(values[1], ShouldEqual, "cool")
 	})
@@ -25,12 +27,14 @@ func TestWhereByRequest(t *testing.T) {
 	Convey("Where by request with jsonb field", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test?name=nuveo&data->>description:jsonb=bla", nil)
 		So(err, ShouldBeNil)
-		where, values := WhereByRequest(r)
+		where, values := WhereByRequest(r, 1)
 
 		//fmt.Println(where)
 		//fmt.Println(values)
 
-		So(where, ShouldEqual, "name=%1 AND data->>'description'=%2")
+		So(where, ShouldContainSubstring, "name=$1")
+		So(where, ShouldContainSubstring, "data->>'description'=$2")
+		So(where, ShouldContainSubstring, " AND ")
 
 		So(values[0], ShouldEqual, "nuveo")
 		So(values[1], ShouldEqual, "bla")

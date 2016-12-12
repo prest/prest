@@ -38,10 +38,13 @@ func Conn() (db *sqlx.DB) {
 }
 
 // WhereByRequest create interface for queries + where
-func WhereByRequest(r *http.Request) (whereSyntax string, values []string) {
-	whereMap := make(map[string]string)
+func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []string) {
+	//whereMap := make(map[string]string)
+	whereKey := []string{}
+	whereValues := []string{}
+
 	u, _ := url.Parse(r.URL.String())
-	pid := 1 // Placeholder ID
+	pid := initialPlaceholderID
 	for key, val := range u.Query() {
 		if !strings.HasPrefix(key, "_") {
 			keyInfo := strings.Split(key, ":")
@@ -49,25 +52,29 @@ func WhereByRequest(r *http.Request) (whereSyntax string, values []string) {
 				switch keyInfo[1] {
 				case "jsonb":
 					jsonField := strings.Split(keyInfo[0], "->>")
-					whereMap[fmt.Sprintf("%s->>'%s'=%%%d", jsonField[0], jsonField[1], pid)] = val[0]
+					whereKey = append(whereKey, fmt.Sprintf("%s->>'%s'=$%d", jsonField[0], jsonField[1], pid))
+					whereValues = append(whereValues, val[0])
 				default:
-					whereMap[fmt.Sprintf("%s=%%%d", keyInfo[0], pid)] = val[0]
+					whereKey = append(whereKey, fmt.Sprintf("%s=$%d", keyInfo[0], pid))
+					whereValues = append(whereValues, val[0])
 				}
 				continue
 			}
-			whereMap[fmt.Sprintf("%s=%%%d", key, pid)] = val[0]
+			whereKey = append(whereKey, fmt.Sprintf("%s=$%d", key, pid))
+			whereValues = append(whereValues, val[0])
+
 		}
 		pid++
 	}
 
-	for k, v := range whereMap {
+	for i := 0; i < len(whereKey); i++ {
 		if whereSyntax == "" {
-			whereSyntax += k
+			whereSyntax += whereKey[i]
 		} else {
-			whereSyntax += " AND " + k
+			whereSyntax += " AND " + whereKey[i]
 		}
 
-		values = append(values, v)
+		values = append(values, whereValues[i])
 	}
 
 	return
@@ -76,7 +83,13 @@ func WhereByRequest(r *http.Request) (whereSyntax string, values []string) {
 // Query process queries
 func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 	db := Conn()
-	rows, err := db.Queryx(SQL, params...)
+
+	prepare, err := db.Prepare(SQL)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := prepare.Query(params...)
 	if err != nil {
 		return nil, err
 	}
