@@ -38,9 +38,9 @@ func Conn() (db *sqlx.DB) {
 }
 
 // WhereByRequest create interface for queries + where
-func WhereByRequest(r *http.Request) (whereSyntax string, values []string) {
+func WhereByRequest(r *http.Request) (whereSyntax map[string]string) {
+	whereSyntax = make(map[string]string)
 	u, _ := url.Parse(r.URL.String())
-	where := []string{}
 	for key, val := range u.Query() {
 		if !strings.HasPrefix(key, "_") {
 			keyInfo := strings.Split(key, ":")
@@ -48,21 +48,16 @@ func WhereByRequest(r *http.Request) (whereSyntax string, values []string) {
 				switch keyInfo[1] {
 				case "jsonb":
 					jsonField := strings.Split(keyInfo[0], "->>")
-					where = append(where, fmt.Sprintf("%s->>'%s'=?", jsonField[0], jsonField[1]))
-					values = append(values, val[0])
+					whereSyntax[fmt.Sprintf("%s->>'%s'=?", jsonField[0], jsonField[1])] = val[0]
 				default:
-					where = append(where, fmt.Sprintf("%s=?", keyInfo[0]))
-					values = append(values, val[0])
+					whereSyntax[fmt.Sprintf("%s=?", keyInfo[0])] = val[0]
 				}
 				continue
 			}
-			where = append(where, fmt.Sprintf("%s=?", key))
-			values = append(values, val[0])
-
+			whereSyntax[fmt.Sprintf("%s=?", key)] = val[0]
 		}
 	}
 
-	whereSyntax = strings.Join(where, " and ")
 	return
 }
 
