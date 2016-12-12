@@ -38,9 +38,10 @@ func Conn() (db *sqlx.DB) {
 }
 
 // WhereByRequest create interface for queries + where
-func WhereByRequest(r *http.Request) (whereSyntax map[string]string) {
-	whereSyntax = make(map[string]string)
+func WhereByRequest(r *http.Request) (whereSyntax string, values []string) {
+	whereMap := make(map[string]string)
 	u, _ := url.Parse(r.URL.String())
+	pid := 1 // Placeholder ID
 	for key, val := range u.Query() {
 		if !strings.HasPrefix(key, "_") {
 			keyInfo := strings.Split(key, ":")
@@ -48,14 +49,25 @@ func WhereByRequest(r *http.Request) (whereSyntax map[string]string) {
 				switch keyInfo[1] {
 				case "jsonb":
 					jsonField := strings.Split(keyInfo[0], "->>")
-					whereSyntax[fmt.Sprintf("%s->>'%s'=?", jsonField[0], jsonField[1])] = val[0]
+					whereMap[fmt.Sprintf("%s->>'%s'=%%%d", jsonField[0], jsonField[1], pid)] = val[0]
 				default:
-					whereSyntax[fmt.Sprintf("%s=?", keyInfo[0])] = val[0]
+					whereMap[fmt.Sprintf("%s=%%%d", keyInfo[0], pid)] = val[0]
 				}
 				continue
 			}
-			whereSyntax[fmt.Sprintf("%s=?", key)] = val[0]
+			whereMap[fmt.Sprintf("%s=%%%d", key, pid)] = val[0]
 		}
+		pid++
+	}
+
+	for k, v := range whereMap {
+		if whereSyntax == "" {
+			whereSyntax += k
+		} else {
+			whereSyntax += " AND " + k
+		}
+
+		values = append(values, v)
 	}
 
 	return
