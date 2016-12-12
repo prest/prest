@@ -31,7 +31,8 @@ func doValidGetRequest(url string, where string) {
 	So(err, ShouldBeNil)
 }
 
-func doValidPostRequest(url string, r api.Request) {
+func doValidPostRequest(url string, r api.Request, where string) {
+	fmt.Println("Test:", where)
 	byt, err := json.Marshal(r)
 	So(err, ShouldBeNil)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(byt))
@@ -53,7 +54,8 @@ func doValidDeleteRequest(url string, where string) {
 	So(err, ShouldBeNil)
 }
 
-func doValidPutRequest(url string, r api.Request) {
+func doValidPutRequest(url string, r api.Request, where string) {
+	fmt.Println("Test:", where)
 	byt, err := json.Marshal(r)
 	So(err, ShouldBeNil)
 	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(byt))
@@ -66,7 +68,8 @@ func doValidPutRequest(url string, r api.Request) {
 	So(err, ShouldBeNil)
 }
 
-func doValidPatchRequest(url string, r api.Request) {
+func doValidPatchRequest(url string, r api.Request, where string) {
+	fmt.Println("Test:", where)
 	byt, err := json.Marshal(r)
 	So(err, ShouldBeNil)
 	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(byt))

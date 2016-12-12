@@ -80,7 +80,7 @@ func TestInsertInTables(t *testing.T) {
 				"name": "prest",
 			},
 		}
-		doValidPostRequest(server.URL+"/prest/public/test", r)
+		doValidPostRequest(server.URL+"/prest/public/test", r, "InsertInTables")
 	})
 }
 
@@ -108,15 +108,15 @@ func TestUpdateFromTable(t *testing.T) {
 		},
 	}
 	Convey("excute update in a table without where clause using PUT", t, func() {
-		doValidPutRequest(server.URL+"/prest/public/test", r)
+		doValidPutRequest(server.URL+"/prest/public/test", r, "UpdateTable")
 	})
 	Convey("excute update in a table with where clause using PUT", t, func() {
-		doValidPutRequest(server.URL+"/prest/public/test?name=nuveo", r)
+		doValidPutRequest(server.URL+"/prest/public/test?name=nuveo", r, "UpdateTable")
 	})
 	Convey("excute update in a table without where clause using PATCH", t, func() {
-		doValidPatchRequest(server.URL+"/prest/public/test", r)
+		doValidPatchRequest(server.URL+"/prest/public/test", r, "UpdateTable")
 	})
 	Convey("excute update in a table with where clause using PATCH", t, func() {
-		doValidPatchRequest(server.URL+"/prest/public/test?name=nuveo", r)
+		doValidPatchRequest(server.URL+"/prest/public/test?name=nuveo", r, "UpdateTable")
 	})
 }
