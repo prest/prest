@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/caarlos0/env"
@@ -21,7 +22,7 @@ import (
 const (
 	pageNumberKey   = "_page"
 	pageSizeKey     = "_page_size"
-	defaultPageSize = "10"
+	defaultPageSize = 10
 )
 
 // Conn connect on PostgreSQL
@@ -133,19 +134,25 @@ func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 }
 
 // PaginateIfPossible func
-func PaginateIfPossible(r *http.Request) (paginatedQuery string) {
+func PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 	u, _ := url.Parse(r.URL.String())
 	values := u.Query()
 	if _, ok := values[pageNumberKey]; !ok {
 		paginatedQuery = ""
 		return
 	}
-	pageNumber := values[pageNumberKey][0]
+	pageNumber, err := strconv.Atoi(values[pageNumberKey][0])
+	if err != nil {
+		return
+	}
 	pageSize := defaultPageSize
 	if size, ok := values[pageSizeKey]; ok {
-		pageSize = size[0]
+		pageSize, err = strconv.Atoi(size[0])
+		if err != nil {
+			return
+		}
 	}
-	paginatedQuery = fmt.Sprintf("LIMIT %s OFFSET(%s - 1) * %s", pageSize, pageNumber, pageSize)
+	paginatedQuery = fmt.Sprintf("LIMIT %d OFFSET(%d - 1) * %d", pageSize, pageNumber, pageSize)
 	return
 }
 
@@ -235,7 +242,6 @@ func Update(database, schema, table, where string, whereValues []interface{}, bo
 	}
 
 	fmt.Println("SQL:", sql)
-
 	fmt.Printf("values: %#v\n", values)
 	fmt.Printf("values2: %v\n", values)
 
