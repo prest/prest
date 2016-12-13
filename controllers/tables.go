@@ -61,7 +61,14 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 			requestWhere,
 			statements.SchemaTablesOrderBy)
 	}
-	sqlSchemaTables = fmt.Sprint(sqlSchemaTables, " ", postgres.PaginateIfPossible(r))
+
+	page, err := postgres.PaginateIfPossible(r)
+	if err != nil {
+		http.Error(w, "Paging error", http.StatusBadRequest)
+		return
+	}
+
+	sqlSchemaTables = fmt.Sprint(sqlSchemaTables, " ", page)
 
 	valuesAux := make([]interface{}, 0)
 	valuesAux = append(valuesAux, database)
@@ -109,7 +116,13 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 			" WHERE ",
 			requestWhere)
 	}
-	sqlSelect = fmt.Sprint(sqlSelect, " ", postgres.PaginateIfPossible(r))
+
+	page, err := postgres.PaginateIfPossible(r)
+	if err != nil {
+		http.Error(w, "Paging error", http.StatusBadRequest)
+		return
+	}
+	sqlSelect = fmt.Sprint(sqlSelect, " ", page)
 
 	object, err := postgres.Query(sqlSelect, values...)
 	if err != nil {
