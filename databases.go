@@ -21,7 +21,14 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 			requestWhere,
 			statements.DatabasesOrderBy)
 	}
-	sqlDatabases = fmt.Sprint(sqlDatabases, " ", postgres.PaginateIfPossible(r))
+
+	page, err := postgres.PaginateIfPossible(r)
+	if err != nil {
+		http.Error(w, "Paging error", http.StatusBadRequest)
+		return
+	}
+
+	sqlDatabases = fmt.Sprint(sqlDatabases, " ", page)
 
 	object, err := postgres.Query(sqlDatabases, values...)
 	if err != nil {
