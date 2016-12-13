@@ -71,7 +71,8 @@ func TestPaginateIfPossible(t *testing.T) {
 	Convey("Paginate if possible", t, func() {
 		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool&_page=1&_page_size=20", nil)
 		So(err, ShouldBeNil)
-		where := PaginateIfPossible(r)
+		where, err := PaginateIfPossible(r)
+		So(err, ShouldBeNil)
 		So(where, ShouldContainSubstring, "LIMIT 20 OFFSET(1 - 1) * 20")
 	})
 }
