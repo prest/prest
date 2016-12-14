@@ -61,6 +61,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	sqlSchemaTables := statements.SchemaTables
@@ -123,6 +124,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	sqlSelect := query
@@ -214,6 +216,7 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	object, err := postgres.Delete(database, schema, table, where, values)
@@ -260,6 +263,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	object, err := postgres.Update(database, schema, table, where, values, req)
