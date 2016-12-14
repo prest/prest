@@ -11,7 +11,12 @@ import (
 
 // GetSchemas list all (or filter) schemas
 func GetSchemas(w http.ResponseWriter, r *http.Request) {
-	requestWhere, values := postgres.WhereByRequest(r, 1)
+	requestWhere, values, err := postgres.WhereByRequest(r, 1)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+
 	sqlSchemas := statements.Schemas
 	if requestWhere != "" {
 		sqlSchemas = fmt.Sprint(

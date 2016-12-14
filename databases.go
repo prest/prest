@@ -11,7 +11,12 @@ import (
 
 // GetDatabases list all (or filter) databases
 func GetDatabases(w http.ResponseWriter, r *http.Request) {
-	requestWhere, values := postgres.WhereByRequest(r, 1)
+	requestWhere, values, err := postgres.WhereByRequest(r, 1)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+
 	sqlDatabases := statements.Databases
 	if requestWhere != "" {
 		sqlDatabases = fmt.Sprint(

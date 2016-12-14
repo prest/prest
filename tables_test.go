@@ -15,21 +15,21 @@ func TestGetTables(t *testing.T) {
 		r, err := http.NewRequest("GET", "/tables", nil)
 		w := httptest.NewRecorder()
 		So(err, ShouldBeNil)
-		validate(w, r, GetTables, "TestGetTables")
+		validate(w, r, GetTables, "TestGetTables1")
 	})
 
 	Convey("Get tables with custom where clause", t, func() {
 		r, err := http.NewRequest("GET", "/tables?c.relname=test", nil)
 		w := httptest.NewRecorder()
 		So(err, ShouldBeNil)
-		validate(w, r, GetTables, "TestGetTables")
+		validate(w, r, GetTables, "TestGetTables2")
 	})
 
 	Convey("Get tables with custom where clause and pagination", t, func() {
 		r, err := http.NewRequest("GET", "/tables?c.relname=test&_page=1&_page_size=20", nil)
 		w := httptest.NewRecorder()
 		So(err, ShouldBeNil)
-		validate(w, r, GetTables, "TestGetTables")
+		validate(w, r, GetTables, "TestGetTables3")
 	})
 }
 
