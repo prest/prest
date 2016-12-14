@@ -15,6 +15,7 @@ func GetSchemas(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	sqlSchemas := statements.Schemas
