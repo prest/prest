@@ -12,19 +12,27 @@ func TestWhereByRequest(t *testing.T) {
 	Convey("Where by request without paginate", t, func() {
 		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool", nil)
 		So(err, ShouldBeNil)
-		where := WhereByRequest(r)
-		So(where, ShouldContainSubstring, "dbname='prest'")
-		So(where, ShouldContainSubstring, "test='cool'")
-		So(where, ShouldContainSubstring, "and")
+
+		where, values, err := WhereByRequest(r, 1)
+		So(err, ShouldBeNil)
+		So(where, ShouldContainSubstring, "dbname=$")
+		So(where, ShouldContainSubstring, "test=$")
+		So(where, ShouldContainSubstring, " AND ")
+		So(values, ShouldContain, "prest")
+		So(values, ShouldContain, "cool")
 	})
 
 	Convey("Where by request with jsonb field", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test?name=nuveo&data->>description:jsonb=bla", nil)
 		So(err, ShouldBeNil)
-		where := WhereByRequest(r)
-		So(where, ShouldContainSubstring, "name='nuveo'")
-		So(where, ShouldContainSubstring, "data->>'description'='bla'")
-		So(where, ShouldContainSubstring, "and")
+
+		where, values, err := WhereByRequest(r, 1)
+		So(err, ShouldBeNil)
+		So(where, ShouldContainSubstring, "name=$")
+		So(where, ShouldContainSubstring, "data->>'description'=$")
+		So(where, ShouldContainSubstring, " AND ")
+		So(values, ShouldContain, "nuveo")
+		So(values, ShouldContain, "bla")
 	})
 }
 
@@ -57,7 +65,8 @@ func TestPaginateIfPossible(t *testing.T) {
 	Convey("Paginate if possible", t, func() {
 		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool&_page=1&_page_size=20", nil)
 		So(err, ShouldBeNil)
-		where := PaginateIfPossible(r)
+		where, err := PaginateIfPossible(r)
+		So(err, ShouldBeNil)
 		So(where, ShouldContainSubstring, "LIMIT 20 OFFSET(1 - 1) * 20")
 	})
 }
@@ -77,7 +86,7 @@ func TestInsert(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	Convey("Delete data from table", t, func() {
-		json, err := Delete("prest", "public", "test", "name='nuveo'")
+		json, err := Delete("prest", "public", "test", "name=$1", []interface{}{"nuveo"})
 		So(err, ShouldBeNil)
 		So(len(json), ShouldBeGreaterThan, 0)
 	})
@@ -90,7 +99,7 @@ func TestUpdate(t *testing.T) {
 				"name": "prest",
 			},
 		}
-		json, err := Update("prest", "public", "test", "name='prest'", r)
+		json, err := Update("prest", "public", "test", "name=$1", []interface{}{"prest"}, r)
 		So(err, ShouldBeNil)
 		So(len(json), ShouldBeGreaterThan, 0)
 	})

@@ -2,10 +2,13 @@ package postgres
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/caarlos0/env"
 	"github.com/jmoiron/sqlx"
@@ -21,7 +24,7 @@ import (
 const (
 	pageNumberKey   = "_page"
 	pageSizeKey     = "_page_size"
-	defaultPageSize = "10"
+	defaultPageSize = 10
 )
 
 // Conn connect on PostgreSQL
@@ -37,10 +40,32 @@ func Conn() (db *sqlx.DB) {
 	return
 }
 
+// chkInvaidIdentifier return true if identifier is invalid
+func chkInvaidIdentifier(identifer string) bool {
+	if len(identifer) > 63 ||
+		unicode.IsDigit([]rune(identifer)[0]) {
+		return true
+	}
+
+	for _, v := range identifer {
+		if !unicode.IsLetter(v) &&
+			!unicode.IsDigit(v) &&
+			v != '_' &&
+			v != '.' {
+			return true
+		}
+	}
+	return false
+}
+
 // WhereByRequest create interface for queries + where
-func WhereByRequest(r *http.Request) (whereSyntax string) {
+func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []interface{}, err error) {
+	//whereMap := make(map[string]string)
+	whereKey := []string{}
+	whereValues := []string{}
+
 	u, _ := url.Parse(r.URL.String())
-	where := []string{}
+	pid := initialPlaceholderID
 	for key, val := range u.Query() {
 		if !strings.HasPrefix(key, "_") {
 			keyInfo := strings.Split(key, ":")
@@ -48,33 +73,67 @@ func WhereByRequest(r *http.Request) (whereSyntax string) {
 				switch keyInfo[1] {
 				case "jsonb":
 					jsonField := strings.Split(keyInfo[0], "->>")
-					where = append(where, fmt.Sprintf("%s->>'%s'='%s'", jsonField[0], jsonField[1], val[0]))
+					if chkInvaidIdentifier(jsonField[0]) ||
+						chkInvaidIdentifier(jsonField[1]) {
+						err = errors.New("Invalid identifier")
+						return
+					}
+					whereKey = append(whereKey, fmt.Sprintf("%s->>'%s'=$%d", jsonField[0], jsonField[1], pid))
+					whereValues = append(whereValues, val[0])
 				default:
-					where = append(where, fmt.Sprintf("%s='%s'", keyInfo[0], val[0]))
-
+					if chkInvaidIdentifier(keyInfo[0]) {
+						err = errors.New("Invalid identifier")
+						return
+					}
+					whereKey = append(whereKey, fmt.Sprintf("%s=$%d", keyInfo[0], pid))
+					whereValues = append(whereValues, val[0])
 				}
 				continue
 			}
-			where = append(where, fmt.Sprintf("%s='%s'", key, val[0]))
+			if chkInvaidIdentifier(key) {
+				err = errors.New("Invalid identifier")
+				return
+			}
+
+			whereKey = append(whereKey, fmt.Sprintf("%s=$%d", key, pid))
+			whereValues = append(whereValues, val[0])
+
+			pid++
 		}
 	}
 
-	whereSyntax = strings.Join(where, " and ")
+	for i := 0; i < len(whereKey); i++ {
+		if whereSyntax == "" {
+			whereSyntax += whereKey[i]
+		} else {
+			whereSyntax += " AND " + whereKey[i]
+		}
+
+		values = append(values, whereValues[i])
+	}
+
 	return
 }
 
 // Query process queries
 func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 	db := Conn()
-	rows, err := db.Queryx(SQL, params...)
+
+	prepare, err := db.Prepare(SQL)
+
 	if err != nil {
-		return nil, err
+		return
+	}
+
+	rows, err := prepare.Query(params...)
+	if err != nil {
+		return
 	}
 	defer rows.Close()
 
 	columns, err := rows.Columns()
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	count := len(columns)
@@ -106,19 +165,25 @@ func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 }
 
 // PaginateIfPossible func
-func PaginateIfPossible(r *http.Request) (paginatedQuery string) {
+func PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 	u, _ := url.Parse(r.URL.String())
 	values := u.Query()
 	if _, ok := values[pageNumberKey]; !ok {
 		paginatedQuery = ""
 		return
 	}
-	pageNumber := values[pageNumberKey][0]
+	pageNumber, err := strconv.Atoi(values[pageNumberKey][0])
+	if err != nil {
+		return
+	}
 	pageSize := defaultPageSize
 	if size, ok := values[pageSizeKey]; ok {
-		pageSize = size[0]
+		pageSize, err = strconv.Atoi(size[0])
+		if err != nil {
+			return
+		}
 	}
-	paginatedQuery = fmt.Sprintf("LIMIT %s OFFSET(%s - 1) * %s", pageSize, pageNumber, pageSize)
+	paginatedQuery = fmt.Sprintf("LIMIT %d OFFSET(%d - 1) * %d", pageSize, pageNumber, pageSize)
 	return
 }
 
@@ -154,7 +219,7 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 }
 
 // Delete execute delete sql into a table
-func Delete(database, schema, table, where string) (jsonData []byte, err error) {
+func Delete(database, schema, table, where string, whereValues []interface{}) (jsonData []byte, err error) {
 	var result sql.Result
 	var rowsAffected int64
 
@@ -167,7 +232,7 @@ func Delete(database, schema, table, where string) (jsonData []byte, err error) 
 	}
 
 	db := Conn()
-	result, err = db.Exec(sql)
+	result, err = db.Exec(sql, whereValues...)
 	if err != nil {
 		return
 	}
@@ -183,13 +248,17 @@ func Delete(database, schema, table, where string) (jsonData []byte, err error) 
 }
 
 // Update execute update sql into a table
-func Update(database, schema, table, where string, body api.Request) (jsonData []byte, err error) {
+func Update(database, schema, table, where string, whereValues []interface{}, body api.Request) (jsonData []byte, err error) {
 	var result sql.Result
 	var rowsAffected int64
 
 	fields := []string{}
+	values := make([]interface{}, 0)
+	pid := len(whereValues) + 1 // placeholder id
 	for key, value := range body.Data {
-		fields = append(fields, fmt.Sprintf("%s='%s'", key, value))
+		fields = append(fields, fmt.Sprintf("%s=$%d", key, pid))
+		values = append(values, value)
+		pid++
 	}
 	setSyntax := strings.Join(fields, ", ")
 
@@ -200,13 +269,27 @@ func Update(database, schema, table, where string, body api.Request) (jsonData [
 			sql,
 			" WHERE ",
 			where)
+		values = append(values, whereValues...)
 	}
 
 	db := Conn()
-	result, err = db.Exec(sql)
+	//result, err = db.Exec(sql, values)
+	stmt, err := db.Prepare(sql)
 	if err != nil {
 		return
 	}
+
+	valuesAux := make([]interface{}, 0, len(values))
+
+	for i := 0; i < len(values); i++ {
+		valuesAux = append(valuesAux, values[i])
+	}
+
+	result, err = stmt.Exec(valuesAux...)
+	if err != nil {
+		return
+	}
+
 	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return

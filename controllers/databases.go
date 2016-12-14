@@ -11,7 +11,13 @@ import (
 
 // GetDatabases list all (or filter) databases
 func GetDatabases(w http.ResponseWriter, r *http.Request) {
-	requestWhere := postgres.WhereByRequest(r)
+	requestWhere, values, err := postgres.WhereByRequest(r, 1)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	sqlDatabases := statements.Databases
 	if requestWhere != "" {
 		sqlDatabases = fmt.Sprint(
@@ -21,8 +27,16 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 			requestWhere,
 			statements.DatabasesOrderBy)
 	}
-	sqlDatabases = fmt.Sprint(sqlDatabases, " ", postgres.PaginateIfPossible(r))
-	object, err := postgres.Query(sqlDatabases)
+
+	page, err := postgres.PaginateIfPossible(r)
+	if err != nil {
+		http.Error(w, "Paging error", http.StatusBadRequest)
+		return
+	}
+
+	sqlDatabases = fmt.Sprint(sqlDatabases, " ", page)
+
+	object, err := postgres.Query(sqlDatabases, values...)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

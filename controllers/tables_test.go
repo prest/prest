@@ -15,21 +15,21 @@ func TestGetTables(t *testing.T) {
 		r, err := http.NewRequest("GET", "/tables", nil)
 		w := httptest.NewRecorder()
 		So(err, ShouldBeNil)
-		validate(w, r, GetTables)
+		validate(w, r, GetTables, "TestGetTables1")
 	})
 
 	Convey("Get tables with custom where clause", t, func() {
 		r, err := http.NewRequest("GET", "/tables?c.relname=test", nil)
 		w := httptest.NewRecorder()
 		So(err, ShouldBeNil)
-		validate(w, r, GetTables)
+		validate(w, r, GetTables, "TestGetTables2")
 	})
 
 	Convey("Get tables with custom where clause and pagination", t, func() {
 		r, err := http.NewRequest("GET", "/tables?c.relname=test&_page=1&_page_size=20", nil)
 		w := httptest.NewRecorder()
 		So(err, ShouldBeNil)
-		validate(w, r, GetTables)
+		validate(w, r, GetTables, "TestGetTables3")
 	})
 }
 
@@ -39,15 +39,15 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 	server := httptest.NewServer(router)
 	defer server.Close()
 	Convey("Get tables by database and schema without custom where clause", t, func() {
-		doValidGetRequest(server.URL + "/prest/public")
+		doValidGetRequest(server.URL+"/prest/public", "GetTablesByDatabaseAndSchema")
 	})
 
 	Convey("Get tables by database and schema with custom where clause", t, func() {
-		doValidGetRequest(server.URL + "/prest/public?t.tablename=test")
+		doValidGetRequest(server.URL+"/prest/public?t.tablename=test", "GetTablesByDatabaseAndSchema")
 	})
 
 	Convey("Get tables by database and schema with custom where clause and pagination", t, func() {
-		doValidGetRequest(server.URL + "/prest/public?t.tablename=test&_page=1&_page_size=20")
+		doValidGetRequest(server.URL+"/prest/public?t.tablename=test&_page=1&_page_size=20", "GetTablesByDatabaseAndSchema")
 	})
 }
 
@@ -57,15 +57,15 @@ func TestSelectFromTables(t *testing.T) {
 	server := httptest.NewServer(router)
 	defer server.Close()
 	Convey("execute select in a table without custom where clause", t, func() {
-		doValidGetRequest(server.URL + "/prest/public/test")
+		doValidGetRequest(server.URL+"/prest/public/test", "SelectFromTables")
 	})
 
 	Convey("execute select in a table with custom where clause", t, func() {
-		doValidGetRequest(server.URL + "/prest/public/test?name=nuveo")
+		doValidGetRequest(server.URL+"/prest/public/test?name=nuveo", "SelectFromTables")
 	})
 
 	Convey("execute select in a table with custom where clause and pagination", t, func() {
-		doValidGetRequest(server.URL + "/prest/public/test?name=nuveo&_page=1&_page_size=20")
+		doValidGetRequest(server.URL+"/prest/public/test?name=nuveo&_page=1&_page_size=20", "SelectFromTables")
 	})
 }
 
@@ -80,7 +80,7 @@ func TestInsertInTables(t *testing.T) {
 				"name": "prest",
 			},
 		}
-		doValidPostRequest(server.URL+"/prest/public/test", r)
+		doValidPostRequest(server.URL+"/prest/public/test", r, "InsertInTables")
 	})
 }
 
@@ -90,10 +90,10 @@ func TestDeleteFromTable(t *testing.T) {
 	server := httptest.NewServer(router)
 	defer server.Close()
 	Convey("excute delete in a table without where clause", t, func() {
-		doValidDeleteRequest(server.URL + "/prest/public/test")
+		doValidDeleteRequest(server.URL+"/prest/public/test", "DeleteFromTable")
 	})
 	Convey("excute delete in a table with where clause", t, func() {
-		doValidDeleteRequest(server.URL + "/prest/public/test?name=nuveo")
+		doValidDeleteRequest(server.URL+"/prest/public/test?name=nuveo", "DeleteFromTable")
 	})
 }
 
@@ -108,15 +108,15 @@ func TestUpdateFromTable(t *testing.T) {
 		},
 	}
 	Convey("excute update in a table without where clause using PUT", t, func() {
-		doValidPutRequest(server.URL+"/prest/public/test", r)
+		doValidPutRequest(server.URL+"/prest/public/test", r, "UpdateTable")
 	})
 	Convey("excute update in a table with where clause using PUT", t, func() {
-		doValidPutRequest(server.URL+"/prest/public/test?name=nuveo", r)
+		doValidPutRequest(server.URL+"/prest/public/test?name=nuveo", r, "UpdateTable")
 	})
 	Convey("excute update in a table without where clause using PATCH", t, func() {
-		doValidPatchRequest(server.URL+"/prest/public/test", r)
+		doValidPatchRequest(server.URL+"/prest/public/test", r, "UpdateTable")
 	})
 	Convey("excute update in a table with where clause using PATCH", t, func() {
-		doValidPatchRequest(server.URL+"/prest/public/test?name=nuveo", r)
+		doValidPatchRequest(server.URL+"/prest/public/test?name=nuveo", r, "UpdateTable")
 	})
 }

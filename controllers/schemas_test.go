@@ -13,20 +13,20 @@ func TestGetSchemas(t *testing.T) {
 		r, err := http.NewRequest("GET", "/schemas", nil)
 		w := httptest.NewRecorder()
 		So(err, ShouldBeNil)
-		validate(w, r, GetSchemas)
+		validate(w, r, GetSchemas, "TestGetSchemas")
 	})
 
 	Convey("Get schemas with custom where clause", t, func() {
 		r, err := http.NewRequest("GET", "/schemas?schema_name=public", nil)
 		w := httptest.NewRecorder()
 		So(err, ShouldBeNil)
-		validate(w, r, GetSchemas)
+		validate(w, r, GetSchemas, "TestGetSchemas")
 	})
 
 	Convey("Get schemas with custom where clause and pagination", t, func() {
 		r, err := http.NewRequest("GET", "/schemas?schema_name=public&_page=1&_page_size=20", nil)
 		w := httptest.NewRecorder()
 		So(err, ShouldBeNil)
-		validate(w, r, GetSchemas)
+		validate(w, r, GetSchemas, "TestGetSchemas")
 	})
 }
