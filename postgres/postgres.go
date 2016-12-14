@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -40,7 +41,6 @@ func Conn() (db *sqlx.DB) {
 }
 
 // chkInvaidIdentifier return true if identifier is invalid
-// https://www.postgresql.org/docs/current/static/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
 func chkInvaidIdentifier(identifer string) bool {
 	if len(identifer) > 63 ||
 		unicode.IsDigit([]rune(identifer)[0]) {
@@ -50,7 +50,8 @@ func chkInvaidIdentifier(identifer string) bool {
 	for _, v := range identifer {
 		if !unicode.IsLetter(v) &&
 			!unicode.IsDigit(v) &&
-			v != '_' {
+			v != '_' &&
+			v != '.' {
 			return true
 		}
 	}
@@ -58,7 +59,7 @@ func chkInvaidIdentifier(identifer string) bool {
 }
 
 // WhereByRequest create interface for queries + where
-func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []interface{}) {
+func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []interface{}, err error) {
 	//whereMap := make(map[string]string)
 	whereKey := []string{}
 	whereValues := []string{}
@@ -72,14 +73,28 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 				switch keyInfo[1] {
 				case "jsonb":
 					jsonField := strings.Split(keyInfo[0], "->>")
+					if chkInvaidIdentifier(jsonField[0]) ||
+						chkInvaidIdentifier(jsonField[1]) {
+						err = errors.New("Invalid identifier")
+						return
+					}
 					whereKey = append(whereKey, fmt.Sprintf("%s->>'%s'=$%d", jsonField[0], jsonField[1], pid))
 					whereValues = append(whereValues, val[0])
 				default:
+					if chkInvaidIdentifier(keyInfo[0]) {
+						err = errors.New("Invalid identifier")
+						return
+					}
 					whereKey = append(whereKey, fmt.Sprintf("%s=$%d", keyInfo[0], pid))
 					whereValues = append(whereValues, val[0])
 				}
 				continue
 			}
+			if chkInvaidIdentifier(key) {
+				err = errors.New("Invalid identifier")
+				return
+			}
+
 			whereKey = append(whereKey, fmt.Sprintf("%s=$%d", key, pid))
 			whereValues = append(whereValues, val[0])
 
@@ -105,9 +120,6 @@ func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 	db := Conn()
 
 	prepare, err := db.Prepare(SQL)
-	fmt.Println("SQL:", SQL)
-	fmt.Println("Prepare ERR:", err)
-	fmt.Printf("values: %#v\n", params)
 
 	if err != nil {
 		return
@@ -259,10 +271,6 @@ func Update(database, schema, table, where string, whereValues []interface{}, bo
 			where)
 		values = append(values, whereValues...)
 	}
-
-	fmt.Println("SQL:", sql)
-	fmt.Printf("values: %#v\n", values)
-	fmt.Printf("values2: %v\n", values)
 
 	db := Conn()
 	//result, err = db.Exec(sql, values)
