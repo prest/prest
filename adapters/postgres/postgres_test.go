@@ -1,7 +1,6 @@
 package postgres
 
 import (
-	"fmt"
 	"net/http"
 	"testing"
 
@@ -13,11 +12,9 @@ func TestWhereByRequest(t *testing.T) {
 	Convey("Where by request without paginate", t, func() {
 		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool", nil)
 		So(err, ShouldBeNil)
-		where, values := WhereByRequest(r, 1)
 
-		fmt.Println(where)
-		fmt.Println(values)
-
+		where, values, err := WhereByRequest(r, 1)
+		So(err, ShouldBeNil)
 		So(where, ShouldContainSubstring, "dbname=$")
 		So(where, ShouldContainSubstring, "test=$")
 		So(where, ShouldContainSubstring, " AND ")
@@ -28,15 +25,12 @@ func TestWhereByRequest(t *testing.T) {
 	Convey("Where by request with jsonb field", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test?name=nuveo&data->>description:jsonb=bla", nil)
 		So(err, ShouldBeNil)
-		where, values := WhereByRequest(r, 1)
 
-		//fmt.Println(where)
-		//fmt.Println(values)
-
+		where, values, err := WhereByRequest(r, 1)
+		So(err, ShouldBeNil)
 		So(where, ShouldContainSubstring, "name=$")
 		So(where, ShouldContainSubstring, "data->>'description'=$")
 		So(where, ShouldContainSubstring, " AND ")
-
 		So(values, ShouldContain, "nuveo")
 		So(values, ShouldContain, "bla")
 	})

@@ -15,7 +15,12 @@ import (
 
 // GetTables list all (or filter) tables
 func GetTables(w http.ResponseWriter, r *http.Request) {
-	requestWhere, values := postgres.WhereByRequest(r, 1)
+	requestWhere, values, err := postgres.WhereByRequest(r, 1)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+
 	sqlTables := statements.Tables
 	if requestWhere != "" {
 		sqlTables = fmt.Sprint(
@@ -51,7 +56,12 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unable to parse schema in URI", http.StatusInternalServerError)
 		return
 	}
-	requestWhere, values := postgres.WhereByRequest(r, 3)
+	requestWhere, values, err := postgres.WhereByRequest(r, 3)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+
 	sqlSchemaTables := statements.SchemaTables
 	if requestWhere != "" {
 		sqlSchemaTables = fmt.Sprint(
@@ -108,7 +118,12 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := fmt.Sprintf("%s %s.%s.%s", statements.SelectInTable, database, schema, table)
-	requestWhere, values := postgres.WhereByRequest(r, 1)
+	requestWhere, values, err := postgres.WhereByRequest(r, 1)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+
 	sqlSelect := query
 	if requestWhere != "" {
 		sqlSelect = fmt.Sprint(
@@ -194,7 +209,11 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	where, values := postgres.WhereByRequest(r, 1)
+	where, values, err := postgres.WhereByRequest(r, 1)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
 
 	object, err := postgres.Delete(database, schema, table, where, values)
 	if err != nil {
@@ -236,7 +255,11 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	where, values := postgres.WhereByRequest(r, 1)
+	where, values, err := postgres.WhereByRequest(r, 1)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
 
 	object, err := postgres.Update(database, schema, table, where, values, req)
 	if err != nil {
