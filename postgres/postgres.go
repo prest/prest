@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/caarlos0/env"
 	"github.com/jmoiron/sqlx"
@@ -36,6 +37,24 @@ func Conn() (db *sqlx.DB) {
 		panic(fmt.Sprintf("Unable to connection to database: %v\n", err))
 	}
 	return
+}
+
+// chkInvaidIdentifier return true if identifier is invalid
+// https://www.postgresql.org/docs/current/static/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
+func chkInvaidIdentifier(identifer string) bool {
+	if len(identifer) > 63 ||
+		unicode.IsDigit([]rune(identifer)[0]) {
+		return true
+	}
+
+	for _, v := range identifer {
+		if !unicode.IsLetter(v) &&
+			!unicode.IsDigit(v) &&
+			v != '_' {
+			return true
+		}
+	}
+	return false
 }
 
 // WhereByRequest create interface for queries + where
