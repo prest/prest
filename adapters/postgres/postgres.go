@@ -194,18 +194,42 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 	fields := make([]string, 0)
 	values := make([]string, 0)
 	for key, value := range body.Data {
+		if chkInvaidIdentifier(key) {
+			err = errors.New("Insert: Invalid identifier")
+			return
+		}
 		fields = append(fields, key)
 		values = append(values, value)
 	}
+
 	colsName := strings.Join(fields, ", ")
-	colsValue := strings.Join(values, "', '")
-	sql := fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES ('%s')", database, schema, table, colsName, colsValue)
+	colPlaceholder := ""
+	for i := 1; i < len(values)+1; i++ {
+		if colPlaceholder != "" {
+			colPlaceholder += ","
+		}
+		colPlaceholder += fmt.Sprintf("$%d", i)
+	}
+
+	sql := fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s)", database, schema, table, colsName, colPlaceholder)
 
 	db := Conn()
-	result, err = db.Exec(sql)
+	stmt, err := db.Prepare(sql)
 	if err != nil {
 		return
 	}
+
+	valuesAux := make([]interface{}, 0, len(values))
+
+	for i := 0; i < len(values); i++ {
+		valuesAux = append(valuesAux, values[i])
+	}
+
+	result, err = stmt.Exec(valuesAux...)
+	if err != nil {
+		return
+	}
+
 	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return
