@@ -188,6 +188,14 @@ func PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 
 // Insert execute insert sql into a table
 func Insert(database, schema, table string, body api.Request) (jsonData []byte, err error) {
+
+	if chkInvaidIdentifier(database) ||
+		chkInvaidIdentifier(schema) ||
+		chkInvaidIdentifier(table) {
+		err = errors.New("Insert: Invalid identifier")
+		return
+	}
+
 	var result sql.Result
 	var rowsAffected int64
 
@@ -246,6 +254,13 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 	var result sql.Result
 	var rowsAffected int64
 
+	if chkInvaidIdentifier(database) ||
+		chkInvaidIdentifier(schema) ||
+		chkInvaidIdentifier(table) {
+		err = errors.New("Delete: Invalid identifier")
+		return
+	}
+
 	sql := fmt.Sprintf("DELETE FROM %s.%s.%s", database, schema, table)
 	if where != "" {
 		sql = fmt.Sprint(
@@ -272,6 +287,14 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 
 // Update execute update sql into a table
 func Update(database, schema, table, where string, whereValues []interface{}, body api.Request) (jsonData []byte, err error) {
+
+	if chkInvaidIdentifier(database) ||
+		chkInvaidIdentifier(schema) ||
+		chkInvaidIdentifier(table) {
+		err = errors.New("Update: Invalid identifier")
+		return
+	}
+
 	var result sql.Result
 	var rowsAffected int64
 
