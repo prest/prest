@@ -188,24 +188,56 @@ func PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 
 // Insert execute insert sql into a table
 func Insert(database, schema, table string, body api.Request) (jsonData []byte, err error) {
+
+	if chkInvaidIdentifier(database) ||
+		chkInvaidIdentifier(schema) ||
+		chkInvaidIdentifier(table) {
+		err = errors.New("Insert: Invalid identifier")
+		return
+	}
+
 	var result sql.Result
 	var rowsAffected int64
 
 	fields := make([]string, 0)
 	values := make([]string, 0)
 	for key, value := range body.Data {
+		if chkInvaidIdentifier(key) {
+			err = errors.New("Insert: Invalid identifier")
+			return
+		}
 		fields = append(fields, key)
 		values = append(values, value)
 	}
+
 	colsName := strings.Join(fields, ", ")
-	colsValue := strings.Join(values, "', '")
-	sql := fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES ('%s')", database, schema, table, colsName, colsValue)
+	colPlaceholder := ""
+	for i := 1; i < len(values)+1; i++ {
+		if colPlaceholder != "" {
+			colPlaceholder += ","
+		}
+		colPlaceholder += fmt.Sprintf("$%d", i)
+	}
+
+	sql := fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s)", database, schema, table, colsName, colPlaceholder)
 
 	db := Conn()
-	result, err = db.Exec(sql)
+	stmt, err := db.Prepare(sql)
 	if err != nil {
 		return
 	}
+
+	valuesAux := make([]interface{}, 0, len(values))
+
+	for i := 0; i < len(values); i++ {
+		valuesAux = append(valuesAux, values[i])
+	}
+
+	result, err = stmt.Exec(valuesAux...)
+	if err != nil {
+		return
+	}
+
 	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return
@@ -221,6 +253,13 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 func Delete(database, schema, table, where string, whereValues []interface{}) (jsonData []byte, err error) {
 	var result sql.Result
 	var rowsAffected int64
+
+	if chkInvaidIdentifier(database) ||
+		chkInvaidIdentifier(schema) ||
+		chkInvaidIdentifier(table) {
+		err = errors.New("Delete: Invalid identifier")
+		return
+	}
 
 	sql := fmt.Sprintf("DELETE FROM %s.%s.%s", database, schema, table)
 	if where != "" {
@@ -248,6 +287,14 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 
 // Update execute update sql into a table
 func Update(database, schema, table, where string, whereValues []interface{}, body api.Request) (jsonData []byte, err error) {
+
+	if chkInvaidIdentifier(database) ||
+		chkInvaidIdentifier(schema) ||
+		chkInvaidIdentifier(table) {
+		err = errors.New("Update: Invalid identifier")
+		return
+	}
+
 	var result sql.Result
 	var rowsAffected int64
 

@@ -104,3 +104,26 @@ func TestUpdate(t *testing.T) {
 		So(len(json), ShouldBeGreaterThan, 0)
 	})
 }
+
+func TestChkInvaidIdentifier(t *testing.T) {
+	Convey("Check invalid character on identifier", t, func() {
+		chk := chkInvaidIdentifier("fildName")
+		So(chk, ShouldBeFalse)
+		chk = chkInvaidIdentifier("_9fildName")
+		So(chk, ShouldBeFalse)
+		chk = chkInvaidIdentifier("_fild.Name")
+		So(chk, ShouldBeFalse)
+
+		chk = chkInvaidIdentifier("0fildName")
+		So(chk, ShouldBeTrue)
+		chk = chkInvaidIdentifier("fild'Name")
+		So(chk, ShouldBeTrue)
+		chk = chkInvaidIdentifier("fild\"Name")
+		So(chk, ShouldBeTrue)
+		chk = chkInvaidIdentifier("fild;Name")
+		So(chk, ShouldBeTrue)
+		chk = chkInvaidIdentifier("_123456789_123456789_123456789_123456789_123456789_123456789_12345")
+		So(chk, ShouldBeTrue)
+
+	})
+}
