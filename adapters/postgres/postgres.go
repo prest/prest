@@ -272,7 +272,6 @@ func Update(database, schema, table, where string, whereValues []interface{}, bo
 	}
 
 	db := Conn()
-	//result, err = db.Exec(sql, values)
 	stmt, err := db.Prepare(sql)
 	if err != nil {
 		return
