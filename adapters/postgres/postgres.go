@@ -60,7 +60,6 @@ func chkInvaidIdentifier(identifer string) bool {
 
 // WhereByRequest create interface for queries + where
 func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []interface{}, err error) {
-	//whereMap := make(map[string]string)
 	whereKey := []string{}
 	whereValues := []string{}
 
