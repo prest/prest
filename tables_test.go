@@ -75,11 +75,14 @@ func TestInsertInTables(t *testing.T) {
 	server := httptest.NewServer(router)
 	defer server.Close()
 	Convey("execute select in a table without custom where clause", t, func() {
+
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
 		r := api.Request{
-			Data: map[string]string{
-				"name": "prest",
-			},
+			Data: m,
 		}
+
 		doValidPostRequest(server.URL+"/prest/public/test", r, "InsertInTables")
 	})
 }
@@ -102,11 +105,14 @@ func TestUpdateFromTable(t *testing.T) {
 	router.HandleFunc("/{database}/{schema}/{table}", UpdateTable).Methods("PUT", "PATCH")
 	server := httptest.NewServer(router)
 	defer server.Close()
+
+	m := make(map[string]interface{}, 0)
+	m["name"] = "prest"
+
 	r := api.Request{
-		Data: map[string]string{
-			"name": "prest",
-		},
+		Data: m,
 	}
+
 	Convey("excute update in a table without where clause using PUT", t, func() {
 		doValidPutRequest(server.URL+"/prest/public/test", r, "UpdateTable")
 	})
