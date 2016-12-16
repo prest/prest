@@ -315,7 +315,7 @@ func Update(database, schema, table, where string, whereValues []interface{}, bo
 			sql,
 			" WHERE ",
 			where)
-		values = append(values, whereValues...)
+		values = append(whereValues, values...)
 	}
 
 	db := Conn()
