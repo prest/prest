@@ -200,7 +200,7 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 	var rowsAffected int64
 
 	fields := make([]string, 0)
-	values := make([]string, 0)
+	values := make([]interface{}, 0)
 	for key, value := range body.Data {
 		if chkInvaidIdentifier(key) {
 			err = errors.New("Insert: Invalid identifier")
