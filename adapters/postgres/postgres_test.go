@@ -73,10 +73,11 @@ func TestPaginateIfPossible(t *testing.T) {
 
 func TestInsert(t *testing.T) {
 	Convey("Insert data into a table", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
 		r := api.Request{
-			Data: map[string]string{
-				"name": "prest",
-			},
+			Data: m,
 		}
 		json, err := Insert("prest", "public", "test", r)
 		So(err, ShouldBeNil)
@@ -94,10 +95,12 @@ func TestDelete(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	Convey("Update data into a table", t, func() {
+
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
 		r := api.Request{
-			Data: map[string]string{
-				"name": "prest",
-			},
+			Data: m,
 		}
 		json, err := Update("prest", "public", "test", "name=$1", []interface{}{"prest"}, r)
 		So(err, ShouldBeNil)

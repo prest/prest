@@ -176,7 +176,7 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	req := api.Request{}
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		log.Println(err)
+		log.Println("InsertInTables:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
