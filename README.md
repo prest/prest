@@ -11,7 +11,7 @@ There is the PostgREST written in haskell, keep a haskell software in production
 
 ## Install
 
-    go install github.com/nuveo/prest
+    go get github.com/nuveo/prest
 
 ## Run
 
