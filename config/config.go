@@ -1,13 +1,50 @@
 package config
 
+import (
+	"strings"
+
+	"os"
+
+	"github.com/spf13/viper"
+)
+
 // Prest basic config
 type Prest struct {
 	// HTTPPort Declare which http port the PREST used
-	HTTPPort   int    `env:"PREST_HTTP_PORT" envDefault:"3000"`
-	PGHost     string `env:"PREST_PG_HOST" envDefault:"127.0.0.1"`
-	PGPort     int    `env:"PREST_PG_PORT" envDefault:5432`
-	PGUser     string `env:"PREST_PG_USER"`
-	PGPass     string `env:"PREST_PG_PASS"`
-	PGDatabase string `env:"PREST_PG_DATABASE"`
-	JWTKey     string `env:"PREST_JWT_KEY"`
+	HTTPPort   int
+	PGHost     string
+	PGPort     int
+	PGUser     string
+	PGPass     string
+	PGDatabase string
+	JWTKey     string
+}
+
+func init() {
+	viperCfg()
+}
+
+func viperCfg() {
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvPrefix("PREST")
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(replacer)
+	viper.SetConfigFile(os.Getenv("PREST_CONF"))
+	viper.SetConfigType("toml")
+	viper.SetDefault("http.port", 3000)
+	viper.SetDefault("pg.host", "127.0.0.1")
+	viper.SetDefault("pg.port", 5432)
+}
+
+// Parse pREST config
+func Parse(cfg *Prest) (err error) {
+	err = viper.ReadInConfig()
+	cfg.HTTPPort = viper.GetInt("http.port")
+	cfg.PGHost = viper.GetString("pg.host")
+	cfg.PGPort = viper.GetInt("pg.port")
+	cfg.PGUser = viper.GetString("pg.user")
+	cfg.PGPass = viper.GetString("pg.pass")
+	cfg.PGDatabase = viper.GetString("pg.database")
+	cfg.JWTKey = viper.GetString("jwt.key")
+	return
 }
