@@ -25,7 +25,7 @@ func TestParse(t *testing.T) {
 		So(cfg.HTTPPort, ShouldEqual, 4000)
 	})
 	Convey("Verify if get toml", t, func() {
-		os.Setenv("PREST_CONF", "../testdata/prest.toml")
+		os.Setenv("PREST_CONF", "testdata/prest.toml")
 		viperCfg()
 		cfg := &Prest{}
 		err := Parse(cfg)
@@ -35,7 +35,7 @@ func TestParse(t *testing.T) {
 	})
 	Convey("Verify if env override toml", t, func() {
 		os.Setenv("PREST_HTTP_PORT", "4000")
-		os.Setenv("PREST_CONF", "../testdata/prest.toml")
+		os.Setenv("PREST_CONF", "testdata/prest.toml")
 		viperCfg()
 		cfg := &Prest{}
 		err := Parse(cfg)
