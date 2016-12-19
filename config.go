@@ -27,14 +27,14 @@ func init() {
 func viperCfg() {
 	filePath := os.Getenv("PREST_CONF")
 	if filePath == "" {
-		filePath = "prest.json"
+		filePath = "prest.toml"
 	}
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvPrefix("PREST")
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(replacer)
 	viper.SetConfigFile(filePath)
-	viper.SetConfigType("json")
+	viper.SetConfigType("toml")
 	viper.SetDefault("http.port", 3000)
 	viper.SetDefault("pg.host", "127.0.0.1")
 	viper.SetDefault("pg.port", 5432)
