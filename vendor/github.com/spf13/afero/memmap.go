@@ -35,8 +35,6 @@ func NewMemMapFs() Fs {
 	return &MemMapFs{}
 }
 
-var memfsInit sync.Once
-
 func (m *MemMapFs) getData() map[string]*mem.FileData {
 	m.init.Do(func() {
 		m.data = make(map[string]*mem.FileData)
@@ -136,6 +134,7 @@ func (m *MemMapFs) Mkdir(name string, perm os.FileMode) error {
 		m.getData()[name] = item
 		m.registerWithParent(item)
 		m.mu.Unlock()
+		m.Chmod(name, perm)
 	}
 	return nil
 }
@@ -205,9 +204,11 @@ func (m *MemMapFs) lockfreeOpen(name string) (*mem.FileData, error) {
 }
 
 func (m *MemMapFs) OpenFile(name string, flag int, perm os.FileMode) (File, error) {
+	chmod := false
 	file, err := m.openWrite(name)
 	if os.IsNotExist(err) && (flag&os.O_CREATE > 0) {
 		file, err = m.Create(name)
+		chmod = true
 	}
 	if err != nil {
 		return nil, err
@@ -228,6 +229,9 @@ func (m *MemMapFs) OpenFile(name string, flag int, perm os.FileMode) (File, erro
 			file.Close()
 			return nil, err
 		}
+	}
+	if chmod {
+		m.Chmod(name, perm)
 	}
 	return file, nil
 }
@@ -342,8 +346,8 @@ func (m *MemMapFs) List() {
 	}
 }
 
-func debugMemMapList(fs Fs) {
-	if x, ok := fs.(*MemMapFs); ok {
-		x.List()
-	}
-}
+// func debugMemMapList(fs Fs) {
+// 	if x, ok := fs.(*MemMapFs); ok {
+// 		x.List()
+// 	}
+// }

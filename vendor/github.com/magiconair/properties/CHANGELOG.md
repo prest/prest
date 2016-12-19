@@ -1,5 +1,9 @@
 ## Changelog
 
+### Unreleased
+
+ * [PR #16](https://github.com/magiconair/properties/pull/16): Keep gofmt happy
+
 ### [1.7.0](https://github.com/magiconair/properties/tags/v1.7.0) - 20 Mar 2016
 
  * [Issue #10](https://github.com/magiconair/properties/issues/10): Add [LoadURL,LoadURLs,MustLoadURL,MustLoadURLs](http://godoc.org/github.com/magiconair/properties#Properties.LoadURL) method to load properties from a URL.
