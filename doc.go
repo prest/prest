@@ -19,6 +19,25 @@ Run
     ```
     PREST_PG_USER=postgres PREST_PG_DATABASE=prest PREST_PG_PORT=5432 PREST_HTTP_PORT=3010 prest # Binary installed
     ```
+TOML
+    Optionally the pREST can be configured by TOML file
+
+    - Set `PREST_CONF` environment variable with file path
+
+    ```toml
+    [http]
+    port = 6000
+
+    [jwt]
+    key = "mysecretkey"
+
+    [pg]
+    host = "127.0.0.1"
+    user = "postgres"
+    pass = "mypass"
+    port = 5432
+    database = "prest"
+    ```
 
 API`s
     HEADER:
