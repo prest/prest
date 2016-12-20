@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/auth0/go-jwt-middleware"
-	"github.com/caarlos0/env"
 	"github.com/gorilla/mux"
 	"github.com/urfave/negroni"
 
@@ -16,7 +15,7 @@ import (
 
 func main() {
 	cfg := config.Prest{}
-	env.Parse(&cfg)
+	config.Parse(&cfg)
 
 	n := negroni.Classic()
 	n.Use(negroni.HandlerFunc(handlerSet))
