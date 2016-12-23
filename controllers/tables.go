@@ -129,9 +129,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, j := range joinValues {
-		if j != "" {
-			query = fmt.Sprint(query, j)
-		}
+		query = fmt.Sprint(query, j)
 	}
 
 	requestWhere, values, err := postgres.WhereByRequest(r, 1)
