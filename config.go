@@ -11,13 +11,15 @@ import (
 // Prest basic config
 type Prest struct {
 	// HTTPPort Declare which http port the PREST used
-	HTTPPort   int
-	PGHost     string
-	PGPort     int
-	PGUser     string
-	PGPass     string
-	PGDatabase string
-	JWTKey     string
+	HTTPPort      int
+	PGHost        string
+	PGPort        int
+	PGUser        string
+	PGPass        string
+	PGDatabase    string
+	PGMaxIdleConn int
+	PGMAxOpenConn int
+	JWTKey        string
 }
 
 func init() {
@@ -38,6 +40,8 @@ func viperCfg() {
 	viper.SetDefault("http.port", 3000)
 	viper.SetDefault("pg.host", "127.0.0.1")
 	viper.SetDefault("pg.port", 5432)
+	viper.SetDefault("pg.maxidleconn", 10)
+	viper.SetDefault("pg.maxopenconn", 10)
 }
 
 // Parse pREST config
@@ -49,6 +53,8 @@ func Parse(cfg *Prest) (err error) {
 	cfg.PGUser = viper.GetString("pg.user")
 	cfg.PGPass = viper.GetString("pg.pass")
 	cfg.PGDatabase = viper.GetString("pg.database")
+	cfg.PGMaxIdleConn = viper.GetInt("pg.maxidleconn")
+	cfg.PGMAxOpenConn = viper.GetInt("pg.maxopenconn")
 	cfg.JWTKey = viper.GetString("jwt.key")
 	return
 }
