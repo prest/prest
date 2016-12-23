@@ -1,2 +1,5 @@
 [http]
 port = 6000
+
+[pg]
+database = "prest"

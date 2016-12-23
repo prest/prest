@@ -10,8 +10,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/jmoiron/sqlx"
 	// Used pg drive on sqlx
+	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 
 	"database/sql"
@@ -26,17 +26,22 @@ const (
 	defaultPageSize = 10
 )
 
-// Conn connect on PostgreSQL
-// Used sqlx
-func Conn() (db *sqlx.DB) {
+var db *sqlx.DB
+
+func init() {
 	cfg := config.Prest{}
 	config.Parse(&cfg)
-
-	db, err := sqlx.Connect("postgres", fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=disable", cfg.PGUser, cfg.PGDatabase, cfg.PGHost, cfg.PGPort))
+	var err error
+	dbUri := fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=disable", cfg.PGUser, cfg.PGDatabase, cfg.PGHost, cfg.PGPort)
+	if cfg.PGPass != "" {
+		dbUri += " password=" + cfg.PGPass
+	}
+	db, err = sqlx.Connect("postgres", dbUri)
 	if err != nil {
 		panic(fmt.Sprintf("Unable to connection to database: %v\n", err))
 	}
-	return
+	db.SetMaxIdleConns(cfg.PGMaxIdleConn)
+	db.SetMaxOpenConns(cfg.PGMAxOpenConn)
 }
 
 // chkInvaidIdentifier return true if identifier is invalid
@@ -115,7 +120,7 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 
 // Query process queries
 func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
-	db := Conn()
+	// db := connection.Conn()
 
 	prepare, err := db.Prepare(SQL)
 
@@ -220,7 +225,7 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 
 	sql := fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s)", database, schema, table, colsName, colPlaceholder)
 
-	db := Conn()
+	// db := connection.Conn()
 	stmt, err := db.Prepare(sql)
 	if err != nil {
 		return
@@ -268,7 +273,7 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 			where)
 	}
 
-	db := Conn()
+	// db := connection.Conn()
 	result, err = db.Exec(sql, whereValues...)
 	if err != nil {
 		return
@@ -317,7 +322,7 @@ func Update(database, schema, table, where string, whereValues []interface{}, bo
 		values = append(whereValues, values...)
 	}
 
-	db := Conn()
+	// db := connection.Conn()
 	stmt, err := db.Prepare(sql)
 	if err != nil {
 		return
