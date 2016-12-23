@@ -59,11 +59,12 @@ func TestSelectFromTables(t *testing.T) {
 	Convey("execute select in a table without custom where clause", t, func() {
 		doValidGetRequest(server.URL+"/prest/public/test", "SelectFromTables")
 	})
-
 	Convey("execute select in a table with custom where clause", t, func() {
 		doValidGetRequest(server.URL+"/prest/public/test?name=nuveo", "SelectFromTables")
 	})
-
+	Convey("execute select in a table with custom join clause", t, func() {
+		doValidGetRequest(server.URL+"/prest/public/test?_join=inner:test2:test2.name:eq:test.name", "SelectFromTables")
+	})
 	Convey("execute select in a table with custom where clause and pagination", t, func() {
 		doValidGetRequest(server.URL+"/prest/public/test?name=nuveo&_page=1&_page_size=20", "SelectFromTables")
 	})

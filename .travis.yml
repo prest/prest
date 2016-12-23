@@ -20,8 +20,12 @@ before_install:
    - govendor sync
 
 before_script:
-    - psql -c 'create database prest;' -U postgres
-    - psql prest -c 'create table test(name text);' -U postgres
+    - psql -c "create database prest;" -U postgres
+    - psql prest -c "create table test(name text);" -U postgres
+    - psql prest -c "create table test2(name text, number integer);" -U postgres
+    - psql prest -c "insert into test (name) values ('prest tester');" -U postgres
+    - psql prest -c "insert into test (name) values ('tester02');" -U postgres
+    - psql prest -c "insert into test2 (name, number) values ('tester02', 2);" -U postgres
 
 script:
     - sh test.sh
