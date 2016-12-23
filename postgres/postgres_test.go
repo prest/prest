@@ -141,6 +141,17 @@ func TestJoinByRequest(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(joinStr, ShouldContainSubstring, "INNER JOIN test2 ON test2.name = test.name")
 	})
+	Convey("Join missing param", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:eq", nil)
+		_, err = JoinByRequest(r)
+		So(err, ShouldNotBeNil)
+	})
+	Convey("Join invalid operator", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:notexist:test.name", nil)
+		_, err = JoinByRequest(r)
+		So(err, ShouldNotBeNil)
+	})
+
 }
 
 func TestGetQueryOperator(t *testing.T) {
@@ -154,9 +165,30 @@ func TestGetQueryOperator(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(op, ShouldEqual, ">")
 	})
+	Convey("Query operator gte", t, func() {
+		op, err := GetQueryOperator("$gte")
+		So(err, ShouldBeNil)
+		So(op, ShouldEqual, ">=")
+	})
+
+	Convey("Query operator lt", t, func() {
+		op, err := GetQueryOperator("$lt")
+		So(err, ShouldBeNil)
+		So(op, ShouldEqual, "<")
+	})
 	Convey("Query operator lte", t, func() {
 		op, err := GetQueryOperator("$lte")
 		So(err, ShouldBeNil)
 		So(op, ShouldEqual, "<=")
+	})
+	Convey("Query operator IN", t, func() {
+		op, err := GetQueryOperator("$in")
+		So(err, ShouldBeNil)
+		So(op, ShouldEqual, "IN")
+	})
+	Convey("Query operator NIN", t, func() {
+		op, err := GetQueryOperator("$nin")
+		So(err, ShouldBeNil)
+		So(op, ShouldEqual, "NOT IN")
 	})
 }

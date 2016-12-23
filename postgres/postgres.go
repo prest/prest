@@ -125,7 +125,7 @@ func JoinByRequest(r *http.Request) (values []string, err error) {
 
 		if len(joinArgs) != 5 {
 			err = errors.New("Invalid number of arguments in join statement")
-			return
+			return nil, err
 		}
 
 		op, err := GetQueryOperator(joinArgs[3])
