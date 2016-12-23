@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/nuveo/prest/api"
@@ -128,5 +129,34 @@ func TestChkInvaidIdentifier(t *testing.T) {
 		chk = chkInvaidIdentifier("_123456789_123456789_123456789_123456789_123456789_123456789_12345")
 		So(chk, ShouldBeTrue)
 
+	})
+}
+
+func TestJoinByRequest(t *testing.T) {
+	Convey("Join by request", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:eq:test.name", nil)
+		join, err := JoinByRequest(r)
+		joinStr := strings.Join(join, " ")
+
+		So(err, ShouldBeNil)
+		So(joinStr, ShouldContainSubstring, "INNER JOIN test2 ON test2.name = test.name")
+	})
+}
+
+func TestGetQueryOperator(t *testing.T) {
+	Convey("Query operator eq", t, func() {
+		op, err := GetQueryOperator("$eq")
+		So(err, ShouldBeNil)
+		So(op, ShouldEqual, "=")
+	})
+	Convey("Query operator gt", t, func() {
+		op, err := GetQueryOperator("$gt")
+		So(err, ShouldBeNil)
+		So(op, ShouldEqual, ">")
+	})
+	Convey("Query operator lte", t, func() {
+		op, err := GetQueryOperator("$lte")
+		So(err, ShouldBeNil)
+		So(op, ShouldEqual, "<=")
 	})
 }
