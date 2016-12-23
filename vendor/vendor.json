@@ -93,6 +93,12 @@
 			"revisionTime": "2016-12-15T22:58:39Z"
 		},
 		{
+			"checksumSHA1": "40vJyUB4ezQSn/NSadsKEOrudMc=",
+			"path": "github.com/inconshreveable/mousetrap",
+			"revision": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75",
+			"revisionTime": "2014-10-17T20:07:13Z"
+		},
+		{
 			"checksumSHA1": "p/qzxBRYGQTr4JKDAN8JxtSv5iU=",
 			"path": "github.com/jmoiron/sqlx",
 			"revision": "5f97679e23f75f42b265fec8d3bdb1c8de90b79d",
@@ -199,6 +205,12 @@
 			"path": "github.com/spf13/cast",
 			"revision": "24b6558033ffe202bf42f0f3b870dcc798dd2ba8",
 			"revisionTime": "2016-11-16T01:33:54Z"
+		},
+		{
+			"checksumSHA1": "2bLk/+qSRrzctGuDCiCPygXbUQQ=",
+			"path": "github.com/spf13/cobra",
+			"revision": "de09d9ce07d0d8a74442cfeaa91628cf9492cc23",
+			"revisionTime": "2016-12-22T15:12:50Z"
 		},
 		{
 			"checksumSHA1": "dkruahfhuLXXuyeCuRpsWlcRK+8=",
