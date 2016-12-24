@@ -15,6 +15,12 @@
 			"revisionTime": "2016-08-31T18:35:34Z"
 		},
 		{
+			"checksumSHA1": "x77xUarDfVxctJMAJPCQzlYk8JM=",
+			"path": "github.com/fatih/color",
+			"revision": "bf82308e8c8546dc2b945157173eb8a959ae9505",
+			"revisionTime": "2016-10-25T12:05:01Z"
+		},
+		{
 			"checksumSHA1": "hveFTNQ9YEyYRs6SWuXM+XU9qRI=",
 			"path": "github.com/fsnotify/fsnotify",
 			"revision": "fd9ec7deca8bf46ecd2a795baaacf2b3a9be1197",
@@ -133,6 +139,54 @@
 			"path": "github.com/magiconair/properties",
 			"revision": "9c47895dc1ce54302908ab8a43385d1f5df2c11c",
 			"revisionTime": "2016-11-28T00:34:34Z"
+		},
+		{
+			"checksumSHA1": "lJoKNrsdF14ar8hvpYt2f0u1usk=",
+			"path": "github.com/mattes/migrate/driver",
+			"revision": "ce1b59bb819416ca67422929b1cb48bb342720b6",
+			"revisionTime": "2016-03-21T21:09:30Z"
+		},
+		{
+			"checksumSHA1": "YKeZaylqov5XYO7hsA5HalRS/dU=",
+			"path": "github.com/mattes/migrate/driver/postgres",
+			"revision": "ce1b59bb819416ca67422929b1cb48bb342720b6",
+			"revisionTime": "2016-03-21T21:09:30Z"
+		},
+		{
+			"checksumSHA1": "aIuXAOtdrloDuV7IlKbyzB3Ci94=",
+			"path": "github.com/mattes/migrate/file",
+			"revision": "ce1b59bb819416ca67422929b1cb48bb342720b6",
+			"revisionTime": "2016-03-21T21:09:30Z"
+		},
+		{
+			"checksumSHA1": "cbOkBr/ZgoiRFzHix/86J3P8hYY=",
+			"path": "github.com/mattes/migrate/migrate",
+			"revision": "ce1b59bb819416ca67422929b1cb48bb342720b6",
+			"revisionTime": "2016-03-21T21:09:30Z"
+		},
+		{
+			"checksumSHA1": "xzGjMJ5pt3OO1owmY/HxS0hcJIA=",
+			"path": "github.com/mattes/migrate/migrate/direction",
+			"revision": "ce1b59bb819416ca67422929b1cb48bb342720b6",
+			"revisionTime": "2016-03-21T21:09:30Z"
+		},
+		{
+			"checksumSHA1": "A5Z+yotZkv56n0eUX0kAv0/Sj4I=",
+			"path": "github.com/mattes/migrate/pipe",
+			"revision": "ce1b59bb819416ca67422929b1cb48bb342720b6",
+			"revisionTime": "2016-03-21T21:09:30Z"
+		},
+		{
+			"checksumSHA1": "I4njd26dG5hxFT2nawuByM4pxzY=",
+			"path": "github.com/mattn/go-colorable",
+			"revision": "d228849504861217f796da67fae4f6e347643f15",
+			"revisionTime": "2016-11-03T16:00:40Z"
+		},
+		{
+			"checksumSHA1": "xZuhljnmBysJPta/lMyYmJdujCg=",
+			"path": "github.com/mattn/go-isatty",
+			"revision": "66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8",
+			"revisionTime": "2016-08-06T12:27:52Z"
 		},
 		{
 			"checksumSHA1": "LAR/G/IY1GviHYkGAoi6kVXq1Jg=",
