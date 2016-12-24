@@ -10,8 +10,9 @@ import (
 	"strings"
 	"unicode"
 
-	// Used pg drive on sqlx
 	"github.com/jmoiron/sqlx"
+
+	// Used pg drive on sqlx
 	_ "github.com/lib/pq"
 
 	"database/sql"
@@ -32,11 +33,11 @@ func init() {
 	cfg := config.Prest{}
 	config.Parse(&cfg)
 	var err error
-	dbUri := fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=disable", cfg.PGUser, cfg.PGDatabase, cfg.PGHost, cfg.PGPort)
+	dbURI := fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=disable", cfg.PGUser, cfg.PGDatabase, cfg.PGHost, cfg.PGPort)
 	if cfg.PGPass != "" {
-		dbUri += " password=" + cfg.PGPass
+		dbURI += " password=" + cfg.PGPass
 	}
-	db, err = sqlx.Connect("postgres", dbUri)
+	db, err = sqlx.Connect("postgres", dbURI)
 	if err != nil {
 		panic(fmt.Sprintf("Unable to connection to database: %v\n", err))
 	}
