@@ -8,6 +8,8 @@ import (
 	"github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
+	// postgres driver for migrate
+	_ "github.com/mattes/migrate/driver/postgres"
 	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/controllers"
 	"github.com/spf13/cobra"
@@ -16,6 +18,7 @@ import (
 )
 
 var cfgFile string
+var prestConfig config.Prest
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
@@ -37,6 +40,9 @@ func Execute() {
 }
 
 func init() {
+	prestConfig = config.Prest{}
+	config.Parse(&prestConfig)
+	// prest
 	cobra.OnInitialize(initConfig)
 
 	// Here you will define your flags and configuration settings.
