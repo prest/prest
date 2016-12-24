@@ -11,15 +11,16 @@ import (
 // Prest basic config
 type Prest struct {
 	// HTTPPort Declare which http port the PREST used
-	HTTPPort      int
-	PGHost        string
-	PGPort        int
-	PGUser        string
-	PGPass        string
-	PGDatabase    string
-	PGMaxIdleConn int
-	PGMAxOpenConn int
-	JWTKey        string
+	HTTPPort       int
+	PGHost         string
+	PGPort         int
+	PGUser         string
+	PGPass         string
+	PGDatabase     string
+	PGMaxIdleConn  int
+	PGMAxOpenConn  int
+	JWTKey         string
+	MigrationsPath string
 }
 
 func init() {
@@ -56,5 +57,6 @@ func Parse(cfg *Prest) (err error) {
 	cfg.PGMaxIdleConn = viper.GetInt("pg.maxidleconn")
 	cfg.PGMAxOpenConn = viper.GetInt("pg.maxopenconn")
 	cfg.JWTKey = viper.GetString("jwt.key")
+	cfg.MigrationsPath = viper.GetString("migrations.path")
 	return
 }
