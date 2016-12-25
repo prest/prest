@@ -57,6 +57,6 @@ func Parse(cfg *Prest) (err error) {
 	cfg.PGMaxIdleConn = viper.GetInt("pg.maxidleconn")
 	cfg.PGMAxOpenConn = viper.GetInt("pg.maxopenconn")
 	cfg.JWTKey = viper.GetString("jwt.key")
-	cfg.MigrationsPath = viper.GetString("migrations.path")
+	cfg.MigrationsPath = viper.GetString("migrations")
 	return
 }
