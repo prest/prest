@@ -7,18 +7,17 @@ import (
 	"github.com/nuveo/prest/config"
 )
 
-var db *sqlx.DB
-var cfg config.Prest
-
-func init() {
-	cfg := config.Prest{}
-	config.Parse(&cfg)
-}
+var (
+	db  *sqlx.DB
+	cfg config.Prest
+	err error
+)
 
 // MustGet get postgre cpnnection
 func MustGet() *sqlx.DB {
 	if db == nil {
-		var err error
+		cfg := config.Prest{}
+		config.Parse(&cfg)
 		dbURI := fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=disable", cfg.PGUser, cfg.PGDatabase, cfg.PGHost, cfg.PGPort)
 		if cfg.PGPass != "" {
 			dbURI += " password=" + cfg.PGPass
