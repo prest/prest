@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/nuveo/prest/api"
@@ -50,6 +51,14 @@ func TestQuery(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(len(json), ShouldBeGreaterThan, 0)
 	})
+
+	Convey("Query with invalid characters", t, func() {
+		sql := "SELECT ~~, ``, ˜ schema_name FROM information_schema.schemata WHERE schema_name = $1 ORDER BY schema_name ASC"
+		json, err := Query(sql, "public")
+		So(err, ShouldNotBeNil)
+		So(json, ShouldBeNil)
+	})
+
 }
 
 func TestPaginateIfPossible(t *testing.T) {
@@ -119,5 +128,84 @@ func TestChkInvaidIdentifier(t *testing.T) {
 		chk = chkInvaidIdentifier("_123456789_123456789_123456789_123456789_123456789_123456789_12345")
 		So(chk, ShouldBeTrue)
 
+	})
+}
+
+func TestJoinByRequest(t *testing.T) {
+	Convey("Join by request", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name", nil)
+		join, err := JoinByRequest(r)
+		joinStr := strings.Join(join, " ")
+
+		So(err, ShouldBeNil)
+		So(joinStr, ShouldContainSubstring, "INNER JOIN test2 ON test2.name = test.name")
+	})
+	Convey("Join missing param", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq", nil)
+		_, err = JoinByRequest(r)
+		So(err, ShouldNotBeNil)
+	})
+	Convey("Join invalid operator", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:notexist:test.name", nil)
+		_, err = JoinByRequest(r)
+		So(err, ShouldNotBeNil)
+	})
+	Convey("Join with where", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name&name=nuveo&data->>description:jsonb=bla", nil)
+		So(err, ShouldBeNil)
+
+		join, err := JoinByRequest(r)
+		joinStr := strings.Join(join, " ")
+
+		So(err, ShouldBeNil)
+		So(joinStr, ShouldContainSubstring, "INNER JOIN test2 ON test2.name = test.name")
+
+		where, values, err := WhereByRequest(r, 1)
+		So(err, ShouldBeNil)
+		So(where, ShouldContainSubstring, "name=$")
+		So(where, ShouldContainSubstring, "data->>'description'=$")
+		So(where, ShouldContainSubstring, " AND ")
+		So(values, ShouldContain, "nuveo")
+		So(values, ShouldContain, "bla")
+	})
+
+}
+
+func TestGetQueryOperator(t *testing.T) {
+	Convey("Query operator eq", t, func() {
+		op, err := GetQueryOperator("$eq")
+		So(err, ShouldBeNil)
+		So(op, ShouldEqual, "=")
+	})
+	Convey("Query operator gt", t, func() {
+		op, err := GetQueryOperator("$gt")
+		So(err, ShouldBeNil)
+		So(op, ShouldEqual, ">")
+	})
+	Convey("Query operator gte", t, func() {
+		op, err := GetQueryOperator("$gte")
+		So(err, ShouldBeNil)
+		So(op, ShouldEqual, ">=")
+	})
+
+	Convey("Query operator lt", t, func() {
+		op, err := GetQueryOperator("$lt")
+		So(err, ShouldBeNil)
+		So(op, ShouldEqual, "<")
+	})
+	Convey("Query operator lte", t, func() {
+		op, err := GetQueryOperator("$lte")
+		So(err, ShouldBeNil)
+		So(op, ShouldEqual, "<=")
+	})
+	Convey("Query operator IN", t, func() {
+		op, err := GetQueryOperator("$in")
+		So(err, ShouldBeNil)
+		So(op, ShouldEqual, "IN")
+	})
+	Convey("Query operator NIN", t, func() {
+		op, err := GetQueryOperator("$nin")
+		So(err, ShouldBeNil)
+		So(op, ShouldEqual, "NOT IN")
 	})
 }

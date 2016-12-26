@@ -119,8 +119,41 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 	return
 }
 
+// JoinByRequest implements join in queries
+func JoinByRequest(r *http.Request) (values []string, err error) {
+	joinValues := []string{}
+
+	u, _ := url.Parse(r.URL.String())
+	joinStatements := u.Query()["_join"]
+
+	for _, j := range joinStatements {
+		joinArgs := strings.Split(j, ":")
+
+		if len(joinArgs) != 5 {
+			err = errors.New("Invalid number of arguments in join statement")
+			return nil, err
+		}
+
+		op, err := GetQueryOperator(joinArgs[3])
+		if err != nil {
+			return nil, err
+		}
+
+		joinQuery := fmt.Sprintf(" %s JOIN %s ON %s %s %s ", strings.ToUpper(joinArgs[0]), joinArgs[1], joinArgs[2], op, joinArgs[4])
+		joinValues = append(joinValues, joinQuery)
+	}
+
+	return joinValues, nil
+}
+
 // Query process queries
 func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
+	validQuery := chkInvaidIdentifier(SQL)
+	if !validQuery {
+		err := errors.New("Invalid characters in the query")
+		return nil, err
+	}
+
 	// db := connection.Conn()
 
 	prepare, err := db.Prepare(SQL)
@@ -349,4 +382,30 @@ func Update(database, schema, table, where string, whereValues []interface{}, bo
 	data["rows_affected"] = rowsAffected
 	jsonData, err = json.Marshal(data)
 	return
+}
+
+func GetQueryOperator(op string) (string, error) {
+	op = strings.Replace(op, "$", "", -1)
+	op = strings.Replace(op, " ", "", -1)
+
+	switch op {
+	case "eq":
+		return "=", nil
+	case "gt":
+		return ">", nil
+	case "gte":
+		return ">=", nil
+	case "lt":
+		return "<", nil
+	case "lte":
+		return "<=", nil
+	case "in":
+		return "IN", nil
+	case "nin":
+		return "NOT IN", nil
+	}
+
+	err := errors.New("Invalid operator")
+	return "", err
+
 }
