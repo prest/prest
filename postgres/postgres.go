@@ -127,7 +127,6 @@ func JoinByRequest(r *http.Request) (values []string, err error) {
 	joinStatements := u.Query()["_join"]
 
 	for _, j := range joinStatements {
-		chkInvaidIdentifier(j)
 		joinArgs := strings.Split(j, ":")
 
 		if len(joinArgs) != 5 {
