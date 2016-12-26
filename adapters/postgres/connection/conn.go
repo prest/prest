@@ -5,6 +5,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/nuveo/prest/config"
+	// Used pg drive on sqlx
+	_ "github.com/lib/pq"
 )
 
 var (
