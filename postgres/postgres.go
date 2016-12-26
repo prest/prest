@@ -10,9 +10,6 @@ import (
 	"strings"
 	"unicode"
 
-	// Used pg drive on sqlx
-	_ "github.com/lib/pq"
-
 	"database/sql"
 
 	"github.com/nuveo/prest/adapters/postgres/connection"
