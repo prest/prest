@@ -6,7 +6,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-func TestParse(t *testing.T) {
+func TestMustGet(t *testing.T) {
 	Convey("Check connection", t, func() {
 		db := MustGet()
 		So(db, ShouldNotBeNil)
