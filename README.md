@@ -162,3 +162,32 @@ Using query string to make filter (WHERE), example:
 ```
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD1=xyz
 ```
+
+## JOIN
+
+Using query string to JOIN tables, example:
+
+```
+/DATABASE/SCHEMA/TABLE??_join=inner:users:friends.userid:$eq:users.id
+```
+
+Parameters:
+
+1. Join type
+1. Table
+1. Table field 1
+1. Operator (=, <, >, <=, >=)
+1. Table field 2
+
+Query Operators:
+
+| Name | Description |
+|-------|-------------|
+| $eq | Matches values that are equal to a specified value.|
+| $gt | Matches values that are greater than a specified value.|
+| $gte | Matches values that are greater than or equal to a specified value.|
+| $lt | Matches values that are less than a specified value.|
+| $lte | Matches values that are less than or equal to a specified value.|
+| $ne | Matches all values that are not equal to a specified value.|
+| $in | Matches any of the values specified in an array.|
+| $nin | Matches none of the values specified in an array.|

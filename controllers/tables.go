@@ -120,6 +120,18 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := fmt.Sprintf("%s %s.%s.%s", statements.SelectInTable, database, schema, table)
+
+	joinValues, err := postgres.JoinByRequest(r)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	for _, j := range joinValues {
+		query = fmt.Sprint(query, j)
+	}
+
 	requestWhere, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
 		log.Println(err)
