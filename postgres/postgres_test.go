@@ -37,15 +37,6 @@ func TestWhereByRequest(t *testing.T) {
 	})
 }
 
-func TestConnection(t *testing.T) {
-	Convey("Verify database connection", t, func() {
-		sqlx := Conn()
-		So(sqlx, ShouldNotBeNil)
-		err := sqlx.Ping()
-		So(err, ShouldBeNil)
-	})
-}
-
 func TestQuery(t *testing.T) {
 	Convey("Query execution", t, func() {
 		sql := "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name ASC"
