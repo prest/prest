@@ -121,6 +121,7 @@ func JoinByRequest(r *http.Request) (values []string, err error) {
 	joinStatements := u.Query()["_join"]
 
 	for _, j := range joinStatements {
+		chkInvaidIdentifier(j)
 		joinArgs := strings.Split(j, ":")
 
 		if len(joinArgs) != 5 {
@@ -142,6 +143,12 @@ func JoinByRequest(r *http.Request) (values []string, err error) {
 
 // Query process queries
 func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
+	validQuery := chkInvaidIdentifier(SQL)
+	if !validQuery {
+		err := errors.New("Invalid characters in the query")
+		return nil, err
+	}
+
 	db := Conn()
 
 	prepare, err := db.Prepare(SQL)
