@@ -361,6 +361,7 @@ func Update(database, schema, table, where string, whereValues []interface{}, bo
 	return
 }
 
+// GetQueryOperator identify operator on a join
 func GetQueryOperator(op string) (string, error) {
 	op = strings.Replace(op, "$", "", -1)
 	op = strings.Replace(op, " ", "", -1)
