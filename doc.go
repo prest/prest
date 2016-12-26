@@ -25,7 +25,7 @@ Migrations
     `--url` and `--path` flags are optional if pREST configurations already set
 
     ```bash
-    # env var for migrations dorectory
+    # env var for migrations directory
     PREST_MIGRATIONS
 
     # create new migration file in path
