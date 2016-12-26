@@ -31,6 +31,8 @@ PREST_PG_USER=postgres PREST_PG_DATABASE=prest PREST_PG_PORT=5432 PREST_HTTP_POR
 
 ## Migrations
 
+`--url` and `--path` flags are optional if pREST configurations already set
+
 ```bash
 # env var for migrations dorectory
 PREST_MIGRATIONS

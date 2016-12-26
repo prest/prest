@@ -22,6 +22,8 @@ Run
 
 Migrations
 
+    `--url` and `--path` flags are optional if pREST configurations already set
+
     ```bash
     # env var for migrations dorectory
     PREST_MIGRATIONS
