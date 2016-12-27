@@ -209,3 +209,16 @@ func TestGetQueryOperator(t *testing.T) {
 		So(op, ShouldEqual, "NOT IN")
 	})
 }
+
+func TestOrderByRequest(t *testing.T) {
+	Convey("Query ORDER BY", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?_order=name,-number", nil)
+		So(err, ShouldBeNil)
+
+		order, err := OrderByRequest(r)
+		So(err, ShouldBeNil)
+		So(order, ShouldContainSubstring, "ORDER BY")
+		So(order, ShouldContainSubstring, "name")
+		So(order, ShouldContainSubstring, "number DESC")
+	})
+}
