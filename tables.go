@@ -147,6 +147,16 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 			requestWhere)
 	}
 
+	order, err := postgres.OrderByRequest(r)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(order) > 0 {
+		sqlSelect = fmt.Sprintf("%s %s", sqlSelect, order)
+	}
+
 	page, err := postgres.PaginateIfPossible(r)
 	if err != nil {
 		http.Error(w, "Paging error", http.StatusBadRequest)
