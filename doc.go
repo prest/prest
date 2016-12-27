@@ -19,12 +19,57 @@ Run
     ```
     PREST_PG_USER=postgres PREST_PG_DATABASE=prest PREST_PG_PORT=5432 PREST_HTTP_PORT=3010 prest # Binary installed
     ```
+
+Migrations
+
+    `--url` and `--path` flags are optional if pREST configurations already set
+
+    ```bash
+    # env var for migrations directory
+    PREST_MIGRATIONS
+
+    # create new migration file in path
+    prest migrate --url driver://url --path ./migrations create migration_file_xyz
+
+    # apply all available migrations
+    prest migrate --url driver://url --path ./migrations up
+
+    # roll back all migrations
+    prest migrate --url driver://url --path ./migrations down
+
+    # roll back the most recently applied migration, then run it again.
+    prest migrate --url driver://url --path ./migrations redo
+
+    # run down and then up command
+    prest migrate --url driver://url --path ./migrations reset
+
+    # show the current migration version
+    prest migrate --url driver://url --path ./migrations version
+
+    # apply the next n migrations
+    prest migrate --url driver://url --path ./migrations next +1
+    prest migrate --url driver://url --path ./migrations next +2
+    prest migrate --url driver://url --path ./migrations next +n
+
+    # roll back the previous n migrations
+    prest migrate --url driver://url --path ./migrations next -1
+    prest migrate --url driver://url --path ./migrations next -2
+    prest migrate --url driver://url --path ./migrations next -n
+
+    # go to specific migration
+    prest migrate --url driver://url --path ./migrations goto 1
+    prest migrate --url driver://url --path ./migrations goto 10
+    prest migrate --url driver://url --path ./migrations goto v
+    ```
+
 TOML
     Optionally the pREST can be configured by TOML file
 
     - Set `PREST_CONF` environment variable with file path
 
     ```toml
+    migrations = "./migrations"
+
     [http]
     port = 6000
 
