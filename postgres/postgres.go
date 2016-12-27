@@ -123,6 +123,38 @@ func JoinByRequest(r *http.Request) (values []string, err error) {
 	return joinValues, nil
 }
 
+// OrderByRequest implements ORDER BY in queries
+func OrderByRequest(r *http.Request) (string, error) {
+	var values string
+
+	u, _ := url.Parse(r.URL.String())
+	reqOrder := u.Query()["_order"]
+
+	if len(reqOrder) > 0 {
+		values = "ORDER BY "
+
+		// get last order in request url
+		ordering := reqOrder[len(reqOrder)-1]
+		orderingArr := strings.Split(ordering, ",")
+
+		for i, s := range orderingArr {
+			field := s
+
+			if strings.HasPrefix(s, "-") {
+				field = fmt.Sprintf("%s DESC", s[1:])
+			}
+
+			values = fmt.Sprintf("%s %s", values, field)
+
+			// if have next order, append a comma
+			if i < len(orderingArr)-1 {
+				values = fmt.Sprintf("%s ,", values)
+			}
+		}
+	}
+	return values, nil
+}
+
 // Query process queries
 func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 	validQuery := chkInvaidIdentifier(SQL)
