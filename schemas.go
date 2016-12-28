@@ -36,8 +36,6 @@ func GetSchemas(w http.ResponseWriter, r *http.Request) {
 		sqlSchemas = fmt.Sprint(sqlSchemas, statements.SchemasOrderBy)
 	}
 
-	fmt.Println(sqlSchemas)
-
 	page, err := postgres.PaginateIfPossible(r)
 	if err != nil {
 		http.Error(w, "Paging error", http.StatusBadRequest)
