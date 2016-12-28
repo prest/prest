@@ -83,12 +83,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 		sqlSchemaTables = fmt.Sprint(sqlSchemaTables, " AND ", requestWhere)
 	}
 
-	order, err := postgres.OrderByRequest(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	order, _ := postgres.OrderByRequest(r)
 	if order != "" {
 		sqlSchemaTables = fmt.Sprint(sqlSchemaTables, order)
 	} else {
