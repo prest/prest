@@ -23,6 +23,13 @@ func TestGetSchemas(t *testing.T) {
 		validate(w, r, GetSchemas, "TestGetSchemas")
 	})
 
+	Convey("Get schemas with custom ORDER BY clause", t, func() {
+		r, err := http.NewRequest("GET", "/schemas?schema_name=public&_order=schema_name", nil)
+		w := httptest.NewRecorder()
+		So(err, ShouldBeNil)
+		validate(w, r, GetSchemas, "TestGetSchemas")
+	})
+
 	Convey("Get schemas with custom where clause and pagination", t, func() {
 		r, err := http.NewRequest("GET", "/schemas?schema_name=public&_page=1&_page_size=20", nil)
 		w := httptest.NewRecorder()

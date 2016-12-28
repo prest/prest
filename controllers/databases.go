@@ -24,12 +24,7 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 		sqlDatabases = fmt.Sprint(sqlDatabases, " AND ", requestWhere)
 	}
 
-	order, err := postgres.OrderByRequest(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	order, _ := postgres.OrderByRequest(r)
 	if order != "" {
 		sqlDatabases = fmt.Sprint(sqlDatabases, order)
 	} else {

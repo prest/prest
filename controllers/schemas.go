@@ -24,12 +24,7 @@ func GetSchemas(w http.ResponseWriter, r *http.Request) {
 		sqlSchemas = fmt.Sprint(sqlSchemas, " WHERE ", requestWhere)
 	}
 
-	order, err := postgres.OrderByRequest(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	order, _ := postgres.OrderByRequest(r)
 	if order != "" {
 		sqlSchemas = fmt.Sprint(sqlSchemas, order)
 	} else {

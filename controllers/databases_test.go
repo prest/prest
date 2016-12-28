@@ -24,6 +24,20 @@ func TestGetDatabases(t *testing.T) {
 		validate(w, r, GetDatabases, "TestGetDatabases")
 	})
 
+	Convey("Get databases with custom where clause", t, func() {
+		r, err := http.NewRequest("GET", "/databases?_order=datname", nil)
+		w := httptest.NewRecorder()
+		So(err, ShouldBeNil)
+		validate(w, r, GetDatabases, "TestGetDatabases")
+	})
+
+	Convey("Get databases with custom where clause", t, func() {
+		r, err := http.NewRequest("GET", "/databases?datname=prest", nil)
+		w := httptest.NewRecorder()
+		So(err, ShouldBeNil)
+		validate(w, r, GetDatabases, "TestGetDatabases")
+	})
+
 	Convey("Get databases with custom where clause and pagination", t, func() {
 		r, err := http.NewRequest("GET", "/databases?datname=prest&_page=1&_page_size=20", nil)
 		w := httptest.NewRecorder()
