@@ -18,14 +18,25 @@ func GetSchemas(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sqlSchemas := statements.Schemas
+	sqlSchemas := statements.SchemasSelect
+
 	if requestWhere != "" {
-		sqlSchemas = fmt.Sprint(
-			statements.SchemasSelect,
-			" WHERE ",
-			requestWhere,
-			statements.SchemasOrderBy)
+		sqlSchemas = fmt.Sprint(sqlSchemas, " WHERE ", requestWhere)
 	}
+
+	order, err := postgres.OrderByRequest(r)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if order != "" {
+		sqlSchemas = fmt.Sprint(sqlSchemas, order)
+	} else {
+		sqlSchemas = fmt.Sprint(sqlSchemas, statements.SchemasOrderBy)
+	}
+
+	fmt.Println(sqlSchemas)
 
 	page, err := postgres.PaginateIfPossible(r)
 	if err != nil {

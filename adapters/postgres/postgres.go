@@ -131,7 +131,7 @@ func OrderByRequest(r *http.Request) (string, error) {
 	reqOrder := u.Query()["_order"]
 
 	if len(reqOrder) > 0 {
-		values = "ORDER BY "
+		values = " ORDER BY "
 
 		// get last order in request url
 		ordering := reqOrder[len(reqOrder)-1]
