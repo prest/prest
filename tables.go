@@ -22,15 +22,26 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sqlTables := statements.Tables
-	if requestWhere != "" {
-		sqlTables = fmt.Sprint(
-			statements.TablesSelect,
-			statements.TablesWhere,
-			" AND ",
-			requestWhere,
-			statements.TablesOrderBy)
+	order, err := postgres.OrderByRequest(r)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
+
+	if order == "" {
+		order = statements.TablesOrderBy
+	}
+
+	sqlTables := fmt.Sprint(
+		statements.TablesSelect,
+		statements.TablesWhere)
+
+	if requestWhere != "" {
+		sqlTables = fmt.Sprintf(" AND %s", requestWhere)
+	}
+
+	sqlTables = fmt.Sprint(sqlTables, order)
 
 	object, err := postgres.Query(sqlTables, values...)
 	if err != nil {
