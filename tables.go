@@ -38,7 +38,7 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 		statements.TablesWhere)
 
 	if requestWhere != "" {
-		sqlTables = fmt.Sprintf(" AND %s", requestWhere)
+		sqlTables = fmt.Sprintf("%s AND %s", sqlTables, requestWhere)
 	}
 
 	sqlTables = fmt.Sprint(sqlTables, order)
