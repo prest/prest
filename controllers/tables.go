@@ -22,15 +22,26 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sqlTables := statements.Tables
-	if requestWhere != "" {
-		sqlTables = fmt.Sprint(
-			statements.TablesSelect,
-			statements.TablesWhere,
-			" AND ",
-			requestWhere,
-			statements.TablesOrderBy)
+	order, err := postgres.OrderByRequest(r)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
+
+	if order == "" {
+		order = statements.TablesOrderBy
+	}
+
+	sqlTables := fmt.Sprint(
+		statements.TablesSelect,
+		statements.TablesWhere)
+
+	if requestWhere != "" {
+		sqlTables = fmt.Sprintf("%s AND %s", sqlTables, requestWhere)
+	}
+
+	sqlTables = fmt.Sprint(sqlTables, order)
 
 	object, err := postgres.Query(sqlTables, values...)
 	if err != nil {
@@ -64,14 +75,19 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sqlSchemaTables := statements.SchemaTables
+	sqlSchemaTables := fmt.Sprint(
+		statements.SchemaTablesSelect,
+		statements.SchemaTablesWhere)
+
 	if requestWhere != "" {
-		sqlSchemaTables = fmt.Sprint(
-			statements.SchemaTablesSelect,
-			statements.SchemaTablesWhere,
-			" AND ",
-			requestWhere,
-			statements.SchemaTablesOrderBy)
+		sqlSchemaTables = fmt.Sprint(sqlSchemaTables, " AND ", requestWhere)
+	}
+
+	order, _ := postgres.OrderByRequest(r)
+	if order != "" {
+		sqlSchemaTables = fmt.Sprint(sqlSchemaTables, order)
+	} else {
+		sqlSchemaTables = fmt.Sprint(sqlSchemaTables, statements.SchemaTablesOrderBy)
 	}
 
 	page, err := postgres.PaginateIfPossible(r)
@@ -145,6 +161,16 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 			query,
 			" WHERE ",
 			requestWhere)
+	}
+
+	order, err := postgres.OrderByRequest(r)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(order) > 0 {
+		sqlSelect = fmt.Sprintf("%s %s", sqlSelect, order)
 	}
 
 	page, err := postgres.PaginateIfPossible(r)

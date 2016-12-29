@@ -168,7 +168,7 @@ http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD1=xyz
 Using query string to JOIN tables, example:
 
 ```
-/DATABASE/SCHEMA/TABLE??_join=inner:users:friends.userid:$eq:users.id
+/DATABASE/SCHEMA/TABLE?_join=inner:users:friends.userid:$eq:users.id
 ```
 
 Parameters:
@@ -191,3 +191,18 @@ Query Operators:
 | $ne | Matches all values that are not equal to a specified value.|
 | $in | Matches any of the values specified in an array.|
 | $nin | Matches none of the values specified in an array.|
+
+## ORDER BY
+
+Using *ORDER BY* in queries you must pass in *GET* request the attribute `_order` with fieldname(s) as value. For *DESC* order, use the prefix `-`. For *multiple* orders, the fields are separated by comma.
+
+Examples:
+
+### ASC
+    GET /DATABASE/SCHEMA/TABLE/?_order=fieldname
+
+### DESC
+    GET /DATABASE/SCHEMA/TABLE/?_order=-fieldname
+
+### Multiple Orders
+    GET /DATABASE/SCHEMA/TABLE/?_order=fieldname01,-fieldname02,fieldname03
