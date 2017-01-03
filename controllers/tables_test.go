@@ -59,6 +59,9 @@ func TestSelectFromTables(t *testing.T) {
 	Convey("execute select in a table without custom where clause", t, func() {
 		doValidGetRequest(server.URL+"/prest/public/test", "SelectFromTables")
 	})
+	Convey("execute select in a table with count function", t, func() {
+		doValidGetRequest(server.URL+"/prest/public/test?_count", "SelectFromTables")
+	})
 	Convey("execute select in a table with custom where clause", t, func() {
 		doValidGetRequest(server.URL+"/prest/public/test?name=nuveo", "SelectFromTables")
 	})
