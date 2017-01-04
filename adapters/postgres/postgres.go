@@ -157,8 +157,7 @@ func OrderByRequest(r *http.Request) (string, error) {
 
 // CountByRequest returns true if should use COUNT function in query
 func CountByRequest(r *http.Request) bool {
-	u, _ := url.Parse(r.URL.String())
-	q := u.Query()
+	q := r.URL.Query()
 	_, useCount := q["_count"]
 	return useCount
 }
