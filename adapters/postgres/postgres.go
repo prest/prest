@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -243,9 +244,6 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 		return
 	}
 
-	var result sql.Result
-	var rowsAffected int64
-
 	fields := make([]string, 0)
 	values := make([]interface{}, 0)
 	for key, value := range body.Data {
@@ -266,11 +264,18 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 		colPlaceholder += fmt.Sprintf("$%d", i)
 	}
 
-	sql := fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s)", database, schema, table, colsName, colPlaceholder)
+	sql := fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s) RETURNING id;", database, schema, table, colsName, colPlaceholder)
 
 	db := connection.MustGet()
-	stmt, err := db.Prepare(sql)
+	tx, err := db.Begin()
 	if err != nil {
+		log.Printf("could not begin transaction: %v\n", err)
+		return
+	}
+
+	stmt, err := tx.Prepare(sql)
+	if err != nil {
+		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
 		return
 	}
 
@@ -280,18 +285,29 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 		valuesAux = append(valuesAux, values[i])
 	}
 
-	result, err = stmt.Exec(valuesAux...)
+	var lastId int
+	result := stmt.QueryRow(valuesAux...)
+	err = result.Scan(&lastId)
 	if err != nil {
 		return
 	}
 
-	rowsAffected, err = result.RowsAffected()
-	if err != nil {
-		return
-	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+			return
+		}
+		err = tx.Commit()
+		if err != nil {
+			log.Printf("could not commit: %v\n", err)
+		}
+	}()
 
 	data := make(map[string]interface{})
-	data["rows_affected"] = rowsAffected
+	for i, _ := range fields {
+		data[fields[i]] = values[i]
+	}
+	data["id"] = lastId
 	jsonData, err = json.Marshal(data)
 	return
 }
@@ -317,14 +333,33 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 	}
 
 	db := connection.MustGet()
-	result, err = db.Exec(sql, whereValues...)
+	tx, err := db.Begin()
+	if err != nil {
+		log.Printf("could not begin transaction: %v\n", err)
+		return
+	}
+
+	result, err = tx.Exec(sql, whereValues...)
 	if err != nil {
 		return
 	}
+
 	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return
 	}
+
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+			return
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			log.Printf("could not commit: %v\n", err)
+		}
+	}()
 
 	data := make(map[string]interface{})
 	data["rows_affected"] = rowsAffected
@@ -366,8 +401,15 @@ func Update(database, schema, table, where string, whereValues []interface{}, bo
 	}
 
 	db := connection.MustGet()
-	stmt, err := db.Prepare(sql)
+	tx, err := db.Begin()
 	if err != nil {
+		log.Printf("could not begin transaction: %v\n", err)
+		return
+	}
+
+	stmt, err := tx.Prepare(sql)
+	if err != nil {
+		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
 		return
 	}
 
@@ -386,6 +428,17 @@ func Update(database, schema, table, where string, whereValues []interface{}, bo
 	if err != nil {
 		return
 	}
+
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+			return
+		}
+		err = tx.Commit()
+		if err != nil {
+			log.Printf("could not commit: %v\n", err)
+		}
+	}()
 
 	data := make(map[string]interface{})
 	data["rows_affected"] = rowsAffected
