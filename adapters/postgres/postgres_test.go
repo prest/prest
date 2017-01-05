@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
@@ -79,9 +80,25 @@ func TestInsert(t *testing.T) {
 		r := api.Request{
 			Data: m,
 		}
-		json, err := Insert("prest", "public", "test", r)
+		jsonByte, err := Insert("prest", "public", "test4", r)
 		So(err, ShouldBeNil)
-		So(len(json), ShouldBeGreaterThan, 0)
+		So(len(jsonByte), ShouldBeGreaterThan, 0)
+
+		var toJson map[string]interface{}
+		err = json.Unmarshal(jsonByte, &toJson)
+
+		So(toJson["id"], ShouldEqual, 1)
+	})
+
+	Convey("Insert data into a table with contraints", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		_, err := Insert("prest", "public", "test3", r)
+		So(err, ShouldNotBeNil)
 	})
 }
 
@@ -105,6 +122,17 @@ func TestUpdate(t *testing.T) {
 		json, err := Update("prest", "public", "test", "name=$1", []interface{}{"prest"}, r)
 		So(err, ShouldBeNil)
 		So(len(json), ShouldBeGreaterThan, 0)
+	})
+
+	Convey("Update data into a table with constraints", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		_, err := Update("prest", "public", "test3", "name=$1", []interface{}{"prest tester"}, r)
+		So(err, ShouldNotBeNil)
 	})
 }
 
