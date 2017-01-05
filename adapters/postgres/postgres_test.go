@@ -138,22 +138,22 @@ func TestUpdate(t *testing.T) {
 
 func TestChkInvaidIdentifier(t *testing.T) {
 	Convey("Check invalid character on identifier", t, func() {
-		chk := chkInvaidIdentifier("fildName")
+		chk := chkInvalidIdentifier("fildName")
 		So(chk, ShouldBeFalse)
-		chk = chkInvaidIdentifier("_9fildName")
+		chk = chkInvalidIdentifier("_9fildName")
 		So(chk, ShouldBeFalse)
-		chk = chkInvaidIdentifier("_fild.Name")
+		chk = chkInvalidIdentifier("_fild.Name")
 		So(chk, ShouldBeFalse)
 
-		chk = chkInvaidIdentifier("0fildName")
+		chk = chkInvalidIdentifier("0fildName")
 		So(chk, ShouldBeTrue)
-		chk = chkInvaidIdentifier("fild'Name")
+		chk = chkInvalidIdentifier("fild'Name")
 		So(chk, ShouldBeTrue)
-		chk = chkInvaidIdentifier("fild\"Name")
+		chk = chkInvalidIdentifier("fild\"Name")
 		So(chk, ShouldBeTrue)
-		chk = chkInvaidIdentifier("fild;Name")
+		chk = chkInvalidIdentifier("fild;Name")
 		So(chk, ShouldBeTrue)
-		chk = chkInvaidIdentifier("_123456789_123456789_123456789_123456789_123456789_123456789_12345")
+		chk = chkInvalidIdentifier("_123456789_123456789_123456789_123456789_123456789_123456789_12345")
 		So(chk, ShouldBeTrue)
 
 	})

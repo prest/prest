@@ -99,4 +99,10 @@ ORDER BY
 SELECT
 	*
 FROM`
+
+	// SelectCountInTable query
+	SelectCountInTable = `
+SELECT
+	COUNT(*)
+FROM`
 )

@@ -23,8 +23,8 @@ const (
 	defaultPageSize = 10
 )
 
-// chkInvaidIdentifier return true if identifier is invalid
-func chkInvaidIdentifier(identifer string) bool {
+// chkInvalidIdentifier return true if identifier is invalid
+func chkInvalidIdentifier(identifer string) bool {
 	if len(identifer) > 63 ||
 		unicode.IsDigit([]rune(identifer)[0]) {
 		return true
@@ -55,15 +55,15 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 				switch keyInfo[1] {
 				case "jsonb":
 					jsonField := strings.Split(keyInfo[0], "->>")
-					if chkInvaidIdentifier(jsonField[0]) ||
-						chkInvaidIdentifier(jsonField[1]) {
+					if chkInvalidIdentifier(jsonField[0]) ||
+						chkInvalidIdentifier(jsonField[1]) {
 						err = errors.New("Invalid identifier")
 						return
 					}
 					whereKey = append(whereKey, fmt.Sprintf("%s->>'%s'=$%d", jsonField[0], jsonField[1], pid))
 					whereValues = append(whereValues, val[0])
 				default:
-					if chkInvaidIdentifier(keyInfo[0]) {
+					if chkInvalidIdentifier(keyInfo[0]) {
 						err = errors.New("Invalid identifier")
 						return
 					}
@@ -72,7 +72,7 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 				}
 				continue
 			}
-			if chkInvaidIdentifier(key) {
+			if chkInvalidIdentifier(key) {
 				err = errors.New("Invalid identifier")
 				return
 			}
@@ -156,9 +156,16 @@ func OrderByRequest(r *http.Request) (string, error) {
 	return values, nil
 }
 
+// CountByRequest returns true if should use COUNT function in query
+func CountByRequest(r *http.Request) bool {
+	q := r.URL.Query()
+	_, useCount := q["_count"]
+	return useCount
+}
+
 // Query process queries
 func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
-	validQuery := chkInvaidIdentifier(SQL)
+	validQuery := chkInvalidIdentifier(SQL)
 	if !validQuery {
 		err := errors.New("Invalid characters in the query")
 		return nil, err
@@ -211,6 +218,31 @@ func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 	return
 }
 
+// QueryCount process queries with count
+func QueryCount(SQL string, params ...interface{}) ([]byte, error) {
+	validQuery := chkInvalidIdentifier(SQL)
+	if !validQuery {
+		return nil, errors.New("Invalid characters in the query")
+	}
+
+	db := connection.MustGet()
+	prepare, err := db.Prepare(SQL)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Count int64 `json:"count"`
+	}
+
+	row := prepare.QueryRow(params...)
+	if err := row.Scan(&result.Count); err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(result)
+}
+
 // PaginateIfPossible func
 func PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 	u, _ := url.Parse(r.URL.String())
@@ -237,9 +269,9 @@ func PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 // Insert execute insert sql into a table
 func Insert(database, schema, table string, body api.Request) (jsonData []byte, err error) {
 
-	if chkInvaidIdentifier(database) ||
-		chkInvaidIdentifier(schema) ||
-		chkInvaidIdentifier(table) {
+	if chkInvalidIdentifier(database) ||
+		chkInvalidIdentifier(schema) ||
+		chkInvalidIdentifier(table) {
 		err = errors.New("Insert: Invalid identifier")
 		return
 	}
@@ -247,7 +279,7 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 	fields := make([]string, 0)
 	values := make([]interface{}, 0)
 	for key, value := range body.Data {
-		if chkInvaidIdentifier(key) {
+		if chkInvalidIdentifier(key) {
 			err = errors.New("Insert: Invalid identifier")
 			return
 		}
@@ -317,9 +349,9 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 	var result sql.Result
 	var rowsAffected int64
 
-	if chkInvaidIdentifier(database) ||
-		chkInvaidIdentifier(schema) ||
-		chkInvaidIdentifier(table) {
+	if chkInvalidIdentifier(database) ||
+		chkInvalidIdentifier(schema) ||
+		chkInvalidIdentifier(table) {
 		err = errors.New("Delete: Invalid identifier")
 		return
 	}
@@ -370,9 +402,9 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 // Update execute update sql into a table
 func Update(database, schema, table, where string, whereValues []interface{}, body api.Request) (jsonData []byte, err error) {
 
-	if chkInvaidIdentifier(database) ||
-		chkInvaidIdentifier(schema) ||
-		chkInvaidIdentifier(table) {
+	if chkInvalidIdentifier(database) ||
+		chkInvalidIdentifier(schema) ||
+		chkInvalidIdentifier(table) {
 		err = errors.New("Update: Invalid identifier")
 		return
 	}
