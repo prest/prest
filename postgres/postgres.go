@@ -97,6 +97,19 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 	return
 }
 
+// SelectByRequest implements SELECT fields OPERATION
+func SelectByRequest(req *http.Request) (selectQuery string) {
+	queries := req.URL.Query()
+	selectFields := queries.Get("_select")
+
+	if selectFields == "" {
+		return
+	}
+	selectQuery = fmt.Sprintf("SELECT %s FROM", selectFields)
+
+	return
+}
+
 // JoinByRequest implements join in queries
 func JoinByRequest(r *http.Request) (values []string, err error) {
 	joinValues := []string{}
