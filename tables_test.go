@@ -71,6 +71,9 @@ func TestSelectFromTables(t *testing.T) {
 	Convey("execute select in a table with select fields", t, func() {
 		doValidGetRequest(server.URL+"/prest/public/test5?_select=celphone,name", "SelectFromTables")
 	})
+	Convey("execute select in a table with select *", t, func() {
+		doValidGetRequest(server.URL+"/prest/public/test5?_select=*", "SelectFromTables")
+	})
 }
 
 func TestInsertInTables(t *testing.T) {
