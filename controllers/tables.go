@@ -136,12 +136,11 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 
 	selectFields := postgres.SelectByRequest(r)
-	var query string
 	if selectFields == "" {
-		query = fmt.Sprintf("%s %s.%s.%s", statements.SelectInTable, database, schema, table)
-	} else {
-		query = fmt.Sprintf("%s %s.%s.%s", selectFields, database, schema, table)
+		selectFields = statements.SelectInTable
 	}
+
+	query := fmt.Sprintf("%s %s.%s.%s", selectFields, database, schema, table)
 
 	joinValues, err := postgres.JoinByRequest(r)
 	if err != nil {
