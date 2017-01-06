@@ -68,6 +68,9 @@ func TestSelectFromTables(t *testing.T) {
 	Convey("execute select in a table with custom where clause and pagination", t, func() {
 		doValidGetRequest(server.URL+"/prest/public/test?name=nuveo&_page=1&_page_size=20", "SelectFromTables")
 	})
+	Convey("execute select in a table with select fields", t, func() {
+		doValidGetRequest(server.URL+"/prest/public/test5?_select=celphone,name", "SelectFromTables")
+	})
 }
 
 func TestInsertInTables(t *testing.T) {
