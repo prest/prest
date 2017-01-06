@@ -208,6 +208,14 @@ func TestSelectFields(t *testing.T) {
 		So(selectQuery, ShouldContainSubstring, "SELECT celphone FROM")
 	})
 
+	Convey("Select all from table", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_select=*", nil)
+		So(err, ShouldBeNil)
+
+		selectQuery := SelectByRequest(r)
+		So(selectQuery, ShouldContainSubstring, "SELECT * FROM")
+	})
+
 	Convey("Try Select with empty '_select' field", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test5?_select=", nil)
 		So(err, ShouldBeNil)
