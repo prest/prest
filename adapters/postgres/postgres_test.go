@@ -199,6 +199,32 @@ func TestJoinByRequest(t *testing.T) {
 
 }
 
+func TestSelectFields(t *testing.T) {
+	Convey("Select fields from table", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_select=celphone", nil)
+		So(err, ShouldBeNil)
+
+		selectQuery := SelectByRequest(r)
+		So(selectQuery, ShouldContainSubstring, "SELECT celphone FROM")
+	})
+
+	Convey("Select all from table", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_select=*", nil)
+		So(err, ShouldBeNil)
+
+		selectQuery := SelectByRequest(r)
+		So(selectQuery, ShouldContainSubstring, "SELECT * FROM")
+	})
+
+	Convey("Try Select with empty '_select' field", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_select=", nil)
+		So(err, ShouldBeNil)
+
+		selectQuery := SelectByRequest(r)
+		So(selectQuery, ShouldEqual, "")
+	})
+}
+
 func TestGetQueryOperator(t *testing.T) {
 	Convey("Query operator eq", t, func() {
 		op, err := GetQueryOperator("$eq")
