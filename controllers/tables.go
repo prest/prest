@@ -139,8 +139,13 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	if selectFields == "" {
 		selectFields = statements.SelectInTable
 	}
-
 	query := fmt.Sprintf("%s %s.%s.%s", selectFields, database, schema, table)
+
+	countQuery := postgres.CountByRequest(r)
+
+	if countQuery != "" {
+		query = fmt.Sprintf("%s %s.%s.%s", countQuery, database, schema, table)
+	}
 
 	joinValues, err := postgres.JoinByRequest(r)
 	if err != nil {
@@ -185,7 +190,12 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 	sqlSelect = fmt.Sprint(sqlSelect, " ", page)
 
-	object, err := postgres.Query(sqlSelect, values...)
+	runQuery := postgres.Query
+	if countQuery != "" {
+		runQuery = postgres.QueryCount
+	}
+
+	object, err := runQuery(sqlSelect, values...)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
