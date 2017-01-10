@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/nuveo/prest/api"
+	"github.com/nuveo/prest/statements"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -138,22 +139,22 @@ func TestUpdate(t *testing.T) {
 
 func TestChkInvaidIdentifier(t *testing.T) {
 	Convey("Check invalid character on identifier", t, func() {
-		chk := chkInvaidIdentifier("fildName")
+		chk := chkInvalidIdentifier("fildName")
 		So(chk, ShouldBeFalse)
-		chk = chkInvaidIdentifier("_9fildName")
+		chk = chkInvalidIdentifier("_9fildName")
 		So(chk, ShouldBeFalse)
-		chk = chkInvaidIdentifier("_fild.Name")
+		chk = chkInvalidIdentifier("_fild.Name")
 		So(chk, ShouldBeFalse)
 
-		chk = chkInvaidIdentifier("0fildName")
+		chk = chkInvalidIdentifier("0fildName")
 		So(chk, ShouldBeTrue)
-		chk = chkInvaidIdentifier("fild'Name")
+		chk = chkInvalidIdentifier("fild'Name")
 		So(chk, ShouldBeTrue)
-		chk = chkInvaidIdentifier("fild\"Name")
+		chk = chkInvalidIdentifier("fild\"Name")
 		So(chk, ShouldBeTrue)
-		chk = chkInvaidIdentifier("fild;Name")
+		chk = chkInvalidIdentifier("fild;Name")
 		So(chk, ShouldBeTrue)
-		chk = chkInvaidIdentifier("_123456789_123456789_123456789_123456789_123456789_123456789_12345")
+		chk = chkInvalidIdentifier("_123456789_123456789_123456789_123456789_123456789_123456789_12345")
 		So(chk, ShouldBeTrue)
 
 	})
@@ -222,6 +223,68 @@ func TestSelectFields(t *testing.T) {
 
 		selectQuery := SelectByRequest(r)
 		So(selectQuery, ShouldEqual, "")
+	})
+}
+
+func TestCountFields(t *testing.T) {
+	Convey("Count fields from table", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_count=celphone", nil)
+		So(err, ShouldBeNil)
+
+		countQuery := CountByRequest(r)
+		So(countQuery, ShouldContainSubstring, "SELECT COUNT(celphone) FROM")
+	})
+
+	Convey("Count all from table", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_count=*", nil)
+		So(err, ShouldBeNil)
+
+		countQuery := CountByRequest(r)
+		So(countQuery, ShouldContainSubstring, "SELECT COUNT(*) FROM")
+	})
+
+	Convey("Try Count with empty '_count' field", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_count=", nil)
+		So(err, ShouldBeNil)
+
+		countQuery := CountByRequest(r)
+		So(countQuery, ShouldEqual, "")
+	})
+}
+
+func TestDatabaseClause(t *testing.T) {
+	Convey("Return appropriate SELECT clause", t, func() {
+		r, err := http.NewRequest("GET", "/databases", nil)
+		So(err, ShouldBeNil)
+
+		countQuery := DatabaseClause(r)
+		So(countQuery, ShouldEqual, statements.DatabasesSelect)
+	})
+
+	Convey("Return appropriate COUNT clause", t, func() {
+		r, err := http.NewRequest("GET", "/databases?_count=*", nil)
+		So(err, ShouldBeNil)
+
+		countQuery := DatabaseClause(r)
+		So(countQuery, ShouldEqual, statements.DatabasesCount)
+	})
+}
+
+func TestSchemaClause(t *testing.T) {
+	Convey("Return appropriate SELECT clause", t, func() {
+		r, err := http.NewRequest("GET", "/schemas", nil)
+		So(err, ShouldBeNil)
+
+		countQuery := SchemaClause(r)
+		So(countQuery, ShouldEqual, statements.SchemasSelect)
+	})
+
+	Convey("Return appropriate COUNT clause", t, func() {
+		r, err := http.NewRequest("GET", "/schemas?_count=*", nil)
+		So(err, ShouldBeNil)
+
+		countQuery := SchemaClause(r)
+		So(countQuery, ShouldEqual, statements.SchemasCount)
 	})
 }
 
