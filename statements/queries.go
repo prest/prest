@@ -9,6 +9,13 @@ SELECT
 	datname
 FROM
 	pg_database`
+
+	// DatabaseCount clause
+	DatabasesCount = `
+SELECT
+    COUNT(datnama)
+FROM
+	pg_database`
 	// DatabasesWhere clause
 	DatabasesWhere = `
 WHERE
@@ -27,6 +34,18 @@ SELECT
 	schema_name
 FROM
 	information_schema.schemata`
+
+	// SchemasCount clause
+	SchemasCount = `
+SELECT
+	COUNT(schema_name)
+FROM
+	information_schema.schemata`
+
+	SchemasGroupBy = `
+GROUP BY
+	schema_name`
+
 	// SchemasOrderBy clause
 	SchemasOrderBy = `
 ORDER BY
