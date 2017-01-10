@@ -18,7 +18,8 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sqlDatabases := fmt.Sprint(statements.DatabasesSelect, statements.DatabasesWhere)
+	query := postgres.DatabaseClause(r)
+	sqlDatabases := fmt.Sprint(query, statements.DatabasesWhere)
 
 	if requestWhere != "" {
 		sqlDatabases = fmt.Sprint(sqlDatabases, " AND ", requestWhere)

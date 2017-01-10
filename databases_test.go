@@ -44,4 +44,11 @@ func TestGetDatabases(t *testing.T) {
 		So(err, ShouldBeNil)
 		validate(w, r, GetDatabases, "TestGetDatabases")
 	})
+
+	Convey("Get databases with COUNT clause", t, func() {
+		r, err := http.NewRequest("GET", "/databases?_count=", nil)
+		w := httptest.NewRecorder()
+		So(err, ShouldBeNil)
+		validate(w, r, GetDatabases, "TestGetDatabases")
+	})
 }
