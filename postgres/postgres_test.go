@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -258,7 +259,7 @@ func TestDatabaseClause(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		countQuery := DatabaseClause(r)
-		So(countQuery, ShouldEqual, statements.DatabasesSelect)
+		So(countQuery, ShouldEqual, fmt.Sprintf(statements.DatabasesSelect, statements.FieldDatabaseName))
 	})
 
 	Convey("Return appropriate COUNT clause", t, func() {
@@ -266,7 +267,7 @@ func TestDatabaseClause(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		countQuery := DatabaseClause(r)
-		So(countQuery, ShouldEqual, statements.DatabasesCount)
+		So(countQuery, ShouldEqual, fmt.Sprintf(statements.DatabasesSelect, statements.FieldCountDatabaseName))
 	})
 }
 
@@ -276,7 +277,7 @@ func TestSchemaClause(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		countQuery := SchemaClause(r)
-		So(countQuery, ShouldEqual, statements.SchemasSelect)
+		So(countQuery, ShouldEqual, fmt.Sprintf(statements.SchemasSelect, statements.FieldSchemaName))
 	})
 
 	Convey("Return appropriate COUNT clause", t, func() {
@@ -284,7 +285,7 @@ func TestSchemaClause(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		countQuery := SchemaClause(r)
-		So(countQuery, ShouldEqual, statements.SchemasCount)
+		So(countQuery, ShouldEqual, fmt.Sprintf(statements.SchemasSelect, statements.FieldCountSchemaName))
 	})
 }
 
