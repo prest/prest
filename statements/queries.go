@@ -1,21 +1,22 @@
 package statements
 
+import "fmt"
+
 const (
+	FieldDatabaseName      = "datname"
+	FieldSchemaName        = "schema_name"
+	FieldCountDatabaseName = "COUNT(datname)"
+	FieldCountSchemaName   = "COUNT(schema_name)"
+
 	// Databases list all data bases
 
 	// DatabasesSelect clause
 	DatabasesSelect = `
 SELECT
-	datname
+	%s
 FROM
 	pg_database`
 
-	// DatabaseCount clause
-	DatabasesCount = `
-SELECT
-    COUNT(datnama)
-FROM
-	pg_database`
 	// DatabasesWhere clause
 	DatabasesWhere = `
 WHERE
@@ -23,35 +24,24 @@ WHERE
 	// DatabasesOrderBy clause
 	DatabasesOrderBy = `
 ORDER BY
-	datname ASC`
-	// Databases default query
-	Databases = DatabasesSelect + DatabasesWhere + DatabasesOrderBy
+	%s ASC`
 	// Schemas list all schema on data base
 
 	// SchemasSelect clause
 	SchemasSelect = `
 SELECT
-	schema_name
-FROM
-	information_schema.schemata`
-
-	// SchemasCount clause
-	SchemasCount = `
-SELECT
-	COUNT(schema_name)
+	%s
 FROM
 	information_schema.schemata`
 
 	SchemasGroupBy = `
 GROUP BY
-	schema_name`
+	%s`
 
 	// SchemasOrderBy clause
 	SchemasOrderBy = `
 ORDER BY
-	schema_name ASC`
-	// Schemas default query
-	Schemas = SchemasSelect + SchemasOrderBy
+	%s ASC`
 
 	// Tables list all tables
 
@@ -118,4 +108,12 @@ ORDER BY
 SELECT
 	*
 FROM`
+)
+
+var (
+	// Databases default query
+	Databases = fmt.Sprintf(DatabasesSelect, FieldDatabaseName) + DatabasesWhere + fmt.Sprintf(DatabasesOrderBy, FieldDatabaseName)
+
+	// Schemas default query
+	Schemas = fmt.Sprintf(SchemasSelect, FieldSchemaName) + fmt.Sprintf(SchemasOrderBy, FieldSchemaName)
 )

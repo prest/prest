@@ -103,9 +103,10 @@ func DatabaseClause(req *http.Request) (query string) {
 	queries := req.URL.Query()
 	hasCount := queries.Get("_count")
 
-	query = statements.DatabasesSelect
 	if hasCount != "" {
-		query = statements.DatabasesCount
+		query = fmt.Sprintf(statements.DatabasesSelect, statements.FieldCountDatabaseName)
+	} else {
+		query = fmt.Sprintf(statements.DatabasesSelect, statements.FieldDatabaseName)
 	}
 	return
 }
@@ -115,9 +116,10 @@ func SchemaClause(req *http.Request) (query string) {
 	queries := req.URL.Query()
 	hasCount := queries.Get("_count")
 
-	query = statements.SchemasSelect
 	if hasCount != "" {
-		query = statements.SchemasCount
+		query = fmt.Sprintf(statements.SchemasSelect, statements.FieldCountSchemaName)
+	} else {
+		query = fmt.Sprintf(statements.SchemasSelect, statements.FieldSchemaName)
 	}
 	return
 }
