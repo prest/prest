@@ -8,6 +8,18 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+func TestInitConf(t *testing.T) {
+	os.Setenv("PREST_CONF", "../testdata/prest.toml")
+	Convey("Check tables parser", t, func() {
+		InitConf()
+		So(len(PREST_CONF.AccessConf.Tables), ShouldBeGreaterThanOrEqualTo, 2)
+	})
+	Convey("Check restrict parser", t, func() {
+		InitConf()
+		So(len(PREST_CONF.AccessConf.Restrict), ShouldBeTrue)
+	})
+}
+
 func TestParse(t *testing.T) {
 	Convey("Verify if get toml", t, func() {
 		os.Setenv("PREST_CONF", "../testdata/prest.toml")
