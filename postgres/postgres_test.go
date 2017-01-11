@@ -182,7 +182,7 @@ func TestJoinByRequest(t *testing.T) {
 	})
 	Convey("Join invalid operator", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:notexist:test.name", nil)
-		So(err, ShouldNotBeNil)
+		So(err, ShouldBeNil)
 
 		_, err = JoinByRequest(r)
 		So(err, ShouldNotBeNil)
