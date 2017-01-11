@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"unicode"
@@ -47,9 +46,8 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 	whereKey := []string{}
 	whereValues := []string{}
 
-	u, _ := url.Parse(r.URL.String())
 	pid := initialPlaceholderID
-	for key, val := range u.Query() {
+	for key, val := range r.URL.Query() {
 		if !strings.HasPrefix(key, "_") {
 			keyInfo := strings.Split(key, ":")
 			if len(keyInfo) > 1 {
@@ -140,9 +138,7 @@ func SelectByRequest(req *http.Request) (selectQuery string) {
 // JoinByRequest implements join in queries
 func JoinByRequest(r *http.Request) (values []string, err error) {
 	joinValues := []string{}
-
-	u, _ := url.Parse(r.URL.String())
-	joinStatements := u.Query()["_join"]
+	joinStatements := r.URL.Query()["_join"]
 
 	for _, j := range joinStatements {
 		joinArgs := strings.Split(j, ":")
@@ -167,9 +163,7 @@ func JoinByRequest(r *http.Request) (values []string, err error) {
 // OrderByRequest implements ORDER BY in queries
 func OrderByRequest(r *http.Request) (string, error) {
 	var values string
-
-	u, _ := url.Parse(r.URL.String())
-	reqOrder := u.Query()["_order"]
+	reqOrder := r.URL.Query()["_order"]
 
 	if len(reqOrder) > 0 {
 		values = " ORDER BY "
@@ -291,8 +285,7 @@ func QueryCount(SQL string, params ...interface{}) ([]byte, error) {
 
 // PaginateIfPossible func
 func PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
-	u, _ := url.Parse(r.URL.String())
-	values := u.Query()
+	values := r.URL.Query()
 	if _, ok := values[pageNumberKey]; !ok {
 		paginatedQuery = ""
 		return
