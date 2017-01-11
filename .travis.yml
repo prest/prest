@@ -14,7 +14,7 @@ services:
 
 env:
    - PREST_PG_USER=postgres PREST_PG_DATABASE=prest PREST_PG_PORT=5432
-   - PREST_CONF=../../testdata/prest.toml
+   - PREST_CONF=../testdata/prest.toml
 
 before_install:
    - go get -u github.com/kardianos/govendor
@@ -22,7 +22,6 @@ before_install:
 
 before_script:
     - sh testdata/schema.sh
-    - cp -Rf testdata/prest.toml prest.toml
 
 script:
     - sh test.sh
