@@ -175,7 +175,7 @@ func TestJoinByRequest(t *testing.T) {
 	})
 	Convey("Join missing param", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq", nil)
-		So(err, ShouldNotBeNil)
+		So(err, ShouldBeNil)
 
 		_, err = JoinByRequest(r)
 		So(err, ShouldNotBeNil)
