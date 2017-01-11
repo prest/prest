@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/nuveo/prest/api"
+	"github.com/nuveo/prest/config"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -52,6 +53,7 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 }
 
 func TestSelectFromTables(t *testing.T) {
+	config.InitConf()
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}/{table}", SelectFromTables).Methods("GET")
 	server := httptest.NewServer(router)
@@ -83,6 +85,7 @@ func TestSelectFromTables(t *testing.T) {
 }
 
 func TestInsertInTables(t *testing.T) {
+	config.InitConf()
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}/{table}", InsertInTables).Methods("POST")
 	server := httptest.NewServer(router)
@@ -101,6 +104,7 @@ func TestInsertInTables(t *testing.T) {
 }
 
 func TestDeleteFromTable(t *testing.T) {
+	config.InitConf()
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}/{table}", DeleteFromTable).Methods("DELETE")
 	server := httptest.NewServer(router)
@@ -114,6 +118,7 @@ func TestDeleteFromTable(t *testing.T) {
 }
 
 func TestUpdateFromTable(t *testing.T) {
+	config.InitConf()
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}/{table}", UpdateTable).Methods("PUT", "PATCH")
 	server := httptest.NewServer(router)

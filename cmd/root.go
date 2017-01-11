@@ -39,13 +39,7 @@ func Execute() {
 }
 
 func init() {
-	prestConfig = config.Prest{}
-	config.Parse(&prestConfig)
-	config.PREST_CONF = &prestConfig
-
-	if !prestConfig.AccessConf.Restrict {
-		fmt.Println("You are running pREST in public mode.")
-	}
+	config.InitConf()
 }
 
 func app() {
