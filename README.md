@@ -118,6 +118,7 @@ http://127.0.0.1:8000/DATABASE/SCHEMA (show all tables, find by schema)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE (show all rows, find by database and table)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_page=2&_page_size=10 (pagination, page_size 10 by default)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD=VALUE (filter)
+http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_columns=col01,col02 (returns only selected columns)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_renderer=xml (JSON by default)
 ```
 

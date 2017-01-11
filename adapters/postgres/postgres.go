@@ -14,6 +14,7 @@ import (
 
 	"github.com/nuveo/prest/adapters/postgres/connection"
 	"github.com/nuveo/prest/api"
+	"github.com/nuveo/prest/config"
 )
 
 const (
@@ -121,6 +122,24 @@ func JoinByRequest(r *http.Request) (values []string, err error) {
 	}
 
 	return joinValues, nil
+}
+
+// ColumnsByRequest implements join in queries
+func ColumnsByRequest(r *http.Request) (columns []string) {
+	u, _ := url.Parse(r.URL.String())
+	columnsArr := u.Query()["_columns"]
+	if len(columnsArr) == 0 {
+		return []string{"*"}
+	}
+
+	for _, j := range columnsArr {
+		cArgs := strings.Split(j, ",")
+		for _, columnName := range cArgs {
+			columns = append(columns, columnName)
+		}
+	}
+
+	return columns
 }
 
 // OrderByRequest implements ORDER BY in queries
@@ -235,6 +254,9 @@ func PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 
 // Insert execute insert sql into a table
 func Insert(database, schema, table string, body api.Request) (jsonData []byte, err error) {
+	if !TablePermissions(table, "write") {
+		return nil, errors.New("Insuficient table permissions")
+	}
 
 	if chkInvaidIdentifier(database) ||
 		chkInvaidIdentifier(schema) ||
@@ -298,6 +320,10 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 
 // Delete execute delete sql into a table
 func Delete(database, schema, table, where string, whereValues []interface{}) (jsonData []byte, err error) {
+	if !TablePermissions(table, "delete") {
+		return nil, errors.New("Insuficient table permissions")
+	}
+
 	var result sql.Result
 	var rowsAffected int64
 
@@ -334,6 +360,9 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 
 // Update execute update sql into a table
 func Update(database, schema, table, where string, whereValues []interface{}, body api.Request) (jsonData []byte, err error) {
+	if !TablePermissions(table, "write") {
+		return nil, errors.New("Insuficient table permissions")
+	}
 
 	if chkInvaidIdentifier(database) ||
 		chkInvaidIdentifier(schema) ||
@@ -418,4 +447,48 @@ func GetQueryOperator(op string) (string, error) {
 	err := errors.New("Invalid operator")
 	return "", err
 
+}
+
+// get tables permissions based in prest configuration
+func TablePermissions(table string, op string) bool {
+	restrict := config.PREST_CONF.AccessConf.Restrict
+	if !restrict {
+		return true
+	}
+
+	tables := config.PREST_CONF.AccessConf.Tables
+	for _, t := range tables {
+		if t.Name == table {
+			for _, p := range t.Permissions {
+				if p == op {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// get fields permissions based in prest configuration
+func FieldsPermissions(table string, cols []string, op string) []string {
+	restrict := config.PREST_CONF.AccessConf.Restrict
+	if !restrict {
+		return cols
+	}
+
+	var permittedCols []string
+	tables := config.PREST_CONF.AccessConf.Tables
+	for _, t := range tables {
+		if t.Name == table {
+			for _, f := range t.Fields {
+				for _, col := range cols {
+					if col == f {
+						permittedCols = append(permittedCols, col)
+					}
+				}
+			}
+			return permittedCols
+		}
+	}
+	return nil
 }

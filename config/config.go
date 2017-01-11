@@ -8,6 +8,17 @@ import (
 	"github.com/spf13/viper"
 )
 
+type TablesConf struct {
+	Name        string   `mapstructure:"name"`
+	Permissions []string `mapstructure:"permissions"`
+	Fields      []string `mapstructure:"fields"`
+}
+
+type AccessConf struct {
+	Restrict bool
+	Tables   []TablesConf
+}
+
 // Prest basic config
 type Prest struct {
 	// HTTPPort Declare which http port the PREST used
@@ -21,7 +32,10 @@ type Prest struct {
 	PGMAxOpenConn  int
 	JWTKey         string
 	MigrationsPath string
+	AccessConf     AccessConf
 }
+
+var PREST_CONF *Prest
 
 func init() {
 	viperCfg()
@@ -58,5 +72,15 @@ func Parse(cfg *Prest) (err error) {
 	cfg.PGMAxOpenConn = viper.GetInt("pg.maxopenconn")
 	cfg.JWTKey = viper.GetString("jwt.key")
 	cfg.MigrationsPath = viper.GetString("migrations")
+	cfg.AccessConf.Restrict = viper.GetBool("access.restrict")
+
+	var t []TablesConf
+	err = viper.UnmarshalKey("access.tables", &t)
+	if err != nil {
+		return err
+	}
+
+	cfg.AccessConf.Tables = t
+
 	return
 }
