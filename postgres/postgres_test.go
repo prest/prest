@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/nuveo/prest/api"
+	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/statements"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -75,9 +76,10 @@ func TestPaginateIfPossible(t *testing.T) {
 }
 
 func TestInsert(t *testing.T) {
+	config.InitConf()
 	Convey("Insert data into a table", t, func() {
 		m := make(map[string]interface{}, 0)
-		m["name"] = "prest"
+		m["name"] = "prest-test-insert"
 
 		r := api.Request{
 			Data: m,
@@ -106,6 +108,7 @@ func TestInsert(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
+	config.InitConf()
 	Convey("Delete data from table", t, func() {
 		json, err := Delete("prest", "public", "test", "name=$1", []interface{}{"nuveo"})
 		So(err, ShouldBeNil)
@@ -114,6 +117,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
+	config.InitConf()
 	Convey("Update data into a table", t, func() {
 
 		m := make(map[string]interface{}, 0)

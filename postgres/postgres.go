@@ -317,7 +317,8 @@ func PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 
 // Insert execute insert sql into a table
 func Insert(database, schema, table string, body api.Request) (jsonData []byte, err error) {
-	if !TablePermissions(table, "write") {
+	allowed := TablePermissions(table, "write")
+	if !allowed {
 		return nil, errors.New("Insuficient table permissions")
 	}
 
@@ -398,7 +399,8 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 
 // Delete execute delete sql into a table
 func Delete(database, schema, table, where string, whereValues []interface{}) (jsonData []byte, err error) {
-	if !TablePermissions(table, "delete") {
+	allowed := TablePermissions(table, "delete")
+	if !allowed {
 		return nil, errors.New("Insuficient table permissions")
 	}
 
@@ -457,7 +459,8 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 
 // Update execute update sql into a table
 func Update(database, schema, table, where string, whereValues []interface{}, body api.Request) (jsonData []byte, err error) {
-	if !TablePermissions(table, "write") {
+	allowed := TablePermissions(table, "write")
+	if !allowed {
 		return nil, errors.New("Insuficient table permissions")
 	}
 
