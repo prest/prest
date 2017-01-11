@@ -207,8 +207,8 @@ func CountByRequest(req *http.Request) (countQuery string) {
 func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 	validQuery := chkInvalidIdentifier(SQL)
 	if !validQuery {
-		err := errors.New("Invalid characters in the query")
-		return nil, err
+		err = errors.New("Invalid characters in the query")
+		return
 	}
 
 	db := connection.MustGet()
@@ -356,9 +356,9 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 		valuesAux = append(valuesAux, values[i])
 	}
 
-	var lastId int
+	var lastID int
 	result := stmt.QueryRow(valuesAux...)
-	err = result.Scan(&lastId)
+	err = result.Scan(&lastID)
 	if err != nil {
 		return
 	}
@@ -375,10 +375,10 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 	}()
 
 	data := make(map[string]interface{})
-	for i, _ := range fields {
+	for i := range fields {
 		data[fields[i]] = values[i]
 	}
-	data["id"] = lastId
+	data["id"] = lastID
 	jsonData, err = json.Marshal(data)
 	return
 }
