@@ -16,7 +16,7 @@ func TestInitConf(t *testing.T) {
 	})
 	Convey("Check restrict parser", t, func() {
 		InitConf()
-		So(len(PREST_CONF.AccessConf.Restrict), ShouldBeTrue)
+		So(PREST_CONF.AccessConf.Restrict, ShouldBeTrue)
 	})
 }
 
