@@ -144,12 +144,21 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get selected columns, "*" if empty "_columns"
-	cols := postgres.ColumnsByRequest(r)
+	cols := postgres.SelectByRequest(r)
 	cols = postgres.FieldsPermissions(table, cols, "read")
-
+	if len(cols) == 0 {
+		log.Println("You don't have permission for this action. Please check the permitted fields for this table.")
+		http.Error(w, "You don't have permission for this action. Please check the permitted fields for this table.", http.StatusUnauthorized)
+		return
+	}
 	colsStr := strings.Join(cols, ",")
 
 	query := fmt.Sprintf("SELECT %s FROM %s.%s.%s", colsStr, database, schema, table)
+
+	countQuery := postgres.CountByRequest(r)
+	if countQuery != "" {
+		query = fmt.Sprintf("%s %s.%s.%s", countQuery, database, schema, table)
+	}
 
 	joinValues, err := postgres.JoinByRequest(r)
 	if err != nil {
@@ -194,7 +203,12 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 	sqlSelect = fmt.Sprint(sqlSelect, " ", page)
 
-	object, err := postgres.Query(sqlSelect, values...)
+	runQuery := postgres.Query
+	if countQuery != "" {
+		runQuery = postgres.QueryCount
+	}
+
+	object, err := runQuery(sqlSelect, values...)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

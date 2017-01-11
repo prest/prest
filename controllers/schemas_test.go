@@ -36,4 +36,11 @@ func TestGetSchemas(t *testing.T) {
 		So(err, ShouldBeNil)
 		validate(w, r, GetSchemas, "TestGetSchemas")
 	})
+
+	Convey("Get schemas with COUNT clause", t, func() {
+		r, err := http.NewRequest("GET", "/schemas?_count=*", nil)
+		w := httptest.NewRecorder()
+		So(err, ShouldBeNil)
+		validate(w, r, GetSchemas, "TestGetSchemas")
+	})
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -15,6 +16,7 @@ import (
 	"github.com/nuveo/prest/adapters/postgres/connection"
 	"github.com/nuveo/prest/api"
 	"github.com/nuveo/prest/config"
+	"github.com/nuveo/prest/statements"
 )
 
 const (
@@ -23,8 +25,8 @@ const (
 	defaultPageSize = 10
 )
 
-// chkInvaidIdentifier return true if identifier is invalid
-func chkInvaidIdentifier(identifer string) bool {
+// chkInvalidIdentifier return true if identifier is invalid
+func chkInvalidIdentifier(identifer string) bool {
 	if len(identifer) > 63 ||
 		unicode.IsDigit([]rune(identifer)[0]) {
 		return true
@@ -46,24 +48,23 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 	whereKey := []string{}
 	whereValues := []string{}
 
-	u, _ := url.Parse(r.URL.String())
 	pid := initialPlaceholderID
-	for key, val := range u.Query() {
+	for key, val := range r.URL.Query() {
 		if !strings.HasPrefix(key, "_") {
 			keyInfo := strings.Split(key, ":")
 			if len(keyInfo) > 1 {
 				switch keyInfo[1] {
 				case "jsonb":
 					jsonField := strings.Split(keyInfo[0], "->>")
-					if chkInvaidIdentifier(jsonField[0]) ||
-						chkInvaidIdentifier(jsonField[1]) {
+					if chkInvalidIdentifier(jsonField[0]) ||
+						chkInvalidIdentifier(jsonField[1]) {
 						err = errors.New("Invalid identifier")
 						return
 					}
 					whereKey = append(whereKey, fmt.Sprintf("%s->>'%s'=$%d", jsonField[0], jsonField[1], pid))
 					whereValues = append(whereValues, val[0])
 				default:
-					if chkInvaidIdentifier(keyInfo[0]) {
+					if chkInvalidIdentifier(keyInfo[0]) {
 						err = errors.New("Invalid identifier")
 						return
 					}
@@ -72,7 +73,7 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 				}
 				continue
 			}
-			if chkInvaidIdentifier(key) {
+			if chkInvalidIdentifier(key) {
 				err = errors.New("Invalid identifier")
 				return
 			}
@@ -97,12 +98,36 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 	return
 }
 
+// DatabaseClause return a SELECT `query`
+func DatabaseClause(req *http.Request) (query string) {
+	queries := req.URL.Query()
+	hasCount := queries.Get("_count")
+
+	if hasCount != "" {
+		query = fmt.Sprintf(statements.DatabasesSelect, statements.FieldCountDatabaseName)
+	} else {
+		query = fmt.Sprintf(statements.DatabasesSelect, statements.FieldDatabaseName)
+	}
+	return
+}
+
+// SchemaClause return a SELECT `query`
+func SchemaClause(req *http.Request) (query string) {
+	queries := req.URL.Query()
+	hasCount := queries.Get("_count")
+
+	if hasCount != "" {
+		query = fmt.Sprintf(statements.SchemasSelect, statements.FieldCountSchemaName)
+	} else {
+		query = fmt.Sprintf(statements.SchemasSelect, statements.FieldSchemaName)
+	}
+	return
+}
+
 // JoinByRequest implements join in queries
 func JoinByRequest(r *http.Request) (values []string, err error) {
 	joinValues := []string{}
-
-	u, _ := url.Parse(r.URL.String())
-	joinStatements := u.Query()["_join"]
+	joinStatements := r.URL.Query()["_join"]
 
 	for _, j := range joinStatements {
 		joinArgs := strings.Split(j, ":")
@@ -124,19 +149,22 @@ func JoinByRequest(r *http.Request) (values []string, err error) {
 	return joinValues, nil
 }
 
-// ColumnsByRequest implements join in queries
-func ColumnsByRequest(r *http.Request) (columns []string) {
+func SelectByRequest(r *http.Request) []string {
 	u, _ := url.Parse(r.URL.String())
-	columnsArr := u.Query()["_columns"]
-	if len(columnsArr) == 0 {
-		return []string{"*"}
-	}
+	columnsArr := u.Query()["_select"]
+	var columns []string
 
 	for _, j := range columnsArr {
 		cArgs := strings.Split(j, ",")
 		for _, columnName := range cArgs {
-			columns = append(columns, columnName)
+			if len(columnName) > 0 {
+				columns = append(columns, columnName)
+			}
 		}
+	}
+
+	if len(columns) == 0 {
+		return []string{"*"}
 	}
 
 	return columns
@@ -145,9 +173,7 @@ func ColumnsByRequest(r *http.Request) (columns []string) {
 // OrderByRequest implements ORDER BY in queries
 func OrderByRequest(r *http.Request) (string, error) {
 	var values string
-
-	u, _ := url.Parse(r.URL.String())
-	reqOrder := u.Query()["_order"]
+	reqOrder := r.URL.Query()["_order"]
 
 	if len(reqOrder) > 0 {
 		values = " ORDER BY "
@@ -174,12 +200,25 @@ func OrderByRequest(r *http.Request) (string, error) {
 	return values, nil
 }
 
+// CountByRequest implements COUNT(fields) OPERTATION
+func CountByRequest(req *http.Request) (countQuery string) {
+	queries := req.URL.Query()
+	countFields := queries.Get("_count")
+
+	if countFields == "" {
+		return
+	}
+	countQuery = fmt.Sprintf("SELECT COUNT(%s) FROM", countFields)
+
+	return
+}
+
 // Query process queries
 func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
-	validQuery := chkInvaidIdentifier(SQL)
+	validQuery := chkInvalidIdentifier(SQL)
 	if !validQuery {
-		err := errors.New("Invalid characters in the query")
-		return nil, err
+		err = errors.New("Invalid characters in the query")
+		return
 	}
 
 	db := connection.MustGet()
@@ -229,10 +268,34 @@ func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 	return
 }
 
+// QueryCount process queries with count
+func QueryCount(SQL string, params ...interface{}) ([]byte, error) {
+	validQuery := chkInvalidIdentifier(SQL)
+	if !validQuery {
+		return nil, errors.New("Invalid characters in the query")
+	}
+
+	db := connection.MustGet()
+	prepare, err := db.Prepare(SQL)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Count int64 `json:"count"`
+	}
+
+	row := prepare.QueryRow(params...)
+	if err := row.Scan(&result.Count); err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(result)
+}
+
 // PaginateIfPossible func
 func PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
-	u, _ := url.Parse(r.URL.String())
-	values := u.Query()
+	values := r.URL.Query()
 	if _, ok := values[pageNumberKey]; !ok {
 		paginatedQuery = ""
 		return
@@ -258,20 +321,17 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 		return nil, errors.New("Insuficient table permissions")
 	}
 
-	if chkInvaidIdentifier(database) ||
-		chkInvaidIdentifier(schema) ||
-		chkInvaidIdentifier(table) {
+	if chkInvalidIdentifier(database) ||
+		chkInvalidIdentifier(schema) ||
+		chkInvalidIdentifier(table) {
 		err = errors.New("Insert: Invalid identifier")
 		return
 	}
 
-	var result sql.Result
-	var rowsAffected int64
-
 	fields := make([]string, 0)
 	values := make([]interface{}, 0)
 	for key, value := range body.Data {
-		if chkInvaidIdentifier(key) {
+		if chkInvalidIdentifier(key) {
 			err = errors.New("Insert: Invalid identifier")
 			return
 		}
@@ -288,11 +348,18 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 		colPlaceholder += fmt.Sprintf("$%d", i)
 	}
 
-	sql := fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s)", database, schema, table, colsName, colPlaceholder)
+	sql := fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s) RETURNING id;", database, schema, table, colsName, colPlaceholder)
 
 	db := connection.MustGet()
-	stmt, err := db.Prepare(sql)
+	tx, err := db.Begin()
 	if err != nil {
+		log.Printf("could not begin transaction: %v\n", err)
+		return
+	}
+
+	stmt, err := tx.Prepare(sql)
+	if err != nil {
+		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
 		return
 	}
 
@@ -302,18 +369,29 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 		valuesAux = append(valuesAux, values[i])
 	}
 
-	result, err = stmt.Exec(valuesAux...)
+	var lastID int
+	result := stmt.QueryRow(valuesAux...)
+	err = result.Scan(&lastID)
 	if err != nil {
 		return
 	}
 
-	rowsAffected, err = result.RowsAffected()
-	if err != nil {
-		return
-	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+			return
+		}
+		err = tx.Commit()
+		if err != nil {
+			log.Printf("could not commit: %v\n", err)
+		}
+	}()
 
 	data := make(map[string]interface{})
-	data["rows_affected"] = rowsAffected
+	for i := range fields {
+		data[fields[i]] = values[i]
+	}
+	data["id"] = lastID
 	jsonData, err = json.Marshal(data)
 	return
 }
@@ -327,9 +405,9 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 	var result sql.Result
 	var rowsAffected int64
 
-	if chkInvaidIdentifier(database) ||
-		chkInvaidIdentifier(schema) ||
-		chkInvaidIdentifier(table) {
+	if chkInvalidIdentifier(database) ||
+		chkInvalidIdentifier(schema) ||
+		chkInvalidIdentifier(table) {
 		err = errors.New("Delete: Invalid identifier")
 		return
 	}
@@ -343,14 +421,33 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 	}
 
 	db := connection.MustGet()
-	result, err = db.Exec(sql, whereValues...)
+	tx, err := db.Begin()
+	if err != nil {
+		log.Printf("could not begin transaction: %v\n", err)
+		return
+	}
+
+	result, err = tx.Exec(sql, whereValues...)
 	if err != nil {
 		return
 	}
+
 	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return
 	}
+
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+			return
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			log.Printf("could not commit: %v\n", err)
+		}
+	}()
 
 	data := make(map[string]interface{})
 	data["rows_affected"] = rowsAffected
@@ -364,9 +461,9 @@ func Update(database, schema, table, where string, whereValues []interface{}, bo
 		return nil, errors.New("Insuficient table permissions")
 	}
 
-	if chkInvaidIdentifier(database) ||
-		chkInvaidIdentifier(schema) ||
-		chkInvaidIdentifier(table) {
+	if chkInvalidIdentifier(database) ||
+		chkInvalidIdentifier(schema) ||
+		chkInvalidIdentifier(table) {
 		err = errors.New("Update: Invalid identifier")
 		return
 	}
@@ -395,8 +492,15 @@ func Update(database, schema, table, where string, whereValues []interface{}, bo
 	}
 
 	db := connection.MustGet()
-	stmt, err := db.Prepare(sql)
+	tx, err := db.Begin()
 	if err != nil {
+		log.Printf("could not begin transaction: %v\n", err)
+		return
+	}
+
+	stmt, err := tx.Prepare(sql)
+	if err != nil {
+		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
 		return
 	}
 
@@ -415,6 +519,17 @@ func Update(database, schema, table, where string, whereValues []interface{}, bo
 	if err != nil {
 		return
 	}
+
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+			return
+		}
+		err = tx.Commit()
+		if err != nil {
+			log.Printf("could not commit: %v\n", err)
+		}
+	}()
 
 	data := make(map[string]interface{})
 	data["rows_affected"] = rowsAffected
@@ -481,6 +596,12 @@ func FieldsPermissions(table string, cols []string, op string) []string {
 	for _, t := range tables {
 		if t.Name == table {
 			for _, f := range t.Fields {
+
+				// return all permitted fields if have "*" in SELECT
+				if op == "read" && f == "*" {
+					return t.Fields
+				}
+
 				for _, col := range cols {
 					if col == f {
 						permittedCols = append(permittedCols, col)

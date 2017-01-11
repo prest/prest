@@ -18,7 +18,8 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sqlDatabases := fmt.Sprint(statements.DatabasesSelect, statements.DatabasesWhere)
+	query := postgres.DatabaseClause(r)
+	sqlDatabases := fmt.Sprint(query, statements.DatabasesWhere)
 
 	if requestWhere != "" {
 		sqlDatabases = fmt.Sprint(sqlDatabases, " AND ", requestWhere)
@@ -28,7 +29,7 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 	if order != "" {
 		sqlDatabases = fmt.Sprint(sqlDatabases, order)
 	} else {
-		sqlDatabases = fmt.Sprint(sqlDatabases, statements.DatabasesOrderBy)
+		sqlDatabases = fmt.Sprint(sqlDatabases, fmt.Sprintf(statements.DatabasesOrderBy, statements.FieldDatabaseName))
 	}
 
 	page, err := postgres.PaginateIfPossible(r)

@@ -3,6 +3,7 @@
 [![GoDoc](https://godoc.org/github.com/nuveo/prest?status.png)](https://godoc.org/github.com/nuveo/prest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/nuveo/prest)](https://goreportcard.com/report/github.com/nuveo/prest)
 [![codecov](https://codecov.io/gh/nuveo/prest/branch/master/graph/badge.svg)](https://codecov.io/gh/nuveo/prest)
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/nuveo/prest?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Serve a RESTful API from any PostgreSQL database
 
@@ -112,10 +113,16 @@ http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD->>JSONFIELD:jsonb=VALUE (filte
 
 ```
 http://127.0.0.1:8000/databases (show all databases)
+http://127.0.0.1:8000/databases?_count=* (count all databases)
 http://127.0.0.1:8000/schemas (show all schemas)
+http://127.0.0.1:8000/schemas?_count=* (count all schemas)
 http://127.0.0.1:8000/tables (show all tables)
 http://127.0.0.1:8000/DATABASE/SCHEMA (show all tables, find by schema)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE (show all rows, find by database and table)
+http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_select=column (select statement by columns)
+http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_select=* (select all from TABLE)
+http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_count=* (use count function)
+http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_count=column (use count function)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_page=2&_page_size=10 (pagination, page_size 10 by default)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD=VALUE (filter)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_columns=col01,col02 (returns only selected columns)

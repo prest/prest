@@ -1,11 +1,14 @@
 package postgres
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/nuveo/prest/api"
+	"github.com/nuveo/prest/statements"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -79,9 +82,26 @@ func TestInsert(t *testing.T) {
 		r := api.Request{
 			Data: m,
 		}
-		json, err := Insert("prest", "public", "test", r)
+		jsonByte, err := Insert("prest", "public", "test4", r)
 		So(err, ShouldBeNil)
-		So(len(json), ShouldBeGreaterThan, 0)
+		So(len(jsonByte), ShouldBeGreaterThan, 0)
+
+		var toJSON map[string]interface{}
+		err = json.Unmarshal(jsonByte, &toJSON)
+		So(err, ShouldBeNil)
+
+		So(toJSON["id"], ShouldEqual, 1)
+	})
+
+	Convey("Insert data into a table with contraints", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		_, err := Insert("prest", "public", "test3", r)
+		So(err, ShouldNotBeNil)
 	})
 }
 
@@ -106,26 +126,37 @@ func TestUpdate(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(len(json), ShouldBeGreaterThan, 0)
 	})
+
+	Convey("Update data into a table with constraints", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		_, err := Update("prest", "public", "test3", "name=$1", []interface{}{"prest tester"}, r)
+		So(err, ShouldNotBeNil)
+	})
 }
 
 func TestChkInvaidIdentifier(t *testing.T) {
 	Convey("Check invalid character on identifier", t, func() {
-		chk := chkInvaidIdentifier("fildName")
+		chk := chkInvalidIdentifier("fildName")
 		So(chk, ShouldBeFalse)
-		chk = chkInvaidIdentifier("_9fildName")
+		chk = chkInvalidIdentifier("_9fildName")
 		So(chk, ShouldBeFalse)
-		chk = chkInvaidIdentifier("_fild.Name")
+		chk = chkInvalidIdentifier("_fild.Name")
 		So(chk, ShouldBeFalse)
 
-		chk = chkInvaidIdentifier("0fildName")
+		chk = chkInvalidIdentifier("0fildName")
 		So(chk, ShouldBeTrue)
-		chk = chkInvaidIdentifier("fild'Name")
+		chk = chkInvalidIdentifier("fild'Name")
 		So(chk, ShouldBeTrue)
-		chk = chkInvaidIdentifier("fild\"Name")
+		chk = chkInvalidIdentifier("fild\"Name")
 		So(chk, ShouldBeTrue)
-		chk = chkInvaidIdentifier("fild;Name")
+		chk = chkInvalidIdentifier("fild;Name")
 		So(chk, ShouldBeTrue)
-		chk = chkInvaidIdentifier("_123456789_123456789_123456789_123456789_123456789_123456789_12345")
+		chk = chkInvalidIdentifier("_123456789_123456789_123456789_123456789_123456789_123456789_12345")
 		So(chk, ShouldBeTrue)
 
 	})
@@ -134,6 +165,8 @@ func TestChkInvaidIdentifier(t *testing.T) {
 func TestJoinByRequest(t *testing.T) {
 	Convey("Join by request", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name", nil)
+		So(err, ShouldBeNil)
+
 		join, err := JoinByRequest(r)
 		joinStr := strings.Join(join, " ")
 
@@ -142,11 +175,15 @@ func TestJoinByRequest(t *testing.T) {
 	})
 	Convey("Join missing param", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq", nil)
+		So(err, ShouldBeNil)
+
 		_, err = JoinByRequest(r)
 		So(err, ShouldNotBeNil)
 	})
 	Convey("Join invalid operator", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:notexist:test.name", nil)
+		So(err, ShouldBeNil)
+
 		_, err = JoinByRequest(r)
 		So(err, ShouldNotBeNil)
 	})
@@ -169,6 +206,107 @@ func TestJoinByRequest(t *testing.T) {
 		So(values, ShouldContain, "bla")
 	})
 
+}
+
+func TestSelectFields(t *testing.T) {
+	Convey("Select fields from table", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_select=celphone", nil)
+		So(err, ShouldBeNil)
+
+		selectQuery := SelectByRequest(r)
+		selectStr := strings.Join(selectQuery, ",")
+		So(selectStr, ShouldEqual, "celphone")
+		So(len(selectQuery), ShouldEqual, 1)
+	})
+	Convey("Select all from table", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_select=*", nil)
+		So(err, ShouldBeNil)
+
+		selectQuery := SelectByRequest(r)
+		selectStr := strings.Join(selectQuery, ",")
+		So(len(selectQuery), ShouldEqual, 1)
+		So(selectStr, ShouldEqual, "*")
+	})
+	Convey("Try Select with empty '_select' field", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_select=", nil)
+		So(err, ShouldBeNil)
+
+		selectQuery := SelectByRequest(r)
+		selectStr := strings.Join(selectQuery, ",")
+		So(len(selectQuery), ShouldEqual, 1)
+		So(selectStr, ShouldEqual, "*")
+	})
+	Convey("Try Select with empty '_select' field", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_select=celphone,battery", nil)
+		So(err, ShouldBeNil)
+
+		selectQuery := SelectByRequest(r)
+		selectStr := strings.Join(selectQuery, ",")
+		So(len(selectQuery), ShouldEqual, 2)
+		So(selectStr, ShouldContainSubstring, "celphone,battery")
+	})
+}
+
+func TestCountFields(t *testing.T) {
+	Convey("Count fields from table", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_count=celphone", nil)
+		So(err, ShouldBeNil)
+
+		countQuery := CountByRequest(r)
+		So(countQuery, ShouldContainSubstring, "SELECT COUNT(celphone) FROM")
+	})
+
+	Convey("Count all from table", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_count=*", nil)
+		So(err, ShouldBeNil)
+
+		countQuery := CountByRequest(r)
+		So(countQuery, ShouldContainSubstring, "SELECT COUNT(*) FROM")
+	})
+
+	Convey("Try Count with empty '_count' field", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_count=", nil)
+		So(err, ShouldBeNil)
+
+		countQuery := CountByRequest(r)
+		So(countQuery, ShouldEqual, "")
+	})
+}
+
+func TestDatabaseClause(t *testing.T) {
+	Convey("Return appropriate SELECT clause", t, func() {
+		r, err := http.NewRequest("GET", "/databases", nil)
+		So(err, ShouldBeNil)
+
+		countQuery := DatabaseClause(r)
+		So(countQuery, ShouldEqual, fmt.Sprintf(statements.DatabasesSelect, statements.FieldDatabaseName))
+	})
+
+	Convey("Return appropriate COUNT clause", t, func() {
+		r, err := http.NewRequest("GET", "/databases?_count=*", nil)
+		So(err, ShouldBeNil)
+
+		countQuery := DatabaseClause(r)
+		So(countQuery, ShouldEqual, fmt.Sprintf(statements.DatabasesSelect, statements.FieldCountDatabaseName))
+	})
+}
+
+func TestSchemaClause(t *testing.T) {
+	Convey("Return appropriate SELECT clause", t, func() {
+		r, err := http.NewRequest("GET", "/schemas", nil)
+		So(err, ShouldBeNil)
+
+		countQuery := SchemaClause(r)
+		So(countQuery, ShouldEqual, fmt.Sprintf(statements.SchemasSelect, statements.FieldSchemaName))
+	})
+
+	Convey("Return appropriate COUNT clause", t, func() {
+		r, err := http.NewRequest("GET", "/schemas?_count=*", nil)
+		So(err, ShouldBeNil)
+
+		countQuery := SchemaClause(r)
+		So(countQuery, ShouldEqual, fmt.Sprintf(statements.SchemasSelect, statements.FieldCountSchemaName))
+	})
 }
 
 func TestGetQueryOperator(t *testing.T) {
