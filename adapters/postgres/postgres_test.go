@@ -86,10 +86,11 @@ func TestInsert(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(len(jsonByte), ShouldBeGreaterThan, 0)
 
-		var toJson map[string]interface{}
-		err = json.Unmarshal(jsonByte, &toJson)
+		var toJSON map[string]interface{}
+		err = json.Unmarshal(jsonByte, &toJSON)
+		So(err, ShouldBeNil)
 
-		So(toJson["id"], ShouldEqual, 1)
+		So(toJSON["id"], ShouldEqual, 1)
 	})
 
 	Convey("Insert data into a table with contraints", t, func() {
@@ -164,6 +165,8 @@ func TestChkInvaidIdentifier(t *testing.T) {
 func TestJoinByRequest(t *testing.T) {
 	Convey("Join by request", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name", nil)
+		So(err, ShouldBeNil)
+
 		join, err := JoinByRequest(r)
 		joinStr := strings.Join(join, " ")
 
@@ -172,11 +175,15 @@ func TestJoinByRequest(t *testing.T) {
 	})
 	Convey("Join missing param", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq", nil)
+		So(err, ShouldNotBeNil)
+
 		_, err = JoinByRequest(r)
 		So(err, ShouldNotBeNil)
 	})
 	Convey("Join invalid operator", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:notexist:test.name", nil)
+		So(err, ShouldNotBeNil)
+
 		_, err = JoinByRequest(r)
 		So(err, ShouldNotBeNil)
 	})
