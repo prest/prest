@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"strings"
 
 	"os"
@@ -83,4 +84,15 @@ func Parse(cfg *Prest) (err error) {
 	cfg.AccessConf.Tables = t
 
 	return
+}
+
+func InitConf() {
+	viperCfg()
+	prestConfig := Prest{}
+	Parse(&prestConfig)
+	PREST_CONF = &prestConfig
+
+	if !prestConfig.AccessConf.Restrict {
+		fmt.Println("You are running pREST in public mode.")
+	}
 }

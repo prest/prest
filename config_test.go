@@ -9,14 +9,6 @@ import (
 )
 
 func TestParse(t *testing.T) {
-	Convey("Verify if get default value", t, func() {
-		os.Setenv("PREST_CONF", "../prest.toml")
-		viperCfg()
-		cfg := &Prest{}
-		err := Parse(cfg)
-		So(err, ShouldBeNil)
-		So(cfg.HTTPPort, ShouldEqual, 3000)
-	})
 	Convey("Verify if get toml", t, func() {
 		os.Setenv("PREST_CONF", "../testdata/prest.toml")
 		viperCfg()
