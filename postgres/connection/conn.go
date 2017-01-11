@@ -15,7 +15,7 @@ var (
 	err error
 )
 
-// MustGet get postgre cpnnection
+// MustGet get postgres connection
 func MustGet() *sqlx.DB {
 	if db == nil {
 		cfg := config.Prest{}
