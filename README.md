@@ -3,6 +3,7 @@
 [![GoDoc](https://godoc.org/github.com/nuveo/prest?status.png)](https://godoc.org/github.com/nuveo/prest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/nuveo/prest)](https://goreportcard.com/report/github.com/nuveo/prest)
 [![codecov](https://codecov.io/gh/nuveo/prest/branch/master/graph/badge.svg)](https://codecov.io/gh/nuveo/prest)
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/nuveo/prest?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Serve a RESTful API from any PostgreSQL database
 
