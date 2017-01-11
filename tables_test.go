@@ -59,6 +59,12 @@ func TestSelectFromTables(t *testing.T) {
 	Convey("execute select in a table without custom where clause", t, func() {
 		doValidGetRequest(server.URL+"/prest/public/test", "SelectFromTables")
 	})
+	Convey("execute select in a table with count all fields *", t, func() {
+		doValidGetRequest(server.URL+"/prest/public/test?_count=*", "SelectFromTables")
+	})
+	Convey("execute select in a table with count function", t, func() {
+		doValidGetRequest(server.URL+"/prest/public/test?_count=name", "SelectFromTables")
+	})
 	Convey("execute select in a table with custom where clause", t, func() {
 		doValidGetRequest(server.URL+"/prest/public/test?name=nuveo", "SelectFromTables")
 	})
@@ -67,6 +73,12 @@ func TestSelectFromTables(t *testing.T) {
 	})
 	Convey("execute select in a table with custom where clause and pagination", t, func() {
 		doValidGetRequest(server.URL+"/prest/public/test?name=nuveo&_page=1&_page_size=20", "SelectFromTables")
+	})
+	Convey("execute select in a table with select fields", t, func() {
+		doValidGetRequest(server.URL+"/prest/public/test5?_select=celphone,name", "SelectFromTables")
+	})
+	Convey("execute select in a table with select *", t, func() {
+		doValidGetRequest(server.URL+"/prest/public/test5?_select=*", "SelectFromTables")
 	})
 }
 
