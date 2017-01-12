@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"encoding/json"
@@ -146,10 +145,8 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 
 	// get selected columns, "*" if empty "_columns"
 	cols := ColumnsByRequest(r)
-	fmt.Println(cols)
-	fmt.Println(len(cols))
-
 	cols = postgres.FieldsPermissions(table, cols, "read")
+
 	if len(cols) == 0 {
 		log.Println("You don't have permission for this action. Please check the permitted fields for this table.")
 		http.Error(w, "You don't have permission for this action. Please check the permitted fields for this table.", http.StatusUnauthorized)
@@ -347,7 +344,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 }
 
 func ColumnsByRequest(r *http.Request) []string {
-	u, _ := url.Parse(r.URL.String())
+	u, _ := r.URL.Parse(r.URL.String())
 	columnsArr := u.Query()["_select"]
 	var columns []string
 
