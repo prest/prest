@@ -240,45 +240,6 @@ func TestJoinByRequest(t *testing.T) {
 
 }
 
-func TestSelectFields(t *testing.T) {
-	Convey("Select fields from table", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?_select=celphone", nil)
-		So(err, ShouldBeNil)
-
-		selectQuery := SelectByRequest(r)
-		selectStr := strings.Join(selectQuery, ",")
-		So(selectStr, ShouldEqual, "celphone")
-		So(len(selectQuery), ShouldEqual, 1)
-	})
-	Convey("Select all from table", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?_select=*", nil)
-		So(err, ShouldBeNil)
-
-		selectQuery := SelectByRequest(r)
-		selectStr := strings.Join(selectQuery, ",")
-		So(len(selectQuery), ShouldEqual, 1)
-		So(selectStr, ShouldEqual, "*")
-	})
-	Convey("Try Select with empty '_select' field", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?_select=", nil)
-		So(err, ShouldBeNil)
-
-		selectQuery := SelectByRequest(r)
-		selectStr := strings.Join(selectQuery, ",")
-		So(len(selectQuery), ShouldEqual, 1)
-		So(selectStr, ShouldEqual, "*")
-	})
-	Convey("Try Select with empty '_select' field", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?_select=celphone,battery", nil)
-		So(err, ShouldBeNil)
-
-		selectQuery := SelectByRequest(r)
-		selectStr := strings.Join(selectQuery, ",")
-		So(len(selectQuery), ShouldEqual, 2)
-		So(selectStr, ShouldContainSubstring, "celphone,battery")
-	})
-}
-
 func TestCountFields(t *testing.T) {
 	Convey("Count fields from table", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test5?_count=celphone", nil)
@@ -444,12 +405,32 @@ func TestFieldsPermissions(t *testing.T) {
 	})
 	Convey("Select with *", t, func() {
 		p := FieldsPermissions("test_list_only_id", []string{"*"}, "read")
-		So(len(p), ShouldEqual, 0)
+		So(len(p), ShouldEqual, 1)
 	})
 	Convey("Read unrestrict", t, func() {
 		config.PREST_CONF.AccessConf.Restrict = false
 		p := FieldsPermissions("test_list_only_id", []string{"*"}, "read")
 		So(p[0], ShouldEqual, "*")
+	})
+
+}
+func TestSelectFields(t *testing.T) {
+	Convey("One field", t, func() {
+		s, err := SelectFields([]string{"test"})
+		So(s, ShouldContainSubstring, "SELECT test FROM")
+		So(err, ShouldBeNil)
+	})
+	Convey("Two fields", t, func() {
+		s, err := SelectFields([]string{"test", "test02"})
+		So(s, ShouldContainSubstring, "test")
+		So(s, ShouldContainSubstring, "test02")
+		So(s, ShouldContainSubstring, "SELECT")
+		So(s, ShouldContainSubstring, "FROM")
+		So(err, ShouldBeNil)
+	})
+	Convey("Empty fields", t, func() {
+		_, err := SelectFields([]string{})
+		So(err, ShouldNotBeNil)
 	})
 
 }

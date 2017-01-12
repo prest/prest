@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gorilla/mux"
@@ -142,5 +143,44 @@ func TestUpdateFromTable(t *testing.T) {
 	})
 	Convey("excute update in a table with where clause using PATCH", t, func() {
 		doValidPatchRequest(server.URL+"/prest/public/test?name=nuveo", r, "UpdateTable")
+	})
+}
+
+func TestColumnsByRequest(t *testing.T) {
+	Convey("Select fields from table", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_select=celphone", nil)
+		So(err, ShouldBeNil)
+
+		selectQuery := ColumnsByRequest(r)
+		selectStr := strings.Join(selectQuery, ",")
+		So(selectStr, ShouldEqual, "celphone")
+		So(len(selectQuery), ShouldEqual, 1)
+	})
+	Convey("Select all from table", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_select=*", nil)
+		So(err, ShouldBeNil)
+
+		selectQuery := ColumnsByRequest(r)
+		selectStr := strings.Join(selectQuery, ",")
+		So(len(selectQuery), ShouldEqual, 1)
+		So(selectStr, ShouldEqual, "*")
+	})
+	Convey("Try Select with empty '_select' field", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_select=", nil)
+		So(err, ShouldBeNil)
+
+		selectQuery := ColumnsByRequest(r)
+		selectStr := strings.Join(selectQuery, ",")
+		So(len(selectQuery), ShouldEqual, 1)
+		So(selectStr, ShouldEqual, "*")
+	})
+	Convey("Try Select with empty '_select' field", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_select=celphone,battery", nil)
+		So(err, ShouldBeNil)
+
+		selectQuery := ColumnsByRequest(r)
+		selectStr := strings.Join(selectQuery, ",")
+		So(len(selectQuery), ShouldEqual, 2)
+		So(selectStr, ShouldContainSubstring, "celphone,battery")
 	})
 }

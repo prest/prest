@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"unicode"
@@ -149,25 +148,11 @@ func JoinByRequest(r *http.Request) (values []string, err error) {
 	return joinValues, nil
 }
 
-func SelectByRequest(r *http.Request) []string {
-	u, _ := url.Parse(r.URL.String())
-	columnsArr := u.Query()["_select"]
-	var columns []string
-
-	for _, j := range columnsArr {
-		cArgs := strings.Split(j, ",")
-		for _, columnName := range cArgs {
-			if len(columnName) > 0 {
-				columns = append(columns, columnName)
-			}
-		}
+func SelectFields(fields []string) (string, error) {
+	if len(fields) == 0 {
+		return "", errors.New("You must select at least one field.")
 	}
-
-	if len(columns) == 0 {
-		return []string{"*"}
-	}
-
-	return columns
+	return fmt.Sprintf("SELECT %s FROM", strings.Join(fields, ",")), nil
 }
 
 // OrderByRequest implements ORDER BY in queries
@@ -599,13 +584,12 @@ func FieldsPermissions(table string, cols []string, op string) []string {
 	for _, t := range tables {
 		if t.Name == table {
 			for _, f := range t.Fields {
-
-				// return all permitted fields if have "*" in SELECT
-				if op == "read" && f == "*" {
-					return t.Fields
-				}
-
 				for _, col := range cols {
+					// return all permitted fields if have "*" in SELECT
+					if op == "read" && col == "*" {
+						return t.Fields
+					}
+
 					if col == f {
 						permittedCols = append(permittedCols, col)
 					}
