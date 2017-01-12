@@ -3,10 +3,12 @@ package controllers
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gorilla/mux"
 	"github.com/nuveo/prest/api"
+	"github.com/nuveo/prest/config"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -52,6 +54,7 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 }
 
 func TestSelectFromTables(t *testing.T) {
+	config.InitConf()
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}/{table}", SelectFromTables).Methods("GET")
 	server := httptest.NewServer(router)
@@ -83,6 +86,7 @@ func TestSelectFromTables(t *testing.T) {
 }
 
 func TestInsertInTables(t *testing.T) {
+	config.InitConf()
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}/{table}", InsertInTables).Methods("POST")
 	server := httptest.NewServer(router)
@@ -101,6 +105,7 @@ func TestInsertInTables(t *testing.T) {
 }
 
 func TestDeleteFromTable(t *testing.T) {
+	config.InitConf()
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}/{table}", DeleteFromTable).Methods("DELETE")
 	server := httptest.NewServer(router)
@@ -114,6 +119,7 @@ func TestDeleteFromTable(t *testing.T) {
 }
 
 func TestUpdateFromTable(t *testing.T) {
+	config.InitConf()
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}/{table}", UpdateTable).Methods("PUT", "PATCH")
 	server := httptest.NewServer(router)
@@ -137,5 +143,44 @@ func TestUpdateFromTable(t *testing.T) {
 	})
 	Convey("excute update in a table with where clause using PATCH", t, func() {
 		doValidPatchRequest(server.URL+"/prest/public/test?name=nuveo", r, "UpdateTable")
+	})
+}
+
+func TestColumnsByRequest(t *testing.T) {
+	Convey("Select fields from table", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_select=celphone", nil)
+		So(err, ShouldBeNil)
+
+		selectQuery := ColumnsByRequest(r)
+		selectStr := strings.Join(selectQuery, ",")
+		So(selectStr, ShouldEqual, "celphone")
+		So(len(selectQuery), ShouldEqual, 1)
+	})
+	Convey("Select all from table", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_select=*", nil)
+		So(err, ShouldBeNil)
+
+		selectQuery := ColumnsByRequest(r)
+		selectStr := strings.Join(selectQuery, ",")
+		So(len(selectQuery), ShouldEqual, 1)
+		So(selectStr, ShouldEqual, "*")
+	})
+	Convey("Try Select with empty '_select' field", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_select=", nil)
+		So(err, ShouldBeNil)
+
+		selectQuery := ColumnsByRequest(r)
+		selectStr := strings.Join(selectQuery, ",")
+		So(len(selectQuery), ShouldEqual, 1)
+		So(selectStr, ShouldEqual, "*")
+	})
+	Convey("Try Select with empty '_select' field", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_select=celphone,battery", nil)
+		So(err, ShouldBeNil)
+
+		selectQuery := ColumnsByRequest(r)
+		selectStr := strings.Join(selectQuery, ",")
+		So(len(selectQuery), ShouldEqual, 2)
+		So(selectStr, ShouldContainSubstring, "celphone,battery")
 	})
 }

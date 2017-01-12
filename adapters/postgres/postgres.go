@@ -14,6 +14,7 @@ import (
 
 	"github.com/nuveo/prest/adapters/postgres/connection"
 	"github.com/nuveo/prest/api"
+	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/statements"
 )
 
@@ -122,19 +123,6 @@ func SchemaClause(req *http.Request) (query string) {
 	return
 }
 
-// SelectByRequest implements SELECT fields OPERATION
-func SelectByRequest(req *http.Request) (selectQuery string) {
-	queries := req.URL.Query()
-	selectFields := queries.Get("_select")
-
-	if selectFields == "" {
-		return
-	}
-	selectQuery = fmt.Sprintf("SELECT %s FROM", selectFields)
-
-	return
-}
-
 // JoinByRequest implements join in queries
 func JoinByRequest(r *http.Request) (values []string, err error) {
 	joinValues := []string{}
@@ -158,6 +146,13 @@ func JoinByRequest(r *http.Request) (values []string, err error) {
 	}
 
 	return joinValues, nil
+}
+
+func SelectFields(fields []string) (string, error) {
+	if len(fields) == 0 {
+		return "", errors.New("You must select at least one field.")
+	}
+	return fmt.Sprintf("SELECT %s FROM", strings.Join(fields, ",")), nil
 }
 
 // OrderByRequest implements ORDER BY in queries
@@ -307,6 +302,10 @@ func PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 
 // Insert execute insert sql into a table
 func Insert(database, schema, table string, body api.Request) (jsonData []byte, err error) {
+	allowed := TablePermissions(table, "write")
+	if !allowed {
+		return nil, errors.New("Insuficient table permissions")
+	}
 
 	if chkInvalidIdentifier(database) ||
 		chkInvalidIdentifier(schema) ||
@@ -385,6 +384,11 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 
 // Delete execute delete sql into a table
 func Delete(database, schema, table, where string, whereValues []interface{}) (jsonData []byte, err error) {
+	allowed := TablePermissions(table, "delete")
+	if !allowed {
+		return nil, errors.New("Insuficient table permissions")
+	}
+
 	var result sql.Result
 	var rowsAffected int64
 
@@ -440,6 +444,10 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 
 // Update execute update sql into a table
 func Update(database, schema, table, where string, whereValues []interface{}, body api.Request) (jsonData []byte, err error) {
+	allowed := TablePermissions(table, "write")
+	if !allowed {
+		return nil, errors.New("Insuficient table permissions")
+	}
 
 	if chkInvalidIdentifier(database) ||
 		chkInvalidIdentifier(schema) ||
@@ -542,4 +550,53 @@ func GetQueryOperator(op string) (string, error) {
 	err := errors.New("Invalid operator")
 	return "", err
 
+}
+
+// get tables permissions based in prest configuration
+func TablePermissions(table string, op string) bool {
+	restrict := config.PREST_CONF.AccessConf.Restrict
+	if !restrict {
+		return true
+	}
+
+	tables := config.PREST_CONF.AccessConf.Tables
+	for _, t := range tables {
+		if t.Name == table {
+			for _, p := range t.Permissions {
+				if p == op {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// get fields permissions based in prest configuration
+func FieldsPermissions(table string, cols []string, op string) []string {
+	restrict := config.PREST_CONF.AccessConf.Restrict
+	if !restrict {
+		return cols
+	}
+
+	var permittedCols []string
+	tables := config.PREST_CONF.AccessConf.Tables
+	for _, t := range tables {
+		if t.Name == table {
+			for _, f := range t.Fields {
+				for _, col := range cols {
+					// return all permitted fields if have "*" in SELECT
+					if op == "read" && col == "*" {
+						return t.Fields
+					}
+
+					if col == f {
+						permittedCols = append(permittedCols, col)
+					}
+				}
+			}
+			return permittedCols
+		}
+	}
+	return nil
 }

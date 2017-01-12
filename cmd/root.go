@@ -39,8 +39,7 @@ func Execute() {
 }
 
 func init() {
-	prestConfig = config.Prest{}
-	config.Parse(&prestConfig)
+	config.InitConf()
 }
 
 func app() {

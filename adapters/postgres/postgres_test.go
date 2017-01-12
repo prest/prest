@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/nuveo/prest/api"
+	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/statements"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -75,9 +76,10 @@ func TestPaginateIfPossible(t *testing.T) {
 }
 
 func TestInsert(t *testing.T) {
+	config.InitConf()
 	Convey("Insert data into a table", t, func() {
 		m := make(map[string]interface{}, 0)
-		m["name"] = "prest"
+		m["name"] = "prest-test-insert"
 
 		r := api.Request{
 			Data: m,
@@ -103,17 +105,36 @@ func TestInsert(t *testing.T) {
 		_, err := Insert("prest", "public", "test3", r)
 		So(err, ShouldNotBeNil)
 	})
+
+	Convey("Try to insert data in non-permitted table", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest-no-write"
+
+		r := api.Request{
+			Data: m,
+		}
+		jsonByte, err := Insert("prest", "public", "test_readonly_access", r)
+		So(err, ShouldNotBeNil)
+		So(len(jsonByte), ShouldEqual, 0)
+	})
 }
 
 func TestDelete(t *testing.T) {
+	config.InitConf()
 	Convey("Delete data from table", t, func() {
 		json, err := Delete("prest", "public", "test", "name=$1", []interface{}{"nuveo"})
 		So(err, ShouldBeNil)
 		So(len(json), ShouldBeGreaterThan, 0)
 	})
+	Convey("Delete permission", t, func() {
+		json, err := Delete("prest", "public", "test_readonly_access", "name=$1", []interface{}{"test01"})
+		So(err, ShouldNotBeNil)
+		So(len(json), ShouldBeLessThanOrEqualTo, 0)
+	})
 }
 
 func TestUpdate(t *testing.T) {
+	config.InitConf()
 	Convey("Update data into a table", t, func() {
 
 		m := make(map[string]interface{}, 0)
@@ -136,6 +157,17 @@ func TestUpdate(t *testing.T) {
 		}
 		_, err := Update("prest", "public", "test3", "name=$1", []interface{}{"prest tester"}, r)
 		So(err, ShouldNotBeNil)
+	})
+	Convey("Update permission", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		json, err := Update("prest", "public", "test_readonly_access", "name=$1", []interface{}{"test01"}, r)
+		So(err, ShouldNotBeNil)
+		So(len(json), ShouldBeLessThanOrEqualTo, 0)
 	})
 }
 
@@ -206,32 +238,6 @@ func TestJoinByRequest(t *testing.T) {
 		So(values, ShouldContain, "bla")
 	})
 
-}
-
-func TestSelectFields(t *testing.T) {
-	Convey("Select fields from table", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?_select=celphone", nil)
-		So(err, ShouldBeNil)
-
-		selectQuery := SelectByRequest(r)
-		So(selectQuery, ShouldContainSubstring, "SELECT celphone FROM")
-	})
-
-	Convey("Select all from table", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?_select=*", nil)
-		So(err, ShouldBeNil)
-
-		selectQuery := SelectByRequest(r)
-		So(selectQuery, ShouldContainSubstring, "SELECT * FROM")
-	})
-
-	Convey("Try Select with empty '_select' field", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?_select=", nil)
-		So(err, ShouldBeNil)
-
-		selectQuery := SelectByRequest(r)
-		So(selectQuery, ShouldEqual, "")
-	})
 }
 
 func TestCountFields(t *testing.T) {
@@ -346,4 +352,85 @@ func TestOrderByRequest(t *testing.T) {
 		So(order, ShouldContainSubstring, "name")
 		So(order, ShouldContainSubstring, "number DESC")
 	})
+}
+
+func TestTablePermissions(t *testing.T) {
+	config.InitConf()
+	Convey("Read", t, func() {
+		p := TablePermissions("test_readonly_access", "read")
+		So(p, ShouldBeTrue)
+	})
+	Convey("Try to read without permission", t, func() {
+		p := TablePermissions("test_write_and_delete_access", "read")
+		So(p, ShouldBeFalse)
+	})
+	Convey("Write", t, func() {
+		p := TablePermissions("test_write_and_delete_access", "write")
+		So(p, ShouldBeTrue)
+	})
+	Convey("Try to write without permission", t, func() {
+		p := TablePermissions("test_readonly_access", "write")
+		So(p, ShouldBeFalse)
+	})
+	Convey("Delete", t, func() {
+		p := TablePermissions("test_write_and_delete_access", "delete")
+		So(p, ShouldBeTrue)
+	})
+	Convey("Try to delete without permission", t, func() {
+		p := TablePermissions("test_readonly_access", "delete")
+		So(p, ShouldBeFalse)
+	})
+	Convey("Restrict disabled", t, func() {
+		config.PREST_CONF.AccessConf.Restrict = false
+		p := TablePermissions("test_readonly_access", "delete")
+		So(p, ShouldBeTrue)
+	})
+
+}
+
+func TestFieldsPermissions(t *testing.T) {
+	config.InitConf()
+
+	Convey("Read valid field", t, func() {
+		p := FieldsPermissions("test_list_only_id", []string{"id"}, "read")
+		So(len(p), ShouldEqual, 1)
+	})
+	Convey("Read invalid field", t, func() {
+		p := FieldsPermissions("test_list_only_id", []string{"name"}, "read")
+		So(len(p), ShouldEqual, 0)
+	})
+	Convey("Read non existing field", t, func() {
+		p := FieldsPermissions("test_list_only_id", []string{"non_existing_field"}, "read")
+		So(len(p), ShouldEqual, 0)
+	})
+	Convey("Select with *", t, func() {
+		p := FieldsPermissions("test_list_only_id", []string{"*"}, "read")
+		So(len(p), ShouldEqual, 1)
+	})
+	Convey("Read unrestrict", t, func() {
+		config.PREST_CONF.AccessConf.Restrict = false
+		p := FieldsPermissions("test_list_only_id", []string{"*"}, "read")
+		So(p[0], ShouldEqual, "*")
+	})
+
+}
+func TestSelectFields(t *testing.T) {
+	Convey("One field", t, func() {
+		s, err := SelectFields([]string{"test"})
+		So(s, ShouldContainSubstring, "SELECT test FROM")
+		So(err, ShouldBeNil)
+	})
+	Convey("Two fields", t, func() {
+		s, err := SelectFields([]string{"test", "test02"})
+		So(s, ShouldContainSubstring, "test")
+		So(s, ShouldContainSubstring, "test02")
+		So(s, ShouldContainSubstring, "SELECT")
+		So(s, ShouldContainSubstring, "FROM")
+		So(err, ShouldBeNil)
+	})
+	Convey("Empty fields", t, func() {
+		_, err := SelectFields([]string{})
+		So(err, ShouldNotBeNil)
+	})
+
 }

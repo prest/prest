@@ -8,15 +8,19 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-func TestParse(t *testing.T) {
-	Convey("Verify if get default value", t, func() {
-		os.Setenv("PREST_CONF", "../prest.toml")
-		viperCfg()
-		cfg := &Prest{}
-		err := Parse(cfg)
-		So(err, ShouldBeNil)
-		So(cfg.HTTPPort, ShouldEqual, 3000)
+func TestInitConf(t *testing.T) {
+	os.Setenv("PREST_CONF", "../testdata/prest.toml")
+	Convey("Check tables parser", t, func() {
+		InitConf()
+		So(len(PREST_CONF.AccessConf.Tables), ShouldBeGreaterThanOrEqualTo, 2)
 	})
+	Convey("Check restrict parser", t, func() {
+		InitConf()
+		So(PREST_CONF.AccessConf.Restrict, ShouldBeTrue)
+	})
+}
+
+func TestParse(t *testing.T) {
 	Convey("Verify if get toml", t, func() {
 		os.Setenv("PREST_CONF", "../testdata/prest.toml")
 		viperCfg()

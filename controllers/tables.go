@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"encoding/json"
 
@@ -135,14 +136,27 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	selectFields := postgres.SelectByRequest(r)
-	if selectFields == "" {
-		selectFields = statements.SelectInTable
+	permission := postgres.TablePermissions(table, "read")
+	if !permission {
+		log.Println("You don't have permission for this action.")
+		http.Error(w, "Unable to parse table in URI", http.StatusMethodNotAllowed)
+		return
 	}
-	query := fmt.Sprintf("%s %s.%s.%s", selectFields, database, schema, table)
+
+	// get selected columns, "*" if empty "_columns"
+	cols := ColumnsByRequest(r)
+	cols = postgres.FieldsPermissions(table, cols, "read")
+
+	if len(cols) == 0 {
+		log.Println("You don't have permission for this action. Please check the permitted fields for this table.")
+		http.Error(w, "You don't have permission for this action. Please check the permitted fields for this table.", http.StatusUnauthorized)
+		return
+	}
+
+	selectStr, _ := postgres.SelectFields(cols)
+	query := fmt.Sprintf("%s %s.%s.%s", selectStr, database, schema, table)
 
 	countQuery := postgres.CountByRequest(r)
-
 	if countQuery != "" {
 		query = fmt.Sprintf("%s %s.%s.%s", countQuery, database, schema, table)
 	}
@@ -327,4 +341,23 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write(object)
+}
+
+func ColumnsByRequest(r *http.Request) []string {
+	u, _ := r.URL.Parse(r.URL.String())
+	columnsArr := u.Query()["_select"]
+	var columns []string
+
+	for _, j := range columnsArr {
+		cArgs := strings.Split(j, ",")
+		for _, columnName := range cArgs {
+			if len(columnName) > 0 {
+				columns = append(columns, columnName)
+			}
+		}
+	}
+	if len(columns) == 0 {
+		return []string{"*"}
+	}
+	return columns
 }

@@ -1,5 +1,53 @@
+# migrations = "./migrations"
+
+# [jwt]
+# key = "mysecretkey"
+
 [http]
 port = 6000
 
 [pg]
 database = "prest"
+
+[access]
+restrict = true  # can access only the tables listed below
+
+    [[access.tables]]
+    name = "test"
+    permissions = ["read", "write", "delete"]
+    fields = ["id", "name"]
+
+    [[access.tables]]
+    name = "test2"
+    permissions = ["read", "write", "delete"]
+    fields = ["id", "name"]
+
+    [[access.tables]]
+    name = "test3"
+    permissions = ["read", "write", "delete"]
+    fields = ["id", "name"]
+
+    [[access.tables]]
+    name = "test4"
+    permissions = ["read", "write", "delete"]
+    fields = ["id", "name"]
+
+    [[access.tables]]
+    name = "test5"
+    permissions = ["read", "write", "delete"]
+    fields = ["id", "name", "celphone"]
+
+    [[access.tables]]
+    name = "test_readonly_access"
+    permissions = ["read"]
+    fields = ["id", "name"]
+
+    [[access.tables]]
+    name = "test_write_and_delete_access"
+    permissions = ["write", "delete"]
+
+    [[access.tables]]
+    name = "test_list_only_id"
+    permissions = ["read"]
+    fields = ["id"]
+
