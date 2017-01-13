@@ -343,6 +343,97 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	w.Write(object)
 }
 
+// SelectFromViews
+func SelectFromViews(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	database, ok := vars["database"]
+	if !ok {
+		log.Println("Unable to parse database in URI")
+		http.Error(w, "Unable to parse database in URI", http.StatusInternalServerError)
+		return
+	}
+	schema, ok := vars["schema"]
+	if !ok {
+		log.Println("Unable to parse schema in URI")
+		http.Error(w, "Unable to parse schema in URI", http.StatusInternalServerError)
+		return
+	}
+	view, ok := vars["view"]
+	if !ok {
+		log.Println("Unable to parse view in URI")
+		http.Error(w, "Unable to parse view in URI", http.StatusInternalServerError)
+		return
+	}
+
+	// get selected columns, "*" if empty "_columns"
+	cols := ColumnsByRequest(r)
+
+	selectStr, _ := postgres.SelectFields(cols)
+	query := fmt.Sprintf("%s %s.%s.%s", selectStr, database, schema, view)
+
+	countQuery := postgres.CountByRequest(r)
+	if countQuery != "" {
+		query = fmt.Sprintf("%s %s.%s.%s", countQuery, database, schema, view)
+	}
+
+	joinValues, err := postgres.JoinByRequest(r)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	for _, j := range joinValues {
+		query = fmt.Sprint(query, j)
+	}
+
+	requestWhere, values, err := postgres.WhereByRequest(r, 1)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	sqlSelect := query
+	if requestWhere != "" {
+		sqlSelect = fmt.Sprint(
+			query,
+			" WHERE ",
+			requestWhere)
+	}
+
+	order, err := postgres.OrderByRequest(r)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(order) > 0 {
+		sqlSelect = fmt.Sprintf("%s %s", sqlSelect, order)
+	}
+
+	page, err := postgres.PaginateIfPossible(r)
+	if err != nil {
+		http.Error(w, "Paging error", http.StatusBadRequest)
+		return
+	}
+	sqlSelect = fmt.Sprint(sqlSelect, " ", page)
+
+	runQuery := postgres.Query
+	if countQuery != "" {
+		runQuery = postgres.QueryCount
+	}
+
+	object, err := runQuery(sqlSelect, values...)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(object)
+}
+
 func ColumnsByRequest(r *http.Request) []string {
 	u, _ := r.URL.Parse(r.URL.String())
 	columnsArr := u.Query()["_select"]

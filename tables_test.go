@@ -184,3 +184,39 @@ func TestColumnsByRequest(t *testing.T) {
 		So(selectStr, ShouldContainSubstring, "celphone,battery")
 	})
 }
+
+func TestSelectFromViews(t *testing.T) {
+	config.InitConf()
+	router := mux.NewRouter()
+	router.HandleFunc("/{database}/{schema}/view/{view}", SelectFromViews).Methods("GET")
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	Convey("execute select in a view without custom where clause", t, func() {
+		doValidGetRequest(server.URL+"/prest/public/view/view_test", "SelectFromViews")
+	})
+
+	Convey("execute select in a view with count all fields *", t, func() {
+		doValidGetRequest(server.URL+"/prest/public/view/view_test?_count=*", "SelectFromViews")
+	})
+
+	Convey("execute select in a view with count function", t, func() {
+		doValidGetRequest(server.URL+"/prest/public/view/view_test?_count=player", "SelectFromViews")
+	})
+
+	Convey("execute select in a view with custom where clause", t, func() {
+		doValidGetRequest(server.URL+"/prest/public/view/view_test?player=gopher", "SelectFromViews")
+	})
+
+	Convey("execute select in a view with custom join clause", t, func() {
+		doValidGetRequest(server.URL+"/prest/public/view/view_test?_join=inner:test2:test2.name:eq:view_test.player", "SelectFromViews")
+	})
+
+	Convey("execute select in a view with custom where clause and pagination", t, func() {
+		doValidGetRequest(server.URL+"/prest/public/view/view_test?player=gopher&_page=1&_page_size=20", "SelectFromViews")
+	})
+
+	Convey("execute select in a view with select fields", t, func() {
+		doValidGetRequest(server.URL+"/prest/public/view/view_test?_select=player", "SelectFromViews")
+	})
+}
