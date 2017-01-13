@@ -188,35 +188,57 @@ func TestColumnsByRequest(t *testing.T) {
 func TestSelectFromViews(t *testing.T) {
 	config.InitConf()
 	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}/view/{view}", SelectFromViews).Methods("GET")
+	router.HandleFunc("/_VIEW/{database}/{schema}/{view}", SelectFromViews).Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
 
 	Convey("execute select in a view without custom where clause", t, func() {
-		doValidGetRequest(server.URL+"/prest/public/view/view_test", "SelectFromViews")
+		doValidGetRequest(server.URL+"/_VIEW/prest/public/view_test", "SelectFromViews")
 	})
 
 	Convey("execute select in a view with count all fields *", t, func() {
-		doValidGetRequest(server.URL+"/prest/public/view/view_test?_count=*", "SelectFromViews")
+		doValidGetRequest(server.URL+"/_VIEW/prest/public/view_test?_count=*", "SelectFromViews")
 	})
 
 	Convey("execute select in a view with count function", t, func() {
-		doValidGetRequest(server.URL+"/prest/public/view/view_test?_count=player", "SelectFromViews")
+		doValidGetRequest(server.URL+"/_VIEW/prest/public/view_test?_count=player", "SelectFromViews")
+	})
+
+	Convey("execute select in a view with order function", t, func() {
+		doValidGetRequest(server.URL+"/_VIEW/prest/public/view_test?_order=-player", "SelectFromViews")
 	})
 
 	Convey("execute select in a view with custom where clause", t, func() {
-		doValidGetRequest(server.URL+"/prest/public/view/view_test?player=gopher", "SelectFromViews")
+		doValidGetRequest(server.URL+"/_VIEW/prest/public/view_test?player=gopher", "SelectFromViews")
 	})
 
 	Convey("execute select in a view with custom join clause", t, func() {
-		doValidGetRequest(server.URL+"/prest/public/view/view_test?_join=inner:test2:test2.name:eq:view_test.player", "SelectFromViews")
+		doValidGetRequest(server.URL+"/_VIEW/prest/public/view_test?_join=inner:test2:test2.name:eq:view_test.player", "SelectFromViews")
 	})
 
 	Convey("execute select in a view with custom where clause and pagination", t, func() {
-		doValidGetRequest(server.URL+"/prest/public/view/view_test?player=gopher&_page=1&_page_size=20", "SelectFromViews")
+		doValidGetRequest(server.URL+"/_VIEW/prest/public/view_test?player=gopher&_page=1&_page_size=20", "SelectFromViews")
 	})
 
 	Convey("execute select in a view with select fields", t, func() {
-		doValidGetRequest(server.URL+"/prest/public/view/view_test?_select=player", "SelectFromViews")
+		doValidGetRequest(server.URL+"/_VIEW/prest/public/view_test?_select=player", "SelectFromViews")
+	})
+
+	r := api.Request{}
+
+	Convey("execute select in a view with a column invalid", t, func() {
+		doRequest(server.URL+"/_VIEW/prest/public/view_test?_select=celphone", r, "GET", 500, "SelectFromViews")
+	})
+
+	Convey("execute select in a view with where and column invalid", t, func() {
+		doRequest(server.URL+"/_VIEW/prest/public/view_test?0celphone=888888", r, "GET", 400, "SelectFromViews")
+	})
+
+	Convey("execute select in a view with custom join clause invalid", t, func() {
+		doRequest(server.URL+"/_VIEW/prest/public/view_test?_join=inner:test2.name:eq:view_test.player", r, "GET", 400, "SelectFromViews")
+	})
+
+	Convey("execute select in a view with custom where clause and pagination invalid", t, func() {
+		doRequest(server.URL+"/_VIEW/prest/public/view_test?player=gopher&_page=A&_page_size=20", r, "GET", 400, "SelectFromViews")
 	})
 }
