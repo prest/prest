@@ -60,6 +60,7 @@ func app() {
 	r.HandleFunc("/{database}/{schema}/{table}", controllers.InsertInTables).Methods("POST")
 	r.HandleFunc("/{database}/{schema}/{table}", controllers.DeleteFromTable).Methods("DELETE")
 	r.HandleFunc("/{database}/{schema}/{table}", controllers.UpdateTable).Methods("PUT", "PATCH")
+	r.HandleFunc("/{database}/{schema}/view/{view}", controllers.SelectFromViews).Methods("GET")
 
 	n.UseHandler(r)
 	n.Run(fmt.Sprintf(":%v", cfg.HTTPPort))
