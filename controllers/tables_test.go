@@ -3,7 +3,6 @@ package controllers
 import (
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/gorilla/mux"
@@ -146,41 +145,60 @@ func TestUpdateFromTable(t *testing.T) {
 	})
 }
 
-func TestColumnsByRequest(t *testing.T) {
-	Convey("Select fields from table", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?_select=celphone", nil)
-		So(err, ShouldBeNil)
+func TestSelectFromViews(t *testing.T) {
+	config.InitConf()
+	router := mux.NewRouter()
+	router.HandleFunc("/_VIEW/{database}/{schema}/{view}", SelectFromViews).Methods("GET")
+	server := httptest.NewServer(router)
+	defer server.Close()
 
-		selectQuery := ColumnsByRequest(r)
-		selectStr := strings.Join(selectQuery, ",")
-		So(selectStr, ShouldEqual, "celphone")
-		So(len(selectQuery), ShouldEqual, 1)
+	Convey("execute select in a view without custom where clause", t, func() {
+		doValidGetRequest(server.URL+"/_VIEW/prest/public/view_test", "SelectFromViews")
 	})
-	Convey("Select all from table", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?_select=*", nil)
-		So(err, ShouldBeNil)
 
-		selectQuery := ColumnsByRequest(r)
-		selectStr := strings.Join(selectQuery, ",")
-		So(len(selectQuery), ShouldEqual, 1)
-		So(selectStr, ShouldEqual, "*")
+	Convey("execute select in a view with count all fields *", t, func() {
+		doValidGetRequest(server.URL+"/_VIEW/prest/public/view_test?_count=*", "SelectFromViews")
 	})
-	Convey("Try Select with empty '_select' field", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?_select=", nil)
-		So(err, ShouldBeNil)
 
-		selectQuery := ColumnsByRequest(r)
-		selectStr := strings.Join(selectQuery, ",")
-		So(len(selectQuery), ShouldEqual, 1)
-		So(selectStr, ShouldEqual, "*")
+	Convey("execute select in a view with count function", t, func() {
+		doValidGetRequest(server.URL+"/_VIEW/prest/public/view_test?_count=player", "SelectFromViews")
 	})
-	Convey("Try Select with empty '_select' field", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?_select=celphone,battery", nil)
-		So(err, ShouldBeNil)
 
-		selectQuery := ColumnsByRequest(r)
-		selectStr := strings.Join(selectQuery, ",")
-		So(len(selectQuery), ShouldEqual, 2)
-		So(selectStr, ShouldContainSubstring, "celphone,battery")
+	Convey("execute select in a view with order function", t, func() {
+		doValidGetRequest(server.URL+"/_VIEW/prest/public/view_test?_order=-player", "SelectFromViews")
+	})
+
+	Convey("execute select in a view with custom where clause", t, func() {
+		doValidGetRequest(server.URL+"/_VIEW/prest/public/view_test?player=gopher", "SelectFromViews")
+	})
+
+	Convey("execute select in a view with custom join clause", t, func() {
+		doValidGetRequest(server.URL+"/_VIEW/prest/public/view_test?_join=inner:test2:test2.name:eq:view_test.player", "SelectFromViews")
+	})
+
+	Convey("execute select in a view with custom where clause and pagination", t, func() {
+		doValidGetRequest(server.URL+"/_VIEW/prest/public/view_test?player=gopher&_page=1&_page_size=20", "SelectFromViews")
+	})
+
+	Convey("execute select in a view with select fields", t, func() {
+		doValidGetRequest(server.URL+"/_VIEW/prest/public/view_test?_select=player", "SelectFromViews")
+	})
+
+	r := api.Request{}
+
+	Convey("execute select in a view with a column invalid", t, func() {
+		doRequest(server.URL+"/_VIEW/prest/public/view_test?_select=celphone", r, "GET", 500, "SelectFromViews")
+	})
+
+	Convey("execute select in a view with where and column invalid", t, func() {
+		doRequest(server.URL+"/_VIEW/prest/public/view_test?0celphone=888888", r, "GET", 400, "SelectFromViews")
+	})
+
+	Convey("execute select in a view with custom join clause invalid", t, func() {
+		doRequest(server.URL+"/_VIEW/prest/public/view_test?_join=inner:test2.name:eq:view_test.player", r, "GET", 400, "SelectFromViews")
+	})
+
+	Convey("execute select in a view with custom where clause and pagination invalid", t, func() {
+		doRequest(server.URL+"/_VIEW/prest/public/view_test?player=gopher&_page=A&_page_size=20", r, "GET", 400, "SelectFromViews")
 	})
 }

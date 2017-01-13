@@ -22,3 +22,9 @@ psql prest -c "insert into test_readonly_access (name) values ('test01');" -U po
 psql prest -c "insert into test_write_and_delete_access (name) values ('test01');" -U postgres
 psql prest -c "insert into test_list_only_id (name) values ('test01');" -U postgres
 psql prest -c "insert into test_deleteonly_access (name) values ('test01');" -U postgres
+
+
+# Views
+psql prest -c "create table table_to_view(id serial, name text, celphone text);" -U postgres
+psql prest -c "insert into table_to_view (name, celphone) values ('gopher', '8888888')" -U postgres
+psql prest -c "create view view_test as select name as player from table_to_view" -U postgres
