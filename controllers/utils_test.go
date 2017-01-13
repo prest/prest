@@ -81,3 +81,27 @@ func doValidPatchRequest(url string, r api.Request, where string) {
 	_, err = ioutil.ReadAll(resp.Body)
 	So(err, ShouldBeNil)
 }
+
+func doRequest(url string, r api.Request, method string, expectedStatus int, where string) {
+	fmt.Println("Test:", where)
+	var byt []byte
+	var err error
+
+	if r.Data != nil {
+		byt, err = json.Marshal(r)
+		So(err, ShouldBeNil)
+
+	}
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(byt))
+	So(err, ShouldBeNil)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+
+	So(err, ShouldBeNil)
+	So(resp.StatusCode, ShouldEqual, expectedStatus)
+
+	_, err = ioutil.ReadAll(resp.Body)
+	So(err, ShouldBeNil)
+
+}
