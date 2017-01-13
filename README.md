@@ -94,7 +94,7 @@ port = 5432
 database = "prest"
 ```
 
-## API`s
+## API's
 HEADER:
 
 - To start JWT middleware the `PREST_JWT_KEY` environment variable must be set
@@ -126,6 +126,14 @@ http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_count=column (use count function)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_page=2&_page_size=10 (pagination, page_size 10 by default)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD=VALUE (filter)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_renderer=xml (JSON by default)
+
+
+http://127.0.0.1:8000/DATABASE/SCHEMA/view/VIEW?_select=column (select statement by columns in VIEW)
+http://127.0.0.1:8000/DATABASE/SCHEMA/view/VIEW?_select=* (select all from VIEW)
+http://127.0.0.1:8000/DATABASE/SCHEMA/view/VIEW?_count=* (use count function)
+http://127.0.0.1:8000/DATABASE/SCHEMA/view/VIEW?_count=column (use count function)
+http://127.0.0.1:8000/DATABASE/SCHEMA/view/VIEW?_page=2&_page_size=10 (pagination, page_size 10 by default)
+http://127.0.0.1:8000/DATABASE/SCHEMA/view/VIEW?FIELD=VALUE (filter)
 ```
 
 ### Insert - POST
