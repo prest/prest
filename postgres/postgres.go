@@ -600,3 +600,23 @@ func FieldsPermissions(table string, cols []string, op string) []string {
 	}
 	return nil
 }
+
+// ColumnsByRequest extract columns and return as array of strings
+func ColumnsByRequest(r *http.Request) []string {
+	u, _ := r.URL.Parse(r.URL.String())
+	columnsArr := u.Query()["_select"]
+	var columns []string
+
+	for _, j := range columnsArr {
+		cArgs := strings.Split(j, ",")
+		for _, columnName := range cArgs {
+			if len(columnName) > 0 {
+				columns = append(columns, columnName)
+			}
+		}
+	}
+	if len(columns) == 0 {
+		return []string{"*"}
+	}
+	return columns
+}
