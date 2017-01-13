@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 
 	"encoding/json"
 
@@ -144,7 +143,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get selected columns, "*" if empty "_columns"
-	cols := ColumnsByRequest(r)
+	cols := postgres.ColumnsByRequest(r)
 	cols = postgres.FieldsPermissions(table, cols, "read")
 
 	if len(cols) == 0 {
@@ -366,7 +365,7 @@ func SelectFromViews(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get selected columns, "*" if empty "_columns"
-	cols := ColumnsByRequest(r)
+	cols := postgres.ColumnsByRequest(r)
 
 	selectStr, _ := postgres.SelectFields(cols)
 	query := fmt.Sprintf("%s %s.%s.%s", selectStr, database, schema, view)
@@ -432,23 +431,4 @@ func SelectFromViews(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write(object)
-}
-
-func ColumnsByRequest(r *http.Request) []string {
-	u, _ := r.URL.Parse(r.URL.String())
-	columnsArr := u.Query()["_select"]
-	var columns []string
-
-	for _, j := range columnsArr {
-		cArgs := strings.Split(j, ",")
-		for _, columnName := range cArgs {
-			if len(columnName) > 0 {
-				columns = append(columns, columnName)
-			}
-		}
-	}
-	if len(columns) == 0 {
-		return []string{"*"}
-	}
-	return columns
 }
