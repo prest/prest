@@ -67,8 +67,6 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 						err = errors.New("Invalid identifier")
 						return
 					}
-					whereKey = append(whereKey, fmt.Sprintf("%s=$%d", keyInfo[0], pid))
-					whereValues = append(whereValues, val[0])
 				}
 				continue
 			}

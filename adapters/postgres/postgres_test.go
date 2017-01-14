@@ -39,6 +39,30 @@ func TestWhereByRequest(t *testing.T) {
 		So(values, ShouldContain, "nuveo")
 		So(values, ShouldContain, "bla")
 	})
+
+	Convey("Where by request without jsonb key", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?name=nuveo&data->>description:bla", nil)
+		So(err, ShouldBeNil)
+
+		_, _, err = WhereByRequest(r, 1)
+		So(err, ShouldNotBeNil)
+	})
+
+	Convey("Where by request with jsonb field invalid", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?name=nuveo&data->>0description:jsonb=bla", nil)
+		So(err, ShouldBeNil)
+
+		_, _, err = WhereByRequest(r, 1)
+		So(err, ShouldNotBeNil)
+	})
+
+	Convey("Where by request with field invalid", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?0name=prest", nil)
+		So(err, ShouldBeNil)
+
+		_, _, err = WhereByRequest(r, 1)
+		So(err, ShouldNotBeNil)
+	})
 }
 
 func TestQuery(t *testing.T) {
