@@ -244,6 +244,25 @@ func TestDelete(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(len(json), ShouldBeGreaterThan, 0)
 	})
+
+	Convey("Try Delete data from invalid database", t, func() {
+		json, err := Delete("0prest", "public", "test", "name=$1", []interface{}{"nuveo"})
+		So(err, ShouldNotBeNil)
+		So(len(json), ShouldBeGreaterThan, 0)
+	})
+
+	Convey("Try Delete data from invalid schema", t, func() {
+		json, err := Delete("prest", "0public", "test", "name=$1", []interface{}{"nuveo"})
+		So(err, ShouldNotBeNil)
+		So(len(json), ShouldBeGreaterThan, 0)
+	})
+
+	Convey("Try Delete data from invalid table", t, func() {
+		json, err := Delete("prest", "0public", "test", "name=$1", []interface{}{"nuveo"})
+		So(err, ShouldNotBeNil)
+		So(len(json), ShouldBeGreaterThan, 0)
+	})
+
 	Convey("Delete permission", t, func() {
 		json, err := Delete("prest", "public", "test_readonly_access", "name=$1", []interface{}{"test01"})
 		So(err, ShouldNotBeNil)
