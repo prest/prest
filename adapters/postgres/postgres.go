@@ -198,14 +198,7 @@ func CountByRequest(req *http.Request) (countQuery string) {
 
 // Query process queries
 func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
-	validQuery := chkInvalidIdentifier(SQL)
-	if !validQuery {
-		err = errors.New("Invalid characters in the query")
-		return
-	}
-
 	db := connection.MustGet()
-
 	prepare, err := db.Prepare(SQL)
 
 	if err != nil {

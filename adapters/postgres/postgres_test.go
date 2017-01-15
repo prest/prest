@@ -73,6 +73,13 @@ func TestQuery(t *testing.T) {
 		So(len(json), ShouldBeGreaterThan, 0)
 	})
 
+	Convey("Query execution 2", t, func() {
+		sql := "SELECT number FROM prest.public.test2 ORDER BY number ASC"
+		json, err := Query(sql)
+		So(err, ShouldBeNil)
+		So(len(json), ShouldBeGreaterThan, 0)
+	})
+
 	Convey("Query execution with params", t, func() {
 		sql := "SELECT schema_name FROM information_schema.schemata WHERE schema_name = $1 ORDER BY schema_name ASC"
 		json, err := Query(sql, "public")
@@ -82,6 +89,13 @@ func TestQuery(t *testing.T) {
 
 	Convey("Query with invalid characters", t, func() {
 		sql := "SELECT ~~, ``, ˜ schema_name FROM information_schema.schemata WHERE schema_name = $1 ORDER BY schema_name ASC"
+		json, err := Query(sql, "public")
+		So(err, ShouldNotBeNil)
+		So(json, ShouldBeNil)
+	})
+
+	Convey("Query with invalid clause", t, func() {
+		sql := "0SELECT schema_name FROM information_schema.schemata WHERE schema_name = $1 ORDER BY schema_name ASC"
 		json, err := Query(sql, "public")
 		So(err, ShouldNotBeNil)
 		So(json, ShouldBeNil)
