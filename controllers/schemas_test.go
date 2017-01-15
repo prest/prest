@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gorilla/mux"
+	"github.com/nuveo/prest/api"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -42,5 +44,25 @@ func TestGetSchemas(t *testing.T) {
 		w := httptest.NewRecorder()
 		So(err, ShouldBeNil)
 		validate(w, r, GetSchemas, "TestGetSchemas")
+	})
+
+	Convey("Get schemas with custom where invalid clause", t, func() {
+		router := mux.NewRouter()
+		router.HandleFunc("/schemas", GetSchemas).Methods("GET")
+		server := httptest.NewServer(router)
+		defer server.Close()
+
+		r := api.Request{}
+		doRequest(server.URL+"/schemas?0schema_name=public", r, "GET", 400, "GetSchemas")
+	})
+
+	Convey("Get schemas with custom where and pagination invalid", t, func() {
+		router := mux.NewRouter()
+		router.HandleFunc("/schemas", GetSchemas).Methods("GET")
+		server := httptest.NewServer(router)
+		defer server.Close()
+
+		r := api.Request{}
+		doRequest(server.URL+"/schemas?schema_name=public&_page=A", r, "GET", 400, "GetSchemas")
 	})
 }
