@@ -285,16 +285,39 @@ func TestUpdate(t *testing.T) {
 		So(len(json), ShouldBeGreaterThan, 0)
 	})
 
-	Convey("Update data into a table with constraints", t, func() {
+	Convey("Update data into a invalid database", t, func() {
 		m := make(map[string]interface{}, 0)
 		m["name"] = "prest"
 
 		r := api.Request{
 			Data: m,
 		}
-		_, err := Update("prest", "public", "test3", "name=$1", []interface{}{"prest tester"}, r)
+		_, err := Update("0prest", "public", "test3", "name=$1", []interface{}{"prest tester"}, r)
 		So(err, ShouldNotBeNil)
 	})
+
+	Convey("Update data into a invalid schema", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		_, err := Update("prest", "0public", "test3", "name=$1", []interface{}{"prest tester"}, r)
+		So(err, ShouldNotBeNil)
+	})
+
+	Convey("Update data into a invalid table", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		_, err := Update("prest", "public", "0test3", "name=$1", []interface{}{"prest tester"}, r)
+		So(err, ShouldNotBeNil)
+	})
+
 	Convey("Update permission", t, func() {
 		m := make(map[string]interface{}, 0)
 		m["name"] = "prest"
