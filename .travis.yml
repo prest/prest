@@ -8,7 +8,7 @@ os:
 go:
     - 1.6.x
     - 1.7.x
-    - 1.8.x
+    - 1.8rc1
 
 services:
     - postgresql
