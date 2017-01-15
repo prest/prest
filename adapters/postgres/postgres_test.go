@@ -141,8 +141,8 @@ func TestInsert(t *testing.T) {
 	config.InitConf()
 	Convey("Insert data into a table", t, func() {
 		m := make(map[string]interface{}, 0)
-		m["name"] = "prest-test-insert"
 
+		m["name"] = "prest-test-insert"
 		r := api.Request{
 			Data: m,
 		}
@@ -166,6 +166,62 @@ func TestInsert(t *testing.T) {
 		}
 		_, err := Insert("prest", "public", "test3", r)
 		So(err, ShouldNotBeNil)
+	})
+
+	Convey("Insert data into a database invalid", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		_, err := Insert("0prest", "public", "test3", r)
+		So(err, ShouldNotBeNil)
+	})
+
+	Convey("Insert data into a schema invalid", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		_, err := Insert("prest", "0public", "test3", r)
+		So(err, ShouldNotBeNil)
+	})
+
+	Convey("Insert data into a table invalid", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		_, err := Insert("prest", "public", "0test3", r)
+		So(err, ShouldNotBeNil)
+	})
+
+	Convey("Insert data into a request invalid", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["0name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		_, err := Insert("prest", "public", "test3", r)
+		So(err, ShouldNotBeNil)
+	})
+
+	Convey("Insert data with more columns in table", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest-test-insert"
+		m["celphone"] = "88888888888"
+		r := api.Request{
+			Data: m,
+		}
+		jsonByte, err := Insert("prest", "public", "test5", r)
+		So(err, ShouldBeNil)
+		So(len(jsonByte), ShouldBeGreaterThan, 0)
 	})
 
 	Convey("Try to insert data in non-permitted table", t, func() {
