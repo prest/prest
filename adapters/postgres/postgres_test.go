@@ -111,6 +111,30 @@ func TestPaginateIfPossible(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(where, ShouldContainSubstring, "LIMIT 20 OFFSET(1 - 1) * 20")
 	})
+
+	Convey("Paginate with invalid page value", t, func() {
+		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool&_page=X&_page_size=20", nil)
+		So(err, ShouldBeNil)
+		where, err := PaginateIfPossible(r)
+		So(err, ShouldNotBeNil)
+		So(where, ShouldContainSubstring, "")
+	})
+
+	Convey("Paginate with invalid page size value", t, func() {
+		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool&_page=1&_page_size=K", nil)
+		So(err, ShouldBeNil)
+		where, err := PaginateIfPossible(r)
+		So(err, ShouldNotBeNil)
+		So(where, ShouldContainSubstring, "")
+	})
+
+	Convey("Invalid Paginate if possible", t, func() {
+		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool", nil)
+		So(err, ShouldBeNil)
+		where, err := PaginateIfPossible(r)
+		So(err, ShouldBeNil)
+		So(where, ShouldContainSubstring, "")
+	})
 }
 
 func TestInsert(t *testing.T) {
