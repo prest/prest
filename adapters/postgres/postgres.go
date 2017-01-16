@@ -120,24 +120,32 @@ func SchemaClause(req *http.Request) (query string) {
 // JoinByRequest implements join in queries
 func JoinByRequest(r *http.Request) (values []string, err error) {
 	joinValues := []string{}
-	joinStatements := r.URL.Query()["_join"]
+	queries := r.URL.Query()
 
-	for _, j := range joinStatements {
-		joinArgs := strings.Split(j, ":")
-
-		if len(joinArgs) != 5 {
-			err = errors.New("Invalid number of arguments in join statement")
-			return nil, err
-		}
-
-		op, err := GetQueryOperator(joinArgs[3])
-		if err != nil {
-			return nil, err
-		}
-
-		joinQuery := fmt.Sprintf(" %s JOIN %s ON %s %s %s ", strings.ToUpper(joinArgs[0]), joinArgs[1], joinArgs[2], op, joinArgs[4])
-		joinValues = append(joinValues, joinQuery)
+	if queries.Get("_join") == "" {
+		return
 	}
+
+	joinArgs := strings.Split(queries.Get("_join"), ":")
+	chk := chkInvalidIdentifier
+
+	if len(joinArgs) != 5 {
+		err = errors.New("Invalid number of arguments in join statement")
+		return
+	}
+
+	if chk(joinArgs[1]) || chk(joinArgs[2]) || chk(joinArgs[4]) {
+		err = errors.New("Invalid identifier")
+		return nil, err
+	}
+
+	op, err := GetQueryOperator(joinArgs[3])
+	if err != nil {
+		return nil, err
+	}
+
+	joinQuery := fmt.Sprintf(" %s JOIN %s ON %s %s %s ", strings.ToUpper(joinArgs[0]), joinArgs[1], joinArgs[2], op, joinArgs[4])
+	joinValues = append(joinValues, joinQuery)
 
 	return joinValues, nil
 }

@@ -365,6 +365,16 @@ func TestJoinByRequest(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(joinStr, ShouldContainSubstring, "INNER JOIN test2 ON test2.name = test.name")
 	})
+
+	Convey("Join empty param", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?_join", nil)
+		So(err, ShouldBeNil)
+
+		j, err := JoinByRequest(r)
+		So(err, ShouldBeNil)
+		So(j, ShouldBeNil)
+	})
+
 	Convey("Join missing param", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq", nil)
 		So(err, ShouldBeNil)
@@ -379,6 +389,15 @@ func TestJoinByRequest(t *testing.T) {
 		_, err = JoinByRequest(r)
 		So(err, ShouldNotBeNil)
 	})
+
+	Convey("Join invalid fields", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:0test2:test2.name:notexist:test.name", nil)
+		So(err, ShouldBeNil)
+
+		_, err = JoinByRequest(r)
+		So(err, ShouldNotBeNil)
+	})
+
 	Convey("Join with where", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name&name=nuveo&data->>description:jsonb=bla", nil)
 		So(err, ShouldBeNil)
