@@ -512,6 +512,15 @@ func TestOrderByRequest(t *testing.T) {
 		So(order, ShouldContainSubstring, "name")
 		So(order, ShouldContainSubstring, "number DESC")
 	})
+
+	Convey("Query ORDER BY invalid", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?_order=", nil)
+		So(err, ShouldBeNil)
+
+		order, err := OrderByRequest(r)
+		So(err, ShouldBeNil)
+		So(order, ShouldContainSubstring, "")
+	})
 }
 
 func TestTablePermissions(t *testing.T) {

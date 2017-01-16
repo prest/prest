@@ -156,14 +156,12 @@ func SelectFields(fields []string) (string, error) {
 // OrderByRequest implements ORDER BY in queries
 func OrderByRequest(r *http.Request) (string, error) {
 	var values string
-	reqOrder := r.URL.Query()["_order"]
+	queries := r.URL.Query()
+	reqOrder := queries.Get("_order")
 
-	if len(reqOrder) > 0 {
+	if reqOrder != "" {
 		values = " ORDER BY "
-
-		// get last order in request url
-		ordering := reqOrder[len(reqOrder)-1]
-		orderingArr := strings.Split(ordering, ",")
+		orderingArr := strings.Split(reqOrder, ",")
 
 		for i, s := range orderingArr {
 			field := s
