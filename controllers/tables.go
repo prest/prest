@@ -55,18 +55,9 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 // GetTablesByDatabaseAndSchema list all (or filter) tables based on database and schema
 func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	database, ok := vars["database"]
-	if !ok {
-		log.Println("Unable to parse database in URI")
-		http.Error(w, "Unable to parse database in URI", http.StatusInternalServerError)
-		return
-	}
-	schema, ok := vars["schema"]
-	if !ok {
-		log.Println("Unable to parse schema in URI")
-		http.Error(w, "Unable to parse schema in URI", http.StatusInternalServerError)
-		return
-	}
+	database := vars["database"]
+	schema := vars["schema"]
+
 	requestWhere, values, err := postgres.WhereByRequest(r, 3)
 	if err != nil {
 		log.Println(err)
@@ -120,24 +111,9 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 // SelectFromTables perform select in database
 func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	database, ok := vars["database"]
-	if !ok {
-		log.Println("Unable to parse database in URI")
-		http.Error(w, "Unable to parse database in URI", http.StatusInternalServerError)
-		return
-	}
-	schema, ok := vars["schema"]
-	if !ok {
-		log.Println("Unable to parse schema in URI")
-		http.Error(w, "Unable to parse schema in URI", http.StatusInternalServerError)
-		return
-	}
-	table, ok := vars["table"]
-	if !ok {
-		log.Println("Unable to parse table in URI")
-		http.Error(w, "Unable to parse table in URI", http.StatusInternalServerError)
-		return
-	}
+	database := vars["database"]
+	schema := vars["schema"]
+	table := vars["table"]
 
 	permission := postgres.TablePermissions(table, "read")
 	if !permission {
@@ -225,24 +201,10 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 // InsertInTables perform insert in specific table
 func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	database, ok := vars["database"]
-	if !ok {
-		log.Println("Unable to parse database in URI")
-		http.Error(w, "Unable to parse database in URI", http.StatusInternalServerError)
-		return
-	}
-	schema, ok := vars["schema"]
-	if !ok {
-		log.Println("Unable to parse schema in URI")
-		http.Error(w, "Unable to parse schema in URI", http.StatusInternalServerError)
-		return
-	}
-	table, ok := vars["table"]
-	if !ok {
-		log.Println("Unable to parse table in URI")
-		http.Error(w, "Unable to parse table in URI", http.StatusInternalServerError)
-		return
-	}
+	database := vars["database"]
+	schema := vars["schema"]
+	table := vars["table"]
+
 	req := api.Request{}
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -263,24 +225,9 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 // DeleteFromTable perform delete sql
 func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	database, ok := vars["database"]
-	if !ok {
-		log.Println("Unable to parse database in URI")
-		http.Error(w, "Unable to parse database in URI", http.StatusInternalServerError)
-		return
-	}
-	schema, ok := vars["schema"]
-	if !ok {
-		log.Println("Unable to parse schema in URI")
-		http.Error(w, "Unable to parse schema in URI", http.StatusInternalServerError)
-		return
-	}
-	table, ok := vars["table"]
-	if !ok {
-		log.Println("Unable to parse table in URI")
-		http.Error(w, "Unable to parse table in URI", http.StatusInternalServerError)
-		return
-	}
+	database := vars["database"]
+	schema := vars["schema"]
+	table := vars["table"]
 
 	where, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
@@ -302,24 +249,9 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 // UpdateTable perform update table
 func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	database, ok := vars["database"]
-	if !ok {
-		log.Println("Unable to parse database in URI")
-		http.Error(w, "Unable to parse database in URI", http.StatusInternalServerError)
-		return
-	}
-	schema, ok := vars["schema"]
-	if !ok {
-		log.Println("Unable to parse schema in URI")
-		http.Error(w, "Unable to parse schema in URI", http.StatusInternalServerError)
-		return
-	}
-	table, ok := vars["table"]
-	if !ok {
-		log.Println("Unable to parse table in URI")
-		http.Error(w, "Unable to parse table in URI", http.StatusInternalServerError)
-		return
-	}
+	database := vars["database"]
+	schema := vars["schema"]
+	table := vars["table"]
 
 	req := api.Request{}
 	err := json.NewDecoder(r.Body).Decode(&req)
@@ -349,24 +281,9 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 // SelectFromViews
 func SelectFromViews(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	database, ok := vars["database"]
-	if !ok {
-		log.Println("Unable to parse database in URI")
-		http.Error(w, "Unable to parse database in URI", http.StatusInternalServerError)
-		return
-	}
-	schema, ok := vars["schema"]
-	if !ok {
-		log.Println("Unable to parse schema in URI")
-		http.Error(w, "Unable to parse schema in URI", http.StatusInternalServerError)
-		return
-	}
-	view, ok := vars["view"]
-	if !ok {
-		log.Println("Unable to parse view in URI")
-		http.Error(w, "Unable to parse view in URI", http.StatusInternalServerError)
-		return
-	}
+	database := vars["database"]
+	schema := vars["schema"]
+	view := vars["view"]
 
 	// get selected columns, "*" if empty "_columns"
 	cols := postgres.ColumnsByRequest(r)
