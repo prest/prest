@@ -17,18 +17,17 @@ import (
 func GetTables(w http.ResponseWriter, r *http.Request) {
 	requestWhere, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
-		log.Println(err)
+		log.Println("could not peform WhereByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	order, err := postgres.OrderByRequest(r)
 	if err != nil {
-		log.Println(err)
+		log.Println("could not peform OrderByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	if order == "" {
 		order = statements.TablesOrderBy
 	}
@@ -56,21 +55,12 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 // GetTablesByDatabaseAndSchema list all (or filter) tables based on database and schema
 func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	database, ok := vars["database"]
-	if !ok {
-		log.Println("Unable to parse database in URI")
-		http.Error(w, "Unable to parse database in URI", http.StatusInternalServerError)
-		return
-	}
-	schema, ok := vars["schema"]
-	if !ok {
-		log.Println("Unable to parse schema in URI")
-		http.Error(w, "Unable to parse schema in URI", http.StatusInternalServerError)
-		return
-	}
+	database := vars["database"]
+	schema := vars["schema"]
+
 	requestWhere, values, err := postgres.WhereByRequest(r, 3)
 	if err != nil {
-		log.Println(err)
+		log.Println("could not peform WhereByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -83,7 +73,12 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 		sqlSchemaTables = fmt.Sprint(sqlSchemaTables, " AND ", requestWhere)
 	}
 
-	order, _ := postgres.OrderByRequest(r)
+	order, err := postgres.OrderByRequest(r)
+	if err != nil {
+		log.Println("could not peform OrderByRequest:", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	if order != "" {
 		sqlSchemaTables = fmt.Sprint(sqlSchemaTables, order)
 	} else {
@@ -92,6 +87,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 
 	page, err := postgres.PaginateIfPossible(r)
 	if err != nil {
+		log.Println("could not peform PaginateIfPossible:", err)
 		http.Error(w, "Paging error", http.StatusBadRequest)
 		return
 	}
@@ -116,24 +112,9 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 // SelectFromTables perform select in database
 func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	database, ok := vars["database"]
-	if !ok {
-		log.Println("Unable to parse database in URI")
-		http.Error(w, "Unable to parse database in URI", http.StatusInternalServerError)
-		return
-	}
-	schema, ok := vars["schema"]
-	if !ok {
-		log.Println("Unable to parse schema in URI")
-		http.Error(w, "Unable to parse schema in URI", http.StatusInternalServerError)
-		return
-	}
-	table, ok := vars["table"]
-	if !ok {
-		log.Println("Unable to parse table in URI")
-		http.Error(w, "Unable to parse table in URI", http.StatusInternalServerError)
-		return
-	}
+	database := vars["database"]
+	schema := vars["schema"]
+	table := vars["table"]
 
 	permission := postgres.TablePermissions(table, "read")
 	if !permission {
@@ -155,14 +136,19 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	selectStr, _ := postgres.SelectFields(cols)
 	query := fmt.Sprintf("%s %s.%s.%s", selectStr, database, schema, table)
 
-	countQuery := postgres.CountByRequest(r)
+	countQuery, err := postgres.CountByRequest(r)
+	if err != nil {
+		log.Println("could not peform CountByRequest:", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	if countQuery != "" {
 		query = fmt.Sprintf("%s %s.%s.%s", countQuery, database, schema, table)
 	}
 
 	joinValues, err := postgres.JoinByRequest(r)
 	if err != nil {
-		log.Println(err)
+		log.Println("could not peform JoinByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -173,7 +159,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 
 	requestWhere, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
-		log.Println(err)
+		log.Println("could not peform WhereByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -188,16 +174,17 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 
 	order, err := postgres.OrderByRequest(r)
 	if err != nil {
-		log.Println(err)
+		log.Println("could not peform OrderByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if len(order) > 0 {
+	if order != "" {
 		sqlSelect = fmt.Sprintf("%s %s", sqlSelect, order)
 	}
 
 	page, err := postgres.PaginateIfPossible(r)
 	if err != nil {
+		log.Println("could not peform PaginateIfPossible:", err)
 		http.Error(w, "Paging error", http.StatusBadRequest)
 		return
 	}
@@ -221,34 +208,20 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 // InsertInTables perform insert in specific table
 func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	database, ok := vars["database"]
-	if !ok {
-		log.Println("Unable to parse database in URI")
-		http.Error(w, "Unable to parse database in URI", http.StatusInternalServerError)
-		return
-	}
-	schema, ok := vars["schema"]
-	if !ok {
-		log.Println("Unable to parse schema in URI")
-		http.Error(w, "Unable to parse schema in URI", http.StatusInternalServerError)
-		return
-	}
-	table, ok := vars["table"]
-	if !ok {
-		log.Println("Unable to parse table in URI")
-		http.Error(w, "Unable to parse table in URI", http.StatusInternalServerError)
-		return
-	}
+	database := vars["database"]
+	schema := vars["schema"]
+	table := vars["table"]
+
 	req := api.Request{}
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		log.Println("InsertInTables:", err)
+		log.Println("could not decode body:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	object, err := postgres.Insert(database, schema, table, req)
 	if err != nil {
-		log.Println(err)
+		log.Println("could not peform InsertInTables:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -259,35 +232,20 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 // DeleteFromTable perform delete sql
 func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	database, ok := vars["database"]
-	if !ok {
-		log.Println("Unable to parse database in URI")
-		http.Error(w, "Unable to parse database in URI", http.StatusInternalServerError)
-		return
-	}
-	schema, ok := vars["schema"]
-	if !ok {
-		log.Println("Unable to parse schema in URI")
-		http.Error(w, "Unable to parse schema in URI", http.StatusInternalServerError)
-		return
-	}
-	table, ok := vars["table"]
-	if !ok {
-		log.Println("Unable to parse table in URI")
-		http.Error(w, "Unable to parse table in URI", http.StatusInternalServerError)
-		return
-	}
+	database := vars["database"]
+	schema := vars["schema"]
+	table := vars["table"]
 
 	where, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
-		log.Println(err)
+		log.Println("could not peform WhereByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	object, err := postgres.Delete(database, schema, table, where, values)
 	if err != nil {
-		log.Println(err)
+		log.Println("could not peform DELETE:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -298,43 +256,28 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 // UpdateTable perform update table
 func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	database, ok := vars["database"]
-	if !ok {
-		log.Println("Unable to parse database in URI")
-		http.Error(w, "Unable to parse database in URI", http.StatusInternalServerError)
-		return
-	}
-	schema, ok := vars["schema"]
-	if !ok {
-		log.Println("Unable to parse schema in URI")
-		http.Error(w, "Unable to parse schema in URI", http.StatusInternalServerError)
-		return
-	}
-	table, ok := vars["table"]
-	if !ok {
-		log.Println("Unable to parse table in URI")
-		http.Error(w, "Unable to parse table in URI", http.StatusInternalServerError)
-		return
-	}
+	database := vars["database"]
+	schema := vars["schema"]
+	table := vars["table"]
 
 	req := api.Request{}
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		log.Println(err)
+		log.Println("could not decode body:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	where, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
-		log.Println(err)
+		log.Println("could not peform WhereByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	object, err := postgres.Update(database, schema, table, where, values, req)
 	if err != nil {
-		log.Println(err)
+		log.Println("could not peform UPDATE:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -345,39 +288,34 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 // SelectFromViews
 func SelectFromViews(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	database, ok := vars["database"]
-	if !ok {
-		log.Println("Unable to parse database in URI")
-		http.Error(w, "Unable to parse database in URI", http.StatusInternalServerError)
-		return
-	}
-	schema, ok := vars["schema"]
-	if !ok {
-		log.Println("Unable to parse schema in URI")
-		http.Error(w, "Unable to parse schema in URI", http.StatusInternalServerError)
-		return
-	}
-	view, ok := vars["view"]
-	if !ok {
-		log.Println("Unable to parse view in URI")
-		http.Error(w, "Unable to parse view in URI", http.StatusInternalServerError)
-		return
-	}
+	database := vars["database"]
+	schema := vars["schema"]
+	view := vars["view"]
 
 	// get selected columns, "*" if empty "_columns"
 	cols := postgres.ColumnsByRequest(r)
 
-	selectStr, _ := postgres.SelectFields(cols)
+	selectStr, err := postgres.SelectFields(cols)
+	if err != nil {
+		log.Println("could not peform SelectFields:", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	query := fmt.Sprintf("%s %s.%s.%s", selectStr, database, schema, view)
 
-	countQuery := postgres.CountByRequest(r)
+	countQuery, err := postgres.CountByRequest(r)
+	if err != nil {
+		log.Println("could not peform CountByRequest:", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	if countQuery != "" {
 		query = fmt.Sprintf("%s %s.%s.%s", countQuery, database, schema, view)
 	}
 
 	joinValues, err := postgres.JoinByRequest(r)
 	if err != nil {
-		log.Println(err)
+		log.Println("could not peform JoinByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -388,7 +326,7 @@ func SelectFromViews(w http.ResponseWriter, r *http.Request) {
 
 	requestWhere, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
-		log.Println(err)
+		log.Println("could not peform WhereByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -403,16 +341,17 @@ func SelectFromViews(w http.ResponseWriter, r *http.Request) {
 
 	order, err := postgres.OrderByRequest(r)
 	if err != nil {
-		log.Println(err)
+		log.Println("could not peform OrderByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if len(order) > 0 {
+	if order != "" {
 		sqlSelect = fmt.Sprintf("%s %s", sqlSelect, order)
 	}
 
 	page, err := postgres.PaginateIfPossible(r)
 	if err != nil {
+		log.Println("could not peform PaginateIfPossible:", err)
 		http.Error(w, "Paging error", http.StatusBadRequest)
 		return
 	}
