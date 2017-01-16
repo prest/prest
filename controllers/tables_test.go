@@ -146,8 +146,8 @@ func TestInsertInTables(t *testing.T) {
 	router.HandleFunc("/{database}/{schema}/{table}", InsertInTables).Methods("POST")
 	server := httptest.NewServer(router)
 	defer server.Close()
-	Convey("execute select in a table without custom where clause", t, func() {
 
+	Convey("execute select in a table without custom where clause", t, func() {
 		m := make(map[string]interface{}, 0)
 		m["name"] = "prest"
 
@@ -156,6 +156,41 @@ func TestInsertInTables(t *testing.T) {
 		}
 
 		doValidPostRequest(server.URL+"/prest/public/test", r, "InsertInTables")
+	})
+
+	Convey("execute select in a table with invalid database", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		doRequest(server.URL+"/Oprest/public/test", r, "POST", 500, "InsertInTables")
+	})
+
+	Convey("execute select in a table with invalid schema", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		doRequest(server.URL+"/prest/0public/test", r, "POST", 500, "InsertInTables")
+	})
+
+	Convey("execute select in a table with invalid table", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		doRequest(server.URL+"/prest/public/0test", r, "POST", 500, "InsertInTables")
+	})
+
+	Convey("execute select in a table with invalid body", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/prest/public/test", r, "POST", 500, "InsertInTables")
 	})
 }
 
