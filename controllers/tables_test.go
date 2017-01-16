@@ -158,6 +158,21 @@ func TestSelectFromTables(t *testing.T) {
 		doRequest(server.URL+"/prest/public/test?name=nuveo&_page=A", r, "GET", 400, "SelectFromTables")
 	})
 
+	Convey("execute select in a table with invalid where clause", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/prest/public/test?0name=nuveo", r, "GET", 400, "SelectFromTables")
+	})
+
+	Convey("execute select in a table with invalid count clause", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/prest/public/test?_count=0name", r, "GET", 400, "SelectFromTables")
+	})
+
+	Convey("execute select in a table with invalid order clause", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/prest/public/test?_order=0name", r, "GET", 400, "SelectFromTables")
+	})
+
 	Convey("execute select in a table with custom where clause and pagination", t, func() {
 		doValidGetRequest(server.URL+"/prest/public/test?name=nuveo&_page=1&_page_size=20", "SelectFromTables")
 	})
@@ -407,6 +422,11 @@ func TestSelectFromViews(t *testing.T) {
 		doRequest(server.URL+"/_VIEW/prest/public/view_test?_order=0celphone", r, "GET", 400, "SelectFromViews")
 	})
 
+	Convey("execute select in a view with count column invalid", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/_VIEW/prest/public/view_test?_count=0celphone", r, "GET", 400, "SelectFromViews")
+	})
+
 	Convey("execute select in a view with custom where clause", t, func() {
 		doValidGetRequest(server.URL+"/_VIEW/prest/public/view_test?player=gopher", "SelectFromViews")
 	})
@@ -425,8 +445,12 @@ func TestSelectFromViews(t *testing.T) {
 
 	r := api.Request{}
 
-	Convey("execute select in a view with a column invalid", t, func() {
+	Convey("execute select in a view with an other column", t, func() {
 		doRequest(server.URL+"/_VIEW/prest/public/view_test?_select=celphone", r, "GET", 500, "SelectFromViews")
+	})
+
+	Convey("execute select in a view with a column invalid", t, func() {
+		doRequest(server.URL+"/_VIEW/prest/public/view_test?_select=0player", r, "GET", 400, "SelectFromViews")
 	})
 
 	Convey("execute select in a view with where and column invalid", t, func() {
