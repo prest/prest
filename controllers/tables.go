@@ -22,13 +22,7 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	order, err := postgres.OrderByRequest(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
+	order, _ := postgres.OrderByRequest(r)
 	if order == "" {
 		order = statements.TablesOrderBy
 	}
@@ -186,12 +180,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 			requestWhere)
 	}
 
-	order, err := postgres.OrderByRequest(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	order, _ := postgres.OrderByRequest(r)
 	if len(order) > 0 {
 		sqlSelect = fmt.Sprintf("%s %s", sqlSelect, order)
 	}
@@ -401,12 +390,7 @@ func SelectFromViews(w http.ResponseWriter, r *http.Request) {
 			requestWhere)
 	}
 
-	order, err := postgres.OrderByRequest(r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	order, _ := postgres.OrderByRequest(r)
 	if len(order) > 0 {
 		sqlSelect = fmt.Sprintf("%s %s", sqlSelect, order)
 	}
