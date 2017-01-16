@@ -32,6 +32,16 @@ func TestGetTables(t *testing.T) {
 		So(err, ShouldBeNil)
 		validate(w, r, GetTables, "TestGetTables3")
 	})
+
+	Convey("Get tables with custom where invalid clause", t, func() {
+		router := mux.NewRouter()
+		router.HandleFunc("/tables", GetTables).Methods("GET")
+		server := httptest.NewServer(router)
+		defer server.Close()
+
+		r := api.Request{}
+		doRequest(server.URL+"/tables?0c.relname=test", r, "GET", 400, "GetTables")
+	})
 }
 
 func TestGetTablesByDatabaseAndSchema(t *testing.T) {
