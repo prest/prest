@@ -154,6 +154,13 @@ func SelectFields(fields []string) (string, error) {
 	if len(fields) == 0 {
 		return "", errors.New("You must select at least one field.")
 	}
+
+	for _, field := range fields {
+		if field != "*" && chkInvalidIdentifier(field) {
+			return "", fmt.Errorf("invalid identifier %s\n", field)
+		}
+	}
+
 	return fmt.Sprintf("SELECT %s FROM", strings.Join(fields, ",")), nil
 }
 
@@ -189,13 +196,21 @@ func OrderByRequest(r *http.Request) (values string, err error) {
 }
 
 // CountByRequest implements COUNT(fields) OPERTATION
-func CountByRequest(req *http.Request) (countQuery string) {
+func CountByRequest(req *http.Request) (countQuery string, err error) {
 	queries := req.URL.Query()
 	countFields := queries.Get("_count")
 
 	if countFields == "" {
 		return
 	}
+
+	for _, field := range strings.Split(countFields, ",") {
+		if field != "*" && chkInvalidIdentifier(field) {
+			err = errors.New("Invalid identifier")
+			return
+		}
+	}
+
 	countQuery = fmt.Sprintf("SELECT COUNT(%s) FROM", countFields)
 
 	return
@@ -251,11 +266,6 @@ func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 
 // QueryCount process queries with count
 func QueryCount(SQL string, params ...interface{}) ([]byte, error) {
-	validQuery := chkInvalidIdentifier(SQL)
-	if !validQuery {
-		return nil, errors.New("Invalid characters in the query")
-	}
-
 	db := connection.MustGet()
 	prepare, err := db.Prepare(SQL)
 	if err != nil {

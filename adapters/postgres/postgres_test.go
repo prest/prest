@@ -424,24 +424,36 @@ func TestCountFields(t *testing.T) {
 		r, err := http.NewRequest("GET", "/prest/public/test5?_count=celphone", nil)
 		So(err, ShouldBeNil)
 
-		countQuery := CountByRequest(r)
+		countQuery, err := CountByRequest(r)
 		So(countQuery, ShouldContainSubstring, "SELECT COUNT(celphone) FROM")
+		So(err, ShouldBeNil)
 	})
 
 	Convey("Count all from table", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test5?_count=*", nil)
 		So(err, ShouldBeNil)
 
-		countQuery := CountByRequest(r)
+		countQuery, err := CountByRequest(r)
 		So(countQuery, ShouldContainSubstring, "SELECT COUNT(*) FROM")
+		So(err, ShouldBeNil)
 	})
 
 	Convey("Try Count with empty '_count' field", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test5?_count=", nil)
 		So(err, ShouldBeNil)
 
-		countQuery := CountByRequest(r)
+		countQuery, err := CountByRequest(r)
 		So(countQuery, ShouldEqual, "")
+		So(err, ShouldBeNil)
+	})
+
+	Convey("Try Count with invalid columns", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_count=celphone,0name", nil)
+		So(err, ShouldBeNil)
+
+		countQuery, err := CountByRequest(r)
+		So(countQuery, ShouldEqual, "")
+		So(err, ShouldNotBeNil)
 	})
 }
 
@@ -617,6 +629,7 @@ func TestSelectFields(t *testing.T) {
 		So(s, ShouldContainSubstring, "SELECT test FROM")
 		So(err, ShouldBeNil)
 	})
+
 	Convey("Two fields", t, func() {
 		s, err := SelectFields([]string{"test", "test02"})
 		So(s, ShouldContainSubstring, "test")
@@ -625,6 +638,12 @@ func TestSelectFields(t *testing.T) {
 		So(s, ShouldContainSubstring, "FROM")
 		So(err, ShouldBeNil)
 	})
+
+	Convey("Invalid fields", t, func() {
+		_, err := SelectFields([]string{"0test", "test02"})
+		So(err, ShouldNotBeNil)
+	})
+
 	Convey("Empty fields", t, func() {
 		_, err := SelectFields([]string{})
 		So(err, ShouldNotBeNil)
