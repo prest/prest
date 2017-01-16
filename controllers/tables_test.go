@@ -42,6 +42,26 @@ func TestGetTables(t *testing.T) {
 		r := api.Request{}
 		doRequest(server.URL+"/tables?0c.relname=test", r, "GET", 400, "GetTables")
 	})
+
+	Convey("Get tables with order by clause", t, func() {
+		router := mux.NewRouter()
+		router.HandleFunc("/tables", GetTables).Methods("GET")
+		server := httptest.NewServer(router)
+		defer server.Close()
+
+		r := api.Request{}
+		doRequest(server.URL+"/tables?_order=c.relname", r, "GET", 200, "GetTables")
+	})
+
+	Convey("Get tables with ORDER BY and invalid column", t, func() {
+		router := mux.NewRouter()
+		router.HandleFunc("/tables", GetTables).Methods("GET")
+		server := httptest.NewServer(router)
+		defer server.Close()
+
+		r := api.Request{}
+		doRequest(server.URL+"/tables?_order=0c.relname", r, "GET", 400, "GetTables")
+	})
 }
 
 func TestGetTablesByDatabaseAndSchema(t *testing.T) {
@@ -73,6 +93,11 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 	Convey("Get tables by databases and schema with custom where and pagination invalid", t, func() {
 		r := api.Request{}
 		doRequest(server.URL+"/prest/public?t.tablename=test&_page=A&_page_size=20", r, "GET", 400, "GetTablesByDatabasesAndSchemas")
+	})
+
+	Convey("Get tables by databases and schema with ORDER BY and column invalid", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/prest/public?_order=0t.tablename", r, "GET", 400, "GetTablesByDatabasesAndSchemas")
 	})
 }
 
@@ -121,6 +146,11 @@ func TestSelectFromTables(t *testing.T) {
 	Convey("execute select in a table with order clause empty", t, func() {
 		r := api.Request{}
 		doRequest(server.URL+"/prest/public/test?_order=", r, "GET", 200, "SelectFromTables")
+	})
+
+	Convey("execute select in a table with order clause and column invalid", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/prest/public/test?_order=0name", r, "GET", 400, "SelectFromTables")
 	})
 
 	Convey("execute select in a table with invalid pagination clause", t, func() {
@@ -370,6 +400,11 @@ func TestSelectFromViews(t *testing.T) {
 
 	Convey("execute select in a view with order function", t, func() {
 		doValidGetRequest(server.URL+"/_VIEW/prest/public/view_test?_order=-player", "SelectFromViews")
+	})
+
+	Convey("execute select in a view with order by and column invalid", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/_VIEW/prest/public/view_test?_order=0celphone", r, "GET", 400, "SelectFromViews")
 	})
 
 	Convey("execute select in a view with custom where clause", t, func() {

@@ -26,16 +26,12 @@ const (
 
 // chkInvalidIdentifier return true if identifier is invalid
 func chkInvalidIdentifier(identifer string) bool {
-	if len(identifer) > 63 ||
-		unicode.IsDigit([]rune(identifer)[0]) {
+	if len(identifer) > 63 || unicode.IsDigit([]rune(identifer)[0]) {
 		return true
 	}
 
 	for _, v := range identifer {
-		if !unicode.IsLetter(v) &&
-			!unicode.IsDigit(v) &&
-			v != '_' &&
-			v != '.' {
+		if !unicode.IsLetter(v) && !unicode.IsDigit(v) && v != '_' && v != '.' && v != '-' {
 			return true
 		}
 	}
@@ -154,8 +150,7 @@ func SelectFields(fields []string) (string, error) {
 }
 
 // OrderByRequest implements ORDER BY in queries
-func OrderByRequest(r *http.Request) (string, error) {
-	var values string
+func OrderByRequest(r *http.Request) (values string, err error) {
 	queries := r.URL.Query()
 	reqOrder := queries.Get("_order")
 
@@ -164,6 +159,10 @@ func OrderByRequest(r *http.Request) (string, error) {
 		orderingArr := strings.Split(reqOrder, ",")
 
 		for i, s := range orderingArr {
+			if chkInvalidIdentifier(s) {
+				err = errors.New("Invalid identifier")
+				return
+			}
 			field := s
 
 			if strings.HasPrefix(s, "-") {

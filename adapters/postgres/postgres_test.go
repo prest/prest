@@ -513,12 +513,21 @@ func TestOrderByRequest(t *testing.T) {
 		So(order, ShouldContainSubstring, "number DESC")
 	})
 
-	Convey("Query ORDER BY invalid", t, func() {
+	Convey("Query ORDER BY empty", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test?_order=", nil)
 		So(err, ShouldBeNil)
 
 		order, err := OrderByRequest(r)
 		So(err, ShouldBeNil)
+		So(order, ShouldContainSubstring, "")
+	})
+
+	Convey("Query ORDER BY invalid column", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?_order=0name", nil)
+		So(err, ShouldBeNil)
+
+		order, err := OrderByRequest(r)
+		So(err, ShouldNotBeNil)
 		So(order, ShouldContainSubstring, "")
 	})
 }
