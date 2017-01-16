@@ -58,7 +58,8 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 	})
 
 	Convey("Get tables by database and schema with custom where invalid clause", t, func() {
-		doValidGetRequest(server.URL+"/prest/public?0t.tablename=test", "GetTablesByDatabaseAndSchema")
+		r := api.Request{}
+		doRequest(server.URL+"/prest/public?0t.tablename=test", r, "GET", 400, "GetTablesByDatabasesAndSchemas")
 	})
 
 	Convey("Get tables by database and schema with order clause", t, func() {
