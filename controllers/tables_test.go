@@ -256,6 +256,96 @@ func TestUpdateFromTable(t *testing.T) {
 	Convey("excute update in a table with where clause using PATCH", t, func() {
 		doValidPatchRequest(server.URL+"/prest/public/test?name=nuveo", r, "UpdateTable")
 	})
+
+	Convey("execute update in a table with invalid database", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		doRequest(server.URL+"/Oprest/public/test", r, "PUT", 500, "UpdateTable")
+	})
+
+	Convey("execute update in a table with invalid schema using PUT", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		doRequest(server.URL+"/prest/0public/test", r, "PUT", 500, "UpdateTable")
+	})
+
+	Convey("execute update in a table with invalid table using PUT", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		doRequest(server.URL+"/prest/public/0test", r, "PUT", 500, "UpdateTable")
+	})
+
+	Convey("execute update in a table with invalid body using PUT", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/prest/public/test", r, "PUT", 500, "UpdateTable")
+	})
+
+	Convey("execute update in a table with invalid where clause using PUT", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		doRequest(server.URL+"/prest/public/test?0name=nuveo", r, "PUT", 400, "UpdateTable")
+	})
+
+	Convey("execute update in a table with invalid database using PATCH", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		doRequest(server.URL+"/Oprest/public/test", r, "PATCH", 500, "UpdateTable")
+	})
+
+	Convey("execute update in a table with invalid schema using PATCH", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		doRequest(server.URL+"/prest/0public/test", r, "PATCH", 500, "UpdateTable")
+	})
+
+	Convey("execute update in a table with invalid table using PATCH", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		doRequest(server.URL+"/prest/public/0test", r, "PATCH", 500, "UpdateTable")
+	})
+
+	Convey("execute update in a table with invalid body using PATCH", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/prest/public/test", r, "PATCH", 500, "UpdateTable")
+	})
+
+	Convey("execute update in a table with invalid where clause using PATCH", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		doRequest(server.URL+"/prest/public/test?0name=nuveo", r, "PATCH", 400, "UpdateTable")
+	})
 }
 
 func TestSelectFromViews(t *testing.T) {
