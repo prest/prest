@@ -81,27 +81,60 @@ func TestSelectFromTables(t *testing.T) {
 	router.HandleFunc("/{database}/{schema}/{table}", SelectFromTables).Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
+
 	Convey("execute select in a table without custom where clause", t, func() {
 		doValidGetRequest(server.URL+"/prest/public/test", "SelectFromTables")
 	})
+
 	Convey("execute select in a table with count all fields *", t, func() {
 		doValidGetRequest(server.URL+"/prest/public/test?_count=*", "SelectFromTables")
 	})
+
 	Convey("execute select in a table with count function", t, func() {
 		doValidGetRequest(server.URL+"/prest/public/test?_count=name", "SelectFromTables")
 	})
+
 	Convey("execute select in a table with custom where clause", t, func() {
 		doValidGetRequest(server.URL+"/prest/public/test?name=nuveo", "SelectFromTables")
 	})
+
 	Convey("execute select in a table with custom join clause", t, func() {
 		doValidGetRequest(server.URL+"/prest/public/test?_join=inner:test2:test2.name:eq:test.name", "SelectFromTables")
 	})
+
+	Convey("execute select in a table with invalid join clause", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/prest/public/test?_join=inner:test2:test2.name", r, "GET", 400, "SelectFromTables")
+	})
+
+	Convey("execute select in a table with invalid where clause", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/prest/public/test?0name=nuveo", r, "GET", 400, "SelectFromTables")
+	})
+
+	Convey("execute select in a table with order clause", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/prest/public/test?_order=name", r, "GET", 200, "SelectFromTables")
+	})
+
+	Convey("execute select in a table with order clause empty", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/prest/public/test?_order=", r, "GET", 200, "SelectFromTables")
+	})
+
+	Convey("execute select in a table with invalid pagination clause", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/prest/public/test?name=nuveo&_page=A", r, "GET", 400, "SelectFromTables")
+	})
+
 	Convey("execute select in a table with custom where clause and pagination", t, func() {
 		doValidGetRequest(server.URL+"/prest/public/test?name=nuveo&_page=1&_page_size=20", "SelectFromTables")
 	})
+
 	Convey("execute select in a table with select fields", t, func() {
 		doValidGetRequest(server.URL+"/prest/public/test5?_select=celphone,name", "SelectFromTables")
 	})
+
 	Convey("execute select in a table with select *", t, func() {
 		doValidGetRequest(server.URL+"/prest/public/test5?_select=*", "SelectFromTables")
 	})
