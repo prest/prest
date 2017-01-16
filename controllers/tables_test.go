@@ -57,8 +57,21 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 		doValidGetRequest(server.URL+"/prest/public?t.tablename=test", "GetTablesByDatabaseAndSchema")
 	})
 
+	Convey("Get tables by database and schema with custom where invalid clause", t, func() {
+		doValidGetRequest(server.URL+"/prest/public?0t.tablename=test", "GetTablesByDatabaseAndSchema")
+	})
+
+	Convey("Get tables by database and schema with order clause", t, func() {
+		doValidGetRequest(server.URL+"/prest/public?t.tablename=test&_order=t.tablename", "GetTablesByDatabaseAndSchema")
+	})
+
 	Convey("Get tables by database and schema with custom where clause and pagination", t, func() {
 		doValidGetRequest(server.URL+"/prest/public?t.tablename=test&_page=1&_page_size=20", "GetTablesByDatabaseAndSchema")
+	})
+
+	Convey("Get tables by databases and schema with custom where and pagination invalid", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/prest/public?t.tablename=test&_page=A&_page_size=20", r, "GET", 400, "GetTablesByDatabasesAndSchemas")
 	})
 }
 
