@@ -26,7 +26,7 @@ func TestGetDatabases(t *testing.T) {
 		validate(w, r, GetDatabases, "TestGetDatabases")
 	})
 
-	Convey("Get databases with custom where clause", t, func() {
+	Convey("Get databases with custom order clause", t, func() {
 		r, err := http.NewRequest("GET", "/databases?_order=datname", nil)
 		w := httptest.NewRecorder()
 		So(err, ShouldBeNil)
