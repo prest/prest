@@ -200,11 +200,33 @@ func TestDeleteFromTable(t *testing.T) {
 	router.HandleFunc("/{database}/{schema}/{table}", DeleteFromTable).Methods("DELETE")
 	server := httptest.NewServer(router)
 	defer server.Close()
+
 	Convey("excute delete in a table without where clause", t, func() {
 		doValidDeleteRequest(server.URL+"/prest/public/test", "DeleteFromTable")
 	})
+
 	Convey("excute delete in a table with where clause", t, func() {
 		doValidDeleteRequest(server.URL+"/prest/public/test?name=nuveo", "DeleteFromTable")
+	})
+
+	Convey("execute delete in a table with invalid where clause", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/prest/public/test?0name=nuveo", r, "DELETE", 400, "DeleteFromTables")
+	})
+
+	Convey("execute delete in a table with invalid database", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/Oprest/public/test?name=nuveo", r, "DELETE", 500, "DeleteFromTables")
+	})
+
+	Convey("execute delete in a table with invalid schema", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/prest/0public/test?name=nuveo", r, "DELETE", 500, "DeleteFromTables")
+	})
+
+	Convey("execute delete in a table with invalid table", t, func() {
+		r := api.Request{}
+		doRequest(server.URL+"/prest/public/0test?name=nuveo", r, "DELETE", 500, "DeleteFromTables")
 	})
 }
 
