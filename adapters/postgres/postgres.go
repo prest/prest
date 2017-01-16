@@ -26,16 +26,12 @@ const (
 
 // chkInvalidIdentifier return true if identifier is invalid
 func chkInvalidIdentifier(identifer string) bool {
-	if len(identifer) > 63 ||
-		unicode.IsDigit([]rune(identifer)[0]) {
+	if len(identifer) > 63 || unicode.IsDigit([]rune(identifer)[0]) {
 		return true
 	}
 
 	for _, v := range identifer {
-		if !unicode.IsLetter(v) &&
-			!unicode.IsDigit(v) &&
-			v != '_' &&
-			v != '.' {
+		if !unicode.IsLetter(v) && !unicode.IsDigit(v) && v != '_' && v != '.' && v != '-' {
 			return true
 		}
 	}
@@ -67,8 +63,6 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 						err = errors.New("Invalid identifier")
 						return
 					}
-					whereKey = append(whereKey, fmt.Sprintf("%s=$%d", keyInfo[0], pid))
-					whereValues = append(whereValues, val[0])
 				}
 				continue
 			}
@@ -126,24 +120,32 @@ func SchemaClause(req *http.Request) (query string) {
 // JoinByRequest implements join in queries
 func JoinByRequest(r *http.Request) (values []string, err error) {
 	joinValues := []string{}
-	joinStatements := r.URL.Query()["_join"]
+	queries := r.URL.Query()
 
-	for _, j := range joinStatements {
-		joinArgs := strings.Split(j, ":")
-
-		if len(joinArgs) != 5 {
-			err = errors.New("Invalid number of arguments in join statement")
-			return nil, err
-		}
-
-		op, err := GetQueryOperator(joinArgs[3])
-		if err != nil {
-			return nil, err
-		}
-
-		joinQuery := fmt.Sprintf(" %s JOIN %s ON %s %s %s ", strings.ToUpper(joinArgs[0]), joinArgs[1], joinArgs[2], op, joinArgs[4])
-		joinValues = append(joinValues, joinQuery)
+	if queries.Get("_join") == "" {
+		return
 	}
+
+	joinArgs := strings.Split(queries.Get("_join"), ":")
+	chk := chkInvalidIdentifier
+
+	if len(joinArgs) != 5 {
+		err = errors.New("Invalid number of arguments in join statement")
+		return
+	}
+
+	if chk(joinArgs[1]) || chk(joinArgs[2]) || chk(joinArgs[4]) {
+		err = errors.New("Invalid identifier")
+		return nil, err
+	}
+
+	op, err := GetQueryOperator(joinArgs[3])
+	if err != nil {
+		return nil, err
+	}
+
+	joinQuery := fmt.Sprintf(" %s JOIN %s ON %s %s %s ", strings.ToUpper(joinArgs[0]), joinArgs[1], joinArgs[2], op, joinArgs[4])
+	joinValues = append(joinValues, joinQuery)
 
 	return joinValues, nil
 }
@@ -152,22 +154,30 @@ func SelectFields(fields []string) (string, error) {
 	if len(fields) == 0 {
 		return "", errors.New("You must select at least one field.")
 	}
+
+	for _, field := range fields {
+		if field != "*" && chkInvalidIdentifier(field) {
+			return "", fmt.Errorf("invalid identifier %s\n", field)
+		}
+	}
+
 	return fmt.Sprintf("SELECT %s FROM", strings.Join(fields, ",")), nil
 }
 
 // OrderByRequest implements ORDER BY in queries
-func OrderByRequest(r *http.Request) (string, error) {
-	var values string
-	reqOrder := r.URL.Query()["_order"]
+func OrderByRequest(r *http.Request) (values string, err error) {
+	queries := r.URL.Query()
+	reqOrder := queries.Get("_order")
 
-	if len(reqOrder) > 0 {
+	if reqOrder != "" {
 		values = " ORDER BY "
-
-		// get last order in request url
-		ordering := reqOrder[len(reqOrder)-1]
-		orderingArr := strings.Split(ordering, ",")
+		orderingArr := strings.Split(reqOrder, ",")
 
 		for i, s := range orderingArr {
+			if chkInvalidIdentifier(s) {
+				err = errors.New("Invalid identifier")
+				return
+			}
 			field := s
 
 			if strings.HasPrefix(s, "-") {
@@ -186,13 +196,21 @@ func OrderByRequest(r *http.Request) (string, error) {
 }
 
 // CountByRequest implements COUNT(fields) OPERTATION
-func CountByRequest(req *http.Request) (countQuery string) {
+func CountByRequest(req *http.Request) (countQuery string, err error) {
 	queries := req.URL.Query()
 	countFields := queries.Get("_count")
 
 	if countFields == "" {
 		return
 	}
+
+	for _, field := range strings.Split(countFields, ",") {
+		if field != "*" && chkInvalidIdentifier(field) {
+			err = errors.New("Invalid identifier")
+			return
+		}
+	}
+
 	countQuery = fmt.Sprintf("SELECT COUNT(%s) FROM", countFields)
 
 	return
@@ -200,14 +218,7 @@ func CountByRequest(req *http.Request) (countQuery string) {
 
 // Query process queries
 func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
-	validQuery := chkInvalidIdentifier(SQL)
-	if !validQuery {
-		err = errors.New("Invalid characters in the query")
-		return
-	}
-
 	db := connection.MustGet()
-
 	prepare, err := db.Prepare(SQL)
 
 	if err != nil {
@@ -255,11 +266,6 @@ func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 
 // QueryCount process queries with count
 func QueryCount(SQL string, params ...interface{}) ([]byte, error) {
-	validQuery := chkInvalidIdentifier(SQL)
-	if !validQuery {
-		return nil, errors.New("Invalid characters in the query")
-	}
-
 	db := connection.MustGet()
 	prepare, err := db.Prepare(SQL)
 	if err != nil {
