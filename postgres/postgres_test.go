@@ -39,11 +39,42 @@ func TestWhereByRequest(t *testing.T) {
 		So(values, ShouldContain, "nuveo")
 		So(values, ShouldContain, "bla")
 	})
+
+	Convey("Where by request without jsonb key", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?name=nuveo&data->>description:bla", nil)
+		So(err, ShouldBeNil)
+
+		_, _, err = WhereByRequest(r, 1)
+		So(err, ShouldNotBeNil)
+	})
+
+	Convey("Where by request with jsonb field invalid", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?name=nuveo&data->>0description:jsonb=bla", nil)
+		So(err, ShouldBeNil)
+
+		_, _, err = WhereByRequest(r, 1)
+		So(err, ShouldNotBeNil)
+	})
+
+	Convey("Where by request with field invalid", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?0name=prest", nil)
+		So(err, ShouldBeNil)
+
+		_, _, err = WhereByRequest(r, 1)
+		So(err, ShouldNotBeNil)
+	})
 }
 
 func TestQuery(t *testing.T) {
 	Convey("Query execution", t, func() {
 		sql := "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name ASC"
+		json, err := Query(sql)
+		So(err, ShouldBeNil)
+		So(len(json), ShouldBeGreaterThan, 0)
+	})
+
+	Convey("Query execution 2", t, func() {
+		sql := "SELECT number FROM prest.public.test2 ORDER BY number ASC"
 		json, err := Query(sql)
 		So(err, ShouldBeNil)
 		So(len(json), ShouldBeGreaterThan, 0)
@@ -63,6 +94,13 @@ func TestQuery(t *testing.T) {
 		So(json, ShouldBeNil)
 	})
 
+	Convey("Query with invalid clause", t, func() {
+		sql := "0SELECT schema_name FROM information_schema.schemata WHERE schema_name = $1 ORDER BY schema_name ASC"
+		json, err := Query(sql, "public")
+		So(err, ShouldNotBeNil)
+		So(json, ShouldBeNil)
+	})
+
 }
 
 func TestPaginateIfPossible(t *testing.T) {
@@ -73,14 +111,38 @@ func TestPaginateIfPossible(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(where, ShouldContainSubstring, "LIMIT 20 OFFSET(1 - 1) * 20")
 	})
+
+	Convey("Paginate with invalid page value", t, func() {
+		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool&_page=X&_page_size=20", nil)
+		So(err, ShouldBeNil)
+		where, err := PaginateIfPossible(r)
+		So(err, ShouldNotBeNil)
+		So(where, ShouldContainSubstring, "")
+	})
+
+	Convey("Paginate with invalid page size value", t, func() {
+		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool&_page=1&_page_size=K", nil)
+		So(err, ShouldBeNil)
+		where, err := PaginateIfPossible(r)
+		So(err, ShouldNotBeNil)
+		So(where, ShouldContainSubstring, "")
+	})
+
+	Convey("Invalid Paginate if possible", t, func() {
+		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool", nil)
+		So(err, ShouldBeNil)
+		where, err := PaginateIfPossible(r)
+		So(err, ShouldBeNil)
+		So(where, ShouldContainSubstring, "")
+	})
 }
 
 func TestInsert(t *testing.T) {
 	config.InitConf()
 	Convey("Insert data into a table", t, func() {
 		m := make(map[string]interface{}, 0)
-		m["name"] = "prest-test-insert"
 
+		m["name"] = "prest-test-insert"
 		r := api.Request{
 			Data: m,
 		}
@@ -106,6 +168,62 @@ func TestInsert(t *testing.T) {
 		So(err, ShouldNotBeNil)
 	})
 
+	Convey("Insert data into a database invalid", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		_, err := Insert("0prest", "public", "test3", r)
+		So(err, ShouldNotBeNil)
+	})
+
+	Convey("Insert data into a schema invalid", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		_, err := Insert("prest", "0public", "test3", r)
+		So(err, ShouldNotBeNil)
+	})
+
+	Convey("Insert data into a table invalid", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		_, err := Insert("prest", "public", "0test3", r)
+		So(err, ShouldNotBeNil)
+	})
+
+	Convey("Insert data into a request invalid", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["0name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		_, err := Insert("prest", "public", "test3", r)
+		So(err, ShouldNotBeNil)
+	})
+
+	Convey("Insert data with more columns in table", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest-test-insert"
+		m["celphone"] = "88888888888"
+		r := api.Request{
+			Data: m,
+		}
+		jsonByte, err := Insert("prest", "public", "test5", r)
+		So(err, ShouldBeNil)
+		So(len(jsonByte), ShouldBeGreaterThan, 0)
+	})
+
 	Convey("Try to insert data in non-permitted table", t, func() {
 		m := make(map[string]interface{}, 0)
 		m["name"] = "prest-no-write"
@@ -126,6 +244,25 @@ func TestDelete(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(len(json), ShouldBeGreaterThan, 0)
 	})
+
+	Convey("Try Delete data from invalid database", t, func() {
+		json, err := Delete("0prest", "public", "test", "name=$1", []interface{}{"nuveo"})
+		So(err, ShouldNotBeNil)
+		So(len(json), ShouldBeLessThanOrEqualTo, 0)
+	})
+
+	Convey("Try Delete data from invalid schema", t, func() {
+		json, err := Delete("prest", "0public", "test", "name=$1", []interface{}{"nuveo"})
+		So(err, ShouldNotBeNil)
+		So(len(json), ShouldBeLessThanOrEqualTo, 0)
+	})
+
+	Convey("Try Delete data from invalid table", t, func() {
+		json, err := Delete("prest", "0public", "test", "name=$1", []interface{}{"nuveo"})
+		So(err, ShouldNotBeNil)
+		So(len(json), ShouldBeLessThanOrEqualTo, 0)
+	})
+
 	Convey("Delete permission", t, func() {
 		json, err := Delete("prest", "public", "test_readonly_access", "name=$1", []interface{}{"test01"})
 		So(err, ShouldNotBeNil)
@@ -148,16 +285,39 @@ func TestUpdate(t *testing.T) {
 		So(len(json), ShouldBeGreaterThan, 0)
 	})
 
-	Convey("Update data into a table with constraints", t, func() {
+	Convey("Update data into a invalid database", t, func() {
 		m := make(map[string]interface{}, 0)
 		m["name"] = "prest"
 
 		r := api.Request{
 			Data: m,
 		}
-		_, err := Update("prest", "public", "test3", "name=$1", []interface{}{"prest tester"}, r)
+		_, err := Update("0prest", "public", "test3", "name=$1", []interface{}{"prest tester"}, r)
 		So(err, ShouldNotBeNil)
 	})
+
+	Convey("Update data into a invalid schema", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		_, err := Update("prest", "0public", "test3", "name=$1", []interface{}{"prest tester"}, r)
+		So(err, ShouldNotBeNil)
+	})
+
+	Convey("Update data into a invalid table", t, func() {
+		m := make(map[string]interface{}, 0)
+		m["name"] = "prest"
+
+		r := api.Request{
+			Data: m,
+		}
+		_, err := Update("prest", "public", "0test3", "name=$1", []interface{}{"prest tester"}, r)
+		So(err, ShouldNotBeNil)
+	})
+
 	Convey("Update permission", t, func() {
 		m := make(map[string]interface{}, 0)
 		m["name"] = "prest"
@@ -205,6 +365,16 @@ func TestJoinByRequest(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(joinStr, ShouldContainSubstring, "INNER JOIN test2 ON test2.name = test.name")
 	})
+
+	Convey("Join empty param", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?_join", nil)
+		So(err, ShouldBeNil)
+
+		j, err := JoinByRequest(r)
+		So(err, ShouldBeNil)
+		So(j, ShouldBeNil)
+	})
+
 	Convey("Join missing param", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq", nil)
 		So(err, ShouldBeNil)
@@ -219,6 +389,15 @@ func TestJoinByRequest(t *testing.T) {
 		_, err = JoinByRequest(r)
 		So(err, ShouldNotBeNil)
 	})
+
+	Convey("Join invalid fields", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:0test2:test2.name:notexist:test.name", nil)
+		So(err, ShouldBeNil)
+
+		_, err = JoinByRequest(r)
+		So(err, ShouldNotBeNil)
+	})
+
 	Convey("Join with where", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name&name=nuveo&data->>description:jsonb=bla", nil)
 		So(err, ShouldBeNil)
@@ -245,24 +424,36 @@ func TestCountFields(t *testing.T) {
 		r, err := http.NewRequest("GET", "/prest/public/test5?_count=celphone", nil)
 		So(err, ShouldBeNil)
 
-		countQuery := CountByRequest(r)
+		countQuery, err := CountByRequest(r)
 		So(countQuery, ShouldContainSubstring, "SELECT COUNT(celphone) FROM")
+		So(err, ShouldBeNil)
 	})
 
 	Convey("Count all from table", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test5?_count=*", nil)
 		So(err, ShouldBeNil)
 
-		countQuery := CountByRequest(r)
+		countQuery, err := CountByRequest(r)
 		So(countQuery, ShouldContainSubstring, "SELECT COUNT(*) FROM")
+		So(err, ShouldBeNil)
 	})
 
 	Convey("Try Count with empty '_count' field", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test5?_count=", nil)
 		So(err, ShouldBeNil)
 
-		countQuery := CountByRequest(r)
+		countQuery, err := CountByRequest(r)
 		So(countQuery, ShouldEqual, "")
+		So(err, ShouldBeNil)
+	})
+
+	Convey("Try Count with invalid columns", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?_count=celphone,0name", nil)
+		So(err, ShouldBeNil)
+
+		countQuery, err := CountByRequest(r)
+		So(countQuery, ShouldEqual, "")
+		So(err, ShouldNotBeNil)
 	})
 }
 
@@ -352,6 +543,24 @@ func TestOrderByRequest(t *testing.T) {
 		So(order, ShouldContainSubstring, "name")
 		So(order, ShouldContainSubstring, "number DESC")
 	})
+
+	Convey("Query ORDER BY empty", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?_order=", nil)
+		So(err, ShouldBeNil)
+
+		order, err := OrderByRequest(r)
+		So(err, ShouldBeNil)
+		So(order, ShouldContainSubstring, "")
+	})
+
+	Convey("Query ORDER BY invalid column", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?_order=0name", nil)
+		So(err, ShouldBeNil)
+
+		order, err := OrderByRequest(r)
+		So(err, ShouldNotBeNil)
+		So(order, ShouldContainSubstring, "")
+	})
 }
 
 func TestTablePermissions(t *testing.T) {
@@ -420,6 +629,7 @@ func TestSelectFields(t *testing.T) {
 		So(s, ShouldContainSubstring, "SELECT test FROM")
 		So(err, ShouldBeNil)
 	})
+
 	Convey("Two fields", t, func() {
 		s, err := SelectFields([]string{"test", "test02"})
 		So(s, ShouldContainSubstring, "test")
@@ -428,6 +638,12 @@ func TestSelectFields(t *testing.T) {
 		So(s, ShouldContainSubstring, "FROM")
 		So(err, ShouldBeNil)
 	})
+
+	Convey("Invalid fields", t, func() {
+		_, err := SelectFields([]string{"0test", "test02"})
+		So(err, ShouldNotBeNil)
+	})
+
 	Convey("Empty fields", t, func() {
 		_, err := SelectFields([]string{})
 		So(err, ShouldNotBeNil)
