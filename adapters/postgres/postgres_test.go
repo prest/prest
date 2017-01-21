@@ -201,12 +201,9 @@ func TestInsert(t *testing.T) {
 			Data: m,
 		}
 		jsonByte, err := Insert("prest", "public", "test6", r)
-		So(err, ShouldBeNil)
-		So(len(jsonByte), ShouldBeGreaterThan, 0)
-
-		var toJSON map[string]interface{}
-		err = json.Unmarshal(jsonByte, &toJSON)
 		So(err, ShouldNotBeNil)
+		So(len(jsonByte), ShouldEqual, 0)
+
 	})
 
 	Convey("Insert data into a table with contraints", t, func() {
