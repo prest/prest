@@ -362,6 +362,10 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 			return
 		}
 	}
+	err = pkRow.Close()
+	if err != nil {
+		return
+	}
 
 	sql := fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s)", database, schema, table, colsName, colPlaceholder)
 	if pkName != "" {
