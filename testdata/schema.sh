@@ -5,6 +5,7 @@ psql prest -c "create table test2(name text, number integer);" -U postgres
 psql prest -c "create table test3(id serial, name text UNIQUE);" -U postgres
 psql prest -c "create table test4(id serial primary key, name text UNIQUE);" -U postgres
 psql prest -c "create table test5(id serial, name text, celphone text);" -U postgres
+psql prest -c "create table test6(nuveo serial primary key, name text, celphone text);" -U postgres
 psql prest -c "insert into test (name) values ('prest tester');" -U postgres
 psql prest -c "insert into test (name) values ('tester02');" -U postgres
 psql prest -c "insert into test2 (name, number) values ('tester02', 2);" -U postgres
