@@ -51,3 +51,8 @@ restrict = true  # can access only the tables listed below
     permissions = ["read"]
     fields = ["id"]
 
+    [[access.tables]]
+    name = "test6"
+    permissions = ["read", "write", "delete"]
+    fields = ["nuveo", "name"]
+
