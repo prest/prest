@@ -193,6 +193,22 @@ func TestInsert(t *testing.T) {
 		So(toJSON["name"], ShouldEqual, "prest-test-insert")
 	})
 
+	Convey("Insert invalid data into a table with primary key", t, func() {
+		m := make(map[string]interface{}, 0)
+
+		m["prest"] = "prest-test-insert"
+		r := api.Request{
+			Data: m,
+		}
+		jsonByte, err := Insert("prest", "public", "test6", r)
+		So(err, ShouldBeNil)
+		So(len(jsonByte), ShouldBeGreaterThan, 0)
+
+		var toJSON map[string]interface{}
+		err = json.Unmarshal(jsonByte, &toJSON)
+		So(err, ShouldNotBeNil)
+	})
+
 	Convey("Insert data into a table with contraints", t, func() {
 		m := make(map[string]interface{}, 0)
 		m["name"] = "prest"
