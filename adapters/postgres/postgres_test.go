@@ -139,7 +139,7 @@ func TestPaginateIfPossible(t *testing.T) {
 
 func TestInsert(t *testing.T) {
 	config.InitConf()
-	Convey("Insert data into a table", t, func() {
+	Convey("Insert data into a table with primary key", t, func() {
 		m := make(map[string]interface{}, 0)
 
 		m["name"] = "prest-test-insert"
@@ -155,6 +155,24 @@ func TestInsert(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		So(toJSON["id"], ShouldEqual, 1)
+	})
+
+	Convey("Insert data into a table without primary key", t, func() {
+		m := make(map[string]interface{}, 0)
+
+		m["name"] = "prest-test-insert"
+		r := api.Request{
+			Data: m,
+		}
+		jsonByte, err := Insert("prest", "public", "test3", r)
+		So(err, ShouldBeNil)
+		So(len(jsonByte), ShouldBeGreaterThan, 0)
+
+		var toJSON map[string]interface{}
+		err = json.Unmarshal(jsonByte, &toJSON)
+		So(err, ShouldBeNil)
+
+		So(toJSON["name"], ShouldEqual, "prest-test-insert")
 	})
 
 	Convey("Insert data into a table with contraints", t, func() {
