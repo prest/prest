@@ -385,9 +385,14 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 	}
 
 	var lastID interface{}
-	result := stmt.QueryRow(valuesAux...)
 	if pkName != "" {
+		result := stmt.QueryRow(valuesAux...)
 		err = result.Scan(&lastID)
+		if err != nil {
+			return
+		}
+	} else {
+		_, err = stmt.Exec(valuesAux...)
 		if err != nil {
 			return
 		}
