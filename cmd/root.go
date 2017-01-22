@@ -55,6 +55,7 @@ func app() {
 	r.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
 	r.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
 	r.HandleFunc("/tables", controllers.GetTables).Methods("GET")
+	r.HandleFunc("/_QUERIES/{queriesLocation}/{script}", controllers.ExecuteFromScripts)
 	r.HandleFunc("/{database}/{schema}", controllers.GetTablesByDatabaseAndSchema).Methods("GET")
 	r.HandleFunc("/{database}/{schema}/{table}", controllers.SelectFromTables).Methods("GET")
 	r.HandleFunc("/{database}/{schema}/{table}", controllers.InsertInTables).Methods("POST")

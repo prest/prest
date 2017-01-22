@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"os/user"
+	"path/filepath"
 	"strings"
 
 	"os"
@@ -33,6 +35,7 @@ type Prest struct {
 	PGMAxOpenConn  int
 	JWTKey         string
 	MigrationsPath string
+	QueriesPath    string
 	AccessConf     AccessConf
 }
 
@@ -58,6 +61,13 @@ func viperCfg() {
 	viper.SetDefault("pg.port", 5432)
 	viper.SetDefault("pg.maxidleconn", 10)
 	viper.SetDefault("pg.maxopenconn", 10)
+
+	user, err := user.Current()
+	if err != nil {
+		panic(err)
+	}
+
+	viper.SetDefault("queries.location", filepath.Join(user.HomeDir, "queries"))
 }
 
 // Parse pREST config
@@ -74,6 +84,7 @@ func Parse(cfg *Prest) (err error) {
 	cfg.JWTKey = viper.GetString("jwt.key")
 	cfg.MigrationsPath = viper.GetString("migrations")
 	cfg.AccessConf.Restrict = viper.GetBool("access.restrict")
+	cfg.QueriesPath = viper.GetString("queries.location")
 
 	var t []TablesConf
 	err = viper.UnmarshalKey("access.tables", &t)
@@ -94,5 +105,9 @@ func InitConf() {
 
 	if !prestConfig.AccessConf.Restrict {
 		fmt.Println("You are running pREST in public mode.")
+	}
+
+	if _, err := os.Stat(PREST_CONF.QueriesPath); os.IsNotExist(err) {
+		os.MkdirAll(PREST_CONF.QueriesPath, 0777)
 	}
 }
