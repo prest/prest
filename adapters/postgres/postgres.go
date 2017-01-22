@@ -150,6 +150,7 @@ func JoinByRequest(r *http.Request) (values []string, err error) {
 	return joinValues, nil
 }
 
+// SelectFields query
 func SelectFields(fields []string) (string, error) {
 	if len(fields) == 0 {
 		return "", errors.New("You must select at least one field.")
@@ -339,14 +340,36 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 		}
 		colPlaceholder += fmt.Sprintf("$%d", i)
 	}
-
-	sql := fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s) RETURNING id;", database, schema, table, colsName, colPlaceholder)
-
 	db := connection.MustGet()
 	tx, err := db.Begin()
 	if err != nil {
 		log.Printf("could not begin transaction: %v\n", err)
 		return
+	}
+	stmtPK, err := tx.Prepare(statements.SelectPKTableName)
+	if err != nil {
+		log.Printf("could not prepare sql: %s\n Error: %v\n", statements.SelectPKTableName, err)
+		return
+	}
+	var pkName string
+	pkRow, err := stmtPK.Query(table)
+	if err != nil {
+		return
+	}
+	for pkRow.Next() {
+		err = pkRow.Scan(&pkName)
+		if err != nil {
+			return
+		}
+	}
+	err = pkRow.Close()
+	if err != nil {
+		return
+	}
+
+	sql := fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s)", database, schema, table, colsName, colPlaceholder)
+	if pkName != "" {
+		sql = fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s) RETURNING %s", database, schema, table, colsName, colPlaceholder, pkName)
 	}
 
 	defer func() {
@@ -370,18 +393,27 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 		valuesAux = append(valuesAux, values[i])
 	}
 
-	var lastID int
-	result := stmt.QueryRow(valuesAux...)
-	err = result.Scan(&lastID)
-	if err != nil {
-		return
+	var lastID interface{}
+	if pkName != "" {
+		result := stmt.QueryRow(valuesAux...)
+		err = result.Scan(&lastID)
+		if err != nil {
+			return
+		}
+	} else {
+		_, err = stmt.Exec(valuesAux...)
+		if err != nil {
+			return
+		}
 	}
 
 	data := make(map[string]interface{})
 	for i := range fields {
 		data[fields[i]] = values[i]
 	}
-	data["id"] = lastID
+	if pkName != "" {
+		data[pkName] = lastID
+	}
 	jsonData, err = json.Marshal(data)
 	return
 }
@@ -551,7 +583,7 @@ func GetQueryOperator(op string) (string, error) {
 
 }
 
-// get tables permissions based in prest configuration
+// TablePermissions get tables permissions based in prest configuration
 func TablePermissions(table string, op string) bool {
 	restrict := config.PREST_CONF.AccessConf.Restrict
 	if !restrict {
@@ -571,7 +603,7 @@ func TablePermissions(table string, op string) bool {
 	return false
 }
 
-// get fields permissions based in prest configuration
+// FieldsPermissions get fields permissions based in prest configuration
 func FieldsPermissions(table string, cols []string, op string) []string {
 	restrict := config.PREST_CONF.AccessConf.Restrict
 	if !restrict {

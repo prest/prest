@@ -3,8 +3,9 @@ psql -c "create database prest;" -U postgres
 psql prest -c "create table test(id serial, name text);" -U postgres
 psql prest -c "create table test2(name text, number integer);" -U postgres
 psql prest -c "create table test3(id serial, name text UNIQUE);" -U postgres
-psql prest -c "create table test4(id serial, name text UNIQUE);" -U postgres
+psql prest -c "create table test4(id serial primary key, name text UNIQUE);" -U postgres
 psql prest -c "create table test5(id serial, name text, celphone text);" -U postgres
+psql prest -c "create table test6(nuveo serial primary key, name text, celphone text);" -U postgres
 psql prest -c "create table test7(id serial, name text, surname text);" -U postgres
 psql prest -c "insert into test (name) values ('prest tester');" -U postgres
 psql prest -c "insert into test (name) values ('tester02');" -U postgres

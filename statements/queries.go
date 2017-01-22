@@ -108,6 +108,17 @@ ORDER BY
 SELECT
 	*
 FROM`
+
+	// SelectPKTableName query
+	SelectPKTableName = `
+SELECT a.attname AS chave_pk
+FROM pg_class c
+  INNER JOIN pg_attribute a ON (c.oid = a.attrelid)
+  INNER JOIN pg_index i ON (c.oid = i.indrelid)
+WHERE
+  i.indkey[0] = a.attnum AND
+  i.indisprimary = 't' AND
+  c.relname = $1`
 )
 
 var (
