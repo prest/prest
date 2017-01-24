@@ -1,4 +1,4 @@
-package cmd
+package middlewares
 
 import (
 	"strings"
