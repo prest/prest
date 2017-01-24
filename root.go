@@ -2,16 +2,14 @@ package cmd
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 
-	"github.com/auth0/go-jwt-middleware"
-	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 	// postgres driver for migrate
 	_ "github.com/mattes/migrate/driver/postgres"
 	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/controllers"
+	"github.com/nuveo/prest/middlewares"
 	"github.com/spf13/cobra"
 	"github.com/urfave/negroni"
 )
@@ -47,9 +45,10 @@ func app() {
 	config.Parse(&cfg)
 
 	n := negroni.Classic()
-	n.Use(negroni.HandlerFunc(handlerSet))
+	n.Use(negroni.HandlerFunc(middlewares.HandlerSet))
+	n.Use(negroni.HandlerFunc(middlewares.AccessControl))
 	if cfg.JWTKey != "" {
-		n.Use(jwtMiddleware(cfg.JWTKey))
+		n.Use(middlewares.JwtMiddleware(cfg.JWTKey))
 	}
 	r := mux.NewRouter()
 	r.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
@@ -64,19 +63,4 @@ func app() {
 
 	n.UseHandler(r)
 	n.Run(fmt.Sprintf(":%v", cfg.HTTPPort))
-}
-
-func handlerSet(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	w.Header().Set("Content-Type", "application/json")
-	next(w, r)
-}
-
-func jwtMiddleware(key string) negroni.Handler {
-	jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
-		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
-			return []byte(key), nil
-		},
-		SigningMethod: jwt.SigningMethodHS256,
-	})
-	return negroni.HandlerFunc(jwtMiddleware.HandlerWithNext)
 }
