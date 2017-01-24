@@ -309,14 +309,7 @@ func PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 
 // Insert execute insert sql into a table
 func Insert(database, schema, table string, body api.Request) (jsonData []byte, err error) {
-	allowed := TablePermissions(table, "write")
-	if !allowed {
-		return nil, errors.New("Insuficient table permissions")
-	}
-
-	if chkInvalidIdentifier(database) ||
-		chkInvalidIdentifier(schema) ||
-		chkInvalidIdentifier(table) {
+	if chkInvalidIdentifier(database) || chkInvalidIdentifier(schema) || chkInvalidIdentifier(table) {
 		err = errors.New("Insert: Invalid identifier")
 		return
 	}
@@ -422,17 +415,10 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 
 // Delete execute delete sql into a table
 func Delete(database, schema, table, where string, whereValues []interface{}) (jsonData []byte, err error) {
-	allowed := TablePermissions(table, "delete")
-	if !allowed {
-		return nil, errors.New("Insuficient table permissions")
-	}
-
 	var result sql.Result
 	var rowsAffected int64
 
-	if chkInvalidIdentifier(database) ||
-		chkInvalidIdentifier(schema) ||
-		chkInvalidIdentifier(table) {
+	if chkInvalidIdentifier(database) || chkInvalidIdentifier(schema) || chkInvalidIdentifier(table) {
 		err = errors.New("Delete: Invalid identifier")
 		return
 	}
@@ -482,14 +468,7 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 
 // Update execute update sql into a table
 func Update(database, schema, table, where string, whereValues []interface{}, body api.Request) (jsonData []byte, err error) {
-	allowed := TablePermissions(table, "write")
-	if !allowed {
-		return nil, errors.New("Insuficient table permissions")
-	}
-
-	if chkInvalidIdentifier(database) ||
-		chkInvalidIdentifier(schema) ||
-		chkInvalidIdentifier(table) {
+	if chkInvalidIdentifier(database) || chkInvalidIdentifier(schema) || chkInvalidIdentifier(table) {
 		err = errors.New("Update: Invalid identifier")
 		return
 	}
