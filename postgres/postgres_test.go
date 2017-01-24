@@ -272,18 +272,6 @@ func TestInsert(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(len(jsonByte), ShouldBeGreaterThan, 0)
 	})
-
-	Convey("Try to insert data in non-permitted table", t, func() {
-		m := make(map[string]interface{}, 0)
-		m["name"] = "prest-no-write"
-
-		r := api.Request{
-			Data: m,
-		}
-		jsonByte, err := Insert("prest", "public", "test_readonly_access", r)
-		So(err, ShouldNotBeNil)
-		So(len(jsonByte), ShouldEqual, 0)
-	})
 }
 
 func TestDelete(t *testing.T) {
@@ -308,12 +296,6 @@ func TestDelete(t *testing.T) {
 
 	Convey("Try Delete data from invalid table", t, func() {
 		json, err := Delete("prest", "0public", "test", "name=$1", []interface{}{"nuveo"})
-		So(err, ShouldNotBeNil)
-		So(len(json), ShouldBeLessThanOrEqualTo, 0)
-	})
-
-	Convey("Delete permission", t, func() {
-		json, err := Delete("prest", "public", "test_readonly_access", "name=$1", []interface{}{"test01"})
 		So(err, ShouldNotBeNil)
 		So(len(json), ShouldBeLessThanOrEqualTo, 0)
 	})
@@ -365,18 +347,6 @@ func TestUpdate(t *testing.T) {
 		}
 		_, err := Update("prest", "public", "0test3", "name=$1", []interface{}{"prest tester"}, r)
 		So(err, ShouldNotBeNil)
-	})
-
-	Convey("Update permission", t, func() {
-		m := make(map[string]interface{}, 0)
-		m["name"] = "prest"
-
-		r := api.Request{
-			Data: m,
-		}
-		json, err := Update("prest", "public", "test_readonly_access", "name=$1", []interface{}{"test01"}, r)
-		So(err, ShouldNotBeNil)
-		So(len(json), ShouldBeLessThanOrEqualTo, 0)
 	})
 }
 
