@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/mux"
 	// postgres driver for migrate
 	_ "github.com/mattes/migrate/driver/postgres"
+	"github.com/nuveo/prest/adapters/postgres"
 	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/controllers"
 	"github.com/spf13/cobra"
@@ -42,12 +43,51 @@ func init() {
 	config.InitConf()
 }
 
+func handlerSet(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	w.Header().Set("Content-Type", "application/json")
+	next(w, r)
+}
+
+// AccessControl is a middleware to handle permissions on tables in pREST
+func AccessControl(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
+	mapPath := getVars(rq.URL.Path)
+	if mapPath == nil {
+		next(rw, rq)
+		return
+	}
+
+	permission := permissionByMethod(rq.Method)
+	if permission == "" {
+		next(rw, rq)
+		return
+	}
+
+	if postgres.TablePermissions(mapPath["table"], permission) {
+		next(rw, rq)
+		return
+	}
+
+	err := fmt.Errorf("required authorization to table %s", mapPath["table"])
+	http.Error(rw, err.Error(), http.StatusUnauthorized)
+}
+
+func jwtMiddleware(key string) negroni.Handler {
+	jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
+		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
+			return []byte(key), nil
+		},
+		SigningMethod: jwt.SigningMethodHS256,
+	})
+	return negroni.HandlerFunc(jwtMiddleware.HandlerWithNext)
+}
+
 func app() {
 	cfg := config.Prest{}
 	config.Parse(&cfg)
 
 	n := negroni.Classic()
 	n.Use(negroni.HandlerFunc(handlerSet))
+	n.Use(negroni.HandlerFunc(AccessControl))
 	if cfg.JWTKey != "" {
 		n.Use(jwtMiddleware(cfg.JWTKey))
 	}
@@ -64,19 +104,4 @@ func app() {
 
 	n.UseHandler(r)
 	n.Run(fmt.Sprintf(":%v", cfg.HTTPPort))
-}
-
-func handlerSet(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	w.Header().Set("Content-Type", "application/json")
-	next(w, r)
-}
-
-func jwtMiddleware(key string) negroni.Handler {
-	jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
-		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
-			return []byte(key), nil
-		},
-		SigningMethod: jwt.SigningMethodHS256,
-	})
-	return negroni.HandlerFunc(jwtMiddleware.HandlerWithNext)
 }
