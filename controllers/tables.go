@@ -116,13 +116,6 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	permission := postgres.TablePermissions(table, "read")
-	if !permission {
-		log.Println("You don't have permission for this action.")
-		http.Error(w, "Unable to parse table in URI", http.StatusMethodNotAllowed)
-		return
-	}
-
 	// get selected columns, "*" if empty "_columns"
 	cols := postgres.ColumnsByRequest(r)
 	cols = postgres.FieldsPermissions(table, cols, "read")
