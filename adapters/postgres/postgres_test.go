@@ -15,7 +15,7 @@ import (
 
 func TestWhereByRequest(t *testing.T) {
 	Convey("Where by request without paginate", t, func() {
-		r, err := http.NewRequest("GET", "/databases?dbname=eq.prest&test=eq.cool", nil)
+		r, err := http.NewRequest("GET", "/databases?dbname=$eq.prest&test=$eq.cool", nil)
 		So(err, ShouldBeNil)
 
 		where, values, err := WhereByRequest(r, 1)
@@ -28,7 +28,7 @@ func TestWhereByRequest(t *testing.T) {
 	})
 
 	Convey("Where by request with jsonb field", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?name=eq.nuveo&data->>description:jsonb=eq.bla", nil)
+		r, err := http.NewRequest("GET", "/prest/public/test?name=$eq.nuveo&data->>description:jsonb=$eq.bla", nil)
 		So(err, ShouldBeNil)
 
 		where, values, err := WhereByRequest(r, 1)
@@ -41,7 +41,7 @@ func TestWhereByRequest(t *testing.T) {
 	})
 
 	Convey("Where by request without jsonb key", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?name=eq.nuveo&data->>description:bla", nil)
+		r, err := http.NewRequest("GET", "/prest/public/test?name=$eq.nuveo&data->>description:bla", nil)
 		So(err, ShouldBeNil)
 
 		_, _, err = WhereByRequest(r, 1)
@@ -49,7 +49,7 @@ func TestWhereByRequest(t *testing.T) {
 	})
 
 	Convey("Where by request with jsonb field invalid", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?name=eq.nuveo&data->>0description:jsonb=eq.bla", nil)
+		r, err := http.NewRequest("GET", "/prest/public/test?name=$eq.nuveo&data->>0description:jsonb=$eq.bla", nil)
 		So(err, ShouldBeNil)
 
 		_, _, err = WhereByRequest(r, 1)
@@ -57,7 +57,7 @@ func TestWhereByRequest(t *testing.T) {
 	})
 
 	Convey("Where by request with field invalid", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?0name=eq.prest", nil)
+		r, err := http.NewRequest("GET", "/prest/public/test?0name=$eq.prest", nil)
 		So(err, ShouldBeNil)
 
 		_, _, err = WhereByRequest(r, 1)
@@ -426,7 +426,7 @@ func TestJoinByRequest(t *testing.T) {
 	})
 
 	Convey("Join with where", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name&name=eq.nuveo&data->>description:jsonb=eq.bla", nil)
+		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name&name=$eq.nuveo&data->>description:jsonb=$eq.bla", nil)
 		So(err, ShouldBeNil)
 
 		join, err := JoinByRequest(r)
