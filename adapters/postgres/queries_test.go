@@ -97,15 +97,6 @@ func TestParseScript(t *testing.T) {
 func TestWriteSQL(t *testing.T) {
 
 	Convey("Execute a valid INSERT sql", t, func() {
-		sql := "INSERT INTO test7 (name) values ($1) RETURNING id"
-		values := []interface{}{"lulu"}
-
-		result, err := WriteSQL(sql, values)
-		So(err, ShouldBeNil)
-		So(len(result), ShouldBeGreaterThan, 0)
-	})
-
-	Convey("Execute an invalid INSERT sql without RETURNING clause", t, func() {
 		sql := "INSERT INTO test7 (name) values ($1)"
 		values := []interface{}{"lulu"}
 
@@ -115,7 +106,7 @@ func TestWriteSQL(t *testing.T) {
 	})
 
 	Convey("Execute an invalid INSERT sql", t, func() {
-		sql := "INSERT INTO test7 (tool) values ($1) RETURNING id"
+		sql := "INSERT INTO test7 (tool) values ($1)"
 		values := []interface{}{"lulu"}
 
 		result, err := WriteSQL(sql, values)
@@ -177,7 +168,7 @@ func TestExecuteScripts(t *testing.T) {
 
 	Convey("Get result with POST HTTP method", t, func() {
 		values := []interface{}{"lala"}
-		result, err := ExecuteScripts("POST", "INSERT INTO test7 (name) VALUES ($1) RETURNING id", values)
+		result, err := ExecuteScripts("POST", "INSERT INTO test7 (name) VALUES ($1)", values)
 		So(len(result), ShouldBeGreaterThan, 0)
 		So(err, ShouldBeNil)
 	})
