@@ -128,12 +128,13 @@ http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD=VALUE (filter)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_renderer=xml (JSON by default)
 
 
-http://127.0.0.1:8000/_VIEW/DATABASE/SCHEMA/VIEW?_select=column (select statement by columns in VIEW)
-http://127.0.0.1:8000/_VIEW/DATABASE/SCHEMA/VIEW?_select=* (select all from VIEW)
-http://127.0.0.1:8000/_VIEW/DATABASE/SCHEMA/VIEW?_count=* (use count function)
-http://127.0.0.1:8000/_VIEW/DATABASE/SCHEMA/VIEW?_count=column (use count function)
-http://127.0.0.1:8000/_VIEW/DATABASE/SCHEMA/VIEW?_page=2&_page_size=10 (pagination, page_size 10 by default)
-http://127.0.0.1:8000/_VIEW/DATABASE/SCHEMA/VIEW?FIELD=VALUE (filter)
+Select operations over a VIEW
+http://127.0.0.1:8000/DATABASE/SCHEMA/VIEW?_select=column (select statement by columns in VIEW)
+http://127.0.0.1:8000/DATABASE/SCHEMA/VIEW?_select=* (select all from VIEW)
+http://127.0.0.1:8000/DATABASE/SCHEMA/VIEW?_count=* (use count function)
+http://127.0.0.1:8000/DATABASE/SCHEMA/VIEW?_count=column (use count function)
+http://127.0.0.1:8000/DATABASE/SCHEMA/VIEW?_page=2&_page_size=10 (pagination, page_size 10 by default)
+http://127.0.0.1:8000/DATABASE/SCHEMA/VIEW?FIELD=VALUE (filter)
 ```
 
 ### Insert - POST
