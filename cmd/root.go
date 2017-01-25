@@ -46,7 +46,6 @@ func app() {
 
 	n := negroni.Classic()
 	n.Use(negroni.HandlerFunc(middlewares.HandlerSet))
-	n.Use(negroni.HandlerFunc(middlewares.AccessControl))
 	if cfg.JWTKey != "" {
 		n.Use(middlewares.JwtMiddleware(cfg.JWTKey))
 	}
@@ -54,13 +53,20 @@ func app() {
 	r.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
 	r.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
 	r.HandleFunc("/tables", controllers.GetTables).Methods("GET")
+	r.HandleFunc("/_QUERIES/{queriesLocation}/{script}", controllers.ExecuteFromScripts)
 	r.HandleFunc("/{database}/{schema}", controllers.GetTablesByDatabaseAndSchema).Methods("GET")
-	r.HandleFunc("/{database}/{schema}/{table}", controllers.SelectFromTables).Methods("GET")
-	r.HandleFunc("/{database}/{schema}/{table}", controllers.InsertInTables).Methods("POST")
-	r.HandleFunc("/{database}/{schema}/{table}", controllers.DeleteFromTable).Methods("DELETE")
-	r.HandleFunc("/{database}/{schema}/{table}", controllers.UpdateTable).Methods("PUT", "PATCH")
-	r.HandleFunc("/_VIEW/{database}/{schema}/{view}", controllers.SelectFromViews).Methods("GET")
 
+	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
+
+	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.SelectFromTables).Methods("GET")
+	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.InsertInTables).Methods("POST")
+	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.DeleteFromTable).Methods("DELETE")
+	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.UpdateTable).Methods("PUT", "PATCH")
+
+	r.PathPrefix("/").Handler(negroni.New(
+		negroni.HandlerFunc(middlewares.AccessControl),
+		negroni.Wrap(crudRoutes),
+	))
 	n.UseHandler(r)
 	n.Run(fmt.Sprintf(":%v", cfg.HTTPPort))
 }
