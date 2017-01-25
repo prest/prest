@@ -206,6 +206,7 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	table := vars["table"]
 
 	req := api.Request{}
+	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		log.Println("could not decode body:", err)
@@ -254,6 +255,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	table := vars["table"]
 
 	req := api.Request{}
+	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		log.Println("could not decode body:", err)
@@ -278,7 +280,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	w.Write(object)
 }
 
-// SelectFromViews
+// SelectFromViews perform select from views
 func SelectFromViews(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	database := vars["database"]
