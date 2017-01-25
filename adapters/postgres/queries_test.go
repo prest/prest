@@ -94,13 +94,13 @@ func TestParseScript(t *testing.T) {
 	})
 }
 
-func TestCreateSQL(t *testing.T) {
+func TestWriteSQL(t *testing.T) {
 
 	Convey("Execute a valid INSERT sql", t, func() {
 		sql := "INSERT INTO test7 (name) values ($1) RETURNING id"
 		values := []interface{}{"lulu"}
 
-		result, err := CreateSQL(sql, values)
+		result, err := WriteSQL(sql, values)
 		So(err, ShouldBeNil)
 		So(len(result), ShouldBeGreaterThan, 0)
 	})
@@ -109,22 +109,19 @@ func TestCreateSQL(t *testing.T) {
 		sql := "INSERT INTO test7 (name) values ($1)"
 		values := []interface{}{"lulu"}
 
-		result, err := CreateSQL(sql, values)
-		So(err, ShouldNotBeNil)
-		So(len(result), ShouldEqual, 0)
+		result, err := WriteSQL(sql, values)
+		So(err, ShouldBeNil)
+		So(len(result), ShouldBeGreaterThan, 0)
 	})
 
 	Convey("Execute an invalid INSERT sql", t, func() {
 		sql := "INSERT INTO test7 (tool) values ($1) RETURNING id"
 		values := []interface{}{"lulu"}
 
-		result, err := CreateSQL(sql, values)
+		result, err := WriteSQL(sql, values)
 		So(err, ShouldNotBeNil)
 		So(len(result), ShouldEqual, 0)
 	})
-}
-
-func TestWriteSQL(t *testing.T) {
 
 	Convey("Execute a valid UPDATE sql", t, func() {
 		sql := "UPDATE test7 SET name = $1 WHERE surname = $2"

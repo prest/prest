@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os/user"
 	"path/filepath"
 	"strings"
@@ -64,7 +65,7 @@ func viperCfg() {
 
 	user, err := user.Current()
 	if err != nil {
-		panic(err)
+		log.Println("{viperCfg}", err)
 	}
 
 	viper.SetDefault("queries.location", filepath.Join(user.HomeDir, "queries"))

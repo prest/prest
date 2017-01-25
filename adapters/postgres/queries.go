@@ -69,46 +69,7 @@ func ParseScript(scriptPath string, queryURL url.Values) (sqlQuery string, value
 	return
 }
 
-// CreateSQL peform INSERT's operations
-func CreateSQL(sql string, values []interface{}) (resultByte []byte, err error) {
-	db := connection.MustGet()
-	tx, err := db.Begin()
-	if err != nil {
-		log.Printf("could not begin transaction: %v\n", err)
-		return
-	}
-
-	defer func() {
-		switch err {
-		case nil:
-			tx.Commit()
-		default:
-			tx.Rollback()
-		}
-	}()
-
-	valuesAux := make([]interface{}, 0, len(values))
-
-	for i := 0; i < len(values); i++ {
-		valuesAux = append(valuesAux, values[i])
-	}
-
-	var lastID interface{}
-	row := tx.QueryRow(sql, valuesAux...)
-	err = row.Scan(&lastID)
-	if err != nil {
-		err = fmt.Errorf("could not peform scan in row result %v", err)
-		return
-	}
-
-	data := make(map[string]interface{})
-	data["id"] = lastID
-	resultByte, err = json.Marshal(data)
-
-	return
-}
-
-// WriteSQL peform UPDATE's, DELETE's operations
+// WriteSQL perform INSERT's, UPDATE's, DELETE's operations
 func WriteSQL(sql string, values []interface{}) (resultByte []byte, err error) {
 	db := connection.MustGet()
 	tx, err := db.Begin()
@@ -158,9 +119,7 @@ func ExecuteScripts(method, sql string, values []interface{}) (result []byte, er
 	switch method {
 	case "GET":
 		result, err = Query(sql, values...)
-	case "POST":
-		result, err = CreateSQL(sql, values)
-	case "PUT", "PATCH", "DELETE":
+	case "POST", "PUT", "PATCH", "DELETE":
 		result, err = WriteSQL(sql, values)
 	default:
 		err = fmt.Errorf("invalid method %s", err)

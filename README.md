@@ -223,6 +223,61 @@ Examples:
     GET /DATABASE/SCHEMA/TABLE/?_order=fieldname01,-fieldname02,fieldname03
 
 
+## Executing SQL scripts
+
+If need perform an advanced SQL, you can write some scripts SQL and access them by REST. These scripts are templates where you can pass by URL, values to them.
+
+_awesome_folder/example_of_powerful.read.sql_:
+```sql
+SELECT * FROM table WHERE name = "{{.Field1}}" OR name = "{{.Field2}}";
+```
+
+Get result:
+
+```
+/_QUERIES/awesome_folder/example_of_powerful?field1=foo&field2=bar
+```
+
+To activate it, you need configure a location to scripts in your prest.toml like:
+
+```
+[queries]
+location = /path/to/queries/
+```
+
+### Scripts templates rules
+
+In your scripts, the fields must be capitalized like:
+
+```sql
+SELECT * FROM table WHERE name = "{{.Field1}}" OR name = "{{.Field2}}";
+```
+
+Script file must have a sufix based on http verba
+
+|HTTP Verb|Sufix|
+|---|---|
+|GET|.read.sql|
+|POST|.write.sql|
+|PUT, PATCH|.update.sql|
+|DELETE|.delete.sql|
+
+In `queries.location`, you need given a folder to your scripts:
+
+```
+queries/
+└── foo
+    └── some_get.read.sql
+    └── some_create.write.sql
+    └── some_update.write.sql
+    └── some_delete.delete.sql
+└── bar
+    └── some_get.read.sql
+    └── some_create.write.sql
+    └── some_update.write.sql
+    └── some_delete.delete.sql
+```
+
 ## Permissions
 
 ### Restrict mode
