@@ -62,7 +62,6 @@ func app() {
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.InsertInTables).Methods("POST")
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.DeleteFromTable).Methods("DELETE")
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.UpdateTable).Methods("PUT", "PATCH")
-	crudRoutes.HandleFunc("/_VIEW/{database}/{schema}/{view}", controllers.SelectFromViews).Methods("GET")
 
 	r.PathPrefix("/").Handler(negroni.New(
 		negroni.HandlerFunc(middlewares.AccessControl),
