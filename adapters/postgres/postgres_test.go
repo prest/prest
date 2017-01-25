@@ -27,6 +27,19 @@ func TestWhereByRequest(t *testing.T) {
 		So(values, ShouldContain, "cool")
 	})
 
+	Convey("Where by request with spaced values", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?celphone=$eq.444444&name=$eq.prest tester", nil)
+		So(err, ShouldBeNil)
+
+		where, values, err := WhereByRequest(r, 1)
+		So(err, ShouldBeNil)
+		So(where, ShouldContainSubstring, "name=$")
+		So(where, ShouldContainSubstring, "celphone=$")
+		So(where, ShouldContainSubstring, " AND ")
+		So(values, ShouldContain, "prest tester")
+		So(values, ShouldContain, "444444")
+	})
+
 	Convey("Where by request with jsonb field", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test?name=$eq.nuveo&data->>description:jsonb=$eq.bla", nil)
 		So(err, ShouldBeNil)
