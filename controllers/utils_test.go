@@ -163,12 +163,12 @@ func writeMockScripts(base string) {
 		}
 	}
 
-	write("SELECT * FROM test7 WHERE name = {{.Field1}}", "get_all.read.sql")
-	write("INSERT INTO test7 (name, surname) VALUES ({{.Field1}}, {{.Field2}})", "write_all.write.sql")
-	write("CREATE TABLE {{.Field1}};", "create_table.write.sql")
-	write("UPDATE test7 SET name = {{.Field1}} WHERE surname = {{.Field2}}", "patch_all.update.sql")
-	write("UPDATE test7 SET surname = {{.Field1}} WHERE name = {{.Field2}}", "put_all.update.sql")
-	write("DELETE FROM test7 WHERE name = {{.Field1}}", "delete_all.delete.sql")
+	write("SELECT * FROM test7 WHERE name = {{.field1}}", "get_all.read.sql")
+	write("INSERT INTO test7 (name, surname) VALUES ({{.field1}}, {{.field2}})", "write_all.write.sql")
+	write("CREATE TABLE {{.field1}};", "create_table.write.sql")
+	write("UPDATE test7 SET name = {{.field1}} WHERE surname = {{.field2}}", "patch_all.update.sql")
+	write("UPDATE test7 SET surname = {{.field1}} WHERE name = {{.field2}}", "put_all.update.sql")
+	write("DELETE FROM test7 WHERE name = {{.field1}}", "delete_all.delete.sql")
 }
 
 func removeMockScripts(base string) {

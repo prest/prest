@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 	"text/template"
 
 	"github.com/nuveo/prest/adapters/postgres/connection"
@@ -53,7 +52,7 @@ func ParseScript(scriptPath string, queryURL url.Values) (sqlQuery string, value
 	q := make(map[string]string)
 	pid := 1
 	for key := range queryURL {
-		q[strings.Title(key)] = fmt.Sprintf("$%d", pid)
+		q[key] = fmt.Sprintf("$%d", pid)
 		values = append(values, queryURL.Get(key))
 		pid++
 	}

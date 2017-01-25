@@ -229,13 +229,13 @@ If need perform an advanced SQL, you can write some scripts SQL and access them 
 
 _awesome_folder/example_of_powerful.read.sql_:
 ```sql
-SELECT * FROM table WHERE name = "{{.Field1}}" OR name = "{{.Field2}}";
+SELECT * FROM table WHERE name = "{{.field1}}" OR name = "{{.field2}}";
 ```
 
 Get result:
 
 ```
-/_QUERIES/awesome_folder/example_of_powerful?field1=foo&field2=bar
+GET /_QUERIES/awesome_folder/example_of_powerful?field1=foo&field2=bar
 ```
 
 To activate it, you need configure a location to scripts in your prest.toml like:
@@ -247,15 +247,15 @@ location = /path/to/queries/
 
 ### Scripts templates rules
 
-In your scripts, the fields must be capitalized like:
+In your scripts, the fields to replace have to look like: _field1 or field2 are examples_
 
 ```sql
-SELECT * FROM table WHERE name = "{{.Field1}}" OR name = "{{.Field2}}";
+SELECT * FROM table WHERE name = "{{.field1}}" OR name = "{{.field2}}";
 ```
 
-Script file must have a sufix based on http verba
+Script file must have a suffix based on http verb:
 
-|HTTP Verb|Sufix|
+|HTTP Verb|Suffix|
 |---|---|
 |GET|.read.sql|
 |POST|.write.sql|
@@ -269,13 +269,30 @@ queries/
 └── foo
     └── some_get.read.sql
     └── some_create.write.sql
-    └── some_update.write.sql
+    └── some_update.update.sql
     └── some_delete.delete.sql
 └── bar
     └── some_get.read.sql
     └── some_create.write.sql
-    └── some_update.write.sql
+    └── some_update.update.sql
     └── some_delete.delete.sql
+
+URL's to foo folder:
+
+GET    /_QUERIES/foo/some_get?field1=bar
+POST   /_QUERIES/foo/some_create?field1=bar
+PUT    /_QUERIES/foo/some_update?field1=bar
+PATCH  /_QUERIES/foo/some_update?field1=bar
+DELETE /_QUERIES/foo/some_delete?field1=bar
+
+
+URL's to bar folder:
+
+GET    /_QUERIES/bar/some_get?field1=foo
+POST   /_QUERIES/bar/some_create?field1=foo
+PUT    /_QUERIES/bar/some_update?field1=foo
+PATCH  /_QUERIES/bar/some_update?field1=foo
+DELETE /_QUERIES/bar/some_delete?field1=foo
 ```
 
 ## Permissions
