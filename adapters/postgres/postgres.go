@@ -387,6 +387,15 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 		sql = fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s) RETURNING %s", database, schema, table, colsName, colPlaceholder, pkName)
 	}
 
+	defer func() {
+		switch err {
+		case nil:
+			tx.Commit()
+		default:
+			tx.Rollback()
+		}
+	}()
+
 	stmt, err := tx.Prepare(sql)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
@@ -412,17 +421,6 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 			return
 		}
 	}
-
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-			return
-		}
-		err = tx.Commit()
-		if err != nil {
-			log.Printf("could not commit: %v\n", err)
-		}
-	}()
 
 	data := make(map[string]interface{})
 	for i := range fields {
@@ -460,6 +458,15 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 		return
 	}
 
+	defer func() {
+		switch err {
+		case nil:
+			tx.Commit()
+		default:
+			tx.Rollback()
+		}
+	}()
+
 	result, err = tx.Exec(sql, whereValues...)
 	if err != nil {
 		return
@@ -469,18 +476,6 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 	if err != nil {
 		return
 	}
-
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-			return
-		}
-
-		err = tx.Commit()
-		if err != nil {
-			log.Printf("could not commit: %v\n", err)
-		}
-	}()
 
 	data := make(map[string]interface{})
 	data["rows_affected"] = rowsAffected
@@ -525,6 +520,15 @@ func Update(database, schema, table, where string, whereValues []interface{}, bo
 		return
 	}
 
+	defer func() {
+		switch err {
+		case nil:
+			tx.Commit()
+		default:
+			tx.Rollback()
+		}
+	}()
+
 	stmt, err := tx.Prepare(sql)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
@@ -546,17 +550,6 @@ func Update(database, schema, table, where string, whereValues []interface{}, bo
 	if err != nil {
 		return
 	}
-
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-			return
-		}
-		err = tx.Commit()
-		if err != nil {
-			log.Printf("could not commit: %v\n", err)
-		}
-	}()
 
 	data := make(map[string]interface{})
 	data["rows_affected"] = rowsAffected
