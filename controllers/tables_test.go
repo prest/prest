@@ -213,7 +213,7 @@ func TestSelectFromTables(t *testing.T) {
 	})
 
 	Convey("execute select in a view with custom where clause", t, func() {
-		doValidGetRequest(server.URL+"/prest/public/view_test?player=gopher", "SelectFromTables")
+		doValidGetRequest(server.URL+"/prest/public/view_test?player=$eq.gopher", "SelectFromTables")
 	})
 
 	Convey("execute select in a view with custom join clause", t, func() {
@@ -221,7 +221,7 @@ func TestSelectFromTables(t *testing.T) {
 	})
 
 	Convey("execute select in a view with custom where clause and pagination", t, func() {
-		doValidGetRequest(server.URL+"/prest/public/view_test?player=gopher&_page=1&_page_size=20", "SelectFromTables")
+		doValidGetRequest(server.URL+"/prest/public/view_test?player=$eq.gopher&_page=1&_page_size=20", "SelectFromTables")
 	})
 
 	Convey("execute select in a view with select fields", t, func() {
@@ -237,7 +237,7 @@ func TestSelectFromTables(t *testing.T) {
 	})
 
 	Convey("execute select in a view with where and column invalid", t, func() {
-		doRequest(server.URL+"/prest/public/view_test?0celphone=888888", r, "GET", 400, "SelectFromTables")
+		doRequest(server.URL+"/prest/public/view_test?0celphone=$eq.888888", r, "GET", 400, "SelectFromTables")
 	})
 
 	Convey("execute select in a view with custom join clause invalid", t, func() {
@@ -245,7 +245,7 @@ func TestSelectFromTables(t *testing.T) {
 	})
 
 	Convey("execute select in a view with custom where clause and pagination invalid", t, func() {
-		doRequest(server.URL+"/prest/public/view_test?player=gopher&_page=A&_page_size=20", r, "GET", 400, "SelectFromTables")
+		doRequest(server.URL+"/prest/public/view_test?player=$eq.gopher&_page=A&_page_size=20", r, "GET", 400, "SelectFromTables")
 	})
 }
 
