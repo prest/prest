@@ -15,7 +15,7 @@ import (
 
 func TestWhereByRequest(t *testing.T) {
 	Convey("Where by request without paginate", t, func() {
-		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool", nil)
+		r, err := http.NewRequest("GET", "/databases?dbname=eq.prest&test=eq.cool", nil)
 		So(err, ShouldBeNil)
 
 		where, values, err := WhereByRequest(r, 1)
@@ -28,7 +28,7 @@ func TestWhereByRequest(t *testing.T) {
 	})
 
 	Convey("Where by request with jsonb field", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?name=nuveo&data->>description:jsonb=bla", nil)
+		r, err := http.NewRequest("GET", "/prest/public/test?name=eq.nuveo&data->>description:jsonb=eq.bla", nil)
 		So(err, ShouldBeNil)
 
 		where, values, err := WhereByRequest(r, 1)
@@ -41,7 +41,7 @@ func TestWhereByRequest(t *testing.T) {
 	})
 
 	Convey("Where by request without jsonb key", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?name=nuveo&data->>description:bla", nil)
+		r, err := http.NewRequest("GET", "/prest/public/test?name=eq.nuveo&data->>description:bla", nil)
 		So(err, ShouldBeNil)
 
 		_, _, err = WhereByRequest(r, 1)
@@ -49,7 +49,7 @@ func TestWhereByRequest(t *testing.T) {
 	})
 
 	Convey("Where by request with jsonb field invalid", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?name=nuveo&data->>0description:jsonb=bla", nil)
+		r, err := http.NewRequest("GET", "/prest/public/test?name=eq.nuveo&data->>0description:jsonb=eq.bla", nil)
 		So(err, ShouldBeNil)
 
 		_, _, err = WhereByRequest(r, 1)
@@ -57,7 +57,15 @@ func TestWhereByRequest(t *testing.T) {
 	})
 
 	Convey("Where by request with field invalid", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?0name=prest", nil)
+		r, err := http.NewRequest("GET", "/prest/public/test?0name=eq.prest", nil)
+		So(err, ShouldBeNil)
+
+		_, _, err = WhereByRequest(r, 1)
+		So(err, ShouldNotBeNil)
+	})
+
+	Convey("Where by request with invalid comparasion", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test?name=pq.prest", nil)
 		So(err, ShouldBeNil)
 
 		_, _, err = WhereByRequest(r, 1)
@@ -418,7 +426,7 @@ func TestJoinByRequest(t *testing.T) {
 	})
 
 	Convey("Join with where", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name&name=nuveo&data->>description:jsonb=bla", nil)
+		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name&name=eq.nuveo&data->>description:jsonb=eq.bla", nil)
 		So(err, ShouldBeNil)
 
 		join, err := JoinByRequest(r)
@@ -518,11 +526,19 @@ func TestGetQueryOperator(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(op, ShouldEqual, "=")
 	})
+
+	Convey("Query operator ne", t, func() {
+		op, err := GetQueryOperator("$ne")
+		So(err, ShouldBeNil)
+		So(op, ShouldEqual, "!=")
+	})
+
 	Convey("Query operator gt", t, func() {
 		op, err := GetQueryOperator("$gt")
 		So(err, ShouldBeNil)
 		So(op, ShouldEqual, ">")
 	})
+
 	Convey("Query operator gte", t, func() {
 		op, err := GetQueryOperator("$gte")
 		So(err, ShouldBeNil)
@@ -534,16 +550,19 @@ func TestGetQueryOperator(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(op, ShouldEqual, "<")
 	})
+
 	Convey("Query operator lte", t, func() {
 		op, err := GetQueryOperator("$lte")
 		So(err, ShouldBeNil)
 		So(op, ShouldEqual, "<=")
 	})
+
 	Convey("Query operator IN", t, func() {
 		op, err := GetQueryOperator("$in")
 		So(err, ShouldBeNil)
 		So(op, ShouldEqual, "IN")
 	})
+
 	Convey("Query operator NIN", t, func() {
 		op, err := GetQueryOperator("$nin")
 		So(err, ShouldBeNil)

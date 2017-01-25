@@ -42,22 +42,38 @@ func chkInvalidIdentifier(identifer string) bool {
 func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []interface{}, err error) {
 	whereKey := []string{}
 	whereValues := []string{}
+	var value string
+	// set default operation
+	op := "="
 
 	pid := initialPlaceholderID
 	for key, val := range r.URL.Query() {
 		if !strings.HasPrefix(key, "_") {
+
+			if val[0] != "" {
+				opValues := strings.Split(val[0], ".")
+				op = opValues[0]
+				value = opValues[1]
+
+				op, err = GetQueryOperator(op)
+				if err != nil {
+					return
+				}
+			}
+
 			keyInfo := strings.Split(key, ":")
+
 			if len(keyInfo) > 1 {
 				switch keyInfo[1] {
 				case "jsonb":
 					jsonField := strings.Split(keyInfo[0], "->>")
-					if chkInvalidIdentifier(jsonField[0]) ||
-						chkInvalidIdentifier(jsonField[1]) {
+					if chkInvalidIdentifier(jsonField[0]) || chkInvalidIdentifier(jsonField[1]) {
 						err = errors.New("Invalid identifier")
 						return
 					}
-					whereKey = append(whereKey, fmt.Sprintf("%s->>'%s'=$%d", jsonField[0], jsonField[1], pid))
-					whereValues = append(whereValues, val[0])
+
+					whereKey = append(whereKey, fmt.Sprintf("%s->>'%s'%s$%d", jsonField[0], jsonField[1], op, pid))
+					whereValues = append(whereValues, value)
 				default:
 					if chkInvalidIdentifier(keyInfo[0]) {
 						err = errors.New("Invalid identifier")
@@ -66,13 +82,14 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 				}
 				continue
 			}
+
 			if chkInvalidIdentifier(key) {
 				err = errors.New("Invalid identifier")
 				return
 			}
 
-			whereKey = append(whereKey, fmt.Sprintf("%s=$%d", key, pid))
-			whereValues = append(whereValues, val[0])
+			whereKey = append(whereKey, fmt.Sprintf("%s%s$%d", key, op, pid))
+			whereValues = append(whereValues, value)
 
 			pid++
 		}
@@ -550,6 +567,8 @@ func GetQueryOperator(op string) (string, error) {
 	switch op {
 	case "eq":
 		return "=", nil
+	case "ne":
+		return "!=", nil
 	case "gt":
 		return ">", nil
 	case "gte":

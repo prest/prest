@@ -103,6 +103,25 @@ HEADER:
 Authorization: JWT eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
 ```
 
+### Filter (WHERE)
+
+```
+GET /DATABASE/SCHEMA/TABLE?FIELD=eq.VALUE
+```
+
+Query Operators in filters:
+
+| Name | Description |
+|-------|-------------|
+| eq.value | Matches values that are equal to a specified value.|
+| ne.value | Matches all values that are not equal to a specified value.|
+| gt.value | Matches values that are greater than a specified value.|
+| gte.value | Matches values that are greater than or equal to a specified value.|
+| lt.value | Matches values that are less than a specified value.|
+| lte.value | Matches values that are less than or equal to a specified value.|
+| in.value | Matches any of the values specified in an array.|
+| nin.value | Matches none of the values specified in an array.|
+
 ### Filter (WHERE) with JSONb field
 
 ```
@@ -194,7 +213,7 @@ Parameters:
 1. Operator (=, <, >, <=, >=)
 1. Table field 2
 
-Query Operators:
+Query Operators in JOIN's:
 
 | Name | Description |
 |-------|-------------|
