@@ -49,11 +49,16 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 	pid := initialPlaceholderID
 	for key, val := range r.URL.Query() {
 		if !strings.HasPrefix(key, "_") {
+			// set default value
 
+			value = val[0]
 			if val[0] != "" {
 				opValues := strings.Split(val[0], ".")
-				op = opValues[0]
-				value = opValues[1]
+
+				if len(opValues) == 2 {
+					op = opValues[0]
+					value = opValues[1]
+				}
 
 				op, err = GetQueryOperator(op)
 				if err != nil {
