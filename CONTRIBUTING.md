@@ -16,7 +16,7 @@ Please be kind, remember that pREST comes at no cost to you, and you're getting 
 
 ## Discuss your design
 
-The project welcomes submissions but please let everyone know what you're working on if you want to change or add something to the pREST repositorie.
+The project welcomes submissions but please let everyone know what you're working on if you want to change or add something to the pREST repository.
 
 Before starting to write something new for the pREST project, please [file an issue](https://github.com/nuveo/prest/issues/new).
 
