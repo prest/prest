@@ -6,6 +6,7 @@
 **You MUST delete the content above including this line before posting, otherwise your issue will be invalid.**
 
 - pREST version (or commit ref):
+- pREST endpoint:
 - PostgreSQL version:
 - Operating system:
 - Go version:
