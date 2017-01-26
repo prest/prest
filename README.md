@@ -195,7 +195,7 @@ Parameters:
 1. Operator (=, <, >, <=, >=)
 1. Table field 2
 
-Query Operators:
+## Query Operators
 
 | Name | Description |
 |-------|-------------|
