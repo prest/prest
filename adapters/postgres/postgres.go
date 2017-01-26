@@ -42,14 +42,17 @@ func chkInvalidIdentifier(identifer string) bool {
 func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []interface{}, err error) {
 	whereKey := []string{}
 	whereValues := []string{}
-	var value string
-	// set default operation
-	op := "="
+	var value, op string
+
+	op, err = GetQueryOperator("$eq")
+	if err != nil {
+		// Never throw an error, amen
+		return
+	}
 
 	pid := initialPlaceholderID
 	for key, val := range r.URL.Query() {
 		if !strings.HasPrefix(key, "_") {
-			// set default value
 
 			value = val[0]
 			if val[0] != "" {
@@ -58,11 +61,11 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 				if len(opValues) == 2 {
 					op = opValues[0]
 					value = opValues[1]
-				}
 
-				op, err = GetQueryOperator(op)
-				if err != nil {
-					return
+					op, err = GetQueryOperator(op)
+					if err != nil {
+						return
+					}
 				}
 			}
 
