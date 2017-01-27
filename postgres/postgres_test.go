@@ -41,7 +41,7 @@ func TestWhereByRequest(t *testing.T) {
 	})
 
 	Convey("Where by request with jsonb field", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?name=$eq.nuveo&data->>description:jsonb=$eq.bla", nil)
+		r, err := http.NewRequest("GET", "/prest/public/test_jsonb_bug?name=$eq.goku&data->>description:jsonb=$eq.testing", nil)
 		So(err, ShouldBeNil)
 
 		where, values, err := WhereByRequest(r, 1)
@@ -49,12 +49,12 @@ func TestWhereByRequest(t *testing.T) {
 		So(where, ShouldContainSubstring, "name=$")
 		So(where, ShouldContainSubstring, "data->>'description'=$")
 		So(where, ShouldContainSubstring, " AND ")
-		So(values, ShouldContain, "nuveo")
-		So(values, ShouldContain, "bla")
+		So(values, ShouldContain, "goku")
+		So(values, ShouldContain, "testing")
 	})
 
 	Convey("Where by request without jsonb key", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?name=$eq.nuveo&data->>description:bla", nil)
+		r, err := http.NewRequest("GET", "/prest/public/test_jsonb_bug?name=$eq.nuveo&data->>description:bla", nil)
 		So(err, ShouldBeNil)
 
 		_, _, err = WhereByRequest(r, 1)
@@ -62,7 +62,7 @@ func TestWhereByRequest(t *testing.T) {
 	})
 
 	Convey("Where by request with jsonb field invalid", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?name=$eq.nuveo&data->>0description:jsonb=$eq.bla", nil)
+		r, err := http.NewRequest("GET", "/prest/public/test_jsonb_bug?name=$eq.nuveo&data->>0description:jsonb=$eq.bla", nil)
 		So(err, ShouldBeNil)
 
 		_, _, err = WhereByRequest(r, 1)
@@ -77,7 +77,7 @@ func TestWhereByRequest(t *testing.T) {
 		So(err, ShouldNotBeNil)
 	})
 
-	Convey("Where by request with invalid comparasion", t, func() {
+	Convey("Where by request with invalid comparisons", t, func() {
 		r, err := http.NewRequest("GET", "/prest/public/test?name=pq.prest", nil)
 		So(err, ShouldBeNil)
 
