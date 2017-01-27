@@ -20,8 +20,8 @@ func TestWhereByRequest(t *testing.T) {
 
 		where, values, err := WhereByRequest(r, 1)
 		So(err, ShouldBeNil)
-		So(where, ShouldContainSubstring, "dbname=$")
-		So(where, ShouldContainSubstring, "test=$")
+		So(where, ShouldContainSubstring, "dbname = $")
+		So(where, ShouldContainSubstring, "test = $")
 		So(where, ShouldContainSubstring, " AND ")
 		So(values, ShouldContain, "prest")
 		So(values, ShouldContain, "cool")
@@ -33,8 +33,8 @@ func TestWhereByRequest(t *testing.T) {
 
 		where, values, err := WhereByRequest(r, 1)
 		So(err, ShouldBeNil)
-		So(where, ShouldContainSubstring, "name=$")
-		So(where, ShouldContainSubstring, "celphone=$")
+		So(where, ShouldContainSubstring, "name = $")
+		So(where, ShouldContainSubstring, "celphone = $")
 		So(where, ShouldContainSubstring, " AND ")
 		So(values, ShouldContain, "prest tester")
 		So(values, ShouldContain, "444444")
@@ -46,8 +46,8 @@ func TestWhereByRequest(t *testing.T) {
 
 		where, values, err := WhereByRequest(r, 1)
 		So(err, ShouldBeNil)
-		So(where, ShouldContainSubstring, "name=$")
-		So(where, ShouldContainSubstring, "data->>'description'=$")
+		So(where, ShouldContainSubstring, "name = $")
+		So(where, ShouldContainSubstring, "data->>'description' = $")
 		So(where, ShouldContainSubstring, " AND ")
 		So(values, ShouldContain, "goku")
 		So(values, ShouldContain, "testing")
@@ -83,6 +83,30 @@ func TestWhereByRequest(t *testing.T) {
 
 		_, _, err = WhereByRequest(r, 1)
 		So(err, ShouldNotBeNil)
+	})
+
+	Convey("Where by request with is not null operator", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?celphone=$eq.444444&name=$notnull", nil)
+		So(err, ShouldBeNil)
+
+		where, values, err := WhereByRequest(r, 1)
+		So(err, ShouldBeNil)
+		So(where, ShouldContainSubstring, "name IS NOT NULL")
+		So(where, ShouldContainSubstring, "celphone = $")
+		So(where, ShouldContainSubstring, " AND ")
+		So(values, ShouldContain, "444444")
+	})
+
+	Convey("Where by request with is null operator", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test5?celphone=$eq.444444&name=$null", nil)
+		So(err, ShouldBeNil)
+
+		where, values, err := WhereByRequest(r, 1)
+		So(err, ShouldBeNil)
+		So(where, ShouldContainSubstring, "name IS NULL")
+		So(where, ShouldContainSubstring, "celphone = $")
+		So(where, ShouldContainSubstring, " AND ")
+		So(values, ShouldContain, "444444")
 	})
 }
 
