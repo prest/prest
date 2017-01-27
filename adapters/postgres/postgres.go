@@ -76,7 +76,7 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 				case "jsonb":
 					jsonField := strings.Split(keyInfo[0], "->>")
 					if chkInvalidIdentifier(jsonField[0]) || chkInvalidIdentifier(jsonField[1]) {
-						err = errors.New("Invalid identifier")
+						err = fmt.Errorf("invalid identifier: %+v", jsonField)
 						return
 					}
 
@@ -84,15 +84,16 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 					whereValues = append(whereValues, value)
 				default:
 					if chkInvalidIdentifier(keyInfo[0]) {
-						err = errors.New("Invalid identifier")
+						err = fmt.Errorf("invalid identifier: %s", keyInfo[0])
 						return
 					}
 				}
+				pid++
 				continue
 			}
 
 			if chkInvalidIdentifier(key) {
-				err = errors.New("Invalid identifier")
+				err = fmt.Errorf("invalid identifier: %s", key)
 				return
 			}
 
