@@ -57,15 +57,23 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 			value = val[0]
 			if val[0] != "" {
 				opValues := strings.Split(val[0], ".")
-
-				if len(opValues) == 2 {
+				correctLength := len(opValues) == 2
+				hasPreffix := strings.HasPrefix(opValues[0], "$")
+				if hasPreffix {
 					op = opValues[0]
-					value = opValues[1]
-
+					if correctLength {
+						value = opValues[1]
+					} else {
+						value = ""
+					}
 					op, err = GetQueryOperator(op)
 					if err != nil {
 						return
 					}
+				}
+				if correctLength && !hasPreffix {
+					err = errors.New("invalid where clause")
+					return
 				}
 			}
 
@@ -80,7 +88,7 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 						return
 					}
 
-					whereKey = append(whereKey, fmt.Sprintf("%s->>'%s'%s$%d", jsonField[0], jsonField[1], op, pid))
+					whereKey = append(whereKey, fmt.Sprintf("%s->>'%s' %s $%d", jsonField[0], jsonField[1], op, pid))
 					whereValues = append(whereValues, value)
 				default:
 					if chkInvalidIdentifier(keyInfo[0]) {
@@ -97,10 +105,14 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 				return
 			}
 
-			whereKey = append(whereKey, fmt.Sprintf("%s%s$%d", key, op, pid))
-			whereValues = append(whereValues, value)
+			if value != "" {
+				whereKey = append(whereKey, fmt.Sprintf("%s %s $%d", key, op, pid))
+				whereValues = append(whereValues, value)
 
-			pid++
+				pid++
+			} else {
+				whereKey = append(whereKey, fmt.Sprintf("%s %s", key, op))
+			}
 		}
 	}
 
@@ -111,7 +123,9 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 			whereSyntax += " AND " + whereKey[i]
 		}
 
-		values = append(values, whereValues[i])
+		if i < len(whereValues) {
+			values = append(values, whereValues[i])
+		}
 	}
 
 	return
@@ -179,12 +193,12 @@ func JoinByRequest(r *http.Request) (values []string, err error) {
 // SelectFields query
 func SelectFields(fields []string) (string, error) {
 	if len(fields) == 0 {
-		return "", errors.New("You must select at least one field.")
+		return "", errors.New("you must select at least one fields")
 	}
 
 	for _, field := range fields {
 		if field != "*" && chkInvalidIdentifier(field) {
-			return "", fmt.Errorf("invalid identifier %s\n", field)
+			return "", fmt.Errorf("invalid identifier %s", field)
 		}
 	}
 
@@ -583,6 +597,10 @@ func GetQueryOperator(op string) (string, error) {
 		return "IN", nil
 	case "nin":
 		return "NOT IN", nil
+	case "notnull":
+		return "IS NOT NULL", nil
+	case "null":
+		return "IS NULL", nil
 	}
 
 	err := errors.New("Invalid operator")
