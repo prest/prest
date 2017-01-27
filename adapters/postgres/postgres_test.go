@@ -108,6 +108,30 @@ func TestWhereByRequest(t *testing.T) {
 		So(where, ShouldContainSubstring, " AND ")
 		So(values, ShouldContain, "444444")
 	})
+
+	Convey("Where by request with jsonb field and is null operator", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test_jsonb?name=$null&data->>description:jsonb=$eq.testing", nil)
+		So(err, ShouldBeNil)
+
+		where, values, err := WhereByRequest(r, 1)
+		So(err, ShouldBeNil)
+		So(where, ShouldContainSubstring, "name IS NULL")
+		So(where, ShouldContainSubstring, "data->>'description' = $")
+		So(where, ShouldContainSubstring, " AND ")
+		So(values, ShouldContain, "testing")
+	})
+
+	Convey("Where by request with jsonb field and is not null operator", t, func() {
+		r, err := http.NewRequest("GET", "/prest/public/test_jsonb?name=$notnull&data->>description:jsonb=$eq.testing", nil)
+		So(err, ShouldBeNil)
+
+		where, values, err := WhereByRequest(r, 1)
+		So(err, ShouldBeNil)
+		So(where, ShouldContainSubstring, "name IS NOT NULL")
+		So(where, ShouldContainSubstring, "data->>'description' = $")
+		So(where, ShouldContainSubstring, " AND ")
+		So(values, ShouldContain, "testing")
+	})
 }
 
 func TestQuery(t *testing.T) {
