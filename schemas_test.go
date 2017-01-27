@@ -19,21 +19,21 @@ func TestGetSchemas(t *testing.T) {
 	})
 
 	Convey("Get schemas with custom where clause", t, func() {
-		r, err := http.NewRequest("GET", "/schemas?schema_name=eq.public", nil)
+		r, err := http.NewRequest("GET", "/schemas?schema_name=$eq.public", nil)
 		w := httptest.NewRecorder()
 		So(err, ShouldBeNil)
 		validate(w, r, GetSchemas, "TestGetSchemas")
 	})
 
 	Convey("Get schemas with custom ORDER BY clause", t, func() {
-		r, err := http.NewRequest("GET", "/schemas?schema_name=eq.public&_order=schema_name", nil)
+		r, err := http.NewRequest("GET", "/schemas?schema_name=$eq.public&_order=schema_name", nil)
 		w := httptest.NewRecorder()
 		So(err, ShouldBeNil)
 		validate(w, r, GetSchemas, "TestGetSchemas")
 	})
 
 	Convey("Get schemas with custom where clause and pagination", t, func() {
-		r, err := http.NewRequest("GET", "/schemas?schema_name=eq.public&_page=1&_page_size=20", nil)
+		r, err := http.NewRequest("GET", "/schemas?schema_name=$eq.public&_page=1&_page_size=20", nil)
 		w := httptest.NewRecorder()
 		So(err, ShouldBeNil)
 		validate(w, r, GetSchemas, "TestGetSchemas")
@@ -53,7 +53,7 @@ func TestGetSchemas(t *testing.T) {
 		defer server.Close()
 
 		r := api.Request{}
-		doRequest(server.URL+"/schemas?0schema_name=eq.public", r, "GET", 400, "GetSchemas")
+		doRequest(server.URL+"/schemas?0schema_name=$eq.public", r, "GET", 400, "GetSchemas")
 	})
 
 	Convey("Get schemas with custom where and pagination invalid", t, func() {
@@ -63,6 +63,6 @@ func TestGetSchemas(t *testing.T) {
 		defer server.Close()
 
 		r := api.Request{}
-		doRequest(server.URL+"/schemas?schema_name=eq.public&_page=A", r, "GET", 400, "GetSchemas")
+		doRequest(server.URL+"/schemas?schema_name=$eq.public&_page=A", r, "GET", 400, "GetSchemas")
 	})
 }

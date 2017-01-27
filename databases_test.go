@@ -20,7 +20,7 @@ func TestGetDatabases(t *testing.T) {
 	})
 
 	Convey("Get databases with custom where clause", t, func() {
-		r, err := http.NewRequest("GET", "/databases?datname=eq.prest", nil)
+		r, err := http.NewRequest("GET", "/databases?datname=$eq.prest", nil)
 		w := httptest.NewRecorder()
 		So(err, ShouldBeNil)
 		validate(w, r, GetDatabases, "TestGetDatabases")
@@ -50,11 +50,11 @@ func TestGetDatabases(t *testing.T) {
 		defer server.Close()
 
 		r := api.Request{}
-		doRequest(server.URL+"/databases?datname=eq.prest&_page=A", r, "GET", 400, "GetDatabases")
+		doRequest(server.URL+"/databases?datname=$eq.prest&_page=A", r, "GET", 400, "GetDatabases")
 	})
 
 	Convey("Get databases with custom where clause and pagination", t, func() {
-		r, err := http.NewRequest("GET", "/databases?datname=eq.prest&_page=1&_page_size=20", nil)
+		r, err := http.NewRequest("GET", "/databases?datname=$eq.prest&_page=1&_page_size=20", nil)
 		w := httptest.NewRecorder()
 		So(err, ShouldBeNil)
 		validate(w, r, GetDatabases, "TestGetDatabases")
