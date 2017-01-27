@@ -475,7 +475,7 @@ func TestJoinByRequest(t *testing.T) {
 		where, values, err := WhereByRequest(r, 1)
 		So(err, ShouldBeNil)
 		So(where, ShouldContainSubstring, "name=$")
-		So(where, ShouldContainSubstring, "data->>'description'=$")
+		So(where, ShouldContainSubstring, "data->>'description' = $")
 		So(where, ShouldContainSubstring, " AND ")
 		So(values, ShouldContain, "nuveo")
 		So(values, ShouldContain, "bla")
