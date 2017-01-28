@@ -26,3 +26,9 @@ _testmain.go
 data/
 .idea
 *.iml
+
+# pREST
+prest
+prest-*
+/dist
+*.toml
