@@ -159,7 +159,6 @@ func SchemaClause(req *http.Request) (query string) {
 
 // JoinByRequest implements join in queries
 func JoinByRequest(r *http.Request) (values []string, err error) {
-	joinValues := []string{}
 	queries := r.URL.Query()
 
 	if queries.Get("_join") == "" {
@@ -185,24 +184,28 @@ func JoinByRequest(r *http.Request) (values []string, err error) {
 	}
 
 	joinQuery := fmt.Sprintf(" %s JOIN %s ON %s %s %s ", strings.ToUpper(joinArgs[0]), joinArgs[1], joinArgs[2], op, joinArgs[4])
-	joinValues = append(joinValues, joinQuery)
+	values = append(values, joinQuery)
 
-	return joinValues, nil
+	return
 }
 
 // SelectFields query
-func SelectFields(fields []string) (string, error) {
+func SelectFields(fields []string) (sql string, err error) {
 	if len(fields) == 0 {
-		return "", errors.New("you must select at least one fields")
+
+		err = errors.New("you must select at least one field.")
+		return
 	}
 
 	for _, field := range fields {
 		if field != "*" && chkInvalidIdentifier(field) {
-			return "", fmt.Errorf("invalid identifier %s", field)
+			err = fmt.Errorf("invalid identifier %s", field)
+			return
 		}
 	}
 
-	return fmt.Sprintf("SELECT %s FROM", strings.Join(fields, ",")), nil
+	sql = fmt.Sprintf("SELECT %s FROM", strings.Join(fields, ","))
+	return
 }
 
 // OrderByRequest implements ORDER BY in queries
@@ -214,15 +217,15 @@ func OrderByRequest(r *http.Request) (values string, err error) {
 		values = " ORDER BY "
 		orderingArr := strings.Split(reqOrder, ",")
 
-		for i, s := range orderingArr {
-			if chkInvalidIdentifier(s) {
+		for i, field := range orderingArr {
+			if chkInvalidIdentifier(field) {
 				err = errors.New("Invalid identifier")
+				values = ""
 				return
 			}
-			field := s
 
-			if strings.HasPrefix(s, "-") {
-				field = fmt.Sprintf("%s DESC", s[1:])
+			if strings.HasPrefix(field, "-") {
+				field = fmt.Sprintf("%s DESC", field[1:])
 			}
 
 			values = fmt.Sprintf("%s %s", values, field)
@@ -233,7 +236,7 @@ func OrderByRequest(r *http.Request) (values string, err error) {
 			}
 		}
 	}
-	return values, nil
+	return
 }
 
 // CountByRequest implements COUNT(fields) OPERTATION
