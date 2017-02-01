@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"testing"
 
 	"net/http/httptest"
 
@@ -13,99 +14,171 @@ import (
 	"encoding/json"
 
 	"github.com/nuveo/prest/api"
-	. "github.com/smartystreets/goconvey/convey"
 )
 
-func validate(w *httptest.ResponseRecorder, r *http.Request, h http.HandlerFunc, where string) {
-	h(w, r)
+func validate(t *testing.T, w *httptest.ResponseRecorder, r *http.Request, h http.HandlerFunc, where string) {
 	fmt.Println("Test:", where)
-	So(w.Code, ShouldEqual, 200)
+	h(w, r)
+
+	if w.Code != 200 {
+		t.Errorf("expected 200, got: %d", w.Code)
+	}
+
 	_, err := ioutil.ReadAll(w.Body)
-	So(err, ShouldBeNil)
+	if err != nil {
+		t.Error("error on ioutil ReadAll", err)
+	}
 }
 
-func doValidGetRequest(url string, where string) {
+func doValidGetRequest(t *testing.T, url string, where string) {
 	fmt.Println("Test:", where)
 	resp, err := http.Get(url)
-	So(err, ShouldBeNil)
-	So(resp.StatusCode, ShouldEqual, 200)
+	if err != nil {
+		t.Error("expected no errors in Get")
+	}
+
+	if resp.StatusCode != 200 {
+		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+
 	_, err = ioutil.ReadAll(resp.Body)
-	So(err, ShouldBeNil)
+	if err != nil {
+		t.Error("expected no errors in ioutil ReadAll")
+	}
 }
 
-func doValidPostRequest(url string, r api.Request, where string) {
+func doValidPostRequest(t *testing.T, url string, r api.Request, where string) {
 	fmt.Println("Test:", where)
 	byt, err := json.Marshal(r)
-	So(err, ShouldBeNil)
+	if err != nil {
+		t.Error("expected no errors in json marshal, but was!")
+	}
+
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(byt))
-	So(err, ShouldBeNil)
-	So(resp.StatusCode, ShouldEqual, 200)
+	if err != nil {
+		t.Error("expected no errors in Post")
+	}
+
+	if resp.StatusCode != 200 {
+		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+
 	_, err = ioutil.ReadAll(resp.Body)
-	So(err, ShouldBeNil)
+	if err != nil {
+		t.Error("expected no errors in ioutil ReadAll")
+	}
 }
 
-func doValidDeleteRequest(url string, where string) {
+func doValidDeleteRequest(t *testing.T, url string, where string) {
 	fmt.Println("Test:", where)
 	req, err := http.NewRequest("DELETE", url, nil)
-	So(err, ShouldBeNil)
+	if err != nil {
+		t.Error("expected no errors in NewRequest, but was!")
+	}
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	So(err, ShouldBeNil)
-	So(resp.StatusCode, ShouldEqual, 200)
+	if err != nil {
+		t.Error("expected no errors in Do Request, but was!")
+	}
+
+	if resp.StatusCode != 200 {
+		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+
 	_, err = ioutil.ReadAll(resp.Body)
-	So(err, ShouldBeNil)
+	if err != nil {
+		t.Error("expected no errors in ioutil ReadAll")
+	}
 }
 
-func doValidPutRequest(url string, r api.Request, where string) {
+func doValidPutRequest(t *testing.T, url string, r api.Request, where string) {
 	fmt.Println("Test:", where)
 	byt, err := json.Marshal(r)
-	So(err, ShouldBeNil)
+	if err != nil {
+		t.Error("expected no errors in json marshal, but was!")
+	}
+
 	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(byt))
-	So(err, ShouldBeNil)
+	if err != nil {
+		t.Error("expected no errors in PUT")
+	}
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	So(err, ShouldBeNil)
-	So(resp.StatusCode, ShouldEqual, 200)
+	if err != nil {
+		t.Error("expected no errors in Do Request, but was!")
+	}
+
+	if resp.StatusCode != 200 {
+		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+
 	_, err = ioutil.ReadAll(resp.Body)
-	So(err, ShouldBeNil)
+	if err != nil {
+		t.Error("expected no errors in ioutil ReadAll")
+	}
 }
 
-func doValidPatchRequest(url string, r api.Request, where string) {
+func doValidPatchRequest(t *testing.T, url string, r api.Request, where string) {
 	fmt.Println("Test:", where)
 	byt, err := json.Marshal(r)
-	So(err, ShouldBeNil)
+	if err != nil {
+		t.Error("expected no errors in json marshal, but was!")
+	}
+
 	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(byt))
-	So(err, ShouldBeNil)
+	if err != nil {
+		t.Error("expected no errors in PATCH")
+	}
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	So(err, ShouldBeNil)
-	So(resp.StatusCode, ShouldEqual, 200)
+	if err != nil {
+		t.Error("expected no errors in Do Request, but was!")
+	}
+
+	if resp.StatusCode != 200 {
+		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+
 	_, err = ioutil.ReadAll(resp.Body)
-	So(err, ShouldBeNil)
+	if err != nil {
+		t.Error("expected no errors in ioutil ReadAll")
+	}
 }
 
-func doRequest(url string, r api.Request, method string, expectedStatus int, where string) {
+func doRequest(t *testing.T, url string, r api.Request, method string, expectedStatus int, where string) {
 	fmt.Println("Test:", where)
 	var byt []byte
 	var err error
 
 	if r.Data != nil {
 		byt, err = json.Marshal(r)
-		So(err, ShouldBeNil)
-
+		if err != nil {
+			t.Error("error on json marshal", err)
+		}
 	}
+
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(byt))
-	So(err, ShouldBeNil)
+	if err != nil {
+		t.Error("error on New Request", err)
+	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	if err != nil {
+		t.Error("error on Do Request", err)
+	}
 
-	So(err, ShouldBeNil)
-	So(resp.StatusCode, ShouldEqual, expectedStatus)
+	if resp.StatusCode != expectedStatus {
+		t.Errorf("expected %d, got: %d", expectedStatus, resp.StatusCode)
+	}
 
 	_, err = ioutil.ReadAll(resp.Body)
-	So(err, ShouldBeNil)
-
+	if err != nil {
+		t.Error("error on ioutil ReadAll", err)
+	}
 }
 
 func createMockScripts(base string) {

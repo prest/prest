@@ -14,7 +14,7 @@ services:
     - postgresql
 
 env:
-   - PREST_PG_USER=postgres PREST_PG_DATABASE=prest PREST_PG_PORT=5432 PREST_CONF=../../testdata/prest.toml
+   - PREST_PG_USER=postgres PREST_PG_DATABASE=prest PREST_PG_PORT=5432 PREST_CONF=$TRAVIS_BUILD_DIR/testdata/prest.toml
 
 before_install:
    - go get -u github.com/kardianos/govendor

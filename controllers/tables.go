@@ -17,14 +17,14 @@ import (
 func GetTables(w http.ResponseWriter, r *http.Request) {
 	requestWhere, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
-		log.Println("could not peform WhereByRequest:", err)
+		log.Println("could not perform WhereByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	order, err := postgres.OrderByRequest(r)
 	if err != nil {
-		log.Println("could not peform OrderByRequest:", err)
+		log.Println("could not perform OrderByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -60,7 +60,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 
 	requestWhere, values, err := postgres.WhereByRequest(r, 3)
 	if err != nil {
-		log.Println("could not peform WhereByRequest:", err)
+		log.Println("could not perform WhereByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -75,7 +75,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 
 	order, err := postgres.OrderByRequest(r)
 	if err != nil {
-		log.Println("could not peform OrderByRequest:", err)
+		log.Println("could not perform OrderByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -87,7 +87,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 
 	page, err := postgres.PaginateIfPossible(r)
 	if err != nil {
-		log.Println("could not peform PaginateIfPossible:", err)
+		log.Println("could not perform PaginateIfPossible:", err)
 		http.Error(w, "Paging error", http.StatusBadRequest)
 		return
 	}
@@ -131,7 +131,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 
 	countQuery, err := postgres.CountByRequest(r)
 	if err != nil {
-		log.Println("could not peform CountByRequest:", err)
+		log.Println("could not perform CountByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -141,7 +141,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 
 	joinValues, err := postgres.JoinByRequest(r)
 	if err != nil {
-		log.Println("could not peform JoinByRequest:", err)
+		log.Println("could not perform JoinByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -152,7 +152,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 
 	requestWhere, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
-		log.Println("could not peform WhereByRequest:", err)
+		log.Println("could not perform WhereByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -167,7 +167,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 
 	order, err := postgres.OrderByRequest(r)
 	if err != nil {
-		log.Println("could not peform OrderByRequest:", err)
+		log.Println("could not perform OrderByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -177,7 +177,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 
 	page, err := postgres.PaginateIfPossible(r)
 	if err != nil {
-		log.Println("could not peform PaginateIfPossible:", err)
+		log.Println("could not perform PaginateIfPossible:", err)
 		http.Error(w, "Paging error", http.StatusBadRequest)
 		return
 	}
@@ -215,7 +215,7 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	}
 	object, err := postgres.Insert(database, schema, table, req)
 	if err != nil {
-		log.Println("could not peform InsertInTables:", err)
+		log.Println("could not perform InsertInTables:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -232,14 +232,14 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 
 	where, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
-		log.Println("could not peform WhereByRequest:", err)
+		log.Println("could not perform WhereByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	object, err := postgres.Delete(database, schema, table, where, values)
 	if err != nil {
-		log.Println("could not peform DELETE:", err)
+		log.Println("could not perform DELETE:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -265,14 +265,14 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 
 	where, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
-		log.Println("could not peform WhereByRequest:", err)
+		log.Println("could not perform WhereByRequest:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	object, err := postgres.Update(database, schema, table, where, values, req)
 	if err != nil {
-		log.Println("could not peform UPDATE:", err)
+		log.Println("could not perform UPDATE:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
