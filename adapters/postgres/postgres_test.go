@@ -10,781 +10,784 @@ import (
 	"github.com/nuveo/prest/api"
 	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/statements"
-	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestWhereByRequest(t *testing.T) {
-	Convey("Where by request without paginate", t, func() {
-		r, err := http.NewRequest("GET", "/databases?dbname=$eq.prest&test=$eq.cool", nil)
-		So(err, ShouldBeNil)
+	var testCases = []struct {
+		description    string
+		url            string
+		expectedSQL    []string
+		expectedValues []string
+		err            error
+	}{
+		{"Where by request without paginate", "/databases?dbname=$eq.prest&test=$eq.cool", []string{"dbname = $", "test = $", " AND "}, []string{"prest", "cool"}, nil},
+		{"Where by request with spaced values", "/prest/public/test5?name=$eq.prest tester", []string{"name = $"}, []string{"prest tester"}, nil},
+		{"Where by request with jsonb field", "/prest/public/test_jsonb_bug?name=$eq.goku&data->>description:jsonb=$eq.testing", []string{"name = $", "data->>'description' = $", " AND "}, []string{"goku", "testing"}, nil},
+	}
 
-		where, values, err := WhereByRequest(r, 1)
-		So(err, ShouldBeNil)
-		So(where, ShouldContainSubstring, "dbname = $")
-		So(where, ShouldContainSubstring, "test = $")
-		So(where, ShouldContainSubstring, " AND ")
-		So(values, ShouldContain, "prest")
-		So(values, ShouldContain, "cool")
-	})
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		req, err := http.NewRequest("GET", tc.url, nil)
+		if err != nil {
+			t.Errorf("expected no errors in http request, got %v", err)
+		}
 
-	Convey("Where by request with spaced values", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?celphone=$eq.444444&name=$eq.prest tester", nil)
-		So(err, ShouldBeNil)
+		where, values, err := WhereByRequest(req, 1)
+		if err != nil {
+			t.Errorf("expected no errors in where by request, got %v", err)
+		}
 
-		where, values, err := WhereByRequest(r, 1)
-		So(err, ShouldBeNil)
-		So(where, ShouldContainSubstring, "name = $")
-		So(where, ShouldContainSubstring, "celphone = $")
-		So(where, ShouldContainSubstring, " AND ")
-		So(values, ShouldContain, "prest tester")
-		So(values, ShouldContain, "444444")
-	})
+		for _, sql := range tc.expectedSQL {
+			if !strings.Contains(where, sql) {
+				t.Errorf("expected %s in %s, but not was!", sql, where)
+			}
+		}
 
-	Convey("Where by request with jsonb field", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test_jsonb_bug?name=$eq.goku&data->>description:jsonb=$eq.testing", nil)
-		So(err, ShouldBeNil)
+		expectedValuesSTR := strings.Join(tc.expectedValues, " ")
+		for _, value := range values {
+			if !strings.Contains(expectedValuesSTR, value.(string)) {
+				t.Errorf("expected %s in %s", value, expectedValuesSTR)
+			}
+		}
+	}
+}
 
-		where, values, err := WhereByRequest(r, 1)
-		So(err, ShouldBeNil)
-		So(where, ShouldContainSubstring, "name = $")
-		So(where, ShouldContainSubstring, "data->>'description' = $")
-		So(where, ShouldContainSubstring, " AND ")
-		So(values, ShouldContain, "goku")
-		So(values, ShouldContain, "testing")
-	})
+func TestInvalidWhereByRequest(t *testing.T) {
+	var testCases = []struct {
+		description string
+		url         string
+	}{
+		{"Where by request without jsonb key", "/prest/public/test_jsonb_bug?name=$eq.nuveo&data->>description:bla"},
+		{"Where by request with jsonb field invalid", "/prest/public/test_jsonb_bug?name=$eq.nuveo&data->>0description:jsonb=$eq.bla"},
+		{"Where by request with field invalid", "/prest/public/test?0name=$eq.prest"},
+		{"Where by request with invalid comparisons", "/prest/public/test?name=pq.prest"},
+	}
 
-	Convey("Where by request without jsonb key", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test_jsonb_bug?name=$eq.nuveo&data->>description:bla", nil)
-		So(err, ShouldBeNil)
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		req, err := http.NewRequest("GET", tc.url, nil)
+		if err != nil {
+			t.Errorf("expected no errors in http request, got %v", err)
+		}
 
-		_, _, err = WhereByRequest(r, 1)
-		So(err, ShouldNotBeNil)
-	})
+		where, values, err := WhereByRequest(req, 1)
+		if err == nil {
+			t.Errorf("expected errors in where by request, got %v", err)
+		}
 
-	Convey("Where by request with jsonb field invalid", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test_jsonb_bug?name=$eq.nuveo&data->>0description:jsonb=$eq.bla", nil)
-		So(err, ShouldBeNil)
+		if where != "" {
+			t.Errorf("expected empty `where`, got %v", where)
+		}
 
-		_, _, err = WhereByRequest(r, 1)
-		So(err, ShouldNotBeNil)
-	})
-
-	Convey("Where by request with field invalid", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?0name=$eq.prest", nil)
-		So(err, ShouldBeNil)
-
-		_, _, err = WhereByRequest(r, 1)
-		So(err, ShouldNotBeNil)
-	})
-
-	Convey("Where by request with invalid comparisons", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?name=pq.prest", nil)
-		So(err, ShouldBeNil)
-
-		_, _, err = WhereByRequest(r, 1)
-		So(err, ShouldNotBeNil)
-	})
-
-	Convey("Where by request with is not null operator", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?celphone=$eq.444444&name=$notnull", nil)
-		So(err, ShouldBeNil)
-
-		where, values, err := WhereByRequest(r, 1)
-		So(err, ShouldBeNil)
-		So(where, ShouldContainSubstring, "name IS NOT NULL")
-		So(where, ShouldContainSubstring, "celphone = $")
-		So(where, ShouldContainSubstring, " AND ")
-		So(values, ShouldContain, "444444")
-	})
-
-	Convey("Where by request with is null operator", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?celphone=$eq.444444&name=$null", nil)
-		So(err, ShouldBeNil)
-
-		where, values, err := WhereByRequest(r, 1)
-		So(err, ShouldBeNil)
-		So(where, ShouldContainSubstring, "name IS NULL")
-		So(where, ShouldContainSubstring, "celphone = $")
-		So(where, ShouldContainSubstring, " AND ")
-		So(values, ShouldContain, "444444")
-	})
-
-	Convey("Where by request with jsonb field and is null operator", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test_jsonb?name=$null&data->>description:jsonb=$eq.testing", nil)
-		So(err, ShouldBeNil)
-
-		where, values, err := WhereByRequest(r, 1)
-		So(err, ShouldBeNil)
-		So(where, ShouldContainSubstring, "name IS NULL")
-		So(where, ShouldContainSubstring, "data->>'description' = $")
-		So(where, ShouldContainSubstring, " AND ")
-		So(values, ShouldContain, "testing")
-	})
-
-	Convey("Where by request with jsonb field and is not null operator", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test_jsonb?name=$notnull&data->>description:jsonb=$eq.testing", nil)
-		So(err, ShouldBeNil)
-
-		where, values, err := WhereByRequest(r, 1)
-		So(err, ShouldBeNil)
-		So(where, ShouldContainSubstring, "name IS NOT NULL")
-		So(where, ShouldContainSubstring, "data->>'description' = $")
-		So(where, ShouldContainSubstring, " AND ")
-		So(values, ShouldContain, "testing")
-	})
+		if values != nil {
+			t.Errorf("expected empty `values`, got %v", values)
+		}
+	}
 }
 
 func TestQuery(t *testing.T) {
-	Convey("Query execution", t, func() {
-		sql := "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name ASC"
-		json, err := Query(sql)
-		So(err, ShouldBeNil)
-		So(len(json), ShouldBeGreaterThan, 0)
-	})
+	var response []byte
+	var err error
 
-	Convey("Query execution 2", t, func() {
-		sql := "SELECT number FROM prest.public.test2 ORDER BY number ASC"
-		json, err := Query(sql)
-		So(err, ShouldBeNil)
-		So(len(json), ShouldBeGreaterThan, 0)
-	})
+	var testCases = []struct {
+		description string
+		sql         string
+		param       bool
+		jsonMinLen  int
+		err         error
+	}{
+		{"Query execution", "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name ASC", false, 1, nil},
+		{"Query execution 2", "SELECT number FROM prest.public.test2 ORDER BY number ASC", false, 1, nil},
+		{"Query execution with params", "SELECT schema_name FROM information_schema.schemata WHERE schema_name = $1 ORDER BY schema_name ASC", true, 1, nil},
+	}
 
-	Convey("Query execution with params", t, func() {
-		sql := "SELECT schema_name FROM information_schema.schemata WHERE schema_name = $1 ORDER BY schema_name ASC"
-		json, err := Query(sql, "public")
-		So(err, ShouldBeNil)
-		So(len(json), ShouldBeGreaterThan, 0)
-	})
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		if tc.param {
+			response, err = Query(tc.sql, "public")
+		} else {
+			response, err = Query(tc.sql)
+		}
 
-	Convey("Query with invalid characters", t, func() {
-		sql := "SELECT ~~, ``, ˜ schema_name FROM information_schema.schemata WHERE schema_name = $1 ORDER BY schema_name ASC"
-		json, err := Query(sql, "public")
-		So(err, ShouldNotBeNil)
-		So(json, ShouldBeNil)
-	})
+		if err != tc.err {
+			t.Errorf("expected no errors, but got %s", err)
+		}
 
-	Convey("Query with invalid clause", t, func() {
-		sql := "0SELECT schema_name FROM information_schema.schemata WHERE schema_name = $1 ORDER BY schema_name ASC"
-		json, err := Query(sql, "public")
-		So(err, ShouldNotBeNil)
-		So(json, ShouldBeNil)
-	})
+		if len(response) < tc.jsonMinLen {
+			t.Errorf("expected valid json response, but got %v", string(response))
+		}
+	}
+}
 
+func TestInvalidQuery(t *testing.T) {
+	var testCases = []struct {
+		description string
+		sql         string
+	}{
+		{"Query with invalid characters", "SELECT ~~, ``, ˜ schema_name FROM information_schema.schemata WHERE schema_name = $1 ORDER BY schema_name ASC"},
+		{"Query with invalid clause", "0SELECT schema_name FROM information_schema.schemata WHERE schema_name = $1 ORDER BY schema_name ASC"},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		response, err := Query(tc.sql, "public")
+
+		if err == nil {
+			t.Error("expected errors, but got nil")
+		}
+
+		if response != nil {
+			t.Errorf("expected no response, but got %s", string(response))
+		}
+	}
 }
 
 func TestPaginateIfPossible(t *testing.T) {
-	Convey("Paginate if possible", t, func() {
-		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool&_page=1&_page_size=20", nil)
-		So(err, ShouldBeNil)
-		where, err := PaginateIfPossible(r)
-		So(err, ShouldBeNil)
-		So(where, ShouldContainSubstring, "LIMIT 20 OFFSET(1 - 1) * 20")
-	})
+	var testCase = []struct {
+		description string
+		url         string
+		expected    string
+		err         error
+	}{
+		{"Paginate if possible", "/databases?dbname=prest&test=cool&_page=1&_page_size=20", "LIMIT 20 OFFSET(1 - 1) * 20", nil},
+		{"Invalid Paginate if possible", "/databases?dbname=prest&test=cool", "", nil},
+	}
 
-	Convey("Paginate with invalid page value", t, func() {
-		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool&_page=X&_page_size=20", nil)
-		So(err, ShouldBeNil)
-		where, err := PaginateIfPossible(r)
-		So(err, ShouldNotBeNil)
-		So(where, ShouldContainSubstring, "")
-	})
+	for _, tc := range testCase {
+		t.Log(tc.description)
+		req, err := http.NewRequest("GET", tc.url, nil)
+		if err != nil {
+			t.Errorf("expected no errors in http request, but got %s", err)
+		}
 
-	Convey("Paginate with invalid page size value", t, func() {
-		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool&_page=1&_page_size=K", nil)
-		So(err, ShouldBeNil)
-		where, err := PaginateIfPossible(r)
-		So(err, ShouldNotBeNil)
-		So(where, ShouldContainSubstring, "")
-	})
+		sql, err := PaginateIfPossible(req)
+		if err != nil {
+			t.Errorf("expected no errors, but got %s", err)
+		}
 
-	Convey("Invalid Paginate if possible", t, func() {
-		r, err := http.NewRequest("GET", "/databases?dbname=prest&test=cool", nil)
-		So(err, ShouldBeNil)
-		where, err := PaginateIfPossible(r)
-		So(err, ShouldBeNil)
-		So(where, ShouldContainSubstring, "")
-	})
+		if !strings.Contains(tc.expected, sql) {
+			t.Errorf("expected %s in %s, but not was!", tc.expected, sql)
+		}
+	}
+}
+
+func TestInvalidPaginateIfPossible(t *testing.T) {
+	var testCases = []struct {
+		description string
+		url         string
+	}{
+		{"Paginate with invalid page value", "/databases?dbname=prest&test=cool&_page=X&_page_size=20"},
+		{"Paginate with invalid page size value", "/databases?dbname=prest&test=cool&_page=1&_page_size=K"},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		req, err := http.NewRequest("GET", tc.url, nil)
+		if err != nil {
+			t.Errorf("expected no errors in http request, but got %s", err)
+		}
+
+		sql, err := PaginateIfPossible(req)
+		if err == nil {
+			t.Errorf("expected errors, but got %s", err)
+		}
+
+		if sql != "" {
+			t.Errorf("expected empty sql, but got: %s", sql)
+		}
+	}
 }
 
 func TestInsert(t *testing.T) {
-	config.InitConf()
-	Convey("Insert data into a table with primary key", t, func() {
-		m := make(map[string]interface{}, 0)
+	var testCases = []struct {
+		description string
+		key         string
+		value       string
+		db          string
+		schema      string
+		table       string
+		result      interface{}
+		primaryKey  string
+	}{
+		{"Insert data into a table with primary key", "name", "prest-test-insert", "prest", "public", "test4", 1.0, "id"},
+		{"Insert data into a table with primary key named nuveo", "name", "prest-test-insert", "prest", "public", "test6", 1.0, "nuveo"},
+		{"Insert data into a table without primary key", "name", "prest-test-insert", "prest", "public", "test6", nil, ""},
+	}
 
-		m["name"] = "prest-test-insert"
+	t.Log("Insert data with more columns in table")
+	m := make(map[string]interface{}, 0)
+	m["name"] = "prest-test-insert"
+	m["celphone"] = "88888888888"
+	r := api.Request{
+		Data: m,
+	}
+
+	jsonByte, err := Insert("prest", "public", "test5", r)
+	if err != nil {
+		t.Errorf("expected no errors, but got %s", err)
+	}
+	if len(jsonByte) < 1 {
+		t.Errorf("expected valid response body, but got %s", string(jsonByte))
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		m := make(map[string]interface{}, 0)
+		m[tc.key] = tc.value
 		r := api.Request{
 			Data: m,
 		}
-		jsonByte, err := Insert("prest", "public", "test4", r)
-		So(err, ShouldBeNil)
-		So(len(jsonByte), ShouldBeGreaterThan, 0)
+
+		jsonByte, err := Insert(tc.db, tc.schema, tc.table, r)
+		if err != nil {
+			t.Errorf("expected no errors, but got %s", err)
+		}
+		if len(jsonByte) < 1 {
+			t.Errorf("expected valid response body, but got %s", string(jsonByte))
+		}
 
 		var toJSON map[string]interface{}
 		err = json.Unmarshal(jsonByte, &toJSON)
-		So(err, ShouldBeNil)
+		if err != nil {
+			t.Errorf("expected no errors, but got %s", err)
+		}
 
-		So(toJSON["id"], ShouldEqual, 1)
-	})
+		if tc.primaryKey != "" && toJSON[tc.primaryKey] != tc.result {
+			t.Errorf("expected %v in result, got %v", toJSON[tc.primaryKey], tc.result)
+		}
+	}
+}
 
-	Convey("Insert data into a table with primary key named nuveo", t, func() {
+func TestInvalidInsert(t *testing.T) {
+	var testCases = []struct {
+		description string
+		key         string
+		value       string
+		db          string
+		schema      string
+		table       string
+	}{
+		{"Insert invalid data into a table with primary key", "prest", "prest-test-insert", "prest", "public", "test6"},
+		{"Insert data into a table with contraints", "name", "prest", "prest", "public", "test3"},
+		{"Insert data into a database invalid", "name", "prest", "0prest", "public", "test3"},
+		{"Insert data into a schema invalid", "name", "prest", "prest", "0public", "test3"},
+		{"Insert data into a table invalid", "name", "prest", "prest", "public", "0test3"},
+		{"Insert data into a request invalid", "0name", "prest", "prest", "public", "test3"},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
 		m := make(map[string]interface{}, 0)
-
-		m["name"] = "prest-test-insert"
+		m[tc.key] = tc.value
 		r := api.Request{
 			Data: m,
 		}
-		jsonByte, err := Insert("prest", "public", "test6", r)
-		So(err, ShouldBeNil)
-		So(len(jsonByte), ShouldBeGreaterThan, 0)
 
-		var toJSON map[string]interface{}
-		err = json.Unmarshal(jsonByte, &toJSON)
-		So(err, ShouldBeNil)
-
-		So(toJSON["nuveo"], ShouldEqual, 1)
-	})
-
-	Convey("Insert data into a table without primary key", t, func() {
-		m := make(map[string]interface{}, 0)
-
-		m["name"] = "prest-test-insert"
-		r := api.Request{
-			Data: m,
+		jsonByte, err := Insert(tc.db, tc.schema, tc.table, r)
+		if err == nil {
+			t.Errorf("expected no errors, but got %s", err)
 		}
-		jsonByte, err := Insert("prest", "public", "test3", r)
-		So(err, ShouldBeNil)
-		So(len(jsonByte), ShouldBeGreaterThan, 0)
 
-		var toJSON map[string]interface{}
-		err = json.Unmarshal(jsonByte, &toJSON)
-		So(err, ShouldBeNil)
-
-		So(toJSON["name"], ShouldEqual, "prest-test-insert")
-	})
-
-	Convey("Insert invalid data into a table with primary key", t, func() {
-		m := make(map[string]interface{}, 0)
-
-		m["prest"] = "prest-test-insert"
-		r := api.Request{
-			Data: m,
+		if len(jsonByte) > 0 {
+			t.Errorf("expected invalid response body, but got %s", string(jsonByte))
 		}
-		jsonByte, err := Insert("prest", "public", "test6", r)
-		So(err, ShouldNotBeNil)
-		So(len(jsonByte), ShouldEqual, 0)
-
-	})
-
-	Convey("Insert data into a table with contraints", t, func() {
-		m := make(map[string]interface{}, 0)
-		m["name"] = "prest"
-
-		r := api.Request{
-			Data: m,
-		}
-		_, err := Insert("prest", "public", "test3", r)
-		So(err, ShouldNotBeNil)
-	})
-
-	Convey("Insert data into a database invalid", t, func() {
-		m := make(map[string]interface{}, 0)
-		m["name"] = "prest"
-
-		r := api.Request{
-			Data: m,
-		}
-		_, err := Insert("0prest", "public", "test3", r)
-		So(err, ShouldNotBeNil)
-	})
-
-	Convey("Insert data into a schema invalid", t, func() {
-		m := make(map[string]interface{}, 0)
-		m["name"] = "prest"
-
-		r := api.Request{
-			Data: m,
-		}
-		_, err := Insert("prest", "0public", "test3", r)
-		So(err, ShouldNotBeNil)
-	})
-
-	Convey("Insert data into a table invalid", t, func() {
-		m := make(map[string]interface{}, 0)
-		m["name"] = "prest"
-
-		r := api.Request{
-			Data: m,
-		}
-		_, err := Insert("prest", "public", "0test3", r)
-		So(err, ShouldNotBeNil)
-	})
-
-	Convey("Insert data into a request invalid", t, func() {
-		m := make(map[string]interface{}, 0)
-		m["0name"] = "prest"
-
-		r := api.Request{
-			Data: m,
-		}
-		_, err := Insert("prest", "public", "test3", r)
-		So(err, ShouldNotBeNil)
-	})
-
-	Convey("Insert data with more columns in table", t, func() {
-		m := make(map[string]interface{}, 0)
-		m["name"] = "prest-test-insert"
-		m["celphone"] = "88888888888"
-		r := api.Request{
-			Data: m,
-		}
-		jsonByte, err := Insert("prest", "public", "test5", r)
-		So(err, ShouldBeNil)
-		So(len(jsonByte), ShouldBeGreaterThan, 0)
-	})
+	}
 }
 
 func TestDelete(t *testing.T) {
-	config.InitConf()
-	Convey("Delete data from table", t, func() {
-		json, err := Delete("prest", "public", "test", "name=$1", []interface{}{"nuveo"})
-		So(err, ShouldBeNil)
-		So(len(json), ShouldBeGreaterThan, 0)
-	})
+	var testCases = []struct {
+		description string
+		db          string
+		schema      string
+		table       string
+		partialSQL  string
+		values      []interface{}
+	}{
+		{"Try Delete data from invalid database", "0prest", "public", "test", "name=$1", []interface{}{"nuveo"}},
+		{"Try Delete data from invalid schema", "prest", "0public", "test", "name=$1", []interface{}{"nuveo"}},
+		{"Try Delete data from invalid table", "prest", "public", "0test", "name=$1", []interface{}{"nuveo"}},
+	}
 
-	Convey("Try Delete data from invalid database", t, func() {
-		json, err := Delete("0prest", "public", "test", "name=$1", []interface{}{"nuveo"})
-		So(err, ShouldNotBeNil)
-		So(len(json), ShouldBeLessThanOrEqualTo, 0)
-	})
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		response, err := Delete(tc.db, tc.schema, tc.table, tc.partialSQL, tc.values)
+		if err == nil {
+			t.Errorf("expected error, but got: %s", err)
+		}
 
-	Convey("Try Delete data from invalid schema", t, func() {
-		json, err := Delete("prest", "0public", "test", "name=$1", []interface{}{"nuveo"})
-		So(err, ShouldNotBeNil)
-		So(len(json), ShouldBeLessThanOrEqualTo, 0)
-	})
+		if len(response) > 0 {
+			t.Errorf("expected empty response body, but got %s", string(response))
+		}
+	}
 
-	Convey("Try Delete data from invalid table", t, func() {
-		json, err := Delete("prest", "0public", "test", "name=$1", []interface{}{"nuveo"})
-		So(err, ShouldNotBeNil)
-		So(len(json), ShouldBeLessThanOrEqualTo, 0)
-	})
+	t.Log("Delete data from table")
+	response, err := Delete("prest", "public", "test", "name=$1", []interface{}{"nuveo"})
+	if err != nil {
+		t.Errorf("expected no error, but got: %s", err)
+	}
+
+	if len(response) < 1 {
+		t.Errorf("expected response body, but got %s", string(response))
+	}
 }
 
 func TestUpdate(t *testing.T) {
-	config.InitConf()
-	Convey("Update data into a table", t, func() {
+	var testCases = []struct {
+		description string
+		db          string
+		schema      string
+		table       string
+		partialSQL  string
+		values      []interface{}
+	}{
+		{"Update data into an invalid database", "0prest", "public", "test3", "name=$1", []interface{}{"prest tester"}},
+		{"Update data into an invalid schema", "prest", "0public", "test3", "name=$1", []interface{}{"prest tester"}},
+		{"Update data into an invalid table", "prest", "public", "0test3", "name=$1", []interface{}{"prest tester"}},
+	}
+	m := make(map[string]interface{}, 0)
+	m["name"] = "prest"
 
-		m := make(map[string]interface{}, 0)
-		m["name"] = "prest"
+	r := api.Request{
+		Data: m,
+	}
 
-		r := api.Request{
-			Data: m,
+	t.Log("Update data into a table")
+	response, err := Update("prest", "public", "test", "name=$1", []interface{}{"prest"}, r)
+	if err != nil {
+		t.Errorf("expected no errors, but got: %s", err)
+	}
+
+	if len(response) < 1 {
+		t.Errorf("expected a valid response body, but got %s", string(response))
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		response, err := Update(tc.db, tc.schema, tc.table, tc.partialSQL, tc.values, r)
+		if err == nil {
+			t.Errorf("expected error, but got: %s", err)
 		}
-		json, err := Update("prest", "public", "test", "name=$1", []interface{}{"prest"}, r)
-		So(err, ShouldBeNil)
-		So(len(json), ShouldBeGreaterThan, 0)
-	})
 
-	Convey("Update data into a invalid database", t, func() {
-		m := make(map[string]interface{}, 0)
-		m["name"] = "prest"
-
-		r := api.Request{
-			Data: m,
+		if len(response) > 0 {
+			t.Errorf("expected empty response body, but got %s", string(response))
 		}
-		_, err := Update("0prest", "public", "test3", "name=$1", []interface{}{"prest tester"}, r)
-		So(err, ShouldNotBeNil)
-	})
-
-	Convey("Update data into a invalid schema", t, func() {
-		m := make(map[string]interface{}, 0)
-		m["name"] = "prest"
-
-		r := api.Request{
-			Data: m,
-		}
-		_, err := Update("prest", "0public", "test3", "name=$1", []interface{}{"prest tester"}, r)
-		So(err, ShouldNotBeNil)
-	})
-
-	Convey("Update data into a invalid table", t, func() {
-		m := make(map[string]interface{}, 0)
-		m["name"] = "prest"
-
-		r := api.Request{
-			Data: m,
-		}
-		_, err := Update("prest", "public", "0test3", "name=$1", []interface{}{"prest tester"}, r)
-		So(err, ShouldNotBeNil)
-	})
+	}
 }
 
 func TestChkInvaidIdentifier(t *testing.T) {
-	Convey("Check invalid character on identifier", t, func() {
-		chk := chkInvalidIdentifier("fildName")
-		So(chk, ShouldBeFalse)
-		chk = chkInvalidIdentifier("_9fildName")
-		So(chk, ShouldBeFalse)
-		chk = chkInvalidIdentifier("_fild.Name")
-		So(chk, ShouldBeFalse)
+	var testCases = []struct {
+		in  string
+		out bool
+	}{
+		{"fildName", false},
+		{"_9fildName", false},
+		{"_fild.Name", false},
+		{"0fildName", true},
+		{"fild'Name", true},
+		{"fild\"Name", true},
+		{"fild;Name", true},
+		{"_123456789_123456789_123456789_123456789_123456789_123456789_12345", true},
+	}
 
-		chk = chkInvalidIdentifier("0fildName")
-		So(chk, ShouldBeTrue)
-		chk = chkInvalidIdentifier("fild'Name")
-		So(chk, ShouldBeTrue)
-		chk = chkInvalidIdentifier("fild\"Name")
-		So(chk, ShouldBeTrue)
-		chk = chkInvalidIdentifier("fild;Name")
-		So(chk, ShouldBeTrue)
-		chk = chkInvalidIdentifier("_123456789_123456789_123456789_123456789_123456789_123456789_12345")
-		So(chk, ShouldBeTrue)
-
-	})
+	for _, tc := range testCases {
+		result := chkInvalidIdentifier(tc.in)
+		if result != tc.out {
+			t.Errorf("expected %v, got %v", tc.out, result)
+		}
+	}
 }
 
 func TestJoinByRequest(t *testing.T) {
-	Convey("Join by request", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name", nil)
-		So(err, ShouldBeNil)
+	var testCases = []struct {
+		description     string
+		url             string
+		expectedValues  []string
+		testEmptyResult bool
+	}{
+		{"Join by request", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name", []string{"INNER JOIN", "test2 ON ", "test2.name = test.name"}, false},
+		{"Join empty params", "/prest/public/test?_join", []string{}, true},
+		{"Join missing param", "/prest/public/test?_join=inner:test2:test2.name:$eq", []string{}, true},
+		{"Join invalid operator", "/prest/public/test?_join=inner:test2:test2.name:notexist:test.name", []string{}, true},
+		{"Join invalid fields", "/prest/public/test?_join=inner:0test2:test2.name:notexist:test.name", []string{}, true},
+	}
 
-		join, err := JoinByRequest(r)
-		joinStr := strings.Join(join, " ")
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		req, err := http.NewRequest("GET", tc.url, nil)
+		if err != nil {
+			t.Errorf("expected no errors on NewRequest, got %v", err)
+		}
 
-		So(err, ShouldBeNil)
-		So(joinStr, ShouldContainSubstring, "INNER JOIN test2 ON test2.name = test.name")
-	})
+		join, err := JoinByRequest(req)
+		if tc.testEmptyResult {
+			if join != nil {
+				t.Errorf("expected empty response, but got: %v", join)
+			}
+		} else {
+			if err != nil {
+				t.Errorf("expected no errors, but got: %v", err)
+			}
 
-	Convey("Join empty param", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?_join", nil)
-		So(err, ShouldBeNil)
+			joinSQL := strings.Join(join, " ")
 
-		j, err := JoinByRequest(r)
-		So(err, ShouldBeNil)
-		So(j, ShouldBeNil)
-	})
+			for _, sql := range tc.expectedValues {
+				if !strings.Contains(joinSQL, sql) {
+					t.Errorf("expected %s in %s, but no was!", sql, joinSQL)
+				}
+			}
+		}
+	}
 
-	Convey("Join missing param", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq", nil)
-		So(err, ShouldBeNil)
+	t.Log("Join with where")
+	var expectedSQL = []string{"name = $", "data->>'description' = $", " AND "}
+	var expectedValues = []string{"nuveo", "bla"}
 
-		_, err = JoinByRequest(r)
-		So(err, ShouldNotBeNil)
-	})
-	Convey("Join invalid operator", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:notexist:test.name", nil)
-		So(err, ShouldBeNil)
+	r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name&name=$eq.nuveo&data->>description:jsonb=$eq.bla", nil)
+	if err != nil {
+		t.Errorf("expected no errorn on New Request, got %v", err)
+	}
 
-		_, err = JoinByRequest(r)
-		So(err, ShouldNotBeNil)
-	})
+	join, err := JoinByRequest(r)
+	if err != nil {
+		t.Errorf("expected no errors, but got: %v", err)
+	}
 
-	Convey("Join invalid fields", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:0test2:test2.name:notexist:test.name", nil)
-		So(err, ShouldBeNil)
+	joinStr := strings.Join(join, " ")
 
-		_, err = JoinByRequest(r)
-		So(err, ShouldNotBeNil)
-	})
+	if !strings.Contains(joinStr, " INNER JOIN test2 ON test2.name = test.name") {
+		t.Errorf("expected %s in INNER JOIN test2 ON test2.name = test.name, but no was!", joinStr)
+	}
 
-	Convey("Join with where", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name&name=$eq.nuveo&data->>description:jsonb=$eq.bla", nil)
-		So(err, ShouldBeNil)
+	where, values, err := WhereByRequest(r, 1)
+	if err != nil {
+		t.Errorf("expected no errors, got: %v", err)
+	}
 
-		join, err := JoinByRequest(r)
-		joinStr := strings.Join(join, " ")
+	for _, sql := range expectedSQL {
+		if !strings.Contains(where, sql) {
+			t.Errorf("expected %s in %s, but not was!", sql, where)
+		}
+	}
 
-		So(err, ShouldBeNil)
-		So(joinStr, ShouldContainSubstring, "INNER JOIN test2 ON test2.name = test.name")
-
-		where, values, err := WhereByRequest(r, 1)
-		So(err, ShouldBeNil)
-		So(where, ShouldContainSubstring, "name = $")
-		So(where, ShouldContainSubstring, "data->>'description' = $")
-		So(where, ShouldContainSubstring, " AND ")
-		So(values, ShouldContain, "nuveo")
-		So(values, ShouldContain, "bla")
-	})
-
+	expectedValuesSTR := strings.Join(expectedValues, " ")
+	for _, value := range values {
+		if !strings.Contains(expectedValuesSTR, value.(string)) {
+			t.Errorf("expected %s in %s", value, expectedValuesSTR)
+		}
+	}
 }
 
 func TestCountFields(t *testing.T) {
-	Convey("Count fields from table", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?_count=celphone", nil)
-		So(err, ShouldBeNil)
+	var testCases = []struct {
+		description string
+		url         string
+		expectedSQL string
+		testError   bool
+	}{
+		{"Count fields from table", "/prest/public/test5?_count=celphone", "SELECT COUNT(celphone) FROM", false},
+		{"Count all from table", "/prest/public/test5?_count=*", "SELECT COUNT(*) FROM", false},
+		{"Count with empty params", "/prest/public/test5?_count=", "", false},
+		{"Count with invalid columns", "/prest/public/test5?_count=celphone,0name", "", true},
+	}
 
-		countQuery, err := CountByRequest(r)
-		So(countQuery, ShouldContainSubstring, "SELECT COUNT(celphone) FROM")
-		So(err, ShouldBeNil)
-	})
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		req, err := http.NewRequest("GET", tc.url, nil)
+		if err != nil {
+			t.Errorf("expected no errors on NewRequest, got: %v", err)
+		}
 
-	Convey("Count all from table", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?_count=*", nil)
-		So(err, ShouldBeNil)
+		sql, err := CountByRequest(req)
+		if tc.testError {
+			if err == nil {
+				t.Error("expected errors, but no was!")
+			}
 
-		countQuery, err := CountByRequest(r)
-		So(countQuery, ShouldContainSubstring, "SELECT COUNT(*) FROM")
-		So(err, ShouldBeNil)
-	})
+			if sql != "" {
+				t.Errorf("expected empty sql, but got: %s", sql)
+			}
+		} else {
+			if err != nil {
+				t.Errorf("expected no errors, but got: %v", err)
+			}
 
-	Convey("Try Count with empty '_count' field", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?_count=", nil)
-		So(err, ShouldBeNil)
+			if !strings.Contains(sql, tc.expectedSQL) {
+				t.Errorf("expected %s in %s", tc.expectedSQL, sql)
+			}
+		}
+	}
 
-		countQuery, err := CountByRequest(r)
-		So(countQuery, ShouldEqual, "")
-		So(err, ShouldBeNil)
-	})
-
-	Convey("Try Count with invalid columns", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?_count=celphone,0name", nil)
-		So(err, ShouldBeNil)
-
-		countQuery, err := CountByRequest(r)
-		So(countQuery, ShouldEqual, "")
-		So(err, ShouldNotBeNil)
-	})
 }
 
 func TestDatabaseClause(t *testing.T) {
-	Convey("Return appropriate SELECT clause", t, func() {
-		r, err := http.NewRequest("GET", "/databases", nil)
-		So(err, ShouldBeNil)
+	var testCases = []struct {
+		description   string
+		url           string
+		queryExpected string
+	}{
+		{"Return appropriate SELECT clause", "/databases", fmt.Sprintf(statements.DatabasesSelect, statements.FieldDatabaseName)},
+		{"Return appropriate COUNT clause", "/databases?_count=*", fmt.Sprintf(statements.DatabasesSelect, statements.FieldCountDatabaseName)},
+	}
 
-		countQuery := DatabaseClause(r)
-		So(countQuery, ShouldEqual, fmt.Sprintf(statements.DatabasesSelect, statements.FieldDatabaseName))
-	})
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		r, err := http.NewRequest("GET", tc.url, nil)
+		if err != nil {
+			t.Errorf("expected no errors on NewRequest, got: %v", err)
+		}
 
-	Convey("Return appropriate COUNT clause", t, func() {
-		r, err := http.NewRequest("GET", "/databases?_count=*", nil)
-		So(err, ShouldBeNil)
+		query := DatabaseClause(r)
+		if query != tc.queryExpected {
+			t.Errorf("query unexpected, got: %s", query)
+		}
+	}
 
-		countQuery := DatabaseClause(r)
-		So(countQuery, ShouldEqual, fmt.Sprintf(statements.DatabasesSelect, statements.FieldCountDatabaseName))
-	})
 }
 
 func TestSchemaClause(t *testing.T) {
-	Convey("Return appropriate SELECT clause", t, func() {
-		r, err := http.NewRequest("GET", "/schemas", nil)
-		So(err, ShouldBeNil)
+	var testCases = []struct {
+		description   string
+		url           string
+		queryExpected string
+	}{
+		{"Return appropriate SELECT clause", "/schemas", fmt.Sprintf(statements.SchemasSelect, statements.FieldSchemaName)},
+		{"Return appropriate COUNT clause", "/schemas?_count=*", fmt.Sprintf(statements.SchemasSelect, statements.FieldCountSchemaName)},
+	}
 
-		countQuery := SchemaClause(r)
-		So(countQuery, ShouldEqual, fmt.Sprintf(statements.SchemasSelect, statements.FieldSchemaName))
-	})
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		r, err := http.NewRequest("GET", tc.url, nil)
+		if err != nil {
+			t.Errorf("expected no errors on NewRequest, got: %v", err)
+		}
 
-	Convey("Return appropriate COUNT clause", t, func() {
-		r, err := http.NewRequest("GET", "/schemas?_count=*", nil)
-		So(err, ShouldBeNil)
-
-		countQuery := SchemaClause(r)
-		So(countQuery, ShouldEqual, fmt.Sprintf(statements.SchemasSelect, statements.FieldCountSchemaName))
-	})
+		query := SchemaClause(r)
+		if query != tc.queryExpected {
+			t.Errorf("query unexpected, got: %s", query)
+		}
+	}
 }
 
 func TestGetQueryOperator(t *testing.T) {
-	Convey("Query operator eq", t, func() {
-		op, err := GetQueryOperator("$eq")
-		So(err, ShouldBeNil)
-		So(op, ShouldEqual, "=")
-	})
+	var testCases = []struct {
+		in  string
+		out string
+	}{
+		{"$eq", "="},
+		{"$ne", "!="},
+		{"$gt", ">"},
+		{"$gte", ">="},
+		{"$lt", "<"},
+		{"$lte", "<="},
+		{"$in", "IN"},
+		{"$nin", "NOT IN"},
+		{"$notnull", "IS NOT NULL"},
+		{"$null", "IS NULL"},
+	}
 
-	Convey("Query operator ne", t, func() {
-		op, err := GetQueryOperator("$ne")
-		So(err, ShouldBeNil)
-		So(op, ShouldEqual, "!=")
-	})
+	for _, tc := range testCases {
+		t.Log(fmt.Sprintf("Query operator %s", tc.in))
+		op, err := GetQueryOperator(tc.in)
+		if err != nil {
+			t.Errorf("expected no errors, got: %v", err)
+		}
 
-	Convey("Query operator gt", t, func() {
-		op, err := GetQueryOperator("$gt")
-		So(err, ShouldBeNil)
-		So(op, ShouldEqual, ">")
-	})
+		if op != tc.out {
+			t.Errorf("expected %s, got: %s", tc.out, op)
+		}
+	}
 
-	Convey("Query operator gte", t, func() {
-		op, err := GetQueryOperator("$gte")
-		So(err, ShouldBeNil)
-		So(op, ShouldEqual, ">=")
-	})
+	t.Log("Invalid query operator")
+	op, err := GetQueryOperator("!lol")
+	if err == nil {
+		t.Errorf("expected errors, got: %v", err)
+	}
 
-	Convey("Query operator lt", t, func() {
-		op, err := GetQueryOperator("$lt")
-		So(err, ShouldBeNil)
-		So(op, ShouldEqual, "<")
-	})
-
-	Convey("Query operator lte", t, func() {
-		op, err := GetQueryOperator("$lte")
-		So(err, ShouldBeNil)
-		So(op, ShouldEqual, "<=")
-	})
-
-	Convey("Query operator IN", t, func() {
-		op, err := GetQueryOperator("$in")
-		So(err, ShouldBeNil)
-		So(op, ShouldEqual, "IN")
-	})
-
-	Convey("Query operator NIN", t, func() {
-		op, err := GetQueryOperator("$nin")
-		So(err, ShouldBeNil)
-		So(op, ShouldEqual, "NOT IN")
-	})
+	if op != "" {
+		t.Errorf("expected empty op, got: %s", op)
+	}
 }
 
 func TestOrderByRequest(t *testing.T) {
-	Convey("Query ORDER BY", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?_order=name,-number", nil)
-		So(err, ShouldBeNil)
+	t.Log("Query ORDER BY")
+	var expectedSQL = []string{"ORDER BY", "name", "number DESC"}
 
-		order, err := OrderByRequest(r)
-		So(err, ShouldBeNil)
-		So(order, ShouldContainSubstring, "ORDER BY")
-		So(order, ShouldContainSubstring, "name")
-		So(order, ShouldContainSubstring, "number DESC")
-	})
+	r, err := http.NewRequest("GET", "/prest/public/test?_order=name,-number", nil)
+	if err != nil {
+		t.Errorf("expected no errors on NewRequest, got: %v", err)
+	}
 
-	Convey("Query ORDER BY empty", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?_order=", nil)
-		So(err, ShouldBeNil)
+	order, err := OrderByRequest(r)
+	if err != nil {
+		t.Errorf("expected no errors on OrderByRequest, got: %v", err)
+	}
+	for _, sql := range expectedSQL {
+		if !strings.Contains(order, sql) {
+			t.Errorf("expected %s in %s, but no was!", sql, order)
+		}
+	}
 
-		order, err := OrderByRequest(r)
-		So(err, ShouldBeNil)
-		So(order, ShouldContainSubstring, "")
-	})
+	t.Log("Query ORDER BY empty")
+	r, err = http.NewRequest("GET", "/prest/public/test?_order=", nil)
+	if err != nil {
+		t.Errorf("expected no errors on NewRequest, got: %v", err)
+	}
 
-	Convey("Query ORDER BY invalid column", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test?_order=0name", nil)
-		So(err, ShouldBeNil)
+	order, err = OrderByRequest(r)
+	if err != nil {
+		t.Errorf("expected no errors on OrderByRequest, got: %v", err)
+	}
 
-		order, err := OrderByRequest(r)
-		So(err, ShouldNotBeNil)
-		So(order, ShouldContainSubstring, "")
-	})
+	if order != "" {
+		t.Errorf("expected order empty, got: %s", order)
+	}
+
+	t.Log("Query ORDER BY invalid column")
+	r, err = http.NewRequest("GET", "/prest/public/test?_order=0name", nil)
+	if err != nil {
+		t.Errorf("expected no errors on NewRequest, got: %v", err)
+	}
+
+	order, err = OrderByRequest(r)
+	if err == nil {
+		t.Errorf("expected errors on OrderByRequest, got: %v", err)
+	}
+
+	if order != "" {
+		t.Errorf("expected order empty, got: %s", order)
+	}
 }
 
 func TestTablePermissions(t *testing.T) {
-	config.InitConf()
-	Convey("Read", t, func() {
-		p := TablePermissions("test_readonly_access", "read")
-		So(p, ShouldBeTrue)
-	})
-	Convey("Try to read without permission", t, func() {
-		p := TablePermissions("test_write_and_delete_access", "read")
-		So(p, ShouldBeFalse)
-	})
-	Convey("Write", t, func() {
-		p := TablePermissions("test_write_and_delete_access", "write")
-		So(p, ShouldBeTrue)
-	})
-	Convey("Try to write without permission", t, func() {
-		p := TablePermissions("test_readonly_access", "write")
-		So(p, ShouldBeFalse)
-	})
-	Convey("Delete", t, func() {
-		p := TablePermissions("test_write_and_delete_access", "delete")
-		So(p, ShouldBeTrue)
-	})
-	Convey("Try to delete without permission", t, func() {
-		p := TablePermissions("test_readonly_access", "delete")
-		So(p, ShouldBeFalse)
-	})
-	Convey("Restrict disabled", t, func() {
-		config.PREST_CONF.AccessConf.Restrict = false
-		p := TablePermissions("test_readonly_access", "delete")
-		So(p, ShouldBeTrue)
-	})
+	var testCases = []struct {
+		description string
+		table       string
+		permission  string
+		out         bool
+	}{
+		{"Read", "test_readonly_access", "read", true},
+		{"Try to read without permission", "test_write_and_delete_access", "read", false},
+		{"Write", "test_write_and_delete_access", "write", true},
+		{"Try to write without permission", "test_readonly_access", "write", false},
+		{"Delete", "test_write_and_delete_access", "delete", true},
+		{"Try to delete without permission", "test_readonly_access", "delete", false},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		p := TablePermissions(tc.table, tc.permission)
+
+		if p != tc.out {
+			t.Errorf("expected %v, got %v", tc.out, p)
+		}
+	}
 
 }
 
 func TestFieldsPermissions(t *testing.T) {
-	config.InitConf()
+	var testCases = []struct {
+		description string
+		table       string
+		fields      []string
+		permission  string
+		resultLen   int
+	}{
+		{"Read valid field", "test_list_only_id", []string{"id"}, "read", 1},
+		{"Read invalid field", "test_list_only_id", []string{"name"}, "read", 0},
+		{"Read non existing field", "test_list_only_id", []string{"non_existing_field"}, "read", 0},
+		{"Select with *", "test_list_only_id", []string{"*"}, "read", 1},
+	}
 
-	Convey("Read valid field", t, func() {
-		p := FieldsPermissions("test_list_only_id", []string{"id"}, "read")
-		So(len(p), ShouldEqual, 1)
-	})
-	Convey("Read invalid field", t, func() {
-		p := FieldsPermissions("test_list_only_id", []string{"name"}, "read")
-		So(len(p), ShouldEqual, 0)
-	})
-	Convey("Read non existing field", t, func() {
-		p := FieldsPermissions("test_list_only_id", []string{"non_existing_field"}, "read")
-		So(len(p), ShouldEqual, 0)
-	})
-	Convey("Select with *", t, func() {
-		p := FieldsPermissions("test_list_only_id", []string{"*"}, "read")
-		So(len(p), ShouldEqual, 1)
-	})
-	Convey("Read unrestrict", t, func() {
-		config.PREST_CONF.AccessConf.Restrict = false
-		p := FieldsPermissions("test_list_only_id", []string{"*"}, "read")
-		So(p[0], ShouldEqual, "*")
-	})
-
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		fields := FieldsPermissions(tc.table, tc.fields, tc.permission)
+		if len(fields) != tc.resultLen {
+			t.Errorf("expected %d, got: %d - %v", tc.resultLen, len(fields), fields)
+		}
+	}
 }
+
+func TestRestrictFalse(t *testing.T) {
+	config.PREST_CONF.AccessConf.Restrict = false
+
+	t.Log("Read unrestrict")
+	fields := FieldsPermissions("test_list_only_id", []string{"*"}, "read")
+	if fields[0] != "*" {
+		t.Errorf("expected '*', got: %s", fields[0])
+	}
+
+	t.Log("Restrict disabled")
+	p := TablePermissions("test_readonly_access", "delete")
+	if !p {
+		t.Errorf("expected %v, got: %v", p, !p)
+	}
+}
+
 func TestSelectFields(t *testing.T) {
-	Convey("One field", t, func() {
-		s, err := SelectFields([]string{"test"})
-		So(s, ShouldContainSubstring, "SELECT test FROM")
-		So(err, ShouldBeNil)
-	})
+	var testCases = []struct {
+		description string
+		fields      []string
+		expectedSQL string
+	}{
+		{"One field", []string{"test"}, "SELECT test FROM"},
+		{"More field", []string{"test", "test02"}, "SELECT test,test02 FROM"},
+	}
+	var testErrorCases = []struct {
+		description string
+		fields      []string
+		expectedSQL string
+	}{
+		{"Invalid fields", []string{"0test", "test02"}, ""},
+		{"Empty fields", []string{}, ""},
+	}
 
-	Convey("Two fields", t, func() {
-		s, err := SelectFields([]string{"test", "test02"})
-		So(s, ShouldContainSubstring, "test")
-		So(s, ShouldContainSubstring, "test02")
-		So(s, ShouldContainSubstring, "SELECT")
-		So(s, ShouldContainSubstring, "FROM")
-		So(err, ShouldBeNil)
-	})
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		sql, err := SelectFields(tc.fields)
+		if err != nil {
+			t.Errorf("expected no errors, but got: %v", err)
+		}
 
-	Convey("Invalid fields", t, func() {
-		_, err := SelectFields([]string{"0test", "test02"})
-		So(err, ShouldNotBeNil)
-	})
+		if sql != tc.expectedSQL {
+			t.Errorf("expected '%s', got: '%s'", tc.expectedSQL, sql)
+		}
+	}
 
-	Convey("Empty fields", t, func() {
-		_, err := SelectFields([]string{})
-		So(err, ShouldNotBeNil)
-	})
+	for _, tc := range testErrorCases {
+		t.Log(tc.description)
+		sql, err := SelectFields(tc.fields)
+		if err == nil {
+			t.Errorf("expected errors, but got: %v", err)
+		}
 
+		if sql != tc.expectedSQL {
+			t.Errorf("expected '%s', got: '%s'", tc.expectedSQL, sql)
+		}
+	}
 }
 
 func TestColumnsByRequest(t *testing.T) {
-	Convey("Select fields from table", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?_select=celphone", nil)
-		So(err, ShouldBeNil)
+	var testCases = []struct {
+		description string
+		url         string
+		expectedSQL string
+	}{
+		{"Select fields from table", "/prest/public/test5?_select=celphone", "celphone"},
+		{"Select all from table", "/prest/public/test5?_select=*", "*"},
+		{"Select with empty '_select' field", "/prest/public/test5?_select=", "*"},
+		{"Select with more columns", "/prest/public/test5?_select=celphone,battery", "celphone,battery"},
+	}
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		r, err := http.NewRequest("GET", tc.url, nil)
+		if err != nil {
+			t.Errorf("expected no errors on NewRequest, but got: %v", err)
+		}
 
 		selectQuery := ColumnsByRequest(r)
 		selectStr := strings.Join(selectQuery, ",")
-		So(selectStr, ShouldEqual, "celphone")
-		So(len(selectQuery), ShouldEqual, 1)
-	})
-	Convey("Select all from table", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?_select=*", nil)
-		So(err, ShouldBeNil)
-
-		selectQuery := ColumnsByRequest(r)
-		selectStr := strings.Join(selectQuery, ",")
-		So(len(selectQuery), ShouldEqual, 1)
-		So(selectStr, ShouldEqual, "*")
-	})
-	Convey("Try Select with empty '_select' field", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?_select=", nil)
-		So(err, ShouldBeNil)
-
-		selectQuery := ColumnsByRequest(r)
-		selectStr := strings.Join(selectQuery, ",")
-		So(len(selectQuery), ShouldEqual, 1)
-		So(selectStr, ShouldEqual, "*")
-	})
-	Convey("Try Select with empty '_select' field", t, func() {
-		r, err := http.NewRequest("GET", "/prest/public/test5?_select=celphone,battery", nil)
-		So(err, ShouldBeNil)
-
-		selectQuery := ColumnsByRequest(r)
-		selectStr := strings.Join(selectQuery, ",")
-		So(len(selectQuery), ShouldEqual, 2)
-		So(selectStr, ShouldContainSubstring, "celphone,battery")
-	})
+		if selectStr != tc.expectedSQL {
+			t.Errorf("expected %s, got: %s", tc.expectedSQL, selectStr)
+		}
+	}
 }
