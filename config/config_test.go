@@ -4,48 +4,64 @@ import (
 	"testing"
 
 	"os"
-
-	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestInitConf(t *testing.T) {
 	os.Setenv("PREST_CONF", "../testdata/prest.toml")
-	Convey("Check tables parser", t, func() {
-		InitConf()
-		So(len(PREST_CONF.AccessConf.Tables), ShouldBeGreaterThanOrEqualTo, 2)
-	})
-	Convey("Check restrict parser", t, func() {
-		InitConf()
-		So(PREST_CONF.AccessConf.Restrict, ShouldBeTrue)
-	})
+
+	InitConf()
+	if len(PREST_CONF.AccessConf.Tables) < 2 {
+		t.Errorf("expected > 2, got: %d", len(PREST_CONF.AccessConf.Tables))
+	}
+
+	InitConf()
+	if !PREST_CONF.AccessConf.Restrict {
+		t.Error("expected true, but got false")
+	}
 }
 
 func TestParse(t *testing.T) {
-	Convey("Verify if get toml", t, func() {
-		os.Setenv("PREST_CONF", "../testdata/prest.toml")
-		viperCfg()
-		cfg := &Prest{}
-		err := Parse(cfg)
-		So(err, ShouldBeNil)
-		So(cfg.HTTPPort, ShouldEqual, 6000)
-		So(cfg.PGDatabase, ShouldEqual, "prest")
-	})
-	Convey("Verify if get env", t, func() {
-		os.Setenv("PREST_CONF", "../prest.toml")
-		os.Setenv("PREST_HTTP_PORT", "4000")
-		viperCfg()
-		cfg := &Prest{}
-		err := Parse(cfg)
-		So(err, ShouldBeNil)
-		So(cfg.HTTPPort, ShouldEqual, 4000)
-	})
-	Convey("Verify if env override toml", t, func() {
-		os.Setenv("PREST_HTTP_PORT", "4000")
-		os.Setenv("PREST_CONF", "../testdata/prest.toml")
-		viperCfg()
-		cfg := &Prest{}
-		err := Parse(cfg)
-		So(err, ShouldBeNil)
-		So(cfg.HTTPPort, ShouldEqual, 4000)
-	})
+	os.Setenv("PREST_CONF", "../testdata/prest.toml")
+	viperCfg()
+	cfg := &Prest{}
+	err := Parse(cfg)
+	if err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+
+	if cfg.HTTPPort != 6000 {
+		t.Errorf("expected port: 6000, got: %d", cfg.HTTPPort)
+	}
+
+	if cfg.PGDatabase != "prest" {
+		t.Errorf("expected database: prest, got: %s", cfg.PGDatabase)
+	}
+
+	os.Setenv("PREST_CONF", "../prest.toml")
+	os.Setenv("PREST_HTTP_PORT", "4000")
+	viperCfg()
+	cfg = &Prest{}
+	err = Parse(cfg)
+
+	if err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+
+	if cfg.HTTPPort != 4000 {
+		t.Errorf("expected port: 4000, got: %d", cfg.HTTPPort)
+	}
+
+	os.Setenv("PREST_HTTP_PORT", "4000")
+	os.Setenv("PREST_CONF", "../testdata/prest.toml")
+	viperCfg()
+	cfg = &Prest{}
+	err = Parse(cfg)
+
+	if err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+
+	if cfg.HTTPPort != 4000 {
+		t.Errorf("expected port: 4000, got: %d", cfg.HTTPPort)
+	}
 }
