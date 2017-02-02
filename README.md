@@ -8,7 +8,25 @@
 Serve a RESTful API from any PostgreSQL database
 
 ## Problem
+
 There is the PostgREST written in haskell, keep a haskell software in production is not easy job, with this need that was born the pREST.
+
+## Docker
+
+https://hub.docker.com/r/nuveo/prest/
+
+```
+docker run -e PREST_HTTP_PORT=3000 \
+	-e PREST_PG_HOST=127.0.0.1 \
+	-e PREST_PG_USER=postgres \
+	-e PREST_PG_PASS=pass \
+	nuveo/prest:0.1
+```
+
+### Tags
+
+- 0.1 (stable)
+- lastest (developer)
 
 ## Install
 
