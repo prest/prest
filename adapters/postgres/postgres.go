@@ -71,10 +71,6 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 						return
 					}
 				}
-				if correctLength && !hasPreffix {
-					err = errors.New("invalid where clause")
-					return
-				}
 			}
 
 			keyInfo := strings.Split(key, ":")
@@ -193,7 +189,7 @@ func JoinByRequest(r *http.Request) (values []string, err error) {
 func SelectFields(fields []string) (sql string, err error) {
 	if len(fields) == 0 {
 
-		err = errors.New("you must select at least one field.")
+		err = errors.New("you must select at least one field")
 		return
 	}
 
