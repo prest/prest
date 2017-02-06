@@ -188,7 +188,6 @@ func JoinByRequest(r *http.Request) (values []string, err error) {
 // SelectFields query
 func SelectFields(fields []string) (sql string, err error) {
 	if len(fields) == 0 {
-
 		err = errors.New("you must select at least one field")
 		return
 	}
