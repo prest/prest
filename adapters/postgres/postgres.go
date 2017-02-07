@@ -52,8 +52,6 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 	whereValues := []string{}
 	var value, op string
 
-	op, err = GetQueryOperator("$eq")
-
 	pid := initialPlaceholderID
 	for key, val := range r.URL.Query() {
 		if !strings.HasPrefix(key, "_") {
