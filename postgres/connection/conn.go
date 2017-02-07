@@ -3,6 +3,8 @@ package connection
 import (
 	"fmt"
 
+	"database/sql"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/nuveo/prest/config"
 	// Used pg drive on sqlx
@@ -18,7 +20,7 @@ var (
 // MustGet get postgres connection
 func MustGet() *sqlx.DB {
 	if db == nil {
-		cfg := config.Prest{}
+		cfg = config.Prest{}
 		config.Parse(&cfg)
 		dbURI := fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=disable", cfg.PGUser, cfg.PGDatabase, cfg.PGHost, cfg.PGPort)
 		if cfg.PGPass != "" {
@@ -32,4 +34,9 @@ func MustGet() *sqlx.DB {
 		db.SetMaxOpenConns(cfg.PGMAxOpenConn)
 	}
 	return db
+}
+
+// SetNativeDB enable to override sqlx native db
+func SetNativeDB(native *sql.DB) {
+	db.DB = native
 }
