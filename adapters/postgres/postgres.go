@@ -12,6 +12,8 @@ import (
 
 	"database/sql"
 
+	"regexp"
+
 	"github.com/nuveo/prest/adapters/postgres/connection"
 	"github.com/nuveo/prest/api"
 	"github.com/nuveo/prest/config"
@@ -23,6 +25,12 @@ const (
 	pageSizeKey     = "_page_size"
 	defaultPageSize = 10
 )
+
+var removeOperatorRegex *regexp.Regexp
+
+func init() {
+	removeOperatorRegex = regexp.MustCompile("\\$[a-z]+.")
+}
 
 // chkInvalidIdentifier return true if identifier is invalid
 func chkInvalidIdentifier(identifer string) bool {
@@ -45,10 +53,6 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 	var value, op string
 
 	op, err = GetQueryOperator("$eq")
-	if err != nil {
-		// Never throw an error, amen
-		return
-	}
 
 	pid := initialPlaceholderID
 	for key, val := range r.URL.Query() {
@@ -56,20 +60,15 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 
 			value = val[0]
 			if val[0] != "" {
-				opValues := strings.Split(val[0], ".")
-				correctLength := len(opValues) == 2
-				hasPreffix := strings.HasPrefix(opValues[0], "$")
-				if hasPreffix {
-					op = opValues[0]
-					if correctLength {
-						value = opValues[1]
-					} else {
-						value = ""
-					}
-					op, err = GetQueryOperator(op)
-					if err != nil {
-						return
-					}
+				op = removeOperatorRegex.FindString(val[0])
+				if op == "" {
+					op = "$eq"
+				}
+				value = removeOperatorRegex.ReplaceAllString(val[0], "")
+
+				op, err = GetQueryOperator(op)
+				if err != nil {
+					return
 				}
 			}
 

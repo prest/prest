@@ -23,7 +23,7 @@ func TestWhereByRequest(t *testing.T) {
 		{"Where by request without paginate", "/databases?dbname=$eq.prest&test=$eq.cool", []string{"dbname = $", "test = $", " AND "}, []string{"prest", "cool"}, nil},
 		{"Where by request with spaced values", "/prest/public/test5?name=$eq.prest tester", []string{"name = $"}, []string{"prest tester"}, nil},
 		{"Where by request with jsonb field", "/prest/public/test_jsonb_bug?name=$eq.goku&data->>description:jsonb=$eq.testing", []string{"name = $", "data->>'description' = $", " AND "}, []string{"goku", "testing"}, nil},
-		{"Where by request with spaced values", "/prest/public/test5?name=$eq.prest.txt tester", []string{"name = $"}, []string{"prest.txt tester"}, nil},
+		{"Where by request with dot values", "/prest/public/test5?name=$eq.prest.txt tester", []string{"name = $"}, []string{"prest.txt tester"}, nil},
 	}
 
 	for _, tc := range testCases {
