@@ -96,7 +96,7 @@ Go-toml provides two handy command line tools:
 * `tomljson`: Reads a TOML file and outputs its JSON representation.
 
     ```
-    go install github.com/pelletier/go-toml/cmd/tomjson
+    go install github.com/pelletier/go-toml/cmd/tomljson
     tomljson --help
     ```
 
