@@ -62,12 +62,10 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 			if val[0] != "" {
 				op = removeOperatorRegex.FindString(val[0])
 				op = strings.Replace(op, ".", "", -1)
-				println("Op", op)
 				if op == "" {
 					op = "$eq"
 				}
 				value = removeOperatorRegex.ReplaceAllString(val[0], "")
-				println("val", value)
 				op, err = GetQueryOperator(op)
 				if err != nil {
 					return
