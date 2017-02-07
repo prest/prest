@@ -3,6 +3,12 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "vSVwtZlnL+mRjAfYerSodfA4iYk=",
+			"path": "github.com/DATA-DOG/go-sqlmock",
+			"revision": "55ecc5a333fae40c70a7b36835c8785268589738",
+			"revisionTime": "2017-02-05T19:41:58Z"
+		},
+		{
 			"checksumSHA1": "7G7ADsNRwBcyfkJyTrX1oW4I0Rs=",
 			"path": "github.com/auth0/go-jwt-middleware",
 			"revision": "f3f7de3b9e394e3af3b88e1b9457f6f71d1ae0ac",
