@@ -23,6 +23,7 @@ func TestWhereByRequest(t *testing.T) {
 		{"Where by request without paginate", "/databases?dbname=$eq.prest&test=$eq.cool", []string{"dbname = $", "test = $", " AND "}, []string{"prest", "cool"}, nil},
 		{"Where by request with spaced values", "/prest/public/test5?name=$eq.prest tester", []string{"name = $"}, []string{"prest tester"}, nil},
 		{"Where by request with jsonb field", "/prest/public/test_jsonb_bug?name=$eq.goku&data->>description:jsonb=$eq.testing", []string{"name = $", "data->>'description' = $", " AND "}, []string{"goku", "testing"}, nil},
+		{"Where by request with dot values", "/prest/public/test5?name=$eq.prest.txt tester", []string{"name = $"}, []string{"prest.txt tester"}, nil},
 	}
 
 	for _, tc := range testCases {
@@ -60,7 +61,6 @@ func TestInvalidWhereByRequest(t *testing.T) {
 		{"Where by request without jsonb key", "/prest/public/test_jsonb_bug?name=$eq.nuveo&data->>description:bla"},
 		{"Where by request with jsonb field invalid", "/prest/public/test_jsonb_bug?name=$eq.nuveo&data->>0description:jsonb=$eq.bla"},
 		{"Where by request with field invalid", "/prest/public/test?0name=$eq.prest"},
-		{"Where by request with invalid comparisons", "/prest/public/test?name=pq.prest"},
 	}
 
 	for _, tc := range testCases {
