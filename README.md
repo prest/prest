@@ -368,3 +368,7 @@ fields = ["id", "name"]
 
 
 Configuration example: [prest.toml](https://github.com/nuveo/prest/blob/master/testdata/prest.toml)
+
+### Custom modules
+
+Copy the "ping" module directory as a base, create your functions and add (register) the module in modules/base.go.
