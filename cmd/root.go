@@ -10,6 +10,7 @@ import (
 	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/controllers"
 	"github.com/nuveo/prest/middlewares"
+	"github.com/nuveo/prest/modules"
 	"github.com/spf13/cobra"
 	"github.com/urfave/negroni"
 )
@@ -54,6 +55,9 @@ func app() {
 	r.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
 	r.HandleFunc("/tables", controllers.GetTables).Methods("GET")
 	r.HandleFunc("/_QUERIES/{queriesLocation}/{script}", controllers.ExecuteFromScripts)
+
+	modules.Register(r)
+
 	r.HandleFunc("/{database}/{schema}", controllers.GetTablesByDatabaseAndSchema).Methods("GET")
 
 	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
@@ -67,6 +71,7 @@ func app() {
 		negroni.HandlerFunc(middlewares.AccessControl),
 		negroni.Wrap(crudRoutes),
 	))
+
 	n.UseHandler(r)
 	n.Run(fmt.Sprintf(":%v", cfg.HTTPPort))
 }
