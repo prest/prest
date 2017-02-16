@@ -49,7 +49,7 @@ func app() {
 	if cfg.JWTKey != "" {
 		n.Use(middlewares.JwtMiddleware(cfg.JWTKey))
 	}
-	r := mux.NewRouter()
+	r := config.GetRouter()
 	r.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
 	r.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
 	r.HandleFunc("/tables", controllers.GetTables).Methods("GET")
