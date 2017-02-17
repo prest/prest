@@ -2,15 +2,15 @@ package config
 
 import "github.com/gorilla/mux"
 
-var Router *mux.Router
+var router *mux.Router
 
 func initRouter() {
-	Router = mux.NewRouter()
+	router = mux.NewRouter()
 }
 
 func GetRouter() *mux.Router {
-	if Router == nil {
+	if router == nil {
 		initRouter()
 	}
-	return Router
+	return router
 }
