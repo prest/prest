@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 	// postgres driver for migrate
 	_ "github.com/mattes/migrate/driver/postgres"
 	"github.com/nuveo/prest/config"
@@ -49,7 +50,9 @@ func app() {
 	if cfg.JWTKey != "" {
 		n.Use(middlewares.JwtMiddleware(cfg.JWTKey))
 	}
+
 	r := config.GetRouter()
+
 	r.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
 	r.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
 	r.HandleFunc("/tables", controllers.GetTables).Methods("GET")
@@ -67,6 +70,14 @@ func app() {
 		negroni.HandlerFunc(middlewares.AccessControl),
 		negroni.Wrap(crudRoutes),
 	))
+
+	if cfg.CORSAllowOrigin != nil {
+		c := cors.New(cors.Options{
+			AllowedOrigins: cfg.CORSAllowOrigin,
+		})
+		n.Use(c)
+	}
+
 	n.UseHandler(r)
 	n.Run(fmt.Sprintf(":%v", cfg.HTTPPort))
 }
