@@ -26,18 +26,19 @@ type AccessConf struct {
 // Prest basic config
 type Prest struct {
 	// HTTPPort Declare which http port the PREST used
-	HTTPPort       int
-	PGHost         string
-	PGPort         int
-	PGUser         string
-	PGPass         string
-	PGDatabase     string
-	PGMaxIdleConn  int
-	PGMAxOpenConn  int
-	JWTKey         string
-	MigrationsPath string
-	QueriesPath    string
-	AccessConf     AccessConf
+	HTTPPort        int
+	PGHost          string
+	PGPort          int
+	PGUser          string
+	PGPass          string
+	PGDatabase      string
+	PGMaxIdleConn   int
+	PGMAxOpenConn   int
+	JWTKey          string
+	MigrationsPath  string
+	QueriesPath     string
+	AccessConf      AccessConf
+	CORSAllowOrigin []string
 }
 
 var PREST_CONF *Prest
@@ -86,6 +87,7 @@ func Parse(cfg *Prest) (err error) {
 	cfg.MigrationsPath = viper.GetString("migrations")
 	cfg.AccessConf.Restrict = viper.GetBool("access.restrict")
 	cfg.QueriesPath = viper.GetString("queries.location")
+	cfg.CORSAllowOrigin = viper.GetStringSlice("cors.alloworigin")
 
 	var t []TablesConf
 	err = viper.UnmarshalKey("access.tables", &t)
