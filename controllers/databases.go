@@ -18,11 +18,15 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := postgres.DatabaseClause(r)
+	query, hasCount := postgres.DatabaseClause(r)
 	sqlDatabases := fmt.Sprint(query, statements.DatabasesWhere)
 
 	if requestWhere != "" {
 		sqlDatabases = fmt.Sprint(sqlDatabases, " AND ", requestWhere)
+	}
+
+	if hasCount {
+		sqlDatabases = fmt.Sprint(sqlDatabases, "GROUP BY datname")
 	}
 
 	order, _ := postgres.OrderByRequest(r)

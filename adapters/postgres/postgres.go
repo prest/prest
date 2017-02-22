@@ -125,11 +125,12 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 }
 
 // DatabaseClause return a SELECT `query`
-func DatabaseClause(req *http.Request) (query string) {
+func DatabaseClause(req *http.Request) (query string, hasCount bool) {
 	queries := req.URL.Query()
-	hasCount := queries.Get("_count")
+	countQuery := queries.Get("_count")
 
-	if hasCount != "" {
+	if countQuery != "" {
+		hasCount = true
 		query = fmt.Sprintf(statements.DatabasesSelect, statements.FieldCountDatabaseName)
 	} else {
 		query = fmt.Sprintf(statements.DatabasesSelect, statements.FieldDatabaseName)
