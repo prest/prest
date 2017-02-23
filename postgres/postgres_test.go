@@ -536,7 +536,7 @@ func TestDatabaseClause(t *testing.T) {
 			t.Errorf("expected no errors on NewRequest, got: %v", err)
 		}
 
-		query := DatabaseClause(r)
+		query, _ := DatabaseClause(r)
 		if query != tc.queryExpected {
 			t.Errorf("query unexpected, got: %s", query)
 		}
