@@ -139,11 +139,12 @@ func DatabaseClause(req *http.Request) (query string, hasCount bool) {
 }
 
 // SchemaClause return a SELECT `query`
-func SchemaClause(req *http.Request) (query string) {
+func SchemaClause(req *http.Request) (query string, hasCount bool) {
 	queries := req.URL.Query()
-	hasCount := queries.Get("_count")
+	countQuery := queries.Get("_count")
 
-	if hasCount != "" {
+	if countQuery != "" {
+		hasCount = true
 		query = fmt.Sprintf(statements.SchemasSelect, statements.FieldCountSchemaName)
 	} else {
 		query = fmt.Sprintf(statements.SchemasSelect, statements.FieldSchemaName)
