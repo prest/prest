@@ -148,7 +148,7 @@ func doValidPatchRequest(t *testing.T, url string, r api.Request, where string) 
 	}
 }
 
-func doRequest(t *testing.T, url string, r api.Request, method string, expectedStatus int, where string) {
+func doRequest(t *testing.T, url string, r api.Request, method string, expectedStatus int, where string, expectedBody ...string) {
 	fmt.Println("Test:", where)
 	var byt []byte
 	var err error
@@ -175,9 +175,15 @@ func doRequest(t *testing.T, url string, r api.Request, method string, expectedS
 		t.Errorf("expected %d, got: %d", expectedStatus, resp.StatusCode)
 	}
 
-	_, err = ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		t.Error("error on ioutil ReadAll", err)
+	}
+
+	if len(expectedBody) > 0 {
+		if string(body) != expectedBody[0] {
+			t.Errorf("expected %q, got: %q", expectedBody, string(body))
+		}
 	}
 }
 
