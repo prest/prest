@@ -18,7 +18,7 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := postgres.DatabaseClause(r)
+	query, hasCount := postgres.DatabaseClause(r)
 	sqlDatabases := fmt.Sprint(query, statements.DatabasesWhere)
 
 	if requestWhere != "" {
@@ -28,7 +28,7 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 	order, _ := postgres.OrderByRequest(r)
 	if order != "" {
 		sqlDatabases = fmt.Sprint(sqlDatabases, order)
-	} else {
+	} else if !hasCount {
 		sqlDatabases = fmt.Sprint(sqlDatabases, fmt.Sprintf(statements.DatabasesOrderBy, statements.FieldDatabaseName))
 	}
 
@@ -39,7 +39,6 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sqlDatabases = fmt.Sprint(sqlDatabases, " ", page)
-
 	object, err := postgres.Query(sqlDatabases, values...)
 	if err != nil {
 		log.Println(err)
