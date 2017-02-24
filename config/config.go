@@ -76,7 +76,7 @@ func viperCfg() {
 func Parse(cfg *Prest) (err error) {
 	err = viper.ReadInConfig()
 	if err != nil {
-		fmt.Println("Error parsing prest conf file:", err)
+		return err
 	}
 	cfg.HTTPPort = viper.GetInt("http.port")
 	cfg.PGHost = viper.GetString("pg.host")
