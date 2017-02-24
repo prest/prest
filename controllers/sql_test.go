@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
@@ -19,6 +20,47 @@ func TestMain(m *testing.M) {
 
 	removeMockScripts(config.PREST_CONF.QueriesPath)
 	os.Exit(code)
+}
+
+func TestExecuteScriptQuery(t *testing.T) {
+	r := mux.NewRouter()
+	r.HandleFunc("/testing/script-get/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp, err := ExecuteScriptQuery(r, "fulltable", "get_all")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+		w.Write(resp)
+	}))
+
+	r.HandleFunc("/testing/script-post/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp, err := ExecuteScriptQuery(r, "fulltable", "write_all")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+		w.Write(resp)
+	}))
+
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	var testCases = []struct {
+		description string
+		url         string
+		method      string
+		status      int
+	}{
+		{"Execute script GET method", "/testing/script-get/?field1=gopher", "GET", 200},
+		{"Execute script POST method", "/testing/script-post/?field1=gopherzin&field2=pereira", "POST", 200},
+		// errors
+		{"Execute script GET method invalid", "/testing/script-get/?nonexistent=gopher", "GET", 400},
+		{"Execute script POST method invalid", "/testing/script-post/?nonexistent=gopher", "POST", 400},
+	}
+
+	apiReq := api.Request{}
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		doRequest(t, ts.URL+tc.url, apiReq, tc.method, tc.status, "ExecuteScriptQuery")
+	}
 }
 
 func TestExecuteFromScripts(t *testing.T) {
