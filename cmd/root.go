@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/gorilla/mux"
@@ -43,7 +44,11 @@ func init() {
 
 func app() {
 	cfg := config.Prest{}
-	config.Parse(&cfg)
+
+	err := config.Parse(&cfg)
+	if err != nil {
+		log.Fatalf("Error parsing conf: %s", err)
+	}
 
 	n := negroni.Classic()
 	n.Use(negroni.HandlerFunc(middlewares.HandlerSet))
