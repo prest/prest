@@ -8,6 +8,7 @@ func initRouter() {
 	router = mux.NewRouter()
 }
 
+// GetRouter for pREST
 func GetRouter() *mux.Router {
 	if router == nil {
 		initRouter()

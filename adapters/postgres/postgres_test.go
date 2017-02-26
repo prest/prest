@@ -708,7 +708,7 @@ func TestFieldsPermissions(t *testing.T) {
 }
 
 func TestRestrictFalse(t *testing.T) {
-	config.PREST_CONF.AccessConf.Restrict = false
+	config.PrestConf.AccessConf.Restrict = false
 
 	t.Log("Read unrestrict")
 	fields := FieldsPermissions("test_list_only_id", []string{"*"}, "read")

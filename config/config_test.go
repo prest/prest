@@ -10,12 +10,12 @@ func TestInitConf(t *testing.T) {
 	os.Setenv("PREST_CONF", "../testdata/prest.toml")
 
 	InitConf()
-	if len(PREST_CONF.AccessConf.Tables) < 2 {
-		t.Errorf("expected > 2, got: %d", len(PREST_CONF.AccessConf.Tables))
+	if len(PrestConf.AccessConf.Tables) < 2 {
+		t.Errorf("expected > 2, got: %d", len(PrestConf.AccessConf.Tables))
 	}
 
 	InitConf()
-	if !PREST_CONF.AccessConf.Restrict {
+	if !PrestConf.AccessConf.Restrict {
 		t.Error("expected true, but got false")
 	}
 }

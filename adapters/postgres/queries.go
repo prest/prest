@@ -30,7 +30,7 @@ func GetScript(verb, folder, scriptName string) (script string, err error) {
 		return
 	}
 
-	script = filepath.Join(config.PREST_CONF.QueriesPath, folder, fmt.Sprint(scriptName, sufix))
+	script = filepath.Join(config.PrestConf.QueriesPath, folder, fmt.Sprint(scriptName, sufix))
 
 	if _, err = os.Stat(script); os.IsNotExist(err) {
 		err = fmt.Errorf("could not load %s", script)
