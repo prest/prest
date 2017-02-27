@@ -12,12 +12,14 @@ import (
 	"github.com/spf13/viper"
 )
 
+// TablesConf informations
 type TablesConf struct {
 	Name        string   `mapstructure:"name"`
 	Permissions []string `mapstructure:"permissions"`
 	Fields      []string `mapstructure:"fields"`
 }
 
+// AccessConf informations
 type AccessConf struct {
 	Restrict bool
 	Tables   []TablesConf
@@ -41,7 +43,8 @@ type Prest struct {
 	CORSAllowOrigin []string
 }
 
-var PREST_CONF *Prest
+// PrestConf config variable
+var PrestConf *Prest
 
 func init() {
 	viperCfg()
@@ -103,17 +106,18 @@ func Parse(cfg *Prest) (err error) {
 	return
 }
 
+// InitConf initialize config
 func InitConf() {
 	viperCfg()
 	prestConfig := Prest{}
 	Parse(&prestConfig)
-	PREST_CONF = &prestConfig
+	PrestConf = &prestConfig
 
 	if !prestConfig.AccessConf.Restrict {
 		fmt.Println("You are running pREST in public mode.")
 	}
 
-	if _, err := os.Stat(PREST_CONF.QueriesPath); os.IsNotExist(err) {
-		os.MkdirAll(PREST_CONF.QueriesPath, 0777)
+	if _, err := os.Stat(PrestConf.QueriesPath); os.IsNotExist(err) {
+		os.MkdirAll(PrestConf.QueriesPath, 0777)
 	}
 }
