@@ -607,12 +607,12 @@ func GetQueryOperator(op string) (string, error) {
 
 // TablePermissions get tables permissions based in prest configuration
 func TablePermissions(table string, op string) bool {
-	restrict := config.PREST_CONF.AccessConf.Restrict
+	restrict := config.PrestConf.AccessConf.Restrict
 	if !restrict {
 		return true
 	}
 
-	tables := config.PREST_CONF.AccessConf.Tables
+	tables := config.PrestConf.AccessConf.Tables
 	for _, t := range tables {
 		if t.Name == table {
 			for _, p := range t.Permissions {
@@ -627,13 +627,13 @@ func TablePermissions(table string, op string) bool {
 
 // FieldsPermissions get fields permissions based in prest configuration
 func FieldsPermissions(table string, cols []string, op string) []string {
-	restrict := config.PREST_CONF.AccessConf.Restrict
+	restrict := config.PrestConf.AccessConf.Restrict
 	if !restrict {
 		return cols
 	}
 
 	var permittedCols []string
-	tables := config.PREST_CONF.AccessConf.Tables
+	tables := config.PrestConf.AccessConf.Tables
 	for _, t := range tables {
 		if t.Name == table {
 			for _, f := range t.Fields {
