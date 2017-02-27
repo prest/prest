@@ -13,12 +13,12 @@ import (
 
 func TestMain(m *testing.M) {
 	config.InitConf()
-	createMockScripts(config.PREST_CONF.QueriesPath)
-	writeMockScripts(config.PREST_CONF.QueriesPath)
+	createMockScripts(config.PrestConf.QueriesPath)
+	writeMockScripts(config.PrestConf.QueriesPath)
 
 	code := m.Run()
 
-	removeMockScripts(config.PREST_CONF.QueriesPath)
+	removeMockScripts(config.PrestConf.QueriesPath)
 	os.Exit(code)
 }
 
