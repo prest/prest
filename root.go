@@ -50,7 +50,7 @@ func app() {
 		log.Fatalf("Error parsing conf: %s", err)
 	}
 
-	n := negroni.Classic()
+	n := config.GetApp()
 	n.Use(negroni.HandlerFunc(middlewares.HandlerSet))
 	if cfg.JWTKey != "" {
 		n.Use(middlewares.JwtMiddleware(cfg.JWTKey))
