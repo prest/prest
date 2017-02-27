@@ -12,12 +12,19 @@ package main
 
 import (
 	"net/http"
+	"log"
 
 	"github.com/nuveo/prest/cmd"
 	"github.com/nuveo/prest/config"
 )
 
 func main() {
+	// Get pREST app
+	n := config.GetApp()
+
+	// Register custom middleware
+	n.Use(negroni.HandlerFunc(CustomMiddleware))
+
 	// Get pPREST router
 	r := config.GetRouter()
 
@@ -31,5 +38,10 @@ func main() {
 func Pong(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Pong!"))
 	return
+}
+
+func CustomMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	log.Println("Calling custom middleware")
+	next(w, r)
 }
 ```
