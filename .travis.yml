@@ -6,9 +6,14 @@ os:
     - linux
 
 go:
-    - 1.6.x
-    - 1.7.x
-    - 1.8rc1
+  - 1.6
+  - 1.7
+  - 1.8
+  - tip
+
+matrix:
+  allow_failures:
+  - go: tip
 
 services:
     - postgresql
