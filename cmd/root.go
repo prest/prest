@@ -10,6 +10,8 @@ import (
 	// postgres driver for migrate
 	_ "github.com/mattes/migrate/driver/postgres"
 	"github.com/nuveo/prest/config"
+	cfgMiddleware "github.com/nuveo/prest/config/middlewares"
+	"github.com/nuveo/prest/config/router"
 	"github.com/nuveo/prest/controllers"
 	"github.com/nuveo/prest/middlewares"
 	"github.com/spf13/cobra"
@@ -50,13 +52,9 @@ func app() {
 		log.Fatalf("Error parsing conf: %s", err)
 	}
 
-	n := config.GetApp()
-	n.Use(negroni.HandlerFunc(middlewares.HandlerSet))
-	if cfg.JWTKey != "" {
-		n.Use(middlewares.JwtMiddleware(cfg.JWTKey))
-	}
+	n := cfgMiddleware.GetApp()
 
-	r := config.GetRouter()
+	r := router.Get()
 
 	r.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
 	r.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
@@ -72,7 +70,7 @@ func app() {
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.UpdateTable).Methods("PUT", "PATCH")
 
 	r.PathPrefix("/").Handler(negroni.New(
-		negroni.HandlerFunc(middlewares.AccessControl),
+		middlewares.AccessControl(),
 		negroni.Wrap(crudRoutes),
 	))
 

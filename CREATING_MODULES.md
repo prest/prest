@@ -15,18 +15,24 @@ import (
 	"log"
 
 	"github.com/nuveo/prest/cmd"
-	"github.com/nuveo/prest/config"
+	"github.com/nuveo/prest/config/router"
+	"github.com/nuveo/prest/config/middlewares"
+	"github.com/urfave/negroni"
 )
 
 func main() {
-	// Get pREST app
-	n := config.GetApp()
+	// Reorder middlewares
+	middlewares.MiddlewareStack = []negroni.Handler{
+		negroni.Handler(negroni.NewRecovery()),
+		negroni.Handler(negroni.NewRecovery()),
+		negroni.Handler(negroni.HandlerFunc(CustomMiddleware)),
+	}
 
-	// Register custom middleware
-	n.Use(negroni.HandlerFunc(CustomMiddleware))
+	// Get pREST app
+	n := middlewares.GetApp()
 
 	// Get pPREST router
-	r := config.GetRouter()
+	r := router.Get()
 
 	// Register custom routes
 	r.HandleFunc("/ping", Pong).Methods("GET")
