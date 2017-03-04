@@ -1,4 +1,4 @@
-package config
+package router
 
 import "github.com/gorilla/mux"
 
@@ -8,8 +8,8 @@ func initRouter() {
 	router = mux.NewRouter()
 }
 
-// GetRouter for pREST
-func GetRouter() *mux.Router {
+// Get Router for pREST
+func Get() *mux.Router {
 	if router == nil {
 		initRouter()
 	}

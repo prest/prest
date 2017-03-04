@@ -1,4 +1,4 @@
-package config
+package router
 
 import "testing"
 
@@ -9,9 +9,9 @@ func TestInitRouter(t *testing.T) {
 	}
 }
 
-func TestGetRouter(t *testing.T) {
+func TestGet(t *testing.T) {
 	router = nil
-	r := GetRouter()
+	r := Get()
 	if r == nil {
 		t.Errorf("Should return a router.")
 	}

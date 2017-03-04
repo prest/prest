@@ -12,32 +12,36 @@ import (
 )
 
 // HandlerSet add content type header
-func HandlerSet(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	w.Header().Set("Content-Type", "application/json")
-	next(w, r)
+func HandlerSet() negroni.Handler {
+	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+		w.Header().Set("Content-Type", "application/json")
+		next(w, r)
+	})
 }
 
 // AccessControl is a middleware to handle permissions on tables in pREST
-func AccessControl(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
-	mapPath := getVars(rq.URL.Path)
-	if mapPath == nil {
-		next(rw, rq)
-		return
-	}
+func AccessControl() negroni.Handler {
+	return negroni.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
+		mapPath := getVars(rq.URL.Path)
+		if mapPath == nil {
+			next(rw, rq)
+			return
+		}
 
-	permission := permissionByMethod(rq.Method)
-	if permission == "" {
-		next(rw, rq)
-		return
-	}
+		permission := permissionByMethod(rq.Method)
+		if permission == "" {
+			next(rw, rq)
+			return
+		}
 
-	if postgres.TablePermissions(mapPath["table"], permission) {
-		next(rw, rq)
-		return
-	}
+		if postgres.TablePermissions(mapPath["table"], permission) {
+			next(rw, rq)
+			return
+		}
 
-	err := fmt.Errorf("required authorization to table %s", mapPath["table"])
-	http.Error(rw, err.Error(), http.StatusUnauthorized)
+		err := fmt.Errorf("required authorization to table %s", mapPath["table"])
+		http.Error(rw, err.Error(), http.StatusUnauthorized)
+	})
 }
 
 // JwtMiddleware check if actual request have JWT
