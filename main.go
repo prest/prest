@@ -4,7 +4,8 @@ import (
 	"github.com/nuveo/prest/cmd"
 )
 
-var Version = "0.1.2"
+// Version pREST
+var Version = "0.1.3"
 
 func main() {
 	cmd.Execute()
