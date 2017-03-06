@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -91,6 +92,7 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 		middlewares.AccessControl(),
 		negroni.Wrap(crudRoutes),
 	))
+	os.Setenv("PREST_CONF", "../../testdata/prest.toml")
 	n := GetApp()
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
@@ -107,8 +109,8 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 	if !strings.Contains(string(body), "oi") {
 		t.Error("do not contains 'oi'")
 	}
-	if strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
-		t.Error("content type shouldn't be application/json but was")
+	if !strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
+		t.Error("content type should be application/json but was")
 	}
 	resp, err = http.Get(server.URL + "prest/public/test_write_and_delete_access")
 	if err != nil {
@@ -129,6 +131,7 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 		t.Error("do not contains 'required authorization to table'")
 	}
 	MiddlewareStack = []negroni.Handler{}
+	os.Setenv("PREST_CONF", "")
 }
 
 func customMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
