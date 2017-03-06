@@ -8,6 +8,9 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
+	"github.com/nuveo/prest/config/router"
+	"github.com/nuveo/prest/controllers"
+	"github.com/nuveo/prest/middlewares"
 	"github.com/urfave/negroni"
 )
 
@@ -72,6 +75,58 @@ func TestGetAppWithoutReorderedMiddleware(t *testing.T) {
 	}
 	if !strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
 		t.Error("content type should be application/json but not was", resp.Header.Get("Content-Type"))
+	}
+	MiddlewareStack = []negroni.Handler{}
+}
+
+func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
+	app = nil
+	r := router.Get()
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("oi")) })
+	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
+
+	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.SelectFromTables).Methods("GET")
+
+	r.PathPrefix("/").Handler(negroni.New(
+		middlewares.AccessControl(),
+		negroni.Wrap(crudRoutes),
+	))
+	n := GetApp()
+	n.UseHandler(r)
+	server := httptest.NewServer(n)
+	defer server.Close()
+	resp, err := http.Get(server.URL)
+	if err != nil {
+		t.Fatal("Expected run without errors but was", err.Error())
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal("Expected run without errors but was", err.Error())
+	}
+	defer resp.Body.Close()
+	if !strings.Contains(string(body), "oi") {
+		t.Error("do not contains 'oi'")
+	}
+	if strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
+		t.Error("content type shouldn't be application/json but was")
+	}
+	resp, err = http.Get(server.URL + "prest/public/test_write_and_delete_access")
+	if err != nil {
+		t.Fatal("Expected run without errors but was", err.Error())
+	}
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal("Expected run without errors but was", err.Error())
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("content type should be http.StatusUnauthorized but was %s", resp.Status)
+	}
+	if strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
+		t.Error("content type shouldn't be application/json but was")
+	}
+	if !strings.Contains(string(body), "required authorization to table") {
+		t.Error("do not contains 'required authorization to table'")
 	}
 	MiddlewareStack = []negroni.Handler{}
 }
