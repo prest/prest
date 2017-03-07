@@ -83,7 +83,7 @@ func TestGetAppWithoutReorderedMiddleware(t *testing.T) {
 func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 	app = nil
 	r := router.Get()
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("oi")) })
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
 	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
 
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.SelectFromTables).Methods("GET")
@@ -106,8 +106,8 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 		t.Fatal("Expected run without errors but was", err.Error())
 	}
 	defer resp.Body.Close()
-	if !strings.Contains(string(body), "oi") {
-		t.Error("do not contains 'oi'")
+	if !strings.Contains(string(body), "custom route") {
+		t.Error("do not contains 'custom route'")
 	}
 	if !strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
 		t.Error("content type should be application/json but was")
