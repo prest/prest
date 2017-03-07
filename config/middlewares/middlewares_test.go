@@ -131,7 +131,6 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 		t.Error("do not contains 'required authorization to table'")
 	}
 	MiddlewareStack = []negroni.Handler{}
-	os.Setenv("PREST_CONF", "")
 }
 
 func customMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
