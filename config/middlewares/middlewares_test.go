@@ -112,7 +112,7 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 	if !strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
 		t.Error("content type should be application/json but was")
 	}
-	resp, err = http.Get(server.URL + "prest/public/test_write_and_delete_access")
+	resp, err = http.Get(server.URL + "/prest/public/test_write_and_delete_access")
 	if err != nil {
 		t.Fatal("Expected run without errors but was", err.Error())
 	}
@@ -131,6 +131,7 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 		t.Error("do not contains 'required authorization to table'")
 	}
 	MiddlewareStack = []negroni.Handler{}
+	os.Setenv("PREST_CONF", "")
 }
 
 func customMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
