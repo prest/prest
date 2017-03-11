@@ -2,30 +2,23 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/mattes/migrate/migrate"
 	// postgres driver for migrate
 	_ "github.com/mattes/migrate/driver/postgres"
+	"github.com/nuveo/prest/helpers"
 	"github.com/spf13/cobra"
 )
 
-// versionCmd represents the version command
+// versionCmd show version pREST
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Show the current migration version",
-	Long:  `Show the current migration version`,
+	Short: "Print the version number of pREST",
+	Long:  `All software has versions. This is pREST's`,
 	Run: func(cmd *cobra.Command, args []string) {
-		verifyMigrationsPath(path)
-		version, err := migrate.Version(url, path)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(-1)
-		}
-		fmt.Println(version)
+		fmt.Println("Serve a RESTful API from any PostgreSQL database", helpers.PrestReleaseVersion())
 	},
 }
 
 func init() {
-	migrateCmd.AddCommand(versionCmd)
+	RootCmd.AddCommand(versionCmd)
 }

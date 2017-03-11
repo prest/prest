@@ -1,11 +1,6 @@
 package main
 
-import (
-	"github.com/nuveo/prest/cmd"
-)
-
-// Version pREST
-var Version = "0.1.3"
+import "github.com/nuveo/prest/cmd"
 
 func main() {
 	cmd.Execute()
