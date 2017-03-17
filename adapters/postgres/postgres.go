@@ -258,7 +258,6 @@ func CountByRequest(req *http.Request) (countQuery string, err error) {
 func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 	db := connection.MustGet()
 	prepare, err := db.Prepare(SQL)
-
 	if err != nil {
 		return
 	}
