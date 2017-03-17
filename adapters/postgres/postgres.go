@@ -282,7 +282,10 @@ func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 		for i := 0; i < count; i++ {
 			valuePtrs[i] = &values[i]
 		}
-		rows.Scan(valuePtrs...)
+		err = rows.Scan(valuePtrs...)
+		if err != nil {
+			return
+		}
 		entry := make(map[string]interface{})
 		for i, col := range columns {
 			var v interface{}
