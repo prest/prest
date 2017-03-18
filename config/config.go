@@ -36,6 +36,7 @@ type Prest struct {
 	PGDatabase      string
 	PGMaxIdleConn   int
 	PGMAxOpenConn   int
+	PGConnTimeout   int
 	JWTKey          string
 	MigrationsPath  string
 	QueriesPath     string
@@ -66,6 +67,7 @@ func viperCfg() {
 	viper.SetDefault("pg.port", 5432)
 	viper.SetDefault("pg.maxidleconn", 10)
 	viper.SetDefault("pg.maxopenconn", 10)
+	viper.SetDefault("pg.conntimeout", 10)
 
 	user, err := user.Current()
 	if err != nil {
@@ -89,6 +91,7 @@ func Parse(cfg *Prest) (err error) {
 	cfg.PGDatabase = viper.GetString("pg.database")
 	cfg.PGMaxIdleConn = viper.GetInt("pg.maxidleconn")
 	cfg.PGMAxOpenConn = viper.GetInt("pg.maxopenconn")
+	cfg.PGConnTimeout = viper.GetInt("pg.conntimeout")
 	cfg.JWTKey = viper.GetString("jwt.key")
 	cfg.MigrationsPath = viper.GetString("migrations")
 	cfg.AccessConf.Restrict = viper.GetBool("access.restrict")
