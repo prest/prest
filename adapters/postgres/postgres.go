@@ -261,6 +261,7 @@ func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 	if err != nil {
 		return
 	}
+	defer prepare.Close()
 
 	rows, err := prepare.Query(params...)
 	if err != nil {
