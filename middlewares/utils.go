@@ -1,8 +1,12 @@
 package middlewares
 
 import (
+	"io"
+	"io/ioutil"
+	"net/http"
 	"strings"
 
+	"github.com/clbanning/mxj/j2x"
 	"github.com/nuveo/prest/statements"
 )
 
@@ -35,4 +39,25 @@ func permissionByMethod(method string) (permission string) {
 	}
 
 	return
+}
+
+func renderFormat(w http.ResponseWriter, body io.Reader, format string) {
+	byt, err := ioutil.ReadAll(body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	switch format {
+	case "xml":
+		xmldata, err := j2x.JsonToXml(byt)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/xml")
+		w.Write(xmldata)
+	default:
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(byt)
+	}
 }
