@@ -1,11 +1,11 @@
 package middlewares
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
-
 	"net/http/httptest"
+	"strings"
 
 	"github.com/clbanning/mxj/j2x"
 	"github.com/nuveo/prest/statements"
@@ -60,8 +60,9 @@ func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, fo
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		xmlStr := fmt.Sprintf("<objects>%s</objects>", string(xmldata))
 		w.Header().Set("Content-Type", "application/xml")
-		w.Write(xmldata)
+		w.Write([]byte(xmlStr))
 	default:
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(byt)

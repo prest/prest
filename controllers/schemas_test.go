@@ -22,7 +22,7 @@ func TestGetSchemas(t *testing.T) {
 		{"Get schemas with custom order clause", "/schemas?schema_name=$eq.public&_order=schema_name", "GET", 200, "[{\"schema_name\":\"public\"}]"},
 		{"Get schemas with custom where clause and pagination", "/schemas?schema_name=$eq.public&_page=1&_page_size=20", "GET", 200, "[{\"schema_name\":\"public\"}]"},
 		{"Get schemas with COUNT clause", "/schemas?_count=*", "GET", 200, "[{\"count\":6}]"},
-		{"Get schemas with COUNT clause and xml", "/schemas?_count=*&_renderer=xml", "GET", 200, ""},
+		{"Get schemas with COUNT clause and xml", "/schemas?_count=*&_renderer=xml", "GET", 200, "<objects><object><count>6</count></object></objects>"},
 		{"Get schemas with custom where invalid clause", "/schemas?0schema_name=$eq.public", "GET", 400, "invalid identifier: 0schema_name\n"},
 		{"Get schemas with custom where and pagination invalid", "/schemas?schema_name=$eq.public&_page=A", "GET", 400, "Paging error\n"},
 		{"Get schemas with noexistent column", "/schemas?schematame=$eq.test", "GET", 500, "pq: column \"schematame\" does not exist\n"},
