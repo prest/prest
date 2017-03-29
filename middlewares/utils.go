@@ -1,10 +1,11 @@
 package middlewares
 
 import (
-	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"net/http/httptest"
 
 	"github.com/clbanning/mxj/j2x"
 	"github.com/nuveo/prest/statements"
@@ -41,10 +42,15 @@ func permissionByMethod(method string) (permission string) {
 	return
 }
 
-func renderFormat(w http.ResponseWriter, body io.Reader, format string) {
-	byt, err := ioutil.ReadAll(body)
+func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, format string) {
+	byt, err := ioutil.ReadAll(recorder.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if recorder.Code != http.StatusOK {
+		w.WriteHeader(recorder.Code)
+		w.Write(byt)
 		return
 	}
 	switch format {

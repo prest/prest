@@ -17,7 +17,7 @@ func HandlerSet() negroni.Handler {
 		format := r.URL.Query().Get("_renderer")
 		recorder := httptest.NewRecorder()
 		next(recorder, r)
-		renderFormat(w, recorder.Body, format)
+		renderFormat(w, recorder, format)
 	})
 }
 
