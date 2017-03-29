@@ -15,6 +15,18 @@
 			"revisionTime": "2016-04-21T21:57:38Z"
 		},
 		{
+			"checksumSHA1": "wBK6AtGIMGYOXOjCYV0bhT7B8ys=",
+			"path": "github.com/clbanning/mxj",
+			"revision": "6752d1ea0ea8cd057b24d9cad2b41f2bbd1dc67a",
+			"revisionTime": "2017-03-21T18:27:35Z"
+		},
+		{
+			"checksumSHA1": "UkWQ5p3OgmBFsqTeFkUfLgyRLWc=",
+			"path": "github.com/clbanning/mxj/j2x",
+			"revision": "6752d1ea0ea8cd057b24d9cad2b41f2bbd1dc67a",
+			"revisionTime": "2017-03-21T18:27:35Z"
+		},
+		{
 			"checksumSHA1": "2Fy1Y6Z3lRRX1891WF/+HT4XS2I=",
 			"path": "github.com/dgrijalva/jwt-go",
 			"revision": "a601269ab70c205d26370c16f7c81e9017c14e04",
@@ -25,6 +37,12 @@
 			"path": "github.com/fatih/color",
 			"revision": "42c364ba490082e4815b5222728711b3440603eb",
 			"revisionTime": "2017-01-13T15:16:12Z"
+		},
+		{
+			"checksumSHA1": "40Ns85VYa4smQPcewZ7SOdfLnKU=",
+			"path": "github.com/fatih/structs",
+			"revision": "a720dfa8df582c51dee1b36feabb906bde1588bd",
+			"revisionTime": "2017-01-03T08:10:50Z"
 		},
 		{
 			"checksumSHA1": "JhI3dzfib2NMGL11NiUswioZP8U=",
