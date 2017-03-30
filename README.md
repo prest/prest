@@ -154,10 +154,14 @@ http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD->>JSONFIELD:jsonb=VALUE (filte
 ```
 http://127.0.0.1:8000/databases (show all databases)
 http://127.0.0.1:8000/databases?_count=* (count all databases)
+http://127.0.0.1:8000/databases?_renderer=xml (JSON by default)
 http://127.0.0.1:8000/schemas (show all schemas)
 http://127.0.0.1:8000/schemas?_count=* (count all schemas)
+http://127.0.0.1:8000/schemas?_renderer=xml (JSON by default)
 http://127.0.0.1:8000/tables (show all tables)
+http://127.0.0.1:8000/tables?_renderer=xml (JSON by default)
 http://127.0.0.1:8000/DATABASE/SCHEMA (show all tables, find by schema)
+http://127.0.0.1:8000/DATABASE/SCHEMA?_renderer=xml (JSON by default)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE (show all rows, find by database and table)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_select=column (select statement by columns)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_select=* (select all from TABLE)
@@ -165,6 +169,7 @@ http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_count=* (use count function)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_count=column (use count function)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_page=2&_page_size=10 (pagination, page_size 10 by default)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD=VALUE (filter)
+http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_renderer=xml (JSON by default)
 
 
 Select operations over a VIEW
@@ -174,6 +179,8 @@ http://127.0.0.1:8000/DATABASE/SCHEMA/VIEW?_count=* (use count function)
 http://127.0.0.1:8000/DATABASE/SCHEMA/VIEW?_count=column (use count function)
 http://127.0.0.1:8000/DATABASE/SCHEMA/VIEW?_page=2&_page_size=10 (pagination, page_size 10 by default)
 http://127.0.0.1:8000/DATABASE/SCHEMA/VIEW?FIELD=VALUE (filter)
+http://127.0.0.1:8000/DATABASE/SCHEMA/VIEW?_renderer=xml (JSON by default)
+
 ```
 
 ### Insert - POST
