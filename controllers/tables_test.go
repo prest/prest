@@ -85,7 +85,7 @@ func TestSelectFromTables(t *testing.T) {
 		{"execute select in a table with count all fields *", "/prest/public/test?_count=*", "GET", 200},
 		{"execute select in a table with count function", "/prest/public/test?_count=name", "GET", 200},
 		{"execute select in a table with custom where clause", "/prest/public/test?name=$eq.nuveo", "GET", 200},
-		{"execute select in a table with custom join clause", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name", "GET", 200},
+		{"execute select in a table with custom join clause", "/prest/public/test?_join=inner:test8:test8.nameforjoin:$eq:test.name", "GET", 200},
 		{"execute select in a table with order clause", "/prest/public/test?_order=name", "GET", 200},
 		{"execute select in a table with order clause empty", "/prest/public/test?_order=", "GET", 200},
 		{"execute select in a table with custom where clause and pagination", "/prest/public/test?name=$eq.nuveo&_page=1&_page_size=20", "GET", 200},
