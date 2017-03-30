@@ -105,7 +105,7 @@ func TestRenderWithXML(t *testing.T) {
 		status      int
 		body        string
 	}{
-		{"Get schemas with COUNT clause with XML Render", "/schemas?_count=*&renderer=xml", "GET", 200, "<objects><object><count>6</count></object></objects>"},
+		{"Get schemas with COUNT clause with XML Render", "/schemas?_count=*&_renderer=xml", "GET", 200, "<objects><object><count>6</count></object></objects>"},
 	}
 
 	n := middlewares.GetApp()
