@@ -1,8 +1,13 @@
 package middlewares
 
 import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 
+	"github.com/clbanning/mxj/j2x"
 	"github.com/nuveo/prest/statements"
 )
 
@@ -35,4 +40,31 @@ func permissionByMethod(method string) (permission string) {
 	}
 
 	return
+}
+
+func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, format string) {
+	byt, err := ioutil.ReadAll(recorder.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if recorder.Code != http.StatusOK {
+		w.WriteHeader(recorder.Code)
+		w.Write(byt)
+		return
+	}
+	switch format {
+	case "xml":
+		xmldata, err := j2x.JsonToXml(byt)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		xmlStr := fmt.Sprintf("<objects>%s</objects>", string(xmldata))
+		w.Header().Set("Content-Type", "application/xml")
+		w.Write([]byte(xmlStr))
+	default:
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(byt)
+	}
 }

@@ -9,6 +9,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/nuveo/prest/api"
 	"github.com/nuveo/prest/config"
+	"github.com/nuveo/prest/config/middlewares"
+	"github.com/nuveo/prest/config/router"
 )
 
 func TestMain(m *testing.M) {
@@ -92,5 +94,34 @@ func TestExecuteFromScripts(t *testing.T) {
 	for _, tc := range testCases {
 		t.Log(tc.description)
 		doRequest(t, server.URL+tc.url, r, tc.method, tc.status, "ExecuteFromScripts")
+	}
+}
+
+func TestRenderWithXML(t *testing.T) {
+	var testCases = []struct {
+		description string
+		url         string
+		method      string
+		status      int
+		body        string
+	}{
+		{"Get schemas with COUNT clause with XML Render", "/schemas?_count=*&_renderer=xml", "GET", 200, "<objects><object><count>6</count></object></objects>"},
+	}
+
+	n := middlewares.GetApp()
+	r := router.Get()
+
+	config.InitConf()
+
+	r.HandleFunc("/schemas", GetSchemas).Methods("GET")
+	n.UseHandler(r)
+	server := httptest.NewServer(n)
+	defer server.Close()
+
+	req := api.Request{}
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		doRequest(t, server.URL+tc.url, req, tc.method, tc.status, "GetSchemas", tc.body)
+
 	}
 }

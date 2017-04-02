@@ -9,6 +9,7 @@ psql prest -c "create table test4(id serial primary key, name text UNIQUE);" -U 
 psql prest -c "create table test5(id serial, name text, celphone text);" -U postgres
 psql prest -c "create table test6(nuveo serial primary key, name text, celphone text);" -U postgres
 psql prest -c "create table test7(id serial, name text, surname text);" -U postgres
+psql prest -c "create table test8(nameforjoin text);" -U postgres
 psql prest -c "create table test_readonly_access(id serial, name text);" -U postgres
 psql prest -c "create table test_write_and_delete_access(id serial, name text);" -U postgres
 psql prest -c "create table test_list_only_id(id serial, name text);" -U postgres
