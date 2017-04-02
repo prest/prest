@@ -3,10 +3,10 @@ package middlewares
 import (
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 
 	"github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
-
 	"github.com/nuveo/prest/adapters/postgres"
 	"github.com/urfave/negroni"
 )
@@ -14,8 +14,11 @@ import (
 // HandlerSet add content type header
 func HandlerSet() negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		w.Header().Set("Content-Type", "application/json")
-		next(w, r)
+		format := r.URL.Query().Get("_renderer")
+		recorder := httptest.NewRecorder()
+		negroniResp := negroni.NewResponseWriter(recorder)
+		next(negroniResp, r)
+		renderFormat(w, recorder, format)
 	})
 }
 
