@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/gorilla/mux"
@@ -40,20 +39,8 @@ func Execute() {
 	}
 }
 
-func init() {
-	config.InitConf()
-}
-
 func app() {
-	cfg := config.Prest{}
-
-	err := config.Parse(&cfg)
-	if err != nil {
-		log.Fatalf("Error parsing conf: %s", err)
-	}
-
 	n := cfgMiddleware.GetApp()
-
 	r := router.Get()
 
 	r.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
@@ -74,13 +61,13 @@ func app() {
 		negroni.Wrap(crudRoutes),
 	))
 
-	if cfg.CORSAllowOrigin != nil {
+	if config.PrestConf.CORSAllowOrigin != nil {
 		c := cors.New(cors.Options{
-			AllowedOrigins: cfg.CORSAllowOrigin,
+			AllowedOrigins: config.PrestConf.CORSAllowOrigin,
 		})
 		n.Use(c)
 	}
 
 	n.UseHandler(r)
-	n.Run(fmt.Sprintf(":%v", cfg.HTTPPort))
+	n.Run(fmt.Sprintf(":%v", config.PrestConf.HTTPPort))
 }

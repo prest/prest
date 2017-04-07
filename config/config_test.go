@@ -6,15 +6,15 @@ import (
 	"os"
 )
 
-func TestInitConf(t *testing.T) {
+func TestLoad(t *testing.T) {
 	os.Setenv("PREST_CONF", "../testdata/prest.toml")
 
-	InitConf()
+	load()
 	if len(PrestConf.AccessConf.Tables) < 2 {
 		t.Errorf("expected > 2, got: %d", len(PrestConf.AccessConf.Tables))
 	}
 
-	InitConf()
+	load()
 	if !PrestConf.AccessConf.Restrict {
 		t.Error("expected true, but got false")
 	}

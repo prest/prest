@@ -21,7 +21,6 @@ var (
 )
 
 func initApp() {
-	config.InitConf()
 	if len(MiddlewareStack) == 0 {
 		MiddlewareStack = append(MiddlewareStack, BaseStack...)
 	}

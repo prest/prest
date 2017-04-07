@@ -48,7 +48,7 @@ type Prest struct {
 var PrestConf *Prest
 
 func init() {
-	viperCfg()
+	load()
 }
 
 func viperCfg() {
@@ -109,14 +109,13 @@ func Parse(cfg *Prest) (err error) {
 	return
 }
 
-// InitConf initialize config
-func InitConf() {
+// load configuration
+func load() {
 	viperCfg()
-	prestConfig := Prest{}
-	Parse(&prestConfig)
-	PrestConf = &prestConfig
+	PrestConf = &Prest{}
+	Parse(PrestConf)
 
-	if !prestConfig.AccessConf.Restrict {
+	if !PrestConf.AccessConf.Restrict {
 		fmt.Println("You are running pREST in public mode.")
 	}
 

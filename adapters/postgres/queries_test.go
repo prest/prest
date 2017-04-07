@@ -12,7 +12,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	config.InitConf()
 	createMockScripts(config.PrestConf.QueriesPath)
 	writeMockScripts(config.PrestConf.QueriesPath)
 

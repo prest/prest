@@ -14,7 +14,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	config.InitConf()
 	createMockScripts(config.PrestConf.QueriesPath)
 	writeMockScripts(config.PrestConf.QueriesPath)
 
@@ -110,8 +109,6 @@ func TestRenderWithXML(t *testing.T) {
 
 	n := middlewares.GetApp()
 	r := router.Get()
-
-	config.InitConf()
 
 	r.HandleFunc("/schemas", GetSchemas).Methods("GET")
 	n.UseHandler(r)
