@@ -13,25 +13,27 @@ import (
 
 var (
 	db  *sqlx.DB
-	cfg config.Prest
 	err error
 )
 
 // MustGet get postgres connection
 func MustGet() *sqlx.DB {
 	if db == nil {
-		cfg = config.Prest{}
-		config.Parse(&cfg)
-		dbURI := fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=disable connect_timeout=%d", cfg.PGUser, cfg.PGDatabase, cfg.PGHost, cfg.PGPort, cfg.PGConnTimeout)
-		if cfg.PGPass != "" {
-			dbURI += " password=" + cfg.PGPass
+		dbURI := fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=disable connect_timeout=%d",
+			config.PrestConf.PGUser,
+			config.PrestConf.PGDatabase,
+			config.PrestConf.PGHost,
+			config.PrestConf.PGPort,
+			config.PrestConf.PGConnTimeout)
+		if config.PrestConf.PGPass != "" {
+			dbURI += " password=" + config.PrestConf.PGPass
 		}
 		db, err = sqlx.Connect("postgres", dbURI)
 		if err != nil {
 			panic(fmt.Sprintf("Unable to connection to database: %v\n", err))
 		}
-		db.SetMaxIdleConns(cfg.PGMaxIdleConn)
-		db.SetMaxOpenConns(cfg.PGMAxOpenConn)
+		db.SetMaxIdleConns(config.PrestConf.PGMaxIdleConn)
+		db.SetMaxOpenConns(config.PrestConf.PGMAxOpenConn)
 	}
 	return db
 }
