@@ -6,7 +6,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/nuveo/prest/api"
-	"github.com/nuveo/prest/config"
 )
 
 func TestGetTables(t *testing.T) {
@@ -155,7 +154,6 @@ func TestInsertInTables(t *testing.T) {
 }
 
 func TestDeleteFromTable(t *testing.T) {
-	config.InitConf()
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}/{table}", DeleteFromTable).Methods("DELETE")
 	server := httptest.NewServer(router)
@@ -182,7 +180,6 @@ func TestDeleteFromTable(t *testing.T) {
 }
 
 func TestUpdateFromTable(t *testing.T) {
-	config.InitConf()
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}/{table}", UpdateTable).Methods("PUT", "PATCH")
 	server := httptest.NewServer(router)
