@@ -52,8 +52,7 @@ func ParseScript(scriptPath string, queryURL url.Values) (sqlQuery string, value
 	q := make(map[string]string)
 	pid := 1
 	for key := range queryURL {
-		q[key] = fmt.Sprintf("$%d", pid)
-		values = append(values, queryURL.Get(key))
+		q[key] = fmt.Sprintf("%s", queryURL.Get(key))
 		pid++
 	}
 
