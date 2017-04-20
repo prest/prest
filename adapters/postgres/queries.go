@@ -94,6 +94,7 @@ func WriteSQL(sql string, values []interface{}) (resultByte []byte, err error) {
 	result, err := tx.Exec(sql, valuesAux...)
 	if err != nil {
 		tx.Rollback()
+		log.Printf("sql = %+v\n", sql)
 		err = fmt.Errorf("could not peform sql: %v", err)
 		return
 	}
