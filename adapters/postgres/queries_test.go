@@ -82,7 +82,7 @@ func TestParseScript(t *testing.T) {
 		t.Errorf("expected no error, but got: %v", err)
 	}
 
-	if sql != "SELECT * FROM test7 WHERE name = abc" {
+	if sql != "SELECT * FROM test7 WHERE name = 'abc'" {
 		t.Errorf("SQL unexpected, got: %s", sql)
 	}
 
