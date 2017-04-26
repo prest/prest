@@ -77,17 +77,13 @@ func TestParseScript(t *testing.T) {
 	scriptPath := fmt.Sprint(user.HomeDir, "/queries/fulltable/%s")
 
 	t.Log("Parse script with get_all file")
-	sql, values, err := ParseScript(fmt.Sprintf(scriptPath, "get_all.read.sql"), queryURL)
+	sql, _, err := ParseScript(fmt.Sprintf(scriptPath, "get_all.read.sql"), queryURL)
 	if err != nil {
 		t.Errorf("expected no error, but got: %v", err)
 	}
 
-	if sql != "SELECT * FROM test7 WHERE name = $1" {
+	if sql != "SELECT * FROM test7 WHERE name = 'abc'" {
 		t.Errorf("SQL unexpected, got: %s", sql)
-	}
-
-	if len(values) != 1 && values[0] != "abc" {
-		t.Errorf("values unexpected, got: %v", values)
 	}
 
 	// Add new values
@@ -95,31 +91,23 @@ func TestParseScript(t *testing.T) {
 	queryURL.Set("notable", "123")
 
 	t.Log("Try Parse Script with invalid params")
-	sql, values, err = ParseScript(fmt.Sprintf(scriptPath, "get_all.read.sql"), queryURL)
+	sql, _, err = ParseScript(fmt.Sprintf(scriptPath, "get_all.read.sql"), queryURL)
 	if err == nil {
 		t.Errorf("expected error, but got: %v", err)
 	}
 
 	if sql != "" {
 		t.Errorf("expected empty string, got: %s", sql)
-	}
-
-	if len(values) != 1 && values[0] != "123" {
-		t.Errorf("values unexpected, got: %v", values)
 	}
 
 	t.Log("Try Parse Script with noexistent script")
-	sql, values, err = ParseScript(fmt.Sprintf(scriptPath, "gt_all.read.sql"), queryURL)
+	sql, _, err = ParseScript(fmt.Sprintf(scriptPath, "gt_all.read.sql"), queryURL)
 	if err == nil {
 		t.Errorf("expected error, but got: %v", err)
 	}
 
 	if sql != "" {
 		t.Errorf("expected empty string, got: %s", sql)
-	}
-
-	if len(values) != 0 {
-		t.Errorf("values unexpected, got: %v", values)
 	}
 }
 
@@ -130,9 +118,9 @@ func TestValidWriteSQL(t *testing.T) {
 		values      []interface{}
 		err         error
 	}{
-		{"Execute a valid INSERT sql", "INSERT INTO test7 (name) values ($1)", []interface{}{"lulu"}, nil},
-		{"Execute a valid UPDATE sql", "UPDATE test7 SET name = $1 WHERE surname = $2", []interface{}{"lulu", "temer"}, nil},
-		{"Execute a valid DELETE sql", "DELETE FROM test7 WHERE name = $1", []interface{}{"lulu"}, nil},
+		{"Execute a valid INSERT sql", "INSERT INTO test7(name) values ('lulu')", []interface{}{}, nil},
+		{"Execute a valid UPDATE sql", "UPDATE test7 SET name = 'lulu' WHERE surname = 'temer'", []interface{}{}, nil},
+		{"Execute a valid DELETE sql", "DELETE FROM test7 WHERE name = 'lulu'", []interface{}{}, nil},
 	}
 	for _, tc := range testValidCases {
 		t.Log(tc.description)
@@ -149,9 +137,9 @@ func TestInvalidWriteSQL(t *testing.T) {
 		sql         string
 		values      []interface{}
 	}{
-		{"Execute an invalid INSERT sql", "INSERT INTO test7 (tool) values ($1)", []interface{}{"lulu"}},
-		{"Execute an invalid UPDATE sql", "UPDATE test7 SET name = $1 WHERE surname = $2", []interface{}{"lulu"}},
-		{"Execute an invalid DELETE sql", "DELETE FROM test7 WHERE name = $1 AND surname = $2", []interface{}{"lulu"}},
+		{"Execute an invalid INSERT sql", "INSERT INTO test7 (tool) values (lulu)", []interface{}{}},
+		{"Execute an invalid UPDATE sql", "UPDATE test7 SET name = lulu WHERE surname =", []interface{}{}},
+		{"Execute an invalid DELETE sql", "DELETE FROM test7 WHERE name = lulu AND surname =", []interface{}{}},
 	}
 
 	for _, tc := range testInvalidCases {
@@ -172,10 +160,10 @@ func TestExecuteScripts(t *testing.T) {
 		err         error
 	}{
 		{"Get result with GET HTTP Method", "GET", "SELECT * FROM test7", []interface{}{}, nil},
-		{"Get result with POST HTTP Method", "POST", "INSERT INTO test7 (name) VALUES ($1)", []interface{}{"lala"}, nil},
-		{"Get result with PUT HTTP Method", "PUT", "UPDATE test7 SET name = $1 WHERE surname = $2", []interface{}{"lala", "temer"}, nil},
-		{"Get result with PATCH HTTP Method", "PATCH", "UPDATE test7 SET surname = $1 WHERE name = $2", []interface{}{"temer", "lala"}, nil},
-		{"Get result with DELETE HTTP Method", "DELETE", "DELETE FROM test7 WHERE surname = $1", []interface{}{"lala"}, nil},
+		{"Get result with POST HTTP Method", "POST", "INSERT INTO test7 (name) VALUES ('lala')", []interface{}{}, nil},
+		{"Get result with PUT HTTP Method", "PUT", "UPDATE test7 SET name = 'lala' WHERE surname = 'temer'", []interface{}{}, nil},
+		{"Get result with PATCH HTTP Method", "PATCH", "UPDATE test7 SET surname = 'temer' WHERE name = 'lala'", []interface{}{}, nil},
+		{"Get result with DELETE HTTP Method", "DELETE", "DELETE FROM test7 WHERE surname = 'lala'", []interface{}{}, nil},
 	}
 
 	for _, tc := range testCases {
