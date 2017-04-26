@@ -52,8 +52,7 @@ func ParseScript(scriptPath string, queryURL url.Values) (sqlQuery string, value
 	q := make(map[string]string)
 	pid := 1
 	for key := range queryURL {
-		q[key] = fmt.Sprintf("$%d", pid)
-		values = append(values, queryURL.Get(key))
+		q[key] = fmt.Sprintf("%s", queryURL.Get(key))
 		pid++
 	}
 
@@ -95,6 +94,7 @@ func WriteSQL(sql string, values []interface{}) (resultByte []byte, err error) {
 	result, err := tx.Exec(sql, valuesAux...)
 	if err != nil {
 		tx.Rollback()
+		log.Printf("sql = %+v\n", sql)
 		err = fmt.Errorf("could not peform sql: %v", err)
 		return
 	}
