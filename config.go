@@ -51,6 +51,10 @@ func init() {
 	load()
 }
 
+func LoadToTest() {
+	load()
+}
+
 func viperCfg() {
 	filePath := os.Getenv("PREST_CONF")
 	if filePath == "" {
