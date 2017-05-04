@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/nuveo/prest/config"
 	// postgres driver for migrate
 	_ "github.com/mattes/migrate/driver/postgres"
 	"github.com/mattes/migrate/file"
@@ -26,11 +27,11 @@ var migrateCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(migrateCmd)
 	migrateCmd.PersistentFlags().StringVar(&url, "url", driverURL(), "Database driver url")
-	migrateCmd.PersistentFlags().StringVar(&path, "path", prestConfig.MigrationsPath, "Migrations directory")
+	migrateCmd.PersistentFlags().StringVar(&path, "path", config.PrestConf.MigrationsPath, "Migrations directory")
 }
 
 func driverURL() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", prestConfig.PGUser, prestConfig.PGPass, prestConfig.PGHost, prestConfig.PGPort, prestConfig.PGDatabase)
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", config.PrestConf.PGUser, config.PrestConf.PGPass, config.PrestConf.PGHost, config.PrestConf.PGPort, config.PrestConf.PGDatabase)
 }
 
 func writePipe(pipe chan interface{}) (ok bool) {
