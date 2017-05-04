@@ -29,6 +29,7 @@ before_script:
     - sh testdata/schema.sh
 
 script:
+    - sh migrations_test.sh
     - sh test.sh
 
 after_success:

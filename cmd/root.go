@@ -17,9 +17,6 @@ import (
 	"github.com/urfave/negroni"
 )
 
-var cfgFile string
-var prestConfig config.Prest
-
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:   "prest",
