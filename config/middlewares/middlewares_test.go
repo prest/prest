@@ -57,8 +57,8 @@ func TestGetAppWithReorderedMiddleware(t *testing.T) {
 	if !strings.Contains(string(body), "Calling custom middleware") {
 		t.Error("do not contains 'Calling custom middleware'")
 	}
-	if strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
-		t.Error("content type shouldn't be application/json but was")
+	if !strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
+		t.Error("content type should application/json but wasn't")
 	}
 	MiddlewareStack = []negroni.Handler{}
 }
@@ -126,8 +126,8 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("content type should be http.StatusUnauthorized but was %s", resp.Status)
 	}
-	if strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
-		t.Error("content type shouldn't be application/json but was")
+	if !strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
+		t.Error("content type should be application/json but wasn't")
 	}
 	if !strings.Contains(string(body), "required authorization to table") {
 		t.Error("do not contains 'required authorization to table'")
