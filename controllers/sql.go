@@ -6,7 +6,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/nuveo/prest/adapters/postgres"
-	"github.com/nuveo/prest/helpers"
 )
 
 // ExecuteScriptQuery is a function to execute and return result of script query
@@ -40,7 +39,7 @@ func ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
 
 	result, err := ExecuteScriptQuery(r, queriesPath, script)
 	if err != nil {
-		helpers.ErrorHandler(w, err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

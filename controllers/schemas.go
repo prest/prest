@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/nuveo/prest/adapters/postgres"
-	"github.com/nuveo/prest/helpers"
 	"github.com/nuveo/prest/statements"
 )
 
@@ -13,7 +12,7 @@ import (
 func GetSchemas(w http.ResponseWriter, r *http.Request) {
 	requestWhere, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
-		helpers.ErrorHandler(w, err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -25,7 +24,7 @@ func GetSchemas(w http.ResponseWriter, r *http.Request) {
 
 	order, err := postgres.OrderByRequest(r)
 	if err != nil {
-		helpers.ErrorHandler(w, err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -37,14 +36,14 @@ func GetSchemas(w http.ResponseWriter, r *http.Request) {
 
 	page, err := postgres.PaginateIfPossible(r)
 	if err != nil {
-		helpers.ErrorHandler(w, err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	sqlSchemas = fmt.Sprint(sqlSchemas, " ", page)
 	object, err := postgres.Query(sqlSchemas, values...)
 	if err != nil {
-		helpers.ErrorHandler(w, err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

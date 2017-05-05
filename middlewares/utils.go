@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -8,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/clbanning/mxj/j2x"
-	"github.com/nuveo/prest/helpers"
 	"github.com/nuveo/prest/statements"
 )
 
@@ -44,17 +44,19 @@ func permissionByMethod(method string) (permission string) {
 }
 
 func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, format string) {
-	byt, err := ioutil.ReadAll(recorder.Body)
-	if err != nil {
-		helpers.ErrorHandler(w, err)
-		return
+	byt, _ := ioutil.ReadAll(recorder.Body)
+
+	if recorder.Code != http.StatusOK {
+		m := make(map[string]string)
+		m["error"] = strings.TrimSpace(string(byt))
+		byt, _ = json.MarshalIndent(m, "", "\t")
 	}
 
 	switch format {
 	case "xml":
 		xmldata, err := j2x.JsonToXml(byt)
 		if err != nil {
-			helpers.ErrorHandler(w, err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		xmlStr := fmt.Sprintf("<objects>%s</objects>", string(xmldata))
