@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/nuveo/prest/adapters/postgres"
@@ -13,8 +12,7 @@ import (
 func GetSchemas(w http.ResponseWriter, r *http.Request) {
 	requestWhere, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorHandler(w, err)
 		return
 	}
 
@@ -24,7 +22,12 @@ func GetSchemas(w http.ResponseWriter, r *http.Request) {
 		sqlSchemas = fmt.Sprint(sqlSchemas, " WHERE ", requestWhere)
 	}
 
-	order, _ := postgres.OrderByRequest(r)
+	order, err := postgres.OrderByRequest(r)
+	if err != nil {
+		errorHandler(w, err)
+		return
+	}
+
 	if order != "" {
 		sqlSchemas = fmt.Sprint(sqlSchemas, order)
 	} else if !hasCount {
@@ -33,15 +36,14 @@ func GetSchemas(w http.ResponseWriter, r *http.Request) {
 
 	page, err := postgres.PaginateIfPossible(r)
 	if err != nil {
-		http.Error(w, "Paging error", http.StatusBadRequest)
+		errorHandler(w, err)
 		return
 	}
 
 	sqlSchemas = fmt.Sprint(sqlSchemas, " ", page)
 	object, err := postgres.Query(sqlSchemas, values...)
 	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorHandler(w, err)
 		return
 	}
 
