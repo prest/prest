@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/clbanning/mxj/j2x"
+	"github.com/nuveo/prest/helpers"
 	"github.com/nuveo/prest/statements"
 )
 
@@ -45,19 +46,17 @@ func permissionByMethod(method string) (permission string) {
 func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, format string) {
 	byt, err := ioutil.ReadAll(recorder.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		helpers.ErrorHandler(w, err)
 		return
 	}
-	if recorder.Code != http.StatusOK {
-		w.WriteHeader(recorder.Code)
-		w.Write(byt)
-		return
-	}
+
+	w.WriteHeader(recorder.Code)
+
 	switch format {
 	case "xml":
 		xmldata, err := j2x.JsonToXml(byt)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			helpers.ErrorHandler(w, err)
 			return
 		}
 		xmlStr := fmt.Sprintf("<objects>%s</objects>", string(xmldata))

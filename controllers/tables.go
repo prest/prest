@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/nuveo/prest/adapters/postgres"
 	"github.com/nuveo/prest/api"
+	"github.com/nuveo/prest/helpers"
 	"github.com/nuveo/prest/statements"
 )
 
@@ -17,14 +18,14 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 	requestWhere, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
 	order, err := postgres.OrderByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform OrderByRequest: %v", err)
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
@@ -44,7 +45,7 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 
 	object, err := postgres.Query(sqlTables, values...)
 	if err != nil {
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
@@ -60,7 +61,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	requestWhere, values, err := postgres.WhereByRequest(r, 3)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
@@ -75,7 +76,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	order, err := postgres.OrderByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform OrderByRequest: %v", err)
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 	if order != "" {
@@ -87,7 +88,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	page, err := postgres.PaginateIfPossible(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform PaginateIfPossible: %v", err)
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
@@ -100,7 +101,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 
 	object, err := postgres.Query(sqlSchemaTables, valuesAux...)
 	if err != nil {
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
@@ -120,13 +121,13 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 
 	if len(cols) == 0 {
 		err := fmt.Errorf("you don't have permission for this action, please check the permitted fields for this table")
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
 	selectStr, err := postgres.SelectFields(cols)
 	if err != nil {
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
@@ -135,7 +136,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	countQuery, err := postgres.CountByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform CountByRequest: %v", err)
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 	if countQuery != "" {
@@ -145,7 +146,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	joinValues, err := postgres.JoinByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform JoinByRequest: %v", err)
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
@@ -156,7 +157,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	requestWhere, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
@@ -171,7 +172,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	order, err := postgres.OrderByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform OrderByRequest: %v", err)
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 	if order != "" {
@@ -181,7 +182,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	page, err := postgres.PaginateIfPossible(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform PaginateIfPossible: %v", err)
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 	sqlSelect = fmt.Sprint(sqlSelect, " ", page)
@@ -193,7 +194,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 
 	object, err := runQuery(sqlSelect, values...)
 	if err != nil {
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
@@ -212,13 +213,13 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		err = fmt.Errorf("could not decode body: %v", err)
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 	object, err := postgres.Insert(database, schema, table, req)
 	if err != nil {
 		err = fmt.Errorf("could not perform InsertInTables: %v", err)
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
@@ -235,14 +236,14 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	where, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
 	object, err := postgres.Delete(database, schema, table, where, values)
 	if err != nil {
 		err = fmt.Errorf("could not perform DELETE: %v", err)
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
@@ -261,21 +262,21 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		err = fmt.Errorf("could not decode body: %v", err)
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
 	where, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
 	object, err := postgres.Update(database, schema, table, where, values, req)
 	if err != nil {
 		err = fmt.Errorf("could not perform UPDATE: %v", err)
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 

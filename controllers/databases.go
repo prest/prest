@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/nuveo/prest/adapters/postgres"
+	"github.com/nuveo/prest/helpers"
 	"github.com/nuveo/prest/statements"
 )
 
@@ -12,7 +13,7 @@ import (
 func GetDatabases(w http.ResponseWriter, r *http.Request) {
 	requestWhere, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
@@ -25,7 +26,7 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 
 	order, err := postgres.OrderByRequest(r)
 	if err != nil {
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
@@ -37,14 +38,14 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 
 	page, err := postgres.PaginateIfPossible(r)
 	if err != nil {
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
 	sqlDatabases = fmt.Sprint(sqlDatabases, " ", page)
 	object, err := postgres.Query(sqlDatabases, values...)
 	if err != nil {
-		errorHandler(w, err)
+		helpers.ErrorHandler(w, err)
 		return
 	}
 
