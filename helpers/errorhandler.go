@@ -1,4 +1,4 @@
-package controllers
+package helpers
 
 import (
 	"encoding/json"
@@ -6,7 +6,8 @@ import (
 	"net/http"
 )
 
-func errorHandler(w http.ResponseWriter, err error) {
+// ErrorHandler format error to log and return json via http
+func ErrorHandler(w http.ResponseWriter, err error) {
 	log.Println(err)
 
 	m := make(map[string]string)
