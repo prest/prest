@@ -110,7 +110,7 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 		t.Error("do not contains 'custom route'")
 	}
 	if !strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
-		t.Error("content type should be application/json but was")
+		t.Error("content type should be application/json but was", resp.Header.Get("Content-Type"))
 	}
 	resp, err = http.Get(server.URL + "/prest/public/test_write_and_delete_access")
 	if err != nil {

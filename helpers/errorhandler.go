@@ -14,5 +14,6 @@ func ErrorHandler(w http.ResponseWriter, err error) {
 	m["error"] = err.Error()
 	b, _ := json.MarshalIndent(m, "", "\t")
 
+	w.Header().Set("Content-Type", "application/json")
 	http.Error(w, string(b), http.StatusBadRequest)
 }
