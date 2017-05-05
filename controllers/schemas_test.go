@@ -24,7 +24,6 @@ func TestGetSchemas(t *testing.T) {
 		{"Get schemas with custom where clause and pagination", "/schemas?schema_name=$eq.public&_page=1&_page_size=20", "GET", http.StatusOK, "[{\"schema_name\":\"public\"}]"},
 		{"Get schemas with COUNT clause", "/schemas?_count=*", "GET", http.StatusOK, "[{\"count\":6}]"},
 		{"Get schemas with custom where invalid clause", "/schemas?0schema_name=$eq.public", "GET", http.StatusBadRequest, "invalid identifier: 0schema_name\n"},
-		{"Get schemas with custom where and pagination invalid", "/schemas?schema_name=$eq.public&_page=A", "GET", http.StatusBadRequest, "strconv.Atoi: parsing \"A\": invalid syntax\n"},
 		{"Get schemas with noexistent column", "/schemas?schematame=$eq.test", "GET", http.StatusBadRequest, "pq: column \"schematame\" does not exist\n"},
 	}
 
@@ -37,6 +36,38 @@ func TestGetSchemas(t *testing.T) {
 	for _, tc := range testCases {
 		t.Log(tc.description)
 		doRequest(t, server.URL+tc.url, r, tc.method, tc.status, "GetSchemas", tc.body)
-
 	}
+}
+
+func TestVersionDependentGetSchemas(t *testing.T) {
+	//This test supports error messages from different versions of Go.
+	var testCases = []struct {
+		description string
+		url         string
+		method      string
+		status      int
+		body        []string
+	}{
+		{"Get schemas with custom where and pagination invalid",
+			"/schemas?schema_name=$eq.public&_page=A",
+			"GET",
+			http.StatusBadRequest,
+			[]string{
+				"strconv.ParseInt: parsing \"A\": invalid syntax\n",
+				"strconv.Atoi: parsing \"A\": invalid syntax\n",
+			},
+		},
+	}
+
+	router := mux.NewRouter()
+	router.HandleFunc("/schemas", GetSchemas).Methods("GET")
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	r := api.Request{}
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		doRequest(t, server.URL+tc.url, r, tc.method, tc.status, "GetSchemas", tc.body...)
+	}
+
 }
