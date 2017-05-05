@@ -108,7 +108,7 @@ func TestSelectFromTables(t *testing.T) {
 		{"execute select in a table with invalid where clause", "/prest/public/test?0name=$eq.nuveo", "GET", http.StatusBadRequest},
 		{"execute select in a table with invalid count clause", "/prest/public/test?_count=0name", "GET", http.StatusBadRequest},
 		{"execute select in a table with invalid order clause", "/prest/public/test?_order=0name", "GET", http.StatusBadRequest},
-		{"execute select in a view with an other column", "/prest/public/view_test?_select=celphone", "GET", 401},
+		{"execute select in a view with an other column", "/prest/public/view_test?_select=celphone", "GET", http.StatusBadRequest},
 		{"execute select in a view with where and column invalid", "/prest/public/view_test?0celphone=$eq.888888", "GET", http.StatusBadRequest},
 		{"execute select in a view with custom join clause invalid", "/prest/public/view_test?_join=inner:test2.name:eq:view_test.player", "GET", http.StatusBadRequest},
 		{"execute select in a view with custom where clause and pagination invalid", "/prest/public/view_test?player=$eq.gopher&_page=A&_page_size=20", "GET", http.StatusBadRequest},
