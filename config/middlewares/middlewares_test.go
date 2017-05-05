@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -71,6 +72,7 @@ func TestGetAppWithoutReorderedMiddleware(t *testing.T) {
 	server := httptest.NewServer(n)
 	defer server.Close()
 	resp, err := http.Get(server.URL)
+
 	if err != nil {
 		t.Fatal("Expected run without errors but was", err.Error())
 	}
@@ -135,6 +137,13 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 }
 
 func customMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	w.Write([]byte("Calling custom middleware"))
+
+	m := make(map[string]string)
+	m["msg"] = "Calling custom middleware"
+	b, _ := json.Marshal(m)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+
 	next(w, r)
 }
