@@ -181,10 +181,19 @@ func doRequest(t *testing.T, url string, r api.Request, method string, expectedS
 	}
 
 	if len(expectedBody) > 0 {
-		if string(body) != expectedBody[0] {
+		if !containsStringInSlice(expectedBody, string(body)) {
 			t.Errorf("expected %q, got: %q", expectedBody, string(body))
 		}
 	}
+}
+
+func containsStringInSlice(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
 
 func createMockScripts(base string) {

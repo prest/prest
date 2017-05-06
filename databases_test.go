@@ -3,6 +3,7 @@ package controllers
 import (
 	"testing"
 
+	"net/http"
 	"net/http/httptest"
 
 	"github.com/gorilla/mux"
@@ -16,14 +17,14 @@ func TestGetDatabases(t *testing.T) {
 		method      string
 		status      int
 	}{
-		{"Get databases without custom where clause", "/databases", "GET", 200},
-		{"Get databases with custom where clause", "/databases?datname=$eq.prest", "GET", 200},
-		{"Get databases with custom order clause", "/databases?_order=datname", "GET", 200},
-		{"Get databases with custom where clause and pagination", "/databases?datname=$eq.prest&_page=1&_page_size=20", "GET", 200},
-		{"Get databases with COUNT clause", "/databases?_count=*", "GET", 200},
-		{"Get databases with custom where invalid clause", "/databases?0datname=prest", "GET", 400},
-		{"Get databases with custom where and pagination invalid", "/databases?datname=$eq.prest&_page=A", "GET", 400},
-		{"Get databases with noexistent column", "/databases?datatata=$eq.test", "GET", 500},
+		{"Get databases without custom where clause", "/databases", "GET", http.StatusOK},
+		{"Get databases with custom where clause", "/databases?datname=$eq.prest", "GET", http.StatusOK},
+		{"Get databases with custom order clause", "/databases?_order=datname", "GET", http.StatusOK},
+		{"Get databases with custom where clause and pagination", "/databases?datname=$eq.prest&_page=1&_page_size=20", "GET", http.StatusOK},
+		{"Get databases with COUNT clause", "/databases?_count=*", "GET", http.StatusOK},
+		{"Get databases with custom where invalid clause", "/databases?0datname=prest", "GET", http.StatusBadRequest},
+		{"Get databases with custom where and pagination invalid", "/databases?datname=$eq.prest&_page=A", "GET", http.StatusBadRequest},
+		{"Get databases with noexistent column", "/databases?datatata=$eq.test", "GET", http.StatusBadRequest},
 	}
 
 	r := api.Request{}
