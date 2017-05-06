@@ -256,7 +256,12 @@ func CountByRequest(req *http.Request) (countQuery string, err error) {
 
 // Query process queries
 func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
-	db := connection.MustGet()
+	db, err := connection.Get()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
 	prepare, err := db.Prepare(SQL)
 	if err != nil {
 		return
@@ -307,7 +312,12 @@ func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 
 // QueryCount process queries with count
 func QueryCount(SQL string, params ...interface{}) ([]byte, error) {
-	db := connection.MustGet()
+	db, err := connection.Get()
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	
 	prepare, err := db.Prepare(SQL)
 	if err != nil {
 		return nil, err
@@ -373,7 +383,12 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 		}
 		colPlaceholder += fmt.Sprintf("$%d", i)
 	}
-	db := connection.MustGet()
+	db, err := connection.Get()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
 	tx, err := db.Begin()
 	if err != nil {
 		log.Printf("could not begin transaction: %v\n", err)
@@ -469,7 +484,12 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 			where)
 	}
 
-	db := connection.MustGet()
+	db, err := connection.Get()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
 	tx, err := db.Begin()
 	if err != nil {
 		log.Printf("could not begin transaction: %v\n", err)
@@ -531,7 +551,12 @@ func Update(database, schema, table, where string, whereValues []interface{}, bo
 		values = append(whereValues, values...)
 	}
 
-	db := connection.MustGet()
+	db, err := connection.Get()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
 	tx, err := db.Begin()
 	if err != nil {
 		log.Printf("could not begin transaction: %v\n", err)

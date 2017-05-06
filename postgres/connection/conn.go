@@ -16,8 +16,8 @@ var (
 	err error
 )
 
-// MustGet get postgres connection
-func MustGet() *sqlx.DB {
+// Get get postgres connection
+func Get() (*sqlx.DB, error) {
 	if db == nil {
 		dbURI := fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=disable connect_timeout=%d",
 			config.PrestConf.PGUser,
@@ -30,10 +30,20 @@ func MustGet() *sqlx.DB {
 		}
 		db, err = sqlx.Connect("postgres", dbURI)
 		if err != nil {
-			panic(fmt.Sprintf("Unable to connection to database: %v\n", err))
+			return nil, err
 		}
 		db.SetMaxIdleConns(config.PrestConf.PGMaxIdleConn)
 		db.SetMaxOpenConns(config.PrestConf.PGMAxOpenConn)
+	}
+	return db, nil
+}
+
+// MustGet get postgres connection
+func MustGet() *sqlx.DB {
+	var err error
+	db, err = Get()
+	if err != nil {
+		panic(fmt.Sprintf("Unable to connect to database: %v\n", err))
 	}
 	return db
 }
