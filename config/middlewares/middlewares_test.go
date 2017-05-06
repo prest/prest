@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -56,8 +57,8 @@ func TestGetAppWithReorderedMiddleware(t *testing.T) {
 	if !strings.Contains(string(body), "Calling custom middleware") {
 		t.Error("do not contains 'Calling custom middleware'")
 	}
-	if strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
-		t.Error("content type shouldn't be application/json but was")
+	if !strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
+		t.Error("content type should application/json but wasn't")
 	}
 	MiddlewareStack = []negroni.Handler{}
 }
@@ -71,6 +72,7 @@ func TestGetAppWithoutReorderedMiddleware(t *testing.T) {
 	server := httptest.NewServer(n)
 	defer server.Close()
 	resp, err := http.Get(server.URL)
+
 	if err != nil {
 		t.Fatal("Expected run without errors but was", err.Error())
 	}
@@ -110,7 +112,7 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 		t.Error("do not contains 'custom route'")
 	}
 	if !strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
-		t.Error("content type should be application/json but was")
+		t.Error("content type should be application/json but was", resp.Header.Get("Content-Type"))
 	}
 	resp, err = http.Get(server.URL + "/prest/public/test_write_and_delete_access")
 	if err != nil {
@@ -124,8 +126,8 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("content type should be http.StatusUnauthorized but was %s", resp.Status)
 	}
-	if strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
-		t.Error("content type shouldn't be application/json but was")
+	if !strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
+		t.Error("content type should be application/json but wasn't")
 	}
 	if !strings.Contains(string(body), "required authorization to table") {
 		t.Error("do not contains 'required authorization to table'")
@@ -135,6 +137,13 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 }
 
 func customMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	w.Write([]byte("Calling custom middleware"))
+
+	m := make(map[string]string)
+	m["msg"] = "Calling custom middleware"
+	b, _ := json.Marshal(m)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+
 	next(w, r)
 }

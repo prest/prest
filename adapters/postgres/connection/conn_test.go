@@ -6,17 +6,31 @@ import (
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 )
 
+func TestGet(t *testing.T) {
+	t.Log("Open connection")
+	db, err := Get()
+	if err != nil {
+		t.Fatalf("Expected err equal to nil but got %q", err.Error())
+	}
+
+	t.Log("Ping Pong")
+	err = db.Ping()
+	if err != nil {
+		t.Fatalf("expected no error, but got: %v", err)
+	}
+}
+
 func TestMustGet(t *testing.T) {
 	t.Log("Open connection")
 	db := MustGet()
 	if db == nil {
-		t.Errorf("expected db connection, but no was!")
+		t.Fatalf("expected db connection, but no was!")
 	}
 
 	t.Log("Ping Pong")
 	err := db.Ping()
 	if err != nil {
-		t.Errorf("expected no error, but got: %v", err)
+		t.Fatalf("expected no error, but got: %v", err)
 	}
 }
 

@@ -7,7 +7,7 @@
 ## Example:
 
 
-```
+```go
 package main
 
 import (
@@ -24,7 +24,7 @@ func main() {
 	// Reorder middlewares
 	middlewares.MiddlewareStack = []negroni.Handler{
 		negroni.Handler(negroni.NewRecovery()),
-		negroni.Handler(negroni.NewRecovery()),
+		negroni.Handler(negroni.NewLogger()),
 		negroni.Handler(negroni.HandlerFunc(CustomMiddleware)),
 	}
 

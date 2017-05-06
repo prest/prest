@@ -69,7 +69,12 @@ func ParseScript(scriptPath string, queryURL url.Values) (sqlQuery string, value
 
 // WriteSQL perform INSERT's, UPDATE's, DELETE's operations
 func WriteSQL(sql string, values []interface{}) (resultByte []byte, err error) {
-	db := connection.MustGet()
+	db, err := connection.Get()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
 	tx, err := db.Begin()
 	if err != nil {
 		log.Printf("could not begin transaction: %v\n", err)

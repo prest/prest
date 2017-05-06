@@ -53,11 +53,11 @@ func TestExecuteScriptQuery(t *testing.T) {
 		method      string
 		status      int
 	}{
-		{"Execute script GET method", "/testing/script-get/?field1=gopher", "GET", 200},
-		{"Execute script POST method", "/testing/script-post/?field1=gopherzin&field2=pereira", "POST", 200},
+		{"Execute script GET method", "/testing/script-get/?field1=gopher", "GET", http.StatusOK},
+		{"Execute script POST method", "/testing/script-post/?field1=gopherzin&field2=pereira", "POST", http.StatusOK},
 		// errors
-		{"Execute script GET method invalid", "/testing/script-get/?nonexistent=gopher", "GET", 400},
-		{"Execute script POST method invalid", "/testing/script-post/?nonexistent=gopher", "POST", 400},
+		{"Execute script GET method invalid", "/testing/script-get/?nonexistent=gopher", "GET", http.StatusBadRequest},
+		{"Execute script POST method invalid", "/testing/script-post/?nonexistent=gopher", "POST", http.StatusBadRequest},
 	}
 
 	apiReq := api.Request{}
@@ -81,16 +81,16 @@ func TestExecuteFromScripts(t *testing.T) {
 		method      string
 		status      int
 	}{
-		{"Get results using scripts by GET method", "/_QUERIES/fulltable/get_all?field1=gopher", "GET", 200},
-		{"Get results using scripts by POST method", "/_QUERIES/fulltable/write_all?field1=gopherzin&field2=pereira", "POST", 200},
-		{"Get results using scripts by PUT method", "/_QUERIES/fulltable/put_all?field1=trump&field2=pereira", "PUT", 200},
-		{"Get results using scripts by PATCH method", "/_QUERIES/fulltable/patch_all?field1=temer&field2=trump", "PATCH", 200},
-		{"Get results using scripts by DELETE method", "/_QUERIES/fulltable/delete_all?field1=trump", "DELETE", 200},
+		{"Get results using scripts by GET method", "/_QUERIES/fulltable/get_all?field1=gopher", "GET", http.StatusOK},
+		{"Get results using scripts by POST method", "/_QUERIES/fulltable/write_all?field1=gopherzin&field2=pereira", "POST", http.StatusOK},
+		{"Get results using scripts by PUT method", "/_QUERIES/fulltable/put_all?field1=trump&field2=pereira", "PUT", http.StatusOK},
+		{"Get results using scripts by PATCH method", "/_QUERIES/fulltable/patch_all?field1=temer&field2=trump", "PATCH", http.StatusOK},
+		{"Get results using scripts by DELETE method", "/_QUERIES/fulltable/delete_all?field1=trump", "DELETE", http.StatusOK},
 		// errors
-		{"Get errors using nonexistent folder", "/_QUERIES/fullnon/delete_all?field1=trump", "DELETE", 400},
-		{"Get errors using nonexistent script", "/_QUERIES/fulltable/some_com_all?field1=trump", "DELETE", 400},
-		{"Get errors with invalid params in script", "/_QUERIES/fulltable/get_all?column1=gopher", "GET", 400},
-		{"Get errors with invalid execution of sql", "/_QUERIES/fulltable/create_table?field1=test7", "POST", 400},
+		{"Get errors using nonexistent folder", "/_QUERIES/fullnon/delete_all?field1=trump", "DELETE", http.StatusBadRequest},
+		{"Get errors using nonexistent script", "/_QUERIES/fulltable/some_com_all?field1=trump", "DELETE", http.StatusBadRequest},
+		{"Get errors with invalid params in script", "/_QUERIES/fulltable/get_all?column1=gopher", "GET", http.StatusBadRequest},
+		{"Get errors with invalid execution of sql", "/_QUERIES/fulltable/create_table?field1=test7", "POST", http.StatusBadRequest},
 	}
 
 	for _, tc := range testCases {
