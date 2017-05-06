@@ -7,7 +7,7 @@ const (
 	PrestVersionNumber = 0.1
 
 	// Increment this for bug releases
-	PrestPatchVersion = 6
+	PrestPatchVersion = 7
 )
 
 var CommitHash string
