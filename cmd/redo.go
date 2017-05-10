@@ -27,7 +27,3 @@ var redoCmd = &cobra.Command{
 		}
 	},
 }
-
-func init() {
-	migrateCmd.AddCommand(redoCmd)
-}

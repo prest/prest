@@ -45,7 +45,3 @@ var gotoCmd = &cobra.Command{
 
 	},
 }
-
-func init() {
-	migrateCmd.AddCommand(gotoCmd)
-}
