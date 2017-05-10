@@ -9,12 +9,12 @@ import (
 func TestLoad(t *testing.T) {
 	os.Setenv("PREST_CONF", "../testdata/prest.toml")
 
-	load()
+	Load()
 	if len(PrestConf.AccessConf.Tables) < 2 {
 		t.Errorf("expected > 2, got: %d", len(PrestConf.AccessConf.Tables))
 	}
 
-	load()
+	Load()
 	if !PrestConf.AccessConf.Restrict {
 		t.Error("expected true, but got false")
 	}

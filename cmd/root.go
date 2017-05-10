@@ -30,6 +30,20 @@ var RootCmd = &cobra.Command{
 // Execute adds all child commands to the root command sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	config.Load()
+	migrateCmd.AddCommand(createCmd)
+	migrateCmd.AddCommand(downCmd)
+	migrateCmd.AddCommand(gotoCmd)
+	migrateCmd.AddCommand(mversionCmd)
+	migrateCmd.AddCommand(nextCmd)
+	migrateCmd.AddCommand(redoCmd)
+	migrateCmd.AddCommand(upCmd)
+	migrateCmd.AddCommand(resetCmd)
+	RootCmd.AddCommand(versionCmd)
+	RootCmd.AddCommand(migrateCmd)
+	migrateCmd.PersistentFlags().StringVar(&url, "url", driverURL(), "Database driver url")
+	migrateCmd.PersistentFlags().StringVar(&path, "path", config.PrestConf.MigrationsPath, "Migrations directory")
+
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(-1)
