@@ -32,7 +32,3 @@ var createCmd = &cobra.Command{
 		fmt.Println(migrationFile.DownFile.FileName)
 	},
 }
-
-func init() {
-	migrateCmd.AddCommand(createCmd)
-}
