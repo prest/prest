@@ -47,14 +47,6 @@ type Prest struct {
 // PrestConf config variable
 var PrestConf *Prest
 
-func init() {
-	load()
-}
-
-func LoadToTest() {
-	load()
-}
-
 func viperCfg() {
 	filePath := os.Getenv("PREST_CONF")
 	if filePath == "" {
@@ -113,8 +105,8 @@ func Parse(cfg *Prest) (err error) {
 	return
 }
 
-// load configuration
-func load() {
+// Load configuration
+func Load() {
 	viperCfg()
 	PrestConf = &Prest{}
 	Parse(PrestConf)
