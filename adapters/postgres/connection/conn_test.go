@@ -4,7 +4,12 @@ import (
 	"testing"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	config "github.com/nuveo/prest/config"
 )
+
+func init() {
+	config.Load()
+}
 
 func TestGet(t *testing.T) {
 	t.Log("Open connection")
