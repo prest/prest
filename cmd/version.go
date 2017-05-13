@@ -18,7 +18,3 @@ var versionCmd = &cobra.Command{
 		fmt.Println("Serve a RESTful API from any PostgreSQL database", helpers.PrestReleaseVersion())
 	},
 }
-
-func init() {
-	RootCmd.AddCommand(versionCmd)
-}

@@ -24,12 +24,6 @@ var migrateCmd = &cobra.Command{
 	Long:  `Execute migration operations`,
 }
 
-func init() {
-	RootCmd.AddCommand(migrateCmd)
-	migrateCmd.PersistentFlags().StringVar(&url, "url", driverURL(), "Database driver url")
-	migrateCmd.PersistentFlags().StringVar(&path, "path", config.PrestConf.MigrationsPath, "Migrations directory")
-}
-
 func driverURL() string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", config.PrestConf.PGUser, config.PrestConf.PGPass, config.PrestConf.PGHost, config.PrestConf.PGPort, config.PrestConf.PGDatabase)
 }

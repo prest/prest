@@ -15,7 +15,7 @@ import (
 
 func TestMain(m *testing.M) {
 	os.Setenv("PREST_CONF", "../testdata/prest.toml")
-	config.LoadToTest()
+	config.Load()
 
 	createMockScripts(config.PrestConf.QueriesPath)
 	writeMockScripts(config.PrestConf.QueriesPath)

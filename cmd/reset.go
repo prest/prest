@@ -27,7 +27,3 @@ var resetCmd = &cobra.Command{
 		}
 	},
 }
-
-func init() {
-	migrateCmd.AddCommand(resetCmd)
-}

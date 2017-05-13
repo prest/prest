@@ -25,7 +25,3 @@ var mversionCmd = &cobra.Command{
 		fmt.Println(version)
 	},
 }
-
-func init() {
-	migrateCmd.AddCommand(mversionCmd)
-}
