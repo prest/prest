@@ -29,18 +29,20 @@ const (
 var removeOperatorRegex *regexp.Regexp
 
 func init() {
-	removeOperatorRegex = regexp.MustCompile("\\$[a-z]+.")
+	removeOperatorRegex = regexp.MustCompile(`\$[a-z]+.`)
 }
 
 // chkInvalidIdentifier return true if identifier is invalid
-func chkInvalidIdentifier(identifer string) bool {
-	if len(identifer) > 63 || unicode.IsDigit([]rune(identifer)[0]) {
-		return true
-	}
-
-	for _, v := range identifer {
-		if !unicode.IsLetter(v) && !unicode.IsDigit(v) && v != '_' && v != '.' && v != '-' {
+func chkInvalidIdentifier(identifer ...string) bool {
+	for _, ival := range identifer {
+		if ival == "" || len(ival) > 63 || unicode.IsDigit([]rune(ival)[0]) {
 			return true
+		}
+
+		for _, v := range ival {
+			if !unicode.IsLetter(v) && !unicode.IsDigit(v) && v != '_' && v != '.' && v != '-' {
+				return true
+			}
 		}
 	}
 	return false
@@ -76,7 +78,7 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 				switch keyInfo[1] {
 				case "jsonb":
 					jsonField := strings.Split(keyInfo[0], "->>")
-					if chkInvalidIdentifier(jsonField[0]) || chkInvalidIdentifier(jsonField[1]) {
+					if chkInvalidIdentifier(jsonField[0], jsonField[1]) {
 						err = fmt.Errorf("invalid identifier: %+v", jsonField)
 						return
 					}
@@ -161,21 +163,20 @@ func JoinByRequest(r *http.Request) (values []string, err error) {
 	}
 
 	joinArgs := strings.Split(queries.Get("_join"), ":")
-	chk := chkInvalidIdentifier
 
 	if len(joinArgs) != 5 {
 		err = errors.New("Invalid number of arguments in join statement")
 		return
 	}
 
-	if chk(joinArgs[1]) || chk(joinArgs[2]) || chk(joinArgs[4]) {
+	if chkInvalidIdentifier(joinArgs[1], joinArgs[2], joinArgs[4]) {
 		err = errors.New("Invalid identifier")
-		return nil, err
+		return
 	}
 
 	op, err := GetQueryOperator(joinArgs[3])
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	joinQuery := fmt.Sprintf(" %s JOIN %s ON %s %s %s ", strings.ToUpper(joinArgs[0]), joinArgs[1], joinArgs[2], op, joinArgs[4])
@@ -317,7 +318,7 @@ func QueryCount(SQL string, params ...interface{}) ([]byte, error) {
 		log.Println(err)
 		return nil, err
 	}
-	
+
 	prepare, err := db.Prepare(SQL)
 	if err != nil {
 		return nil, err
@@ -359,7 +360,7 @@ func PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 
 // Insert execute insert sql into a table
 func Insert(database, schema, table string, body api.Request) (jsonData []byte, err error) {
-	if chkInvalidIdentifier(database) || chkInvalidIdentifier(schema) || chkInvalidIdentifier(table) {
+	if chkInvalidIdentifier(database, schema, table) {
 		err = errors.New("Insert: Invalid identifier")
 		return
 	}
@@ -471,7 +472,7 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 	var result sql.Result
 	var rowsAffected int64
 
-	if chkInvalidIdentifier(database) || chkInvalidIdentifier(schema) || chkInvalidIdentifier(table) {
+	if chkInvalidIdentifier(database, schema, table) {
 		err = errors.New("Delete: Invalid identifier")
 		return
 	}
@@ -523,7 +524,7 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 
 // Update execute update sql into a table
 func Update(database, schema, table, where string, whereValues []interface{}, body api.Request) (jsonData []byte, err error) {
-	if chkInvalidIdentifier(database) || chkInvalidIdentifier(schema) || chkInvalidIdentifier(table) {
+	if chkInvalidIdentifier(database, schema, table) {
 		err = errors.New("Update: Invalid identifier")
 		return
 	}
