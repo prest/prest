@@ -3,11 +3,11 @@ package config
 import (
 	"fmt"
 	"log"
+	"os"
 	"os/user"
+	"path"
 	"path/filepath"
 	"strings"
-
-	"os"
 
 	"github.com/spf13/viper"
 )
@@ -49,14 +49,14 @@ var PrestConf *Prest
 
 func viperCfg() {
 	filePath := os.Getenv("PREST_CONF")
-	if filePath == "" {
-		filePath = "prest.toml"
-	}
+	dir, file := path.Split(filePath)
+	file = strings.TrimSuffix(file, filepath.Ext(file))
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvPrefix("PREST")
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(replacer)
-	viper.SetConfigFile(filePath)
+	viper.AddConfigPath(dir)
+	viper.SetConfigName(file)
 	viper.SetConfigType("toml")
 	viper.SetDefault("http.port", 3000)
 	viper.SetDefault("pg.host", "127.0.0.1")
