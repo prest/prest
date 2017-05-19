@@ -50,6 +50,7 @@ var PrestConf *Prest
 func viperCfg() {
 	filePath := os.Getenv("PREST_CONF")
 	dir, file := path.Split(filePath)
+	file = strings.Split(file, ".")[0]
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvPrefix("PREST")
 	viper.AutomaticEnv()
