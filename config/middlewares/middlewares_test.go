@@ -157,7 +157,6 @@ func TestDebug(t *testing.T) {
 	os.Setenv("PREST_DEBUG", "true")
 	config.Load()
 	nd := appTest()
-	println(config.PrestConf.Debug)
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
 	respd, err := http.Get(serverd.URL)
