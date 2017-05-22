@@ -78,7 +78,10 @@ func viperCfg() {
 // Parse pREST config
 func Parse(cfg *Prest) (err error) {
 	err = viper.ReadInConfig()
-	if err != nil {
+	switch err.(type) {
+	case viper.ConfigFileNotFoundError:
+		fmt.Println("Running without config file")
+	default:
 		return
 	}
 	cfg.HTTPPort = viper.GetInt("http.port")
@@ -119,6 +122,10 @@ func Load() {
 
 	if !PrestConf.AccessConf.Restrict {
 		fmt.Println("You are running pREST in public mode.")
+	}
+
+	if PrestConf.Debug {
+		fmt.Println("You are running pREST in debug mode.")
 	}
 
 	if _, err = os.Stat(PrestConf.QueriesPath); os.IsNotExist(err) {
