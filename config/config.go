@@ -78,11 +78,13 @@ func viperCfg() {
 // Parse pREST config
 func Parse(cfg *Prest) (err error) {
 	err = viper.ReadInConfig()
-	switch err.(type) {
-	case viper.ConfigFileNotFoundError:
-		fmt.Println("Running without config file")
-	default:
-		return
+	if err != nil {
+		switch err.(type) {
+		case viper.ConfigFileNotFoundError:
+			fmt.Println("Running without config file")
+		default:
+			return
+		}
 	}
 	cfg.HTTPPort = viper.GetInt("http.port")
 	cfg.PGHost = viper.GetString("pg.host")
@@ -129,9 +131,8 @@ func Load() {
 	}
 
 	if _, err = os.Stat(PrestConf.QueriesPath); os.IsNotExist(err) {
-		if err = os.MkdirAll(PrestConf.QueriesPath, 0700); err != nil {
-			fmt.Println("Unable to find queries directory", err.Error())
-			err = nil
+		if err = os.MkdirAll(PrestConf.QueriesPath, 0700); os.IsNotExist(err) {
+			fmt.Printf("Queries directory %s is not created", PrestConf.QueriesPath)
 		}
 	}
 }

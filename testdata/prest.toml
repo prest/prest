@@ -1,4 +1,4 @@
-migrations = "./testdata/migrations"
+# migrations = "./migrations"
 
 # [jwt]
 # key = "mysecretkey"
