@@ -152,3 +152,40 @@ func customMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerF
 
 	next(w, r)
 }
+
+func TestDebug(t *testing.T) {
+	n := appTest()
+	server := httptest.NewServer(n)
+	defer server.Close()
+	resp, err := http.Get(server.URL)
+	if err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected status code 401, but got %d", resp.StatusCode)
+	}
+	os.Setenv("PREST_DEBUG", "true")
+	config.Load()
+	nd := appTest()
+	serverd := httptest.NewServer(nd)
+	defer serverd.Close()
+	respd, err := http.Get(server.URL)
+	if err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected status code 200, but got %d", respd.StatusCode)
+	}
+}
+
+func appTest() *negroni.Negroni {
+	n := GetApp()
+	r := router.Get()
+
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("test app"))
+	}).Methods("GET")
+
+	n.UseHandler(r)
+	return n
+}
