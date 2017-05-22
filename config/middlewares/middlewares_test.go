@@ -156,7 +156,6 @@ func customMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerF
 func TestDebug(t *testing.T) {
 	os.Setenv("PREST_DEBUG", "true")
 	config.Load()
-	println(">>>>>", config.PrestConf.Debug)
 	nd := appTest()
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
