@@ -24,8 +24,8 @@ func initApp() {
 	if len(MiddlewareStack) == 0 {
 		MiddlewareStack = append(MiddlewareStack, BaseStack...)
 	}
-	println(">>>> initApp", config.PrestConf.Debug)
 	if !config.PrestConf.Debug {
+		println(">>>>>>>>>> JWT load")
 		MiddlewareStack = append(MiddlewareStack, negroni.Handler(middlewares.JwtMiddleware(config.PrestConf.JWTKey)))
 	}
 	app = negroni.New(MiddlewareStack...)
