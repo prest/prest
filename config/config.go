@@ -130,7 +130,7 @@ func Load() {
 
 	if _, err = os.Stat(PrestConf.QueriesPath); os.IsNotExist(err) {
 		if err = os.MkdirAll(PrestConf.QueriesPath, 0700); err != nil {
-			panic(err)
+			fmt.Println("Unable to find queries directory", err.Error())
 		}
 	}
 }
