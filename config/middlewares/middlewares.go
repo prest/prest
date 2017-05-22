@@ -24,6 +24,7 @@ func initApp() {
 	if len(MiddlewareStack) == 0 {
 		MiddlewareStack = append(MiddlewareStack, BaseStack...)
 	}
+	println(">>>> initApp", config.PrestConf.Debug)
 	if !config.PrestConf.Debug {
 		MiddlewareStack = append(MiddlewareStack, negroni.Handler(middlewares.JwtMiddleware(config.PrestConf.JWTKey)))
 	}
