@@ -115,10 +115,18 @@ database = "prest"
 ## API's
 HEADER:
 
-- To start JWT middleware the `PREST_JWT_KEY` environment variable must be set
+- JWT middleware is enable by default. To disable JWT need to run pREST in debug mode
 
 ```
 Authorization: JWT eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+```
+
+## Debug Mode
+
+- Set environment variable `PREST_DEBUG`
+
+```
+PREST_DEBUG=true
 ```
 
 ### Filter (WHERE)
