@@ -137,7 +137,7 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 		t.Error("content type should be application/json but wasn't")
 	}
 	if !strings.Contains(string(body), "required authorization to table") {
-		t.Error("do not contains 'required authorization to table'", string(body))
+		t.Error("do not contains 'required authorization to table'")
 	}
 	MiddlewareStack = []negroni.Handler{}
 	os.Setenv("PREST_CONF", "")
