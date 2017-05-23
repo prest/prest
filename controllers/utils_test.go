@@ -170,14 +170,20 @@ func doRequest(t *testing.T, url string, r api.Request, method string, expectedS
 	if err != nil {
 		t.Error("error on Do Request", err)
 	}
+
+	if resp.StatusCode != expectedStatus {
+		t.Errorf("expected %d, got: %d", expectedStatus, resp.StatusCode)
+	}
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		t.Error("error on ioutil ReadAll", err)
 	}
-	fmt.Println(string(body))
 
-	if resp.StatusCode != expectedStatus {
-		t.Errorf("expected %d, got: %d", expectedStatus, resp.StatusCode)
+	if len(expectedBody) > 0 {
+		if !containsStringInSlice(expectedBody, string(body)) {
+			t.Errorf("expected %q, got: %q", expectedBody, string(body))
+		}
 	}
 }
 
