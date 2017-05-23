@@ -130,7 +130,7 @@ func TestInsertInTables(t *testing.T) {
 	}
 	mJSON := make(map[string]interface{})
 	mJSON["name"] = "prest"
-	mJSON["data"] = `{"term": "name", "subterm": ["names", "of", "subterms"]}`
+	mJSON["data"] = `{"term": "name", "subterm": ["names", "of", "subterms"], "obj": {"emp": "nuveo"}}`
 	rJSON := api.Request{
 		Data: mJSON,
 	}
