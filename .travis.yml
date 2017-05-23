@@ -3,7 +3,7 @@ dist: trusty
 sudo: required
 
 addons:
-  postgresql: "9.5"
+  postgresql: "9.6"
 
 language: go
 
