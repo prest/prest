@@ -24,7 +24,7 @@ func initApp() {
 	if len(MiddlewareStack) == 0 {
 		MiddlewareStack = append(MiddlewareStack, BaseStack...)
 	}
-	if config.PrestConf.JWTKey != "" {
+	if !config.PrestConf.Debug {
 		MiddlewareStack = append(MiddlewareStack, negroni.Handler(middlewares.JwtMiddleware(config.PrestConf.JWTKey)))
 	}
 	app = negroni.New(MiddlewareStack...)
@@ -32,8 +32,7 @@ func initApp() {
 
 // GetApp get negroni
 func GetApp() *negroni.Negroni {
-	if app == nil {
-		initApp()
-	}
+	// init application every time
+	initApp()
 	return app
 }

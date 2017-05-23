@@ -42,6 +42,7 @@ type Prest struct {
 	QueriesPath     string
 	AccessConf      AccessConf
 	CORSAllowOrigin []string
+	Debug           bool
 }
 
 // PrestConf config variable
@@ -64,6 +65,7 @@ func viperCfg() {
 	viper.SetDefault("pg.maxidleconn", 10)
 	viper.SetDefault("pg.maxopenconn", 10)
 	viper.SetDefault("pg.conntimeout", 10)
+	viper.SetDefault("debug", false)
 
 	user, err := user.Current()
 	if err != nil {
@@ -77,7 +79,12 @@ func viperCfg() {
 func Parse(cfg *Prest) (err error) {
 	err = viper.ReadInConfig()
 	if err != nil {
-		return
+		switch err.(type) {
+		case viper.ConfigFileNotFoundError:
+			fmt.Println("Running without config file")
+		default:
+			return
+		}
 	}
 	cfg.HTTPPort = viper.GetInt("http.port")
 	cfg.PGHost = viper.GetString("pg.host")
@@ -93,6 +100,7 @@ func Parse(cfg *Prest) (err error) {
 	cfg.AccessConf.Restrict = viper.GetBool("access.restrict")
 	cfg.QueriesPath = viper.GetString("queries.location")
 	cfg.CORSAllowOrigin = viper.GetStringSlice("cors.alloworigin")
+	cfg.Debug = viper.GetBool("debug")
 
 	var t []TablesConf
 	err = viper.UnmarshalKey("access.tables", &t)
@@ -109,13 +117,22 @@ func Parse(cfg *Prest) (err error) {
 func Load() {
 	viperCfg()
 	PrestConf = &Prest{}
-	Parse(PrestConf)
+	err := Parse(PrestConf)
+	if err != nil {
+		panic(err)
+	}
 
 	if !PrestConf.AccessConf.Restrict {
 		fmt.Println("You are running pREST in public mode.")
 	}
 
-	if _, err := os.Stat(PrestConf.QueriesPath); os.IsNotExist(err) {
-		os.MkdirAll(PrestConf.QueriesPath, 0777)
+	if PrestConf.Debug {
+		fmt.Println("You are running pREST in debug mode.")
+	}
+
+	if _, err = os.Stat(PrestConf.QueriesPath); os.IsNotExist(err) {
+		if err = os.MkdirAll(PrestConf.QueriesPath, 0700); os.IsNotExist(err) {
+			fmt.Printf("Queries directory %s is not created", PrestConf.QueriesPath)
+		}
 	}
 }
