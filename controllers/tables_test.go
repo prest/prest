@@ -123,11 +123,16 @@ func TestSelectFromTables(t *testing.T) {
 }
 
 func TestInsertInTables(t *testing.T) {
-	m := make(map[string]interface{}, 0)
+	m := make(map[string]interface{})
 	m["name"] = "prest"
-
 	r := api.Request{
 		Data: m,
+	}
+	mJSON := make(map[string]interface{})
+	mJSON["name"] = "prest"
+	mJSON["data"] = `{"term": "name", "subterm": ["names", "of", "subterms"]}`
+	rJSON := api.Request{
+		Data: mJSON,
 	}
 
 	router := mux.NewRouter()
@@ -141,6 +146,7 @@ func TestInsertInTables(t *testing.T) {
 		request     api.Request
 		status      int
 	}{
+		{"execute insert in a table with jsonb field", "/prest/public/test_jsonb_bug", rJSON, http.StatusOK},
 		{"execute insert in a table without custom where clause", "/prest/public/test", r, http.StatusOK},
 		{"execute insert in a table with invalid database", "/0prest/public/test", r, http.StatusBadRequest},
 		{"execute insert in a table with invalid schema", "/prest/0public/test", r, http.StatusBadRequest},
