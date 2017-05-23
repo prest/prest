@@ -7,6 +7,10 @@
 
 Serve a RESTful API from any PostgreSQL database
 
+## Postgres version
+
+- 9.4 or higher
+
 ## Problem
 
 There is the PostgREST written in haskell, keep a haskell software in production is not easy job, with this need that was born the pREST.
