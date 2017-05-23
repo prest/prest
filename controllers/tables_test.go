@@ -146,7 +146,7 @@ func TestInsertInTables(t *testing.T) {
 		request     api.Request
 		status      int
 	}{
-		{"execute insert in a table with jsonb field", "/prest/public/test_jsonb_bug", rJSON, http.StatusOK},
+		{"execute insert in a table with jsonb field", "/prest/public/testjson", rJSON, http.StatusOK},
 		{"execute insert in a table without custom where clause", "/prest/public/test", r, http.StatusOK},
 		{"execute insert in a table with invalid database", "/0prest/public/test", r, http.StatusBadRequest},
 		{"execute insert in a table with invalid schema", "/prest/0public/test", r, http.StatusBadRequest},
