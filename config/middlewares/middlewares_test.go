@@ -88,6 +88,8 @@ func TestGetAppWithoutReorderedMiddleware(t *testing.T) {
 }
 
 func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
+	os.Setenv("PREST_DEBUG", "true")
+	config.Load()
 	app = nil
 	r := router.Get()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
@@ -135,7 +137,7 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 		t.Error("content type should be application/json but wasn't")
 	}
 	if !strings.Contains(string(body), "required authorization to table") {
-		t.Error("do not contains 'required authorization to table'")
+		t.Error("do not contains 'required authorization to table'", string(body))
 	}
 	MiddlewareStack = []negroni.Handler{}
 	os.Setenv("PREST_CONF", "")
