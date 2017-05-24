@@ -8,10 +8,13 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"text/template"
+	gotemplate "text/template"
+
+	"path"
 
 	"github.com/nuveo/prest/adapters/postgres/connection"
 	"github.com/nuveo/prest/config"
+	"github.com/nuveo/prest/template"
 )
 
 // GetScript get SQL template file
@@ -42,22 +45,25 @@ func GetScript(verb, folder, scriptName string) (script string, err error) {
 
 // ParseScript use values sent by users and add on script
 func ParseScript(scriptPath string, queryURL url.Values) (sqlQuery string, values []interface{}, err error) {
-	tpl, err := template.ParseFiles(scriptPath)
+	_, tplName := path.Split(scriptPath)
+	q := make(map[string]string)
+	pid := 1
+	for key := range queryURL {
+		q[key] = queryURL.Get(key)
+		pid++
+	}
+
+	funcs := &template.FuncRegistry{TemplateData: q}
+	tpl := gotemplate.New(tplName).Funcs(funcs.RegistryAllFuncs())
+
+	tpl, err = tpl.ParseFiles(scriptPath)
 	if err != nil {
 		err = fmt.Errorf("could not parse file %s: %+v", scriptPath, err)
 		return
 	}
-	tpl = tpl.Option("missingkey=error")
-
-	q := make(map[string]string)
-	pid := 1
-	for key := range queryURL {
-		q[key] = fmt.Sprintf("%s", queryURL.Get(key))
-		pid++
-	}
 
 	var buff bytes.Buffer
-	err = tpl.Execute(&buff, q)
+	err = tpl.Execute(&buff, funcs.TemplateData)
 	if err != nil {
 		err = fmt.Errorf("could not execute template %v", err)
 		return
