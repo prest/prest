@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"path"
+
 	"github.com/nuveo/prest/adapters/postgres/connection"
 	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/template"
@@ -43,6 +45,7 @@ func GetScript(verb, folder, scriptName string) (script string, err error) {
 
 // ParseScript use values sent by users and add on script
 func ParseScript(scriptPath string, queryURL url.Values) (sqlQuery string, values []interface{}, err error) {
+	_, tplName := path.Split(scriptPath)
 	q := make(map[string]string)
 	pid := 1
 	for key := range queryURL {
@@ -51,7 +54,7 @@ func ParseScript(scriptPath string, queryURL url.Values) (sqlQuery string, value
 	}
 
 	funcs := &template.FuncRegistry{TemplateData: q}
-	tpl := gotemplate.New(scriptPath).Funcs(funcs.RegistryAllFuncs())
+	tpl := gotemplate.New(tplName).Funcs(funcs.RegistryAllFuncs())
 
 	tpl, err = tpl.ParseFiles(scriptPath)
 	if err != nil {
