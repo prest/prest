@@ -226,6 +226,10 @@ func createMockScripts(base string) {
 	if err != nil {
 		log.Println(err)
 	}
+	_, err = os.Create(fmt.Sprint(base, "/fulltable/funcs.read.sql"))
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func writeMockScripts(base string) {
@@ -257,6 +261,7 @@ func writeMockScripts(base string) {
 	write("UPDATE test7 SET name = '{{.field1}}' WHERE surname = '{{.field2}}'", "patch_all.update.sql")
 	write("UPDATE test7 SET surname = '{{.field1}}' WHERE name = '{{.field2}}'", "put_all.update.sql")
 	write("DELETE FROM test7 WHERE name = '{{.field1}}'", "delete_all.delete.sql")
+	write("SELECT * FROM test7 WHERE name = '{{defaultOrValue .field1 \"gopher\"}}'", "funcs.read.sql")
 }
 
 func removeMockScripts(base string) {
