@@ -181,7 +181,7 @@ func doRequest(t *testing.T, url string, r api.Request, method string, expectedS
 		t.Errorf("expected %d, got: %d", expectedStatus, resp.StatusCode)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		t.Error("error on ioutil ReadAll", err)
 	}
