@@ -12,6 +12,7 @@ import (
 
 	"github.com/nuveo/prest/adapters/postgres/connection"
 	"github.com/nuveo/prest/config"
+	"github.com/nuveo/prest/tpl"
 )
 
 // GetScript get SQL template file
@@ -42,22 +43,24 @@ func GetScript(verb, folder, scriptName string) (script string, err error) {
 
 // ParseScript use values sent by users and add on script
 func ParseScript(scriptPath string, queryURL url.Values) (sqlQuery string, values []interface{}, err error) {
-	tpl, err := template.ParseFiles(scriptPath)
+	tmpl, err := template.ParseFiles(scriptPath)
 	if err != nil {
 		err = fmt.Errorf("could not parse file %s: %+v", scriptPath, err)
 		return
 	}
-	tpl = tpl.Option("missingkey=error")
+	tmpl = tmpl.Option("missingkey=error")
 
 	q := make(map[string]string)
 	pid := 1
 	for key := range queryURL {
-		q[key] = fmt.Sprintf("%s", queryURL.Get(key))
+		q[key] = queryURL.Get(key)
 		pid++
 	}
+	funcs := &tpl.TemplateFuncRegistry{TplData: q}
+	tmpl = tmpl.Funcs(funcs.AllFuncs())
 
 	var buff bytes.Buffer
-	err = tpl.Execute(&buff, q)
+	err = tmpl.Execute(&buff, q)
 	if err != nil {
 		err = fmt.Errorf("could not execute template %v", err)
 		return
