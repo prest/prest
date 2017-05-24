@@ -353,6 +353,23 @@ PUT    /_QUERIES/bar/some_update?field1=foo
 PATCH  /_QUERIES/bar/some_update?field1=foo
 DELETE /_QUERIES/bar/some_delete?field1=foo
 ```
+### Template functions
+
+- *isSet* return true if param is set
+
+```sql
+SELECT * FROM table 
+{{if isSet "field1"}}
+WHERE name = "{{.field1}}"
+{{end}} 
+;
+```
+
+- *defaultOrValue* return param value or default value
+
+```sql
+SELECT * FROM table WHERE name = '{{defaultOrValue "field1" "gopher"}}';
+```
 
 ## Permissions
 
