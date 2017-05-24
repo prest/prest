@@ -91,16 +91,6 @@ func TestParseScript(t *testing.T) {
 	queryURL.Del("field1")
 	queryURL.Set("notable", "123")
 
-	t.Log("Try Parse Script with invalid params")
-	sql, _, err = ParseScript(fmt.Sprintf(scriptPath, "get_all.read.sql"), queryURL)
-	if err == nil {
-		t.Errorf("expected error, but got: %v", err)
-	}
-
-	if sql != "" {
-		t.Errorf("expected empty string, got: %s", sql)
-	}
-
 	t.Log("Try Parse Script with noexistent script")
 	sql, _, err = ParseScript(fmt.Sprintf(scriptPath, "gt_all.read.sql"), queryURL)
 	if err == nil {
