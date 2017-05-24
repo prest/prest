@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	gotemplate "html/template"
 	"log"
 	"net/url"
 	"os"
 	"path/filepath"
+	gotemplate "text/template"
 
 	"path"
 

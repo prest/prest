@@ -1,7 +1,7 @@
 package template
 
 import (
-	"html/template"
+	"text/template"
 )
 
 // FuncRegistry registry func for templates
