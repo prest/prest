@@ -13,7 +13,7 @@ type FuncRegistry struct {
 func (fr *FuncRegistry) RegistryAllFuncs() (funcs template.FuncMap) {
 	funcs = template.FuncMap{
 		"isset":          fr.isset,
-		"defaultOrvalue": fr.defaultOrValue,
+		"defaultOrValue": fr.defaultOrValue,
 	}
 	return
 }
