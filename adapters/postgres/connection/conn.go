@@ -5,6 +5,7 @@ import (
 
 	"database/sql"
 
+	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
 	"github.com/nuveo/prest/config"
 	// Used pg drive on sqlx
@@ -51,4 +52,16 @@ func MustGet() *sqlx.DB {
 // SetNativeDB enable to override sqlx native db
 func SetNativeDB(native *sql.DB) {
 	db.DB = native
+}
+
+// UseMockDB mock database
+func UseMockDB(driverName string) (mock sqlmock.Sqlmock, err error) {
+	var nativeDB *sql.DB
+
+	nativeDB, mock, err = sqlmock.New()
+	if err != nil {
+		return
+	}
+	db = sqlx.NewDb(nativeDB, driverName)
+	return
 }
