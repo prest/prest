@@ -13,13 +13,13 @@ import (
 )
 
 var (
-	db  *sqlx.DB
+	DB  *sqlx.DB
 	err error
 )
 
 // Get get postgres connection
 func Get() (*sqlx.DB, error) {
-	if db == nil {
+	if DB == nil {
 		dbURI := fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=disable connect_timeout=%d",
 			config.PrestConf.PGUser,
 			config.PrestConf.PGDatabase,
@@ -29,29 +29,29 @@ func Get() (*sqlx.DB, error) {
 		if config.PrestConf.PGPass != "" {
 			dbURI += " password=" + config.PrestConf.PGPass
 		}
-		db, err = sqlx.Connect("postgres", dbURI)
+		DB, err = sqlx.Connect("postgres", dbURI)
 		if err != nil {
 			return nil, err
 		}
-		db.SetMaxIdleConns(config.PrestConf.PGMaxIdleConn)
-		db.SetMaxOpenConns(config.PrestConf.PGMAxOpenConn)
+		DB.SetMaxIdleConns(config.PrestConf.PGMaxIdleConn)
+		DB.SetMaxOpenConns(config.PrestConf.PGMAxOpenConn)
 	}
-	return db, nil
+	return DB, nil
 }
 
 // MustGet get postgres connection
 func MustGet() *sqlx.DB {
 	var err error
-	db, err = Get()
+	DB, err = Get()
 	if err != nil {
 		panic(fmt.Sprintf("Unable to connect to database: %v\n", err))
 	}
-	return db
+	return DB
 }
 
 // SetNativeDB enable to override sqlx native db
 func SetNativeDB(native *sql.DB) {
-	db.DB = native
+	DB.DB = native
 }
 
 // UseMockDB mock database
@@ -62,6 +62,6 @@ func UseMockDB(driverName string) (mock sqlmock.Sqlmock, err error) {
 	if err != nil {
 		return
 	}
-	db = sqlx.NewDb(nativeDB, driverName)
+	DB = sqlx.NewDb(nativeDB, driverName)
 	return
 }

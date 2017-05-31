@@ -830,4 +830,5 @@ func TestMockUsage(t *testing.T) {
 	if len(jsonData) <= 0 {
 		t.Errorf("json data is empty")
 	}
+	connection.DB = nil
 }
