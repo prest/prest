@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	"github.com/nuveo/prest/adapters/postgres/connection"
 	"github.com/nuveo/prest/api"
 	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/statements"
@@ -811,4 +813,22 @@ func TestTimeout(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error disabling statement_timeout")
 	}
+}
+
+func TestMockUsage(t *testing.T) {
+	mock, err := connection.UseMockDB("postgres")
+	if err != nil {
+		t.Errorf("expected no error, but has %v", err)
+	}
+	mock.ExpectPrepare("SELECT *").
+		ExpectQuery().
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(1, "prest"))
+	jsonData, err := Query("SELECT * FROM test")
+	if err != nil {
+		t.Errorf("expected no error, but has %v", err)
+	}
+	if len(jsonData) <= 0 {
+		t.Errorf("json data is empty")
+	}
+	connection.DB = nil
 }
