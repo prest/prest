@@ -13,6 +13,7 @@ import (
 )
 
 var (
+	// DB connection
 	DB  *sqlx.DB
 	err error
 )
