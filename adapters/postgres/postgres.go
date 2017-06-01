@@ -572,7 +572,14 @@ func Update(database, schema, table, where string, whereValues []interface{}, bo
 	pid := len(whereValues) + 1 // placeholder id
 	for key, value := range body.Data {
 		fields = append(fields, fmt.Sprintf("%s=$%d", key, pid))
-		values = append(values, value)
+
+		switch value.(type) {
+		case []interface{}:
+			values = append(values, parseArray(value))
+		default:
+			values = append(values, value)
+		}
+
 		pid++
 	}
 	setSyntax := strings.Join(fields, ", ")
