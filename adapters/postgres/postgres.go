@@ -40,7 +40,14 @@ func chkInvalidIdentifier(identifer ...string) bool {
 		}
 
 		for _, v := range ival {
-			if !unicode.IsLetter(v) && !unicode.IsDigit(v) && v != '_' && v != '.' && v != '-' {
+			if !unicode.IsLetter(v) &&
+				!unicode.IsDigit(v) &&
+				v != '_' &&
+				v != '.' &&
+				v != '-' &&
+				v != '*' &&
+				v != '[' &&
+				v != ']' {
 				return true
 			}
 		}
@@ -193,7 +200,7 @@ func SelectFields(fields []string) (sql string, err error) {
 	}
 
 	for _, field := range fields {
-		if field != "*" && chkInvalidIdentifier(field) {
+		if chkInvalidIdentifier(field) {
 			err = fmt.Errorf("invalid identifier %s", field)
 			return
 		}
@@ -358,6 +365,28 @@ func PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 	return
 }
 
+func parseArray(value interface{}) string {
+	switch value.(type) {
+	case []interface{}:
+		var aux string
+		for _, v := range value.([]interface{}) {
+			if aux != "" {
+				aux += ","
+			}
+			aux += parseArray(v)
+		}
+		return "{" + aux + "}"
+	case string:
+		aux := value.(string)
+		aux = strings.Replace(aux, `\`, `\\`, -1)
+		aux = strings.Replace(aux, `"`, `\"`, -1)
+		return `"` + aux + `"`
+	case int:
+		return strconv.Itoa(value.(int))
+	}
+	return ""
+}
+
 // Insert execute insert sql into a table
 func Insert(database, schema, table string, body api.Request) (jsonData []byte, err error) {
 	if chkInvalidIdentifier(database, schema, table) {
@@ -373,7 +402,13 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 			return
 		}
 		fields = append(fields, key)
-		values = append(values, value)
+
+		switch value.(type) {
+		case []interface{}:
+			values = append(values, parseArray(value))
+		default:
+			values = append(values, value)
+		}
 	}
 
 	colsName := strings.Join(fields, ", ")
