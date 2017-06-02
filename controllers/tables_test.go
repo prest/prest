@@ -135,6 +135,12 @@ func TestInsertInTables(t *testing.T) {
 		Data: mJSON,
 	}
 
+	mARRAY := make(map[string]interface{})
+	mARRAY["data"] = []string{"value 1", "value 2", "value 3"}
+	rARRAY := api.Request{
+		Data: mARRAY,
+	}
+
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}/{table}", InsertInTables).Methods("POST")
 	server := httptest.NewServer(router)
@@ -146,6 +152,7 @@ func TestInsertInTables(t *testing.T) {
 		request     api.Request
 		status      int
 	}{
+		{"execute insert in a table with array field", "/prest/public/testarray", rARRAY, http.StatusOK},
 		{"execute insert in a table with jsonb field", "/prest/public/testjson", rJSON, http.StatusOK},
 		{"execute insert in a table without custom where clause", "/prest/public/test", r, http.StatusOK},
 		{"execute insert in a table with invalid database", "/0prest/public/test", r, http.StatusBadRequest},
