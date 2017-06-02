@@ -176,6 +176,8 @@ http://127.0.0.1:8000/DATABASE/SCHEMA (show all tables, find by schema)
 http://127.0.0.1:8000/DATABASE/SCHEMA?_renderer=xml (JSON by default)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE (show all rows, find by database and table)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_select=column (select statement by columns)
+http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_select=column[array id] (select statement by array colum)
+
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_select=* (select all from TABLE)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_count=* (use count function)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_count=column (use count function)
@@ -224,7 +226,8 @@ JSON DATA:
 {
     "data": {
         "FIELD1": "string value",
-        "FIELD2": 1234567890
+        "FIELD2": 1234567890,
+        "ARRAYFIELD": ["value 1","value 2"]
     }
 }
 ```

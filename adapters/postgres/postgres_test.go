@@ -772,6 +772,7 @@ func TestColumnsByRequest(t *testing.T) {
 		url         string
 		expectedSQL string
 	}{
+		{"Select array field from table", "/prest/public/testarray?_select=data", "data"},
 		{"Select fields from table", "/prest/public/test5?_select=celphone", "celphone"},
 		{"Select all from table", "/prest/public/test5?_select=*", "*"},
 		{"Select with empty '_select' field", "/prest/public/test5?_select=", "*"},
@@ -789,5 +790,27 @@ func TestColumnsByRequest(t *testing.T) {
 		if selectStr != tc.expectedSQL {
 			t.Errorf("expected %s, got: %s", tc.expectedSQL, selectStr)
 		}
+	}
+}
+func TestParseArray(t *testing.T) {
+	in := []interface{}{"value 1", "value 2", "value 3"}
+	ret := parseArray(in)
+	retString := `{"value 1","value 2","value 3"}`
+	if ret != retString {
+		t.Errorf("Error expected %s, got %s", retString, ret)
+	}
+
+	in = []interface{}{10, 20, 30}
+	ret = parseArray(in)
+	retString = `{10,20,30}`
+	if ret != retString {
+		t.Errorf("Error expected %s, got %s", retString, ret)
+	}
+
+	in = []interface{}{}
+	ret = parseArray(in)
+	retString = `{}`
+	if ret != retString {
+		t.Errorf("Error expected %s, got %s", retString, ret)
 	}
 }

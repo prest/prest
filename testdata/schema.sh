@@ -16,6 +16,7 @@ psql prest -c "create table test_list_only_id(id serial, name text);" -U postgre
 psql prest -c "create table test_deleteonly_access(id serial, name text);" -U postgres
 psql prest -c "create table test_jsonb_bug(id serial NOT NULL, name text, data jsonb);" -U postgres
 psql prest -c "create table testjson(name text, data jsonb);" -U postgres
+psql prest -c "create table testarray(id serial, data character varying(250)[]);" -U postgres
 
 # Inserts
 psql prest -c "insert into test (name) values ('prest tester');" -U postgres
@@ -31,7 +32,7 @@ psql prest -c "insert into test_list_only_id (name) values ('test01');" -U postg
 psql prest -c "insert into test_deleteonly_access (name) values ('test01');" -U postgres
 psql prest -c "insert into test_jsonb_bug (name, data) values('goku', '{\"techniques\": [\"kamehameha\", \"kaioken\", \"genki-dama\"]}');" -U postgres
 psql prest -c "insert into test_jsonb_bug (name, data) values('goku', '{\"description\": \"testing\"}');" -U postgres
-
+psql prest -c "insert into testarray (id, data) values(100, '{\"Gohan\",\"Goten\"}');" -U postgres
 
 # Views
 psql prest -c "create table table_to_view(id serial, name text, celphone text);" -U postgres
