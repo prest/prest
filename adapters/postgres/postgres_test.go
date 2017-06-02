@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	"github.com/nuveo/prest/adapters/postgres/connection"
 	"github.com/nuveo/prest/api"
 	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/statements"
@@ -834,5 +836,4 @@ func TestParseArray(t *testing.T) {
 	if ret != retString {
 		t.Errorf("Error expected %s, got %s", retString, ret)
 	}
-
 }
