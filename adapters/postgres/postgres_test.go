@@ -772,6 +772,7 @@ func TestColumnsByRequest(t *testing.T) {
 		url         string
 		expectedSQL string
 	}{
+		{"Select array field from table", "/prest/public/testarray?_select=data", "data"},
 		{"Select fields from table", "/prest/public/test5?_select=celphone", "celphone"},
 		{"Select all from table", "/prest/public/test5?_select=*", "*"},
 		{"Select with empty '_select' field", "/prest/public/test5?_select=", "*"},
