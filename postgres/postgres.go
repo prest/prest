@@ -263,50 +263,15 @@ func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 		return
 	}
 
+	SQL = fmt.Sprintf("SELECT json_agg(s) FROM (%s) s", SQL)
+
 	prepare, err := db.Prepare(SQL)
 	if err != nil {
 		return
 	}
 	defer prepare.Close()
 
-	rows, err := prepare.Query(params...)
-	if err != nil {
-		return
-	}
-	defer rows.Close()
-
-	columns, err := rows.Columns()
-	if err != nil {
-		return
-	}
-
-	count := len(columns)
-	tableData := make([]map[string]interface{}, 0)
-	values := make([]interface{}, count)
-	valuePtrs := make([]interface{}, count)
-	for rows.Next() {
-		for i := 0; i < count; i++ {
-			valuePtrs[i] = &values[i]
-		}
-		err = rows.Scan(valuePtrs...)
-		if err != nil {
-			return
-		}
-		entry := make(map[string]interface{})
-		for i, col := range columns {
-			var v interface{}
-			val := values[i]
-			b, ok := val.([]byte)
-			if ok {
-				v = string(b)
-			} else {
-				v = val
-			}
-			entry[col] = v
-		}
-		tableData = append(tableData, entry)
-	}
-	jsonData, err = json.Marshal(tableData)
+	err = prepare.QueryRow(params...).Scan(&jsonData)
 
 	return
 }
@@ -418,7 +383,7 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 
 	sql := fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s)", database, schema, table, colsName, colPlaceholder)
 	if pkName != "" {
-		sql = fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s) RETURNING %s", database, schema, table, colsName, colPlaceholder, pkName)
+		sql = fmt.Sprintf("%s RETURNING %s", sql, pkName)
 	}
 
 	defer func() {
