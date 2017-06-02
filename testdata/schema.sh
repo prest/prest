@@ -32,7 +32,7 @@ psql prest -c "insert into test_list_only_id (name) values ('test01');" -U postg
 psql prest -c "insert into test_deleteonly_access (name) values ('test01');" -U postgres
 psql prest -c "insert into test_jsonb_bug (name, data) values('goku', '{\"techniques\": [\"kamehameha\", \"kaioken\", \"genki-dama\"]}');" -U postgres
 psql prest -c "insert into test_jsonb_bug (name, data) values('goku', '{\"description\": \"testing\"}');" -U postgres
-
+psql prest -c "insert into testarray (id, data) values(100, '{\"Gohan\",\"Goten\"}');" -U postgres
 
 # Views
 psql prest -c "create table table_to_view(id serial, name text, celphone text);" -U postgres
