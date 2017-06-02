@@ -16,6 +16,7 @@ psql prest -c "create table test_list_only_id(id serial, name text);" -U postgre
 psql prest -c "create table test_deleteonly_access(id serial, name text);" -U postgres
 psql prest -c "create table test_jsonb_bug(id serial NOT NULL, name text, data jsonb);" -U postgres
 psql prest -c "create table testjson(name text, data jsonb);" -U postgres
+psql prest -c "create table testarray(id serial, data character varying(250)[]);" -U postgres
 
 # Inserts
 psql prest -c "insert into test (name) values ('prest tester');" -U postgres
