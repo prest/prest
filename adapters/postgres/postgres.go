@@ -383,7 +383,7 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 
 	sql := fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s)", database, schema, table, colsName, colPlaceholder)
 	if pkName != "" {
-		sql = fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s) RETURNING %s", database, schema, table, colsName, colPlaceholder, pkName)
+		sql = fmt.Sprintf("%s RETURNING %s", sql, pkName)
 	}
 
 	defer func() {
