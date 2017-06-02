@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	sqlmock "github.com/DATA-DOG/go-sqlmock"
-	"github.com/nuveo/prest/adapters/postgres/connection"
 	"github.com/nuveo/prest/api"
 	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/statements"
@@ -793,28 +791,6 @@ func TestColumnsByRequest(t *testing.T) {
 		}
 	}
 }
-
-func TestTimeout(t *testing.T) {
-	_, err := Query("SET statement_timeout TO 10;")
-	if err != nil {
-		t.Errorf("Error setting statement_timeout: %s", err)
-	}
-
-	_, err = Query("SELECT pg_sleep(1000);")
-	if err == nil {
-		t.Errorf("Error should not be nil")
-	}
-
-	if !strings.Contains(err.Error(), "statement timeout") {
-		t.Errorf("Returned different error: %s", err)
-	}
-
-	_, err = Query("SET statement_timeout TO 0;")
-	if err != nil {
-		t.Errorf("Error disabling statement_timeout")
-	}
-}
-
 func TestParseArray(t *testing.T) {
 	in := []interface{}{"value 1", "value 2", "value 3"}
 	ret := parseArray(in)
