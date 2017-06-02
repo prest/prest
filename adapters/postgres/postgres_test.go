@@ -812,3 +812,27 @@ func TestTimeout(t *testing.T) {
 		t.Errorf("Error disabling statement_timeout")
 	}
 }
+
+func TestParseArray(t *testing.T) {
+	in := []interface{}{"value 1", "value 2", "value 3"}
+	ret := parseArray(in)
+	retString := `{"value 1","value 2","value 3"}`
+	if ret != retString {
+		t.Errorf("Error expected %s, got %s", retString, ret)
+	}
+
+	in = []interface{}{10, 20, 30}
+	ret = parseArray(in)
+	retString = `{10,20,30}`
+	if ret != retString {
+		t.Errorf("Error expected %s, got %s", retString, ret)
+	}
+
+	in = []interface{}{}
+	ret = parseArray(in)
+	retString = `{}`
+	if ret != retString {
+		t.Errorf("Error expected %s, got %s", retString, ret)
+	}
+
+}
