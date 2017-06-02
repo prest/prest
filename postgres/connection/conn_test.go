@@ -54,13 +54,3 @@ func TestSetNativeDB(t *testing.T) {
 		t.Errorf("expected same memory address, but no was! %v %v", db.DB, mockedDB)
 	}
 }
-
-func TestUseMockDB(t *testing.T) {
-	mock, err := UseMockDB("postgres")
-	if err != nil {
-		t.Errorf("expected no error, but has %v", err)
-	}
-	if mock == nil {
-		t.Error("mock is nil")
-	}
-}
