@@ -791,24 +791,3 @@ func TestColumnsByRequest(t *testing.T) {
 		}
 	}
 }
-
-func TestTimeout(t *testing.T) {
-	_, err := Query("SET statement_timeout TO 10;")
-	if err != nil {
-		t.Errorf("Error setting statement_timeout: %s", err)
-	}
-
-	_, err = Query("SELECT pg_sleep(1000);")
-	if err == nil {
-		t.Errorf("Error should not be nil")
-	}
-
-	if !strings.Contains(err.Error(), "statement timeout") {
-		t.Errorf("Returned different error: %s", err)
-	}
-
-	_, err = Query("SET statement_timeout TO 0;")
-	if err != nil {
-		t.Errorf("Error disabling statement_timeout")
-	}
-}
