@@ -52,7 +52,7 @@ To make sure every PR is checked, we have [team maintainers](MAINTAINERS). Every
 
 ## Owners
 
-Since pREST is maintained by Nuveo (and community), Nuveo not professional support for pREST, to keep the development healthy we will elect three owners every year. All contributors may vote to elect up to three candidates, one of which will be the main owner, and the other two the assistant owners. When the new owners have been elected, the old owners will give up ownership to the newly elected owners. If an owner is unable to do so, the other owners will assist in ceding ownership to the newly elected owners.
+Since pREST is maintained by Nuveo (and community), Nuveo does not provide professional support for pREST, to keep the development healthy we will elect three owners every year. All contributors may vote to elect up to three candidates, one of which will be the main owner, and the other two the assistant owners. When the new owners have been elected, the old owners will give up ownership to the newly elected owners. If an owner is unable to do so, the other owners will assist in ceding ownership to the newly elected owners.
 
 After the election, the new owners should proactively agree with our [CONTRIBUTING](CONTRIBUTING.md) requirements on the [Gitter main channel](https://gitter.im/nuveo/prest). Below are the words to speak:
 
