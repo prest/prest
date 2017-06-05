@@ -106,7 +106,7 @@ migrations = "./migrations"
 port = 6000
 
 [jwt]
-key = "mysecretkey"
+key = "secret"
 
 [pg]
 host = "127.0.0.1"
