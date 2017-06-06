@@ -7,11 +7,11 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/nuveo/prest/config"
-	// postgres driver for migrate
-	_ "github.com/mattes/migrate/driver/postgres"
-	"github.com/mattes/migrate/file"
-	"github.com/mattes/migrate/migrate/direction"
 	"github.com/spf13/cobra"
+	// postgres driver for migrate
+	_ "gopkg.in/mattes/migrate.v1/driver/postgres"
+	"gopkg.in/mattes/migrate.v1/file"
+	"gopkg.in/mattes/migrate.v1/migrate/direction"
 )
 
 var url string
