@@ -3,10 +3,10 @@ package cmd
 import (
 	"fmt"
 
-	// postgres driver for migrate
-	_ "github.com/mattes/migrate/driver/postgres"
 	"github.com/nuveo/prest/helpers"
 	"github.com/spf13/cobra"
+	// postgres driver for migrate
+	_ "gopkg.in/mattes/migrate.v1/driver/postgres"
 )
 
 // versionCmd show version pREST

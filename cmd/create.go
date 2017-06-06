@@ -3,10 +3,11 @@ package cmd
 import (
 	"fmt"
 	"os"
-	// postgres driver for migrate
-	_ "github.com/mattes/migrate/driver/postgres"
-	"github.com/mattes/migrate/migrate"
+
 	"github.com/spf13/cobra"
+	// postgres driver for migrate
+	_ "gopkg.in/mattes/migrate.v1/driver/postgres"
+	"gopkg.in/mattes/migrate.v1/migrate"
 )
 
 // createCmd represents the create command
