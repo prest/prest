@@ -40,7 +40,14 @@ func chkInvalidIdentifier(identifer ...string) bool {
 		}
 
 		for _, v := range ival {
-			if !unicode.IsLetter(v) && !unicode.IsDigit(v) && v != '_' && v != '.' && v != '-' {
+			if !unicode.IsLetter(v) &&
+				!unicode.IsDigit(v) &&
+				v != '_' &&
+				v != '.' &&
+				v != '-' &&
+				v != '*' &&
+				v != '[' &&
+				v != ']' {
 				return true
 			}
 		}
@@ -193,7 +200,7 @@ func SelectFields(fields []string) (sql string, err error) {
 	}
 
 	for _, field := range fields {
-		if field != "*" && chkInvalidIdentifier(field) {
+		if chkInvalidIdentifier(field) {
 			err = fmt.Errorf("invalid identifier %s", field)
 			return
 		}
@@ -263,50 +270,15 @@ func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 		return
 	}
 
+	SQL = fmt.Sprintf("SELECT json_agg(s) FROM (%s) s", SQL)
+
 	prepare, err := db.Prepare(SQL)
 	if err != nil {
 		return
 	}
 	defer prepare.Close()
 
-	rows, err := prepare.Query(params...)
-	if err != nil {
-		return
-	}
-	defer rows.Close()
-
-	columns, err := rows.Columns()
-	if err != nil {
-		return
-	}
-
-	count := len(columns)
-	tableData := make([]map[string]interface{}, 0)
-	values := make([]interface{}, count)
-	valuePtrs := make([]interface{}, count)
-	for rows.Next() {
-		for i := 0; i < count; i++ {
-			valuePtrs[i] = &values[i]
-		}
-		err = rows.Scan(valuePtrs...)
-		if err != nil {
-			return
-		}
-		entry := make(map[string]interface{})
-		for i, col := range columns {
-			var v interface{}
-			val := values[i]
-			b, ok := val.([]byte)
-			if ok {
-				v = string(b)
-			} else {
-				v = val
-			}
-			entry[col] = v
-		}
-		tableData = append(tableData, entry)
-	}
-	jsonData, err = json.Marshal(tableData)
+	err = prepare.QueryRow(params...).Scan(&jsonData)
 
 	return
 }
@@ -358,6 +330,28 @@ func PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 	return
 }
 
+func parseArray(value interface{}) string {
+	switch value.(type) {
+	case []interface{}:
+		var aux string
+		for _, v := range value.([]interface{}) {
+			if aux != "" {
+				aux += ","
+			}
+			aux += parseArray(v)
+		}
+		return "{" + aux + "}"
+	case string:
+		aux := value.(string)
+		aux = strings.Replace(aux, `\`, `\\`, -1)
+		aux = strings.Replace(aux, `"`, `\"`, -1)
+		return `"` + aux + `"`
+	case int:
+		return strconv.Itoa(value.(int))
+	}
+	return ""
+}
+
 // Insert execute insert sql into a table
 func Insert(database, schema, table string, body api.Request) (jsonData []byte, err error) {
 	if chkInvalidIdentifier(database, schema, table) {
@@ -373,7 +367,13 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 			return
 		}
 		fields = append(fields, key)
-		values = append(values, value)
+
+		switch value.(type) {
+		case []interface{}:
+			values = append(values, parseArray(value))
+		default:
+			values = append(values, value)
+		}
 	}
 
 	colsName := strings.Join(fields, ", ")
@@ -418,7 +418,7 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 
 	sql := fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s)", database, schema, table, colsName, colPlaceholder)
 	if pkName != "" {
-		sql = fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s) RETURNING %s", database, schema, table, colsName, colPlaceholder, pkName)
+		sql = fmt.Sprintf("%s RETURNING %s", sql, pkName)
 	}
 
 	defer func() {
@@ -537,7 +537,14 @@ func Update(database, schema, table, where string, whereValues []interface{}, bo
 	pid := len(whereValues) + 1 // placeholder id
 	for key, value := range body.Data {
 		fields = append(fields, fmt.Sprintf("%s=$%d", key, pid))
-		values = append(values, value)
+
+		switch value.(type) {
+		case []interface{}:
+			values = append(values, parseArray(value))
+		default:
+			values = append(values, value)
+		}
+
 		pid++
 	}
 	setSyntax := strings.Join(fields, ", ")

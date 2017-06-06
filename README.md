@@ -7,6 +7,10 @@
 
 Serve a RESTful API from any PostgreSQL database
 
+## Postgres version
+
+- 9.4 or higher
+
 ## Problem
 
 There is the PostgREST written in haskell, keep a haskell software in production is not easy job, with this need that was born the pREST.
@@ -102,7 +106,7 @@ migrations = "./migrations"
 port = 6000
 
 [jwt]
-key = "mysecretkey"
+key = "secret"
 
 [pg]
 host = "127.0.0.1"
@@ -118,7 +122,15 @@ HEADER:
 - JWT middleware is enable by default. To disable JWT need to run pREST in debug mode
 
 ```
-Authorization: JWT eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+```
+
+## Debug Mode
+
+- Set environment variable `PREST_DEBUG`
+
+```
+PREST_DEBUG=true
 ```
 
 ## Debug Mode
@@ -172,6 +184,8 @@ http://127.0.0.1:8000/DATABASE/SCHEMA (show all tables, find by schema)
 http://127.0.0.1:8000/DATABASE/SCHEMA?_renderer=xml (JSON by default)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE (show all rows, find by database and table)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_select=column (select statement by columns)
+http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_select=column[array id] (select statement by array colum)
+
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_select=* (select all from TABLE)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_count=* (use count function)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_count=column (use count function)
@@ -220,7 +234,8 @@ JSON DATA:
 {
     "data": {
         "FIELD1": "string value",
-        "FIELD2": 1234567890
+        "FIELD2": 1234567890,
+        "ARRAYFIELD": ["value 1","value 2"]
     }
 }
 ```
@@ -348,6 +363,23 @@ POST   /_QUERIES/bar/some_create?field1=foo
 PUT    /_QUERIES/bar/some_update?field1=foo
 PATCH  /_QUERIES/bar/some_update?field1=foo
 DELETE /_QUERIES/bar/some_delete?field1=foo
+```
+### Template functions
+
+- *isSet* return true if param is set
+
+```sql
+SELECT * FROM table 
+{{if isSet "field1"}}
+WHERE name = "{{.field1}}"
+{{end}} 
+;
+```
+
+- *defaultOrValue* return param value or default value
+
+```sql
+SELECT * FROM table WHERE name = '{{defaultOrValue "field1" "gopher"}}';
 ```
 
 ## Permissions

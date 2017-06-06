@@ -55,9 +55,6 @@ func TestExecuteScriptQuery(t *testing.T) {
 	}{
 		{"Execute script GET method", "/testing/script-get/?field1=gopher", "GET", http.StatusOK},
 		{"Execute script POST method", "/testing/script-post/?field1=gopherzin&field2=pereira", "POST", http.StatusOK},
-		// errors
-		{"Execute script GET method invalid", "/testing/script-get/?nonexistent=gopher", "GET", http.StatusBadRequest},
-		{"Execute script POST method invalid", "/testing/script-post/?nonexistent=gopher", "POST", http.StatusBadRequest},
 	}
 
 	apiReq := api.Request{}
@@ -81,6 +78,7 @@ func TestExecuteFromScripts(t *testing.T) {
 		method      string
 		status      int
 	}{
+		{"Get results using scripts and funcs by GET method", "/_QUERIES/fulltable/funcs", "GET", http.StatusOK},
 		{"Get results using scripts by GET method", "/_QUERIES/fulltable/get_all?field1=gopher", "GET", http.StatusOK},
 		{"Get results using scripts by POST method", "/_QUERIES/fulltable/write_all?field1=gopherzin&field2=pereira", "POST", http.StatusOK},
 		{"Get results using scripts by PUT method", "/_QUERIES/fulltable/put_all?field1=trump&field2=pereira", "PUT", http.StatusOK},
@@ -89,7 +87,6 @@ func TestExecuteFromScripts(t *testing.T) {
 		// errors
 		{"Get errors using nonexistent folder", "/_QUERIES/fullnon/delete_all?field1=trump", "DELETE", http.StatusBadRequest},
 		{"Get errors using nonexistent script", "/_QUERIES/fulltable/some_com_all?field1=trump", "DELETE", http.StatusBadRequest},
-		{"Get errors with invalid params in script", "/_QUERIES/fulltable/get_all?column1=gopher", "GET", http.StatusBadRequest},
 		{"Get errors with invalid execution of sql", "/_QUERIES/fulltable/create_table?field1=test7", "POST", http.StatusBadRequest},
 	}
 
@@ -109,7 +106,8 @@ func TestRenderWithXML(t *testing.T) {
 	}{
 		{"Get schemas with COUNT clause with XML Render", "/schemas?_count=*&_renderer=xml", "GET", 200, "<objects><object><count>6</count></object></objects>"},
 	}
-
+	os.Setenv("PREST_DEBUG", "true")
+	config.Load()
 	n := middlewares.GetApp()
 	r := router.Get()
 

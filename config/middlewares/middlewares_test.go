@@ -88,6 +88,8 @@ func TestGetAppWithoutReorderedMiddleware(t *testing.T) {
 }
 
 func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
+	os.Setenv("PREST_DEBUG", "true")
+	config.Load()
 	app = nil
 	r := router.Get()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })

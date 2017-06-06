@@ -206,6 +206,12 @@ func createMockScripts(base string) {
 	if err != nil {
 		log.Println(err)
 	}
+
+	_, err = os.Create(fmt.Sprint(base, "/fulltable/funcs.read.sql"))
+	if err != nil {
+		log.Println(err)
+	}
+
 	_, err = os.Create(fmt.Sprint(base, "/fulltable/write_all.write.sql"))
 	if err != nil {
 		log.Println(err)
@@ -251,6 +257,7 @@ func writeMockScripts(base string) {
 		}
 	}
 
+	write("SELECT * FROM test7 WHERE name = '{{defaultOrValue \"field1\" \"gopher\"}}'", "funcs.read.sql")
 	write("SELECT * FROM test7 WHERE name = '{{.field1}}'", "get_all.read.sql")
 	write("INSERT INTO test7 (name, surname) VALUES ('{{.field1}}', '{{.field2}}')", "write_all.write.sql")
 	write("CREATE TABLE {{.field1}};", "create_table.write.sql")
