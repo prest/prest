@@ -135,16 +135,16 @@
 			"revisionTime": "2017-01-21T10:35:19Z"
 		},
 		{
-			"checksumSHA1": "zcEtH7VUcRFCeEMKmVwtj0/k9sI=",
+			"checksumSHA1": "Wh2YCiWY/VIAEEQGLS7sMB9isXk=",
 			"path": "github.com/lib/pq",
-			"revision": "0477eb88c5ca4009cb281f13c90633375b6a9987",
-			"revisionTime": "2017-02-06T20:06:38Z"
+			"revision": "8837942c3e09574accbc5f150e2c5e057189cace",
+			"revisionTime": "2017-06-03T22:54:54Z"
 		},
 		{
-			"checksumSHA1": "xppHi82MLqVx1eyQmbhTesAEjx8=",
+			"checksumSHA1": "Gk3jTNQ5uGDUE0WMJFWcYz9PMps=",
 			"path": "github.com/lib/pq/oid",
-			"revision": "0477eb88c5ca4009cb281f13c90633375b6a9987",
-			"revisionTime": "2017-02-06T20:06:38Z"
+			"revision": "8837942c3e09574accbc5f150e2c5e057189cace",
+			"revisionTime": "2017-06-03T22:54:54Z"
 		},
 		{
 			"checksumSHA1": "KR72MpmwQRMYJuK0BHi2RWgGU2o=",
@@ -301,6 +301,42 @@
 			"path": "golang.org/x/text/unicode/norm",
 			"revision": "ece019dcfd29abcf65d0d1dfe145e8faad097640",
 			"revisionTime": "2017-01-19T11:03:08Z"
+		},
+		{
+			"checksumSHA1": "bT7calMywz6SmFKWZB5DzXSZ52w=",
+			"path": "gopkg.in/mattes/migrate.v1/driver",
+			"revision": "afc973c4e5a6b746217c2d3950fcd110ed1ba349",
+			"revisionTime": "2017-05-09T17:37:06Z"
+		},
+		{
+			"checksumSHA1": "gzBPNtmjsn4v+asZPtNb+KcZCqM=",
+			"path": "gopkg.in/mattes/migrate.v1/driver/postgres",
+			"revision": "afc973c4e5a6b746217c2d3950fcd110ed1ba349",
+			"revisionTime": "2017-05-09T17:37:06Z"
+		},
+		{
+			"checksumSHA1": "tLyJCwZBXS596SZ1FVRpzso030o=",
+			"path": "gopkg.in/mattes/migrate.v1/file",
+			"revision": "afc973c4e5a6b746217c2d3950fcd110ed1ba349",
+			"revisionTime": "2017-05-09T17:37:06Z"
+		},
+		{
+			"checksumSHA1": "8vom3QfAqDvophCOhOKvBumGYVo=",
+			"path": "gopkg.in/mattes/migrate.v1/migrate",
+			"revision": "afc973c4e5a6b746217c2d3950fcd110ed1ba349",
+			"revisionTime": "2017-05-09T17:37:06Z"
+		},
+		{
+			"checksumSHA1": "2BfKMu1uoW3DmXYGuyZXFrh0AsI=",
+			"path": "gopkg.in/mattes/migrate.v1/migrate/direction",
+			"revision": "afc973c4e5a6b746217c2d3950fcd110ed1ba349",
+			"revisionTime": "2017-05-09T17:37:06Z"
+		},
+		{
+			"checksumSHA1": "lHg8HE2tWUSS6eOQqKF4ZF/Nhck=",
+			"path": "gopkg.in/mattes/migrate.v1/pipe",
+			"revision": "afc973c4e5a6b746217c2d3950fcd110ed1ba349",
+			"revisionTime": "2017-05-09T17:37:06Z"
 		},
 		{
 			"checksumSHA1": "QpWY2ygzClg3Bw+GHjD7yXlcTxw=",

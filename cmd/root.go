@@ -5,16 +5,16 @@ import (
 	"os"
 
 	"github.com/gorilla/mux"
-	"github.com/rs/cors"
-	// postgres driver for migrate
-	_ "github.com/mattes/migrate/driver/postgres"
 	"github.com/nuveo/prest/config"
 	cfgMiddleware "github.com/nuveo/prest/config/middlewares"
 	"github.com/nuveo/prest/config/router"
 	"github.com/nuveo/prest/controllers"
 	"github.com/nuveo/prest/middlewares"
+	"github.com/rs/cors"
 	"github.com/spf13/cobra"
 	"github.com/urfave/negroni"
+	// postgres driver for migrate
+	_ "gopkg.in/mattes/migrate.v1/driver/postgres"
 )
 
 // RootCmd represents the base command when called without any subcommands

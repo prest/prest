@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mattes/migrate/migrate"
-	// postgres driver for migrate
-	_ "github.com/mattes/migrate/driver/postgres"
 	"github.com/spf13/cobra"
+	// postgres driver for migrate
+	_ "gopkg.in/mattes/migrate.v1/driver/postgres"
+	"gopkg.in/mattes/migrate.v1/migrate"
 )
 
 // mversionCmd represents the version command
