@@ -13,6 +13,104 @@ import (
 	"github.com/nuveo/prest/statements"
 )
 
+func TestInsertByRequest(t *testing.T) {
+	m := make(map[string]interface{})
+	m["name"] = "prest"
+	mc := make(map[string]interface{})
+	mc["test"] = "prest"
+	mc["dbname"] = "prest"
+
+	var testCases = []struct {
+		description      string
+		body             map[string]interface{}
+		expectedColNames []string
+		expectedValues   []string
+		err              error
+	}{
+		{"insert by request more than one field", mc, []string{"dbname", "test"}, []string{"prest", "prest"}, nil},
+		{"insert by request one field", m, []string{"name"}, []string{"prest"}, nil},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		body, err := json.Marshal(tc.body)
+		if err != nil {
+			t.Errorf("expected no errors in http request, got %v", err)
+		}
+		req, err := http.NewRequest("POST", "/", bytes.NewReader(body))
+		if err != nil {
+			t.Errorf("expected no errors in http request, got %v", err)
+		}
+
+		colsNames, _, values, err := InsertByRequest(req)
+		if err != nil {
+			t.Errorf("expected no errors in where by request, got %v", err)
+		}
+
+		for _, sql := range tc.expectedColNames {
+			if !strings.Contains(colsNames, sql) {
+				t.Errorf("expected %s in %s, but not was!", sql, colsNames)
+			}
+		}
+
+		expectedValuesSTR := strings.Join(tc.expectedValues, " ")
+		for _, value := range values {
+			if !strings.Contains(expectedValuesSTR, value.(string)) {
+				t.Errorf("expected %s in %s", value, expectedValuesSTR)
+			}
+		}
+	}
+}
+
+func TestSetByRequest(t *testing.T) {
+	m := make(map[string]interface{})
+	m["name"] = "prest"
+	mc := make(map[string]interface{})
+	mc["test"] = "prest"
+	mc["dbname"] = "prest"
+
+	var testCases = []struct {
+		description    string
+		body           map[string]interface{}
+		expectedSQL    []string
+		expectedValues []string
+		err            error
+	}{
+		{"set by request more than one field", mc, []string{"dbname=$", "test=$", ", "}, []string{"prest", "prest"}, nil},
+		{"set by request one field", m, []string{"name=$"}, []string{"prest"}, nil},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		body, err := json.Marshal(tc.body)
+		if err != nil {
+			t.Errorf("expected no errors in http request, got %v", err)
+		}
+		req, err := http.NewRequest("PUT", "/", bytes.NewReader(body))
+		if err != nil {
+			t.Errorf("expected no errors in http request, got %v", err)
+		}
+
+		setSyntax, values, err := SetByRequest(req, 1)
+		if err != nil {
+			t.Errorf("expected no errors in where by request, got %v", err)
+		}
+
+		for _, sql := range tc.expectedSQL {
+			if !strings.Contains(setSyntax, sql) {
+				t.Errorf("expected %s in %s, but not was!", sql, setSyntax)
+			}
+		}
+
+		expectedValuesSTR := strings.Join(tc.expectedValues, " ")
+		for _, value := range values {
+			if !strings.Contains(expectedValuesSTR, value.(string)) {
+				t.Errorf("expected %s in %s", value, expectedValuesSTR)
+			}
+		}
+	}
+}
+
 func TestWhereByRequest(t *testing.T) {
 	var testCases = []struct {
 		description    string
