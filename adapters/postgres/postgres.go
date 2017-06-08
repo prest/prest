@@ -160,8 +160,8 @@ func SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, 
 	return
 }
 
-// InsertByRequest create insert SQL
-func InsertByRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error) {
+// ParseInsertRequest create insert SQL
+func ParseInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error) {
 	body := make(map[string]interface{})
 	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return
@@ -418,7 +418,7 @@ func Insert(database, schema, table string, r *http.Request) (jsonData []byte, e
 		err = errors.New("Insert: Invalid identifier")
 		return
 	}
-	colsName, colPlaceholder, values, err := InsertByRequest(r)
+	colsName, colPlaceholder, values, err := ParseInsertRequest(r)
 	if err != nil {
 		log.Println(err)
 		return
