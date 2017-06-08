@@ -7,7 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nuveo/prest/api"
+	"bytes"
+
 	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/statements"
 )
@@ -218,10 +219,15 @@ func TestInsert(t *testing.T) {
 	m := make(map[string]interface{}, 0)
 	m["name"] = "prest-test-insert"
 	m["celphone"] = "88888888888"
-	r := api.Request{
-		Data: m,
-	}
 
+	body, err := json.Marshal(m)
+	if err != nil {
+		t.Errorf("expected no errors, but got %s", err)
+	}
+	r, err := http.NewRequest("POST", "/", bytes.NewReader(body))
+	if err != nil {
+		t.Errorf("expected no errors, but got %s", err)
+	}
 	jsonByte, err := Insert("prest", "public", "test5", r)
 	if err != nil {
 		t.Errorf("expected no errors, but got %s", err)
@@ -234,8 +240,13 @@ func TestInsert(t *testing.T) {
 		t.Log(tc.description)
 		m := make(map[string]interface{}, 0)
 		m[tc.key] = tc.value
-		r := api.Request{
-			Data: m,
+		body, err := json.Marshal(m)
+		if err != nil {
+			t.Errorf("expected no errors, but got %s", err)
+		}
+		r, err := http.NewRequest("POST", "/", bytes.NewReader(body))
+		if err != nil {
+			t.Errorf("expected no errors, but got %s", err)
 		}
 
 		jsonByte, err := Insert(tc.db, tc.schema, tc.table, r)
@@ -279,8 +290,13 @@ func TestInvalidInsert(t *testing.T) {
 		t.Log(tc.description)
 		m := make(map[string]interface{}, 0)
 		m[tc.key] = tc.value
-		r := api.Request{
-			Data: m,
+		body, err := json.Marshal(m)
+		if err != nil {
+			t.Errorf("expected no errors, but got %s", err)
+		}
+		r, err := http.NewRequest("POST", "/", bytes.NewReader(body))
+		if err != nil {
+			t.Errorf("expected no errors, but got %s", err)
 		}
 
 		jsonByte, err := Insert(tc.db, tc.schema, tc.table, r)
@@ -344,11 +360,16 @@ func TestUpdate(t *testing.T) {
 		{"Update data into an invalid schema", "prest", "0public", "test3", "name=$1", []interface{}{"prest tester"}},
 		{"Update data into an invalid table", "prest", "public", "0test3", "name=$1", []interface{}{"prest tester"}},
 	}
-	m := make(map[string]interface{}, 0)
+	m := make(map[string]interface{})
 	m["name"] = "prest"
 
-	r := api.Request{
-		Data: m,
+	body, err := json.Marshal(m)
+	if err != nil {
+		t.Errorf("expected no errors, but got %s", err)
+	}
+	r, err := http.NewRequest("PUT", "/", bytes.NewReader(body))
+	if err != nil {
+		t.Errorf("expected no errors, but got %s", err)
 	}
 
 	t.Log("Update data into a table")
