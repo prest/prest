@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/nuveo/prest/api"
 )
 
 func TestGetTables(t *testing.T) {
@@ -31,10 +30,9 @@ func TestGetTables(t *testing.T) {
 	server := httptest.NewServer(router)
 	defer server.Close()
 
-	r := api.Request{}
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		doRequest(t, server.URL+tc.url, r, tc.method, tc.status, "GetTables")
+		doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetTables")
 	}
 }
 
@@ -56,7 +54,6 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 		{"Get tables by databases with noexistent column", "/prest/public?t.taababa=$eq.test", "GET", http.StatusBadRequest},
 	}
 
-	r := api.Request{}
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}", GetTablesByDatabaseAndSchema).Methods("GET")
 	server := httptest.NewServer(router)
@@ -64,12 +61,11 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		doRequest(t, server.URL+tc.url, r, tc.method, tc.status, "GetTablesByDatabaseAndSchema")
+		doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetTablesByDatabaseAndSchema")
 	}
 }
 
 func TestSelectFromTables(t *testing.T) {
-	r := api.Request{}
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}/{table}", SelectFromTables).Methods("GET")
 	server := httptest.NewServer(router)
@@ -121,31 +117,23 @@ func TestSelectFromTables(t *testing.T) {
 	for _, tc := range testCases {
 		t.Log(tc.description)
 		if tc.body != "" {
-			doRequest(t, server.URL+tc.url, r, tc.method, tc.status, "SelectFromTables", tc.body)
+			doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "SelectFromTables", tc.body)
 			continue
 		}
-		doRequest(t, server.URL+tc.url, r, tc.method, tc.status, "SelectFromTables")
+		doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "SelectFromTables")
 	}
 }
 
 func TestInsertInTables(t *testing.T) {
 	m := make(map[string]interface{})
 	m["name"] = "prest"
-	r := api.Request{
-		Data: m,
-	}
+
 	mJSON := make(map[string]interface{})
 	mJSON["name"] = "prest"
 	mJSON["data"] = `{"term": "name", "subterm": ["names", "of", "subterms"], "obj": {"emp": "nuveo"}}`
-	rJSON := api.Request{
-		Data: mJSON,
-	}
 
 	mARRAY := make(map[string]interface{})
 	mARRAY["data"] = []string{"value 1", "value 2", "value 3"}
-	rARRAY := api.Request{
-		Data: mARRAY,
-	}
 
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}/{table}", InsertInTables).Methods("POST")
@@ -155,16 +143,16 @@ func TestInsertInTables(t *testing.T) {
 	var testCases = []struct {
 		description string
 		url         string
-		request     api.Request
+		request     map[string]interface{}
 		status      int
 	}{
-		{"execute insert in a table with array field", "/prest/public/testarray", rARRAY, http.StatusOK},
-		{"execute insert in a table with jsonb field", "/prest/public/testjson", rJSON, http.StatusOK},
-		{"execute insert in a table without custom where clause", "/prest/public/test", r, http.StatusOK},
-		{"execute insert in a table with invalid database", "/0prest/public/test", r, http.StatusBadRequest},
-		{"execute insert in a table with invalid schema", "/prest/0public/test", r, http.StatusBadRequest},
-		{"execute insert in a table with invalid table", "/prest/public/0test", r, http.StatusBadRequest},
-		{"execute insert in a table with invalid body", "/prest/public/test", api.Request{}, http.StatusBadRequest},
+		{"execute insert in a table with array field", "/prest/public/testarray", mARRAY, http.StatusOK},
+		{"execute insert in a table with jsonb field", "/prest/public/testjson", mJSON, http.StatusOK},
+		{"execute insert in a table without custom where clause", "/prest/public/test", m, http.StatusOK},
+		{"execute insert in a table with invalid database", "/0prest/public/test", m, http.StatusBadRequest},
+		{"execute insert in a table with invalid schema", "/prest/0public/test", m, http.StatusBadRequest},
+		{"execute insert in a table with invalid table", "/prest/public/0test", m, http.StatusBadRequest},
+		{"execute insert in a table with invalid body", "/prest/public/test", nil, http.StatusBadRequest},
 	}
 
 	for _, tc := range testCases {
@@ -182,15 +170,15 @@ func TestDeleteFromTable(t *testing.T) {
 	var testCases = []struct {
 		description string
 		url         string
-		request     api.Request
+		request     map[string]interface{}
 		status      int
 	}{
-		{"execute delete in a table without custom where clause", "/prest/public/test", api.Request{}, http.StatusOK},
-		{"excute delete in a table with where clause", "/prest/public/test?name=$eq.nuveo", api.Request{}, http.StatusOK},
-		{"execute delete in a table with invalid database", "/0prest/public/test", api.Request{}, http.StatusBadRequest},
-		{"execute delete in a table with invalid schema", "/prest/0public/test", api.Request{}, http.StatusBadRequest},
-		{"execute delete in a table with invalid table", "/prest/public/0test", api.Request{}, http.StatusBadRequest},
-		{"execute delete in a table with invalid where clause", "/prest/public/test?0name=$eq.nuveo", api.Request{}, http.StatusBadRequest},
+		{"execute delete in a table without custom where clause", "/prest/public/test", nil, http.StatusOK},
+		{"excute delete in a table with where clause", "/prest/public/test?name=$eq.nuveo", nil, http.StatusOK},
+		{"execute delete in a table with invalid database", "/0prest/public/test", nil, http.StatusBadRequest},
+		{"execute delete in a table with invalid schema", "/prest/0public/test", nil, http.StatusBadRequest},
+		{"execute delete in a table with invalid table", "/prest/public/0test", nil, http.StatusBadRequest},
+		{"execute delete in a table with invalid where clause", "/prest/public/test?0name=$eq.nuveo", nil, http.StatusBadRequest},
 	}
 
 	for _, tc := range testCases {
@@ -208,23 +196,19 @@ func TestUpdateFromTable(t *testing.T) {
 	m := make(map[string]interface{}, 0)
 	m["name"] = "prest"
 
-	r := api.Request{
-		Data: m,
-	}
-
 	var testCases = []struct {
 		description string
 		url         string
-		request     api.Request
+		request     map[string]interface{}
 		status      int
 	}{
-		{"execute update in a table without custom where clause", "/prest/public/test", r, http.StatusOK},
-		{"excute update in a table with where clause", "/prest/public/test?name=$eq.nuveo", r, http.StatusOK},
-		{"execute update in a table with invalid database", "/0prest/public/test", r, http.StatusBadRequest},
-		{"execute update in a table with invalid schema", "/prest/0public/test", r, http.StatusBadRequest},
-		{"execute update in a table with invalid table", "/prest/public/0test", r, http.StatusBadRequest},
-		{"execute update in a table with invalid where clause", "/prest/public/test?0name=$eq.nuveo", r, http.StatusBadRequest},
-		{"execute update in a table with invalid body", "/prest/public/test?name=$eq.nuveo", api.Request{}, http.StatusBadRequest},
+		{"execute update in a table without custom where clause", "/prest/public/test", m, http.StatusOK},
+		{"excute update in a table with where clause", "/prest/public/test?name=$eq.nuveo", m, http.StatusOK},
+		{"execute update in a table with invalid database", "/0prest/public/test", m, http.StatusBadRequest},
+		{"execute update in a table with invalid schema", "/prest/0public/test", m, http.StatusBadRequest},
+		{"execute update in a table with invalid table", "/prest/public/0test", m, http.StatusBadRequest},
+		{"execute update in a table with invalid where clause", "/prest/public/test?0name=$eq.nuveo", m, http.StatusBadRequest},
+		{"execute update in a table with invalid body", "/prest/public/test?name=$eq.nuveo", nil, http.StatusBadRequest},
 	}
 
 	for _, tc := range testCases {
