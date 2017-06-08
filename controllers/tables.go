@@ -243,7 +243,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 	schema := vars["schema"]
 	table := vars["table"]
-	
+
 	where, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
