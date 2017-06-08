@@ -13,7 +13,7 @@ import (
 	"github.com/nuveo/prest/statements"
 )
 
-func TestInsertByRequest(t *testing.T) {
+func TestParseInsertRequest(t *testing.T) {
 	m := make(map[string]interface{})
 	m["name"] = "prest"
 	mc := make(map[string]interface{})
@@ -42,7 +42,7 @@ func TestInsertByRequest(t *testing.T) {
 			t.Errorf("expected no errors in http request, got %v", err)
 		}
 
-		colsNames, _, values, err := InsertByRequest(req)
+		colsNames, _, values, err := ParseInsertRequest(req)
 		if err != nil {
 			t.Errorf("expected no errors in where by request, got %v", err)
 		}
