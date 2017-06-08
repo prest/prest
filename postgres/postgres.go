@@ -15,7 +15,6 @@ import (
 	"regexp"
 
 	"github.com/nuveo/prest/adapters/postgres/connection"
-	"github.com/nuveo/prest/api"
 	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/statements"
 )
@@ -130,6 +129,67 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 		}
 	}
 
+	return
+}
+
+// SetByRequest create a set clause for SQL
+func SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, values []interface{}, err error) {
+	body := make(map[string]interface{})
+	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
+		return
+	}
+	defer r.Body.Close()
+	fields := make([]string, 0)
+	for key, value := range body {
+		if chkInvalidIdentifier(key) {
+			err = errors.New("Set: Invalid identifier")
+			return
+		}
+		fields = append(fields, fmt.Sprintf("%s=$%d", key, initialPlaceholderID))
+
+		switch value.(type) {
+		case []interface{}:
+			values = append(values, parseArray(value))
+		default:
+			values = append(values, value)
+		}
+
+		initialPlaceholderID++
+	}
+	setSyntax = strings.Join(fields, ", ")
+	return
+}
+
+// InsertByRequest create insert SQL
+func InsertByRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error) {
+	body := make(map[string]interface{})
+	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
+		return
+	}
+	defer r.Body.Close()
+	fields := make([]string, 0)
+	for key, value := range body {
+		if chkInvalidIdentifier(key) {
+			err = errors.New("Insert: Invalid identifier")
+			return
+		}
+		fields = append(fields, key)
+
+		switch value.(type) {
+		case []interface{}:
+			values = append(values, parseArray(value))
+		default:
+			values = append(values, value)
+		}
+	}
+
+	colsName = strings.Join(fields, ", ")
+	for i := 1; i < len(values)+1; i++ {
+		if colsValue != "" {
+			colsValue += ","
+		}
+		colsValue += fmt.Sprintf("$%d", i)
+	}
 	return
 }
 
@@ -353,36 +413,15 @@ func parseArray(value interface{}) string {
 }
 
 // Insert execute insert sql into a table
-func Insert(database, schema, table string, body api.Request) (jsonData []byte, err error) {
+func Insert(database, schema, table string, r *http.Request) (jsonData []byte, err error) {
 	if chkInvalidIdentifier(database, schema, table) {
 		err = errors.New("Insert: Invalid identifier")
 		return
 	}
-
-	fields := make([]string, 0)
-	values := make([]interface{}, 0)
-	for key, value := range body.Data {
-		if chkInvalidIdentifier(key) {
-			err = errors.New("Insert: Invalid identifier")
-			return
-		}
-		fields = append(fields, key)
-
-		switch value.(type) {
-		case []interface{}:
-			values = append(values, parseArray(value))
-		default:
-			values = append(values, value)
-		}
-	}
-
-	colsName := strings.Join(fields, ", ")
-	colPlaceholder := ""
-	for i := 1; i < len(values)+1; i++ {
-		if colPlaceholder != "" {
-			colPlaceholder += ","
-		}
-		colPlaceholder += fmt.Sprintf("$%d", i)
+	colsName, colPlaceholder, values, err := InsertByRequest(r)
+	if err != nil {
+		log.Println(err)
+		return
 	}
 	db, err := connection.Get()
 	if err != nil {
@@ -455,7 +494,7 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 			return
 		}
 	}
-
+	fields := strings.Split(colsName, ",")
 	data := make(map[string]interface{})
 	for i := range fields {
 		data[fields[i]] = values[i]
@@ -523,7 +562,7 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 }
 
 // Update execute update sql into a table
-func Update(database, schema, table, where string, whereValues []interface{}, body api.Request) (jsonData []byte, err error) {
+func Update(database, schema, table, where string, whereValues []interface{}, r *http.Request) (jsonData []byte, err error) {
 	if chkInvalidIdentifier(database, schema, table) {
 		err = errors.New("Update: Invalid identifier")
 		return
@@ -531,24 +570,13 @@ func Update(database, schema, table, where string, whereValues []interface{}, bo
 
 	var result sql.Result
 	var rowsAffected int64
-
-	fields := []string{}
-	values := make([]interface{}, 0)
 	pid := len(whereValues) + 1 // placeholder id
-	for key, value := range body.Data {
-		fields = append(fields, fmt.Sprintf("%s=$%d", key, pid))
 
-		switch value.(type) {
-		case []interface{}:
-			values = append(values, parseArray(value))
-		default:
-			values = append(values, value)
-		}
-
-		pid++
+	setSyntax, values, err := SetByRequest(r, pid)
+	if err != nil {
+		log.Println(err)
+		return
 	}
-	setSyntax := strings.Join(fields, ", ")
-
 	sql := fmt.Sprintf("UPDATE %s.%s.%s SET %s", database, schema, table, setSyntax)
 
 	if where != "" {
