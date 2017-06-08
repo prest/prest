@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/nuveo/prest/api"
 )
 
 func TestGetSchemas(t *testing.T) {
@@ -32,10 +31,9 @@ func TestGetSchemas(t *testing.T) {
 	server := httptest.NewServer(router)
 	defer server.Close()
 
-	r := api.Request{}
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		doRequest(t, server.URL+tc.url, r, tc.method, tc.status, "GetSchemas", tc.body)
+		doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body)
 	}
 }
 
@@ -64,10 +62,9 @@ func TestVersionDependentGetSchemas(t *testing.T) {
 	server := httptest.NewServer(router)
 	defer server.Close()
 
-	r := api.Request{}
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		doRequest(t, server.URL+tc.url, r, tc.method, tc.status, "GetSchemas", tc.body...)
+		doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body...)
 	}
 
 }

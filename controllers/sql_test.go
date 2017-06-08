@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/nuveo/prest/api"
 	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/config/middlewares"
 	"github.com/nuveo/prest/config/router"
@@ -57,10 +56,9 @@ func TestExecuteScriptQuery(t *testing.T) {
 		{"Execute script POST method", "/testing/script-post/?field1=gopherzin&field2=pereira", "POST", http.StatusOK},
 	}
 
-	apiReq := api.Request{}
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		doRequest(t, ts.URL+tc.url, apiReq, tc.method, tc.status, "ExecuteScriptQuery")
+		doRequest(t, ts.URL+tc.url, nil, tc.method, tc.status, "ExecuteScriptQuery")
 	}
 }
 
@@ -69,8 +67,6 @@ func TestExecuteFromScripts(t *testing.T) {
 	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", ExecuteFromScripts)
 	server := httptest.NewServer(router)
 	defer server.Close()
-
-	r := api.Request{}
 
 	var testCases = []struct {
 		description string
@@ -92,7 +88,7 @@ func TestExecuteFromScripts(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		doRequest(t, server.URL+tc.url, r, tc.method, tc.status, "ExecuteFromScripts")
+		doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "ExecuteFromScripts")
 	}
 }
 
@@ -116,10 +112,9 @@ func TestRenderWithXML(t *testing.T) {
 	server := httptest.NewServer(n)
 	defer server.Close()
 
-	req := api.Request{}
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		doRequest(t, server.URL+tc.url, req, tc.method, tc.status, "GetSchemas", tc.body)
+		doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body)
 
 	}
 }

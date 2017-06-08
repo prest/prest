@@ -12,8 +12,6 @@ import (
 
 	"bytes"
 	"encoding/json"
-
-	"github.com/nuveo/prest/api"
 )
 
 func validate(t *testing.T, w *httptest.ResponseRecorder, r *http.Request, h http.HandlerFunc, where string) {
@@ -47,7 +45,7 @@ func doValidGetRequest(t *testing.T, url string, where string) {
 	}
 }
 
-func doValidPostRequest(t *testing.T, url string, r api.Request, where string) {
+func doValidPostRequest(t *testing.T, url string, r map[string]interface{}, where string) {
 	fmt.Println("Test:", where)
 	byt, err := json.Marshal(r)
 	if err != nil {
@@ -92,7 +90,7 @@ func doValidDeleteRequest(t *testing.T, url string, where string) {
 	}
 }
 
-func doValidPutRequest(t *testing.T, url string, r api.Request, where string) {
+func doValidPutRequest(t *testing.T, url string, r map[string]interface{}, where string) {
 	fmt.Println("Test:", where)
 	byt, err := json.Marshal(r)
 	if err != nil {
@@ -120,7 +118,7 @@ func doValidPutRequest(t *testing.T, url string, r api.Request, where string) {
 	}
 }
 
-func doValidPatchRequest(t *testing.T, url string, r api.Request, where string) {
+func doValidPatchRequest(t *testing.T, url string, r map[string]interface{}, where string) {
 	fmt.Println("Test:", where)
 	byt, err := json.Marshal(r)
 	if err != nil {
@@ -148,12 +146,12 @@ func doValidPatchRequest(t *testing.T, url string, r api.Request, where string) 
 	}
 }
 
-func doRequest(t *testing.T, url string, r api.Request, method string, expectedStatus int, where string, expectedBody ...string) {
+func doRequest(t *testing.T, url string, r map[string]interface{}, method string, expectedStatus int, where string, expectedBody ...string) {
 	fmt.Println("Test:", where)
 	var byt []byte
 	var err error
 
-	if r.Data != nil {
+	if r != nil {
 		byt, err = json.Marshal(r)
 		if err != nil {
 			t.Error("error on json marshal", err)
