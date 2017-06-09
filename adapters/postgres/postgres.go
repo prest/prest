@@ -24,12 +24,14 @@ const (
 )
 
 var removeOperatorRegex *regexp.Regexp
+var insertTableNameRegex *regexp.Regexp
 
 // ErrBodyEmpty err throw when body is empty
 var ErrBodyEmpty = errors.New("body is empty")
 
 func init() {
 	removeOperatorRegex = regexp.MustCompile(`\$[a-z]+.`)
+	insertTableNameRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.]*\.)*(\w+)\s*\(`)
 }
 
 // chkInvalidIdentifier return true if identifier is invalid
@@ -426,16 +428,7 @@ func parseArray(value interface{}) string {
 }
 
 // Insert execute insert sql into a table
-func Insert(database, schema, table string, r *http.Request) (jsonData []byte, err error) {
-	if chkInvalidIdentifier(database, schema, table) {
-		err = errors.New("Insert: Invalid identifier")
-		return
-	}
-	colsName, colPlaceholder, values, err := ParseInsertRequest(r)
-	if err != nil {
-		log.Println(err)
-		return
-	}
+func Insert(SQL string, params ...interface{}) (jsonData []byte, err error) {
 	db, err := connection.Get()
 	if err != nil {
 		log.Println(err)
@@ -447,31 +440,6 @@ func Insert(database, schema, table string, r *http.Request) (jsonData []byte, e
 		log.Printf("could not begin transaction: %v\n", err)
 		return
 	}
-	stmtPK, err := tx.Prepare(statements.SelectPKTableName)
-	if err != nil {
-		log.Printf("could not prepare sql: %s\n Error: %v\n", statements.SelectPKTableName, err)
-		return
-	}
-	var pkName string
-	pkRow, err := stmtPK.Query(table)
-	if err != nil {
-		return
-	}
-	for pkRow.Next() {
-		err = pkRow.Scan(&pkName)
-		if err != nil {
-			return
-		}
-	}
-	err = pkRow.Close()
-	if err != nil {
-		return
-	}
-
-	sql := fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s)", database, schema, table, colsName, colPlaceholder)
-	if pkName != "" {
-		sql = fmt.Sprintf("%s RETURNING %s", sql, pkName)
-	}
 
 	defer func() {
 		switch err {
@@ -482,40 +450,20 @@ func Insert(database, schema, table string, r *http.Request) (jsonData []byte, e
 		}
 	}()
 
-	stmt, err := tx.Prepare(sql)
+	tableName := insertTableNameRegex.FindStringSubmatch(SQL)
+	if len(tableName) < 2 {
+		err = errors.New("unable to find table name")
+		return
+	}
+	SQL = fmt.Sprintf("%s RETURNING row_to_json(%s)", SQL, tableName[2])
+
+	stmt, err := tx.Prepare(SQL)
 	if err != nil {
-		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
+		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
 		return
 	}
 
-	valuesAux := make([]interface{}, 0, len(values))
-
-	for i := 0; i < len(values); i++ {
-		valuesAux = append(valuesAux, values[i])
-	}
-
-	var lastID interface{}
-	if pkName != "" {
-		result := stmt.QueryRow(valuesAux...)
-		err = result.Scan(&lastID)
-		if err != nil {
-			return
-		}
-	} else {
-		_, err = stmt.Exec(valuesAux...)
-		if err != nil {
-			return
-		}
-	}
-	fields := strings.Split(colsName, ",")
-	data := make(map[string]interface{})
-	for i := range fields {
-		data[fields[i]] = values[i]
-	}
-	if pkName != "" {
-		data[pkName] = lastID
-	}
-	jsonData, err = json.Marshal(data)
+	err = stmt.QueryRow(params...).Scan(&jsonData)
 	return
 }
 
