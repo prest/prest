@@ -214,10 +214,8 @@ http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE
 JSON DATA:
 ```
 {
-    "data": {
-        "FIELD1": "string value",
-        "FIELD2": 1234567890
-    }
+    "FIELD1": "string value",
+    "FIELD2": 1234567890
 }
 ```
 
@@ -232,11 +230,9 @@ http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD1=xyz
 JSON DATA:
 ```
 {
-    "data": {
-        "FIELD1": "string value",
-        "FIELD2": 1234567890,
-        "ARRAYFIELD": ["value 1","value 2"]
-    }
+    "FIELD1": "string value",
+    "FIELD2": 1234567890,
+    "ARRAYFIELD": ["value 1","value 2"]
 }
 ```
 
