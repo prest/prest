@@ -227,7 +227,12 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	object, err := postgres.Delete(database, schema, table, where, values)
+	sql := fmt.Sprintf("DELETE FROM %s.%s.%s", database, schema, table)
+	if where != "" {
+		sql = fmt.Sprint(sql, " WHERE ", where)
+	}
+
+	object, err := postgres.Delete(sql, values...)
 	if err != nil {
 		err = fmt.Errorf("could not perform DELETE: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)

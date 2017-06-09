@@ -507,22 +507,9 @@ func Insert(database, schema, table string, r *http.Request) (jsonData []byte, e
 }
 
 // Delete execute delete sql into a table
-func Delete(database, schema, table, where string, whereValues []interface{}) (jsonData []byte, err error) {
+func Delete(SQL string, params ...interface{}) (jsonData []byte, err error) {
 	var result sql.Result
 	var rowsAffected int64
-
-	if chkInvalidIdentifier(database, schema, table) {
-		err = errors.New("Delete: Invalid identifier")
-		return
-	}
-
-	sql := fmt.Sprintf("DELETE FROM %s.%s.%s", database, schema, table)
-	if where != "" {
-		sql = fmt.Sprint(
-			sql,
-			" WHERE ",
-			where)
-	}
 
 	db, err := connection.Get()
 	if err != nil {
@@ -545,7 +532,7 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 		}
 	}()
 
-	result, err = tx.Exec(sql, whereValues...)
+	result, err = tx.Exec(SQL, params...)
 	if err != nil {
 		return
 	}
