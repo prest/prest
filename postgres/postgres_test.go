@@ -302,110 +302,21 @@ func TestInvalidPaginateIfPossible(t *testing.T) {
 func TestInsert(t *testing.T) {
 	var testCases = []struct {
 		description string
-		key         string
-		value       string
-		db          string
-		schema      string
-		table       string
-		result      interface{}
-		primaryKey  string
+		sql         string
+		values      []interface{}
 	}{
-		{"Insert data into a table with primary key", "name", "prest-test-insert", "prest", "public", "test4", 1.0, "id"},
-		{"Insert data into a table with primary key named nuveo", "name", "prest-test-insert", "prest", "public", "test6", 1.0, "nuveo"},
-		{"Insert data into a table without primary key", "name", "prest-test-insert", "prest", "public", "test6", nil, ""},
-	}
-
-	t.Log("Insert data with more columns in table")
-	m := make(map[string]interface{}, 0)
-	m["name"] = "prest-test-insert"
-	m["celphone"] = "88888888888"
-
-	body, err := json.Marshal(m)
-	if err != nil {
-		t.Errorf("expected no errors, but got %s", err)
-	}
-	r, err := http.NewRequest("POST", "/", bytes.NewReader(body))
-	if err != nil {
-		t.Errorf("expected no errors, but got %s", err)
-	}
-	jsonByte, err := Insert("prest", "public", "test5", r)
-	if err != nil {
-		t.Errorf("expected no errors, but got %s", err)
-	}
-	if len(jsonByte) < 1 {
-		t.Errorf("expected valid response body, but got %s", string(jsonByte))
+		{"Insert data into a table with one field", "INSERT INTO prest.public.test4(name) VALUES($1)", []interface{}{"prest-test-insert"}},
+		{"Insert data into a table with more than one field", "INSERT INTO prest.public.test5(name, celphone) VALUES($1, $2)", []interface{}{"prest-test-insert", "88888888"}},
 	}
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		m := make(map[string]interface{}, 0)
-		m[tc.key] = tc.value
-		body, err := json.Marshal(m)
-		if err != nil {
-			t.Errorf("expected no errors, but got %s", err)
-		}
-		r, err := http.NewRequest("POST", "/", bytes.NewReader(body))
-		if err != nil {
-			t.Errorf("expected no errors, but got %s", err)
-		}
-
-		jsonByte, err := Insert(tc.db, tc.schema, tc.table, r)
+		jsonByte, err := Insert(tc.sql, tc.values...)
 		if err != nil {
 			t.Errorf("expected no errors, but got %s", err)
 		}
 		if len(jsonByte) < 1 {
 			t.Errorf("expected valid response body, but got %s", string(jsonByte))
-		}
-
-		var toJSON map[string]interface{}
-		err = json.Unmarshal(jsonByte, &toJSON)
-		if err != nil {
-			t.Errorf("expected no errors, but got %s", err)
-		}
-
-		if tc.primaryKey != "" && toJSON[tc.primaryKey] != tc.result {
-			t.Errorf("expected %v in result, got %v", toJSON[tc.primaryKey], tc.result)
-		}
-	}
-}
-
-func TestInvalidInsert(t *testing.T) {
-	var testCases = []struct {
-		description string
-		key         string
-		value       string
-		db          string
-		schema      string
-		table       string
-	}{
-		{"Insert invalid data into a table with primary key", "prest", "prest-test-insert", "prest", "public", "test6"},
-		{"Insert data into a table with contraints", "name", "prest", "prest", "public", "test3"},
-		{"Insert data into a database invalid", "name", "prest", "0prest", "public", "test3"},
-		{"Insert data into a schema invalid", "name", "prest", "prest", "0public", "test3"},
-		{"Insert data into a table invalid", "name", "prest", "prest", "public", "0test3"},
-		{"Insert data into a request invalid", "0name", "prest", "prest", "public", "test3"},
-	}
-
-	for _, tc := range testCases {
-		t.Log(tc.description)
-		m := make(map[string]interface{}, 0)
-		m[tc.key] = tc.value
-		body, err := json.Marshal(m)
-		if err != nil {
-			t.Errorf("expected no errors, but got %s", err)
-		}
-		r, err := http.NewRequest("POST", "/", bytes.NewReader(body))
-		if err != nil {
-			t.Errorf("expected no errors, but got %s", err)
-		}
-
-		jsonByte, err := Insert(tc.db, tc.schema, tc.table, r)
-		if err == nil {
-			t.Errorf("expected no errors, but got %s", err)
-		}
-
-		if len(jsonByte) > 0 {
-			t.Errorf("expected invalid response body, but got %s", string(jsonByte))
 		}
 	}
 }
