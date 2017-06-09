@@ -1,18 +1,16 @@
 package postgres
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
-
-	"database/sql"
-
-	"regexp"
 
 	"github.com/nuveo/prest/adapters/postgres/connection"
 	"github.com/nuveo/prest/config"
@@ -26,6 +24,9 @@ const (
 )
 
 var removeOperatorRegex *regexp.Regexp
+
+// ErrBodyEmpty err throw when body is empty
+var ErrBodyEmpty = errors.New("body is empty")
 
 func init() {
 	removeOperatorRegex = regexp.MustCompile(`\$[a-z]+.`)
@@ -139,6 +140,12 @@ func SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, 
 		return
 	}
 	defer r.Body.Close()
+
+	if len(body) == 0 {
+		err = ErrBodyEmpty
+		return
+	}
+
 	fields := make([]string, 0)
 	for key, value := range body {
 		if chkInvalidIdentifier(key) {
@@ -167,6 +174,12 @@ func ParseInsertRequest(r *http.Request) (colsName string, colsValue string, val
 		return
 	}
 	defer r.Body.Close()
+
+	if len(body) == 0 {
+		err = ErrBodyEmpty
+		return
+	}
+
 	fields := make([]string, 0)
 	for key, value := range body {
 		if chkInvalidIdentifier(key) {

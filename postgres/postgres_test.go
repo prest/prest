@@ -29,6 +29,7 @@ func TestParseInsertRequest(t *testing.T) {
 	}{
 		{"insert by request more than one field", mc, []string{"dbname", "test"}, []string{"prest", "prest"}, nil},
 		{"insert by request one field", m, []string{"name"}, []string{"prest"}, nil},
+		{"insert by request empty body", nil, nil, nil, ErrBodyEmpty},
 	}
 
 	for _, tc := range testCases {
@@ -43,8 +44,8 @@ func TestParseInsertRequest(t *testing.T) {
 		}
 
 		colsNames, _, values, err := ParseInsertRequest(req)
-		if err != nil {
-			t.Errorf("expected no errors in where by request, got %v", err)
+		if err != tc.err {
+			t.Errorf("expected errors %v in where by request, got %v", tc.err, err)
 		}
 
 		for _, sql := range tc.expectedColNames {
@@ -78,6 +79,7 @@ func TestSetByRequest(t *testing.T) {
 	}{
 		{"set by request more than one field", mc, []string{"dbname=$", "test=$", ", "}, []string{"prest", "prest"}, nil},
 		{"set by request one field", m, []string{"name=$"}, []string{"prest"}, nil},
+		{"set by request empty body", nil, nil, nil, ErrBodyEmpty},
 	}
 
 	for _, tc := range testCases {
@@ -92,8 +94,8 @@ func TestSetByRequest(t *testing.T) {
 		}
 
 		setSyntax, values, err := SetByRequest(req, 1)
-		if err != nil {
-			t.Errorf("expected no errors in where by request, got %v", err)
+		if err != tc.err {
+			t.Errorf("expected errors %v in where by request, got %v", tc.err, err)
 		}
 
 		for _, sql := range tc.expectedSQL {
