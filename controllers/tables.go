@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -261,7 +260,8 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 
 	setSyntax, values, err := postgres.SetByRequest(r, pid)
 	if err != nil {
-		log.Println(err)
+		err = fmt.Errorf("could not perform UPDATE: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	sql := fmt.Sprintf("UPDATE %s.%s.%s SET %s", database, schema, table, setSyntax)
