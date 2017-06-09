@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -249,14 +250,31 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	where, values, err := postgres.WhereByRequest(r, 1)
+	where, whereValues, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	object, err := postgres.Update(database, schema, table, where, values, r)
+	pid := len(whereValues) + 1 // placeholder id
+
+	setSyntax, values, err := postgres.SetByRequest(r, pid)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	sql := fmt.Sprintf("UPDATE %s.%s.%s SET %s", database, schema, table, setSyntax)
+
+	if where != "" {
+		sql = fmt.Sprint(
+			sql,
+			" WHERE ",
+			where)
+		values = append(whereValues, values...)
+	}
+
+	object, err := postgres.Update(sql, values...)
 	if err != nil {
 		err = fmt.Errorf("could not perform UPDATE: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
