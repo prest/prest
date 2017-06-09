@@ -445,30 +445,16 @@ func TestDelete(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	var testCases = []struct {
 		description string
-		db          string
-		schema      string
-		table       string
-		partialSQL  string
+		sql         string
 		values      []interface{}
 	}{
-		{"Update data into an invalid database", "0prest", "public", "test3", "name=$1", []interface{}{"prest tester"}},
-		{"Update data into an invalid schema", "prest", "0public", "test3", "name=$1", []interface{}{"prest tester"}},
-		{"Update data into an invalid table", "prest", "public", "0test3", "name=$1", []interface{}{"prest tester"}},
-	}
-	m := make(map[string]interface{})
-	m["name"] = "prest"
-
-	body, err := json.Marshal(m)
-	if err != nil {
-		t.Errorf("expected no errors, but got %s", err)
-	}
-	r, err := http.NewRequest("PUT", "/", bytes.NewReader(body))
-	if err != nil {
-		t.Errorf("expected no errors, but got %s", err)
+		{"Update data into an invalid database", "UPDATE 0prest.publc.test3 SET name=$1", []interface{}{"prest tester"}},
+		{"Update data into an invalid schema", "UPDATE prest.0publc.test3 SET name=$1", []interface{}{"prest tester"}},
+		{"Update data into an invalid table", "UPDATE prest.publc.0test3 SET name=$1", []interface{}{"prest tester"}},
 	}
 
 	t.Log("Update data into a table")
-	response, err := Update("prest", "public", "test", "name=$1", []interface{}{"prest"}, r)
+	response, err := Update("UPDATE prest.public.test SET name=$2 WHERE name=$1", "prest tester", "prest")
 	if err != nil {
 		t.Errorf("expected no errors, but got: %s", err)
 	}
@@ -479,7 +465,7 @@ func TestUpdate(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		response, err := Update(tc.db, tc.schema, tc.table, tc.partialSQL, tc.values, r)
+		response, err := Update(tc.sql, tc.values...)
 		if err == nil {
 			t.Errorf("expected error, but got: %s", err)
 		}

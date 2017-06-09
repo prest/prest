@@ -549,30 +549,9 @@ func Delete(SQL string, params ...interface{}) (jsonData []byte, err error) {
 }
 
 // Update execute update sql into a table
-func Update(database, schema, table, where string, whereValues []interface{}, r *http.Request) (jsonData []byte, err error) {
-	if chkInvalidIdentifier(database, schema, table) {
-		err = errors.New("Update: Invalid identifier")
-		return
-	}
-
+func Update(SQL string, params ...interface{}) (jsonData []byte, err error) {
 	var result sql.Result
 	var rowsAffected int64
-	pid := len(whereValues) + 1 // placeholder id
-
-	setSyntax, values, err := SetByRequest(r, pid)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	sql := fmt.Sprintf("UPDATE %s.%s.%s SET %s", database, schema, table, setSyntax)
-
-	if where != "" {
-		sql = fmt.Sprint(
-			sql,
-			" WHERE ",
-			where)
-		values = append(whereValues, values...)
-	}
 
 	db, err := connection.Get()
 	if err != nil {
@@ -595,19 +574,13 @@ func Update(database, schema, table, where string, whereValues []interface{}, r 
 		}
 	}()
 
-	stmt, err := tx.Prepare(sql)
+	stmt, err := tx.Prepare(SQL)
 	if err != nil {
-		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
+		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
 		return
 	}
 
-	valuesAux := make([]interface{}, 0, len(values))
-
-	for i := 0; i < len(values); i++ {
-		valuesAux = append(valuesAux, values[i])
-	}
-
-	result, err = stmt.Exec(valuesAux...)
+	result, err = stmt.Exec(params...)
 	if err != nil {
 		return
 	}
