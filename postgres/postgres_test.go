@@ -321,6 +321,30 @@ func TestInsert(t *testing.T) {
 	}
 }
 
+func TestInsertInvalid(t *testing.T) {
+	var testCases = []struct {
+		description string
+		sql         string
+		values      []interface{}
+	}{
+		{"Insert data into a table invalid database", "INSERT INTO 0prest.public.test4(name) VALUES($1)", []interface{}{"prest-test-insert"}},
+		{"Insert data into a table invalid schema", "INSERT INTO prest.0public.test4(name) VALUES($1)", []interface{}{"prest-test-insert"}},
+		{"Insert data into a table invalid table", "INSERT INTO prest.public.0test4(name) VALUES($1)", []interface{}{"prest-test-insert"}},
+		{"Insert data into a table with empty name", "INSERT INTO (name) VALUES($1)", []interface{}{"prest-test-insert"}},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		jsonByte, err := Insert(tc.sql, tc.values...)
+		if err == nil {
+			t.Errorf("expected  errors, but no has")
+		}
+		if len(jsonByte) > 0 {
+			t.Errorf("expected valid response body, but got %s", string(jsonByte))
+		}
+	}
+}
+
 func TestDelete(t *testing.T) {
 	var testCases = []struct {
 		description string
