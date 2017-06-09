@@ -411,20 +411,17 @@ func TestInvalidInsert(t *testing.T) {
 func TestDelete(t *testing.T) {
 	var testCases = []struct {
 		description string
-		db          string
-		schema      string
-		table       string
-		partialSQL  string
+		sql         string
 		values      []interface{}
 	}{
-		{"Try Delete data from invalid database", "0prest", "public", "test", "name=$1", []interface{}{"nuveo"}},
-		{"Try Delete data from invalid schema", "prest", "0public", "test", "name=$1", []interface{}{"nuveo"}},
-		{"Try Delete data from invalid table", "prest", "public", "0test", "name=$1", []interface{}{"nuveo"}},
+		{"Try Delete data from invalid database", "DELETE FROM 0prest.public.test WHERE name=$1", []interface{}{"nuveo"}},
+		{"Try Delete data from invalid schema", "DELETE FROM prest.0public.test WHERE name=$1", []interface{}{"nuveo"}},
+		{"Try Delete data from invalid table", "DELETE FROM prest.public.0test WHERE name=$1", []interface{}{"nuveo"}},
 	}
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		response, err := Delete(tc.db, tc.schema, tc.table, tc.partialSQL, tc.values)
+		response, err := Delete(tc.sql, tc.values)
 		if err == nil {
 			t.Errorf("expected error, but got: %s", err)
 		}
@@ -435,7 +432,7 @@ func TestDelete(t *testing.T) {
 	}
 
 	t.Log("Delete data from table")
-	response, err := Delete("prest", "public", "test", "name=$1", []interface{}{"nuveo"})
+	response, err := Delete("DELETE FROM prest.public.test WHERE name=$1", "nuveo")
 	if err != nil {
 		t.Errorf("expected no error, but got: %s", err)
 	}
