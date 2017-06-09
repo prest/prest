@@ -203,7 +203,17 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 	schema := vars["schema"]
 	table := vars["table"]
-	object, err := postgres.Insert(database, schema, table, r)
+
+	names, placeholders, values, err := postgres.ParseInsertRequest(r)
+	if err != nil {
+		err = fmt.Errorf("could not perform InsertInTables: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	sql := fmt.Sprintf(statements.InsertQuery, database, schema, table, names, placeholders)
+
+	object, err := postgres.Insert(sql, values...)
 	if err != nil {
 		err = fmt.Errorf("could not perform InsertInTables: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -227,7 +237,7 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sql := fmt.Sprintf("DELETE FROM %s.%s.%s", database, schema, table)
+	sql := fmt.Sprintf(statements.DeleteQuery, database, schema, table)
 	if where != "" {
 		sql = fmt.Sprint(sql, " WHERE ", where)
 	}
@@ -264,7 +274,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	sql := fmt.Sprintf("UPDATE %s.%s.%s SET %s", database, schema, table, setSyntax)
+	sql := fmt.Sprintf(statements.UpdateQuery, database, schema, table, setSyntax)
 
 	if where != "" {
 		sql = fmt.Sprint(
