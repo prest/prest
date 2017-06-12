@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 
 	"github.com/gorilla/mux"
-	"github.com/nuveo/prest/api"
 )
 
 func TestGetDatabases(t *testing.T) {
@@ -27,7 +26,6 @@ func TestGetDatabases(t *testing.T) {
 		{"Get databases with noexistent column", "/databases?datatata=$eq.test", "GET", http.StatusBadRequest},
 	}
 
-	r := api.Request{}
 	router := mux.NewRouter()
 	router.HandleFunc("/databases", GetDatabases).Methods("GET")
 	server := httptest.NewServer(router)
@@ -35,6 +33,6 @@ func TestGetDatabases(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		doRequest(t, server.URL+tc.url, r, tc.method, tc.status, "GetDatabases")
+		doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetDatabases")
 	}
 }

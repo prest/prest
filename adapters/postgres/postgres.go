@@ -1,21 +1,18 @@
 package postgres
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
 
-	"database/sql"
-
-	"regexp"
-
 	"github.com/nuveo/prest/adapters/postgres/connection"
-	"github.com/nuveo/prest/api"
 	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/statements"
 )
@@ -27,9 +24,14 @@ const (
 )
 
 var removeOperatorRegex *regexp.Regexp
+var insertTableNameRegex *regexp.Regexp
+
+// ErrBodyEmpty err throw when body is empty
+var ErrBodyEmpty = errors.New("body is empty")
 
 func init() {
 	removeOperatorRegex = regexp.MustCompile(`\$[a-z]+.`)
+	insertTableNameRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.]*\.)*(\w+)\s*\(`)
 }
 
 // chkInvalidIdentifier return true if identifier is invalid
@@ -130,6 +132,79 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 		}
 	}
 
+	return
+}
+
+// SetByRequest create a set clause for SQL
+func SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, values []interface{}, err error) {
+	body := make(map[string]interface{})
+	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
+		return
+	}
+	defer r.Body.Close()
+
+	if len(body) == 0 {
+		err = ErrBodyEmpty
+		return
+	}
+
+	fields := make([]string, 0)
+	for key, value := range body {
+		if chkInvalidIdentifier(key) {
+			err = errors.New("Set: Invalid identifier")
+			return
+		}
+		fields = append(fields, fmt.Sprintf("%s=$%d", key, initialPlaceholderID))
+
+		switch value.(type) {
+		case []interface{}:
+			values = append(values, parseArray(value))
+		default:
+			values = append(values, value)
+		}
+
+		initialPlaceholderID++
+	}
+	setSyntax = strings.Join(fields, ", ")
+	return
+}
+
+// ParseInsertRequest create insert SQL
+func ParseInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error) {
+	body := make(map[string]interface{})
+	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
+		return
+	}
+	defer r.Body.Close()
+
+	if len(body) == 0 {
+		err = ErrBodyEmpty
+		return
+	}
+
+	fields := make([]string, 0)
+	for key, value := range body {
+		if chkInvalidIdentifier(key) {
+			err = errors.New("Insert: Invalid identifier")
+			return
+		}
+		fields = append(fields, key)
+
+		switch value.(type) {
+		case []interface{}:
+			values = append(values, parseArray(value))
+		default:
+			values = append(values, value)
+		}
+	}
+
+	colsName = strings.Join(fields, ", ")
+	for i := 1; i < len(values)+1; i++ {
+		if colsValue != "" {
+			colsValue += ","
+		}
+		colsValue += fmt.Sprintf("$%d", i)
+	}
 	return
 }
 
@@ -353,37 +428,7 @@ func parseArray(value interface{}) string {
 }
 
 // Insert execute insert sql into a table
-func Insert(database, schema, table string, body api.Request) (jsonData []byte, err error) {
-	if chkInvalidIdentifier(database, schema, table) {
-		err = errors.New("Insert: Invalid identifier")
-		return
-	}
-
-	fields := make([]string, 0)
-	values := make([]interface{}, 0)
-	for key, value := range body.Data {
-		if chkInvalidIdentifier(key) {
-			err = errors.New("Insert: Invalid identifier")
-			return
-		}
-		fields = append(fields, key)
-
-		switch value.(type) {
-		case []interface{}:
-			values = append(values, parseArray(value))
-		default:
-			values = append(values, value)
-		}
-	}
-
-	colsName := strings.Join(fields, ", ")
-	colPlaceholder := ""
-	for i := 1; i < len(values)+1; i++ {
-		if colPlaceholder != "" {
-			colPlaceholder += ","
-		}
-		colPlaceholder += fmt.Sprintf("$%d", i)
-	}
+func Insert(SQL string, params ...interface{}) (jsonData []byte, err error) {
 	db, err := connection.Get()
 	if err != nil {
 		log.Println(err)
@@ -395,31 +440,6 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 		log.Printf("could not begin transaction: %v\n", err)
 		return
 	}
-	stmtPK, err := tx.Prepare(statements.SelectPKTableName)
-	if err != nil {
-		log.Printf("could not prepare sql: %s\n Error: %v\n", statements.SelectPKTableName, err)
-		return
-	}
-	var pkName string
-	pkRow, err := stmtPK.Query(table)
-	if err != nil {
-		return
-	}
-	for pkRow.Next() {
-		err = pkRow.Scan(&pkName)
-		if err != nil {
-			return
-		}
-	}
-	err = pkRow.Close()
-	if err != nil {
-		return
-	}
-
-	sql := fmt.Sprintf("INSERT INTO %s.%s.%s (%s) VALUES (%s)", database, schema, table, colsName, colPlaceholder)
-	if pkName != "" {
-		sql = fmt.Sprintf("%s RETURNING %s", sql, pkName)
-	}
 
 	defer func() {
 		switch err {
@@ -430,60 +450,27 @@ func Insert(database, schema, table string, body api.Request) (jsonData []byte, 
 		}
 	}()
 
-	stmt, err := tx.Prepare(sql)
+	tableName := insertTableNameRegex.FindStringSubmatch(SQL)
+	if len(tableName) < 2 {
+		err = errors.New("unable to find table name")
+		return
+	}
+	SQL = fmt.Sprintf("%s RETURNING row_to_json(%s)", SQL, tableName[2])
+
+	stmt, err := tx.Prepare(SQL)
 	if err != nil {
-		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
+		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
 		return
 	}
 
-	valuesAux := make([]interface{}, 0, len(values))
-
-	for i := 0; i < len(values); i++ {
-		valuesAux = append(valuesAux, values[i])
-	}
-
-	var lastID interface{}
-	if pkName != "" {
-		result := stmt.QueryRow(valuesAux...)
-		err = result.Scan(&lastID)
-		if err != nil {
-			return
-		}
-	} else {
-		_, err = stmt.Exec(valuesAux...)
-		if err != nil {
-			return
-		}
-	}
-
-	data := make(map[string]interface{})
-	for i := range fields {
-		data[fields[i]] = values[i]
-	}
-	if pkName != "" {
-		data[pkName] = lastID
-	}
-	jsonData, err = json.Marshal(data)
+	err = stmt.QueryRow(params...).Scan(&jsonData)
 	return
 }
 
 // Delete execute delete sql into a table
-func Delete(database, schema, table, where string, whereValues []interface{}) (jsonData []byte, err error) {
+func Delete(SQL string, params ...interface{}) (jsonData []byte, err error) {
 	var result sql.Result
 	var rowsAffected int64
-
-	if chkInvalidIdentifier(database, schema, table) {
-		err = errors.New("Delete: Invalid identifier")
-		return
-	}
-
-	sql := fmt.Sprintf("DELETE FROM %s.%s.%s", database, schema, table)
-	if where != "" {
-		sql = fmt.Sprint(
-			sql,
-			" WHERE ",
-			where)
-	}
 
 	db, err := connection.Get()
 	if err != nil {
@@ -506,7 +493,7 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 		}
 	}()
 
-	result, err = tx.Exec(sql, whereValues...)
+	result, err = tx.Exec(SQL, params...)
 	if err != nil {
 		return
 	}
@@ -523,41 +510,9 @@ func Delete(database, schema, table, where string, whereValues []interface{}) (j
 }
 
 // Update execute update sql into a table
-func Update(database, schema, table, where string, whereValues []interface{}, body api.Request) (jsonData []byte, err error) {
-	if chkInvalidIdentifier(database, schema, table) {
-		err = errors.New("Update: Invalid identifier")
-		return
-	}
-
+func Update(SQL string, params ...interface{}) (jsonData []byte, err error) {
 	var result sql.Result
 	var rowsAffected int64
-
-	fields := []string{}
-	values := make([]interface{}, 0)
-	pid := len(whereValues) + 1 // placeholder id
-	for key, value := range body.Data {
-		fields = append(fields, fmt.Sprintf("%s=$%d", key, pid))
-
-		switch value.(type) {
-		case []interface{}:
-			values = append(values, parseArray(value))
-		default:
-			values = append(values, value)
-		}
-
-		pid++
-	}
-	setSyntax := strings.Join(fields, ", ")
-
-	sql := fmt.Sprintf("UPDATE %s.%s.%s SET %s", database, schema, table, setSyntax)
-
-	if where != "" {
-		sql = fmt.Sprint(
-			sql,
-			" WHERE ",
-			where)
-		values = append(whereValues, values...)
-	}
 
 	db, err := connection.Get()
 	if err != nil {
@@ -580,19 +535,13 @@ func Update(database, schema, table, where string, whereValues []interface{}, bo
 		}
 	}()
 
-	stmt, err := tx.Prepare(sql)
+	stmt, err := tx.Prepare(SQL)
 	if err != nil {
-		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
+		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
 		return
 	}
 
-	valuesAux := make([]interface{}, 0, len(values))
-
-	for i := 0; i < len(values); i++ {
-		valuesAux = append(valuesAux, values[i])
-	}
-
-	result, err = stmt.Exec(valuesAux...)
+	result, err = stmt.Exec(params...)
 	if err != nil {
 		return
 	}

@@ -4,11 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"encoding/json"
-
 	"github.com/gorilla/mux"
 	"github.com/nuveo/prest/adapters/postgres"
-	"github.com/nuveo/prest/api"
 	"github.com/nuveo/prest/statements"
 )
 
@@ -207,15 +204,16 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	req := api.Request{}
-	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&req)
+	names, placeholders, values, err := postgres.ParseInsertRequest(r)
 	if err != nil {
-		err = fmt.Errorf("could not decode body: %v", err)
+		err = fmt.Errorf("could not perform InsertInTables: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	object, err := postgres.Insert(database, schema, table, req)
+
+	sql := fmt.Sprintf(statements.InsertQuery, database, schema, table, names, placeholders)
+
+	object, err := postgres.Insert(sql, values...)
 	if err != nil {
 		err = fmt.Errorf("could not perform InsertInTables: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -239,7 +237,12 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	object, err := postgres.Delete(database, schema, table, where, values)
+	sql := fmt.Sprintf(statements.DeleteQuery, database, schema, table)
+	if where != "" {
+		sql = fmt.Sprint(sql, " WHERE ", where)
+	}
+
+	object, err := postgres.Delete(sql, values...)
 	if err != nil {
 		err = fmt.Errorf("could not perform DELETE: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -256,23 +259,32 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	req := api.Request{}
-	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		err = fmt.Errorf("could not decode body: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	where, values, err := postgres.WhereByRequest(r, 1)
+	where, whereValues, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	object, err := postgres.Update(database, schema, table, where, values, req)
+	pid := len(whereValues) + 1 // placeholder id
+
+	setSyntax, values, err := postgres.SetByRequest(r, pid)
+	if err != nil {
+		err = fmt.Errorf("could not perform UPDATE: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	sql := fmt.Sprintf(statements.UpdateQuery, database, schema, table, setSyntax)
+
+	if where != "" {
+		sql = fmt.Sprint(
+			sql,
+			" WHERE ",
+			where)
+		values = append(whereValues, values...)
+	}
+
+	object, err := postgres.Update(sql, values...)
 	if err != nil {
 		err = fmt.Errorf("could not perform UPDATE: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)

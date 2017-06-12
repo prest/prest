@@ -7,10 +7,111 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nuveo/prest/api"
+	"bytes"
+
 	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/statements"
 )
+
+func TestParseInsertRequest(t *testing.T) {
+	m := make(map[string]interface{})
+	m["name"] = "prest"
+	mc := make(map[string]interface{})
+	mc["test"] = "prest"
+	mc["dbname"] = "prest"
+
+	var testCases = []struct {
+		description      string
+		body             map[string]interface{}
+		expectedColNames []string
+		expectedValues   []string
+		err              error
+	}{
+		{"insert by request more than one field", mc, []string{"dbname", "test"}, []string{"prest", "prest"}, nil},
+		{"insert by request one field", m, []string{"name"}, []string{"prest"}, nil},
+		{"insert by request empty body", nil, nil, nil, ErrBodyEmpty},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		body, err := json.Marshal(tc.body)
+		if err != nil {
+			t.Errorf("expected no errors in http request, got %v", err)
+		}
+		req, err := http.NewRequest("POST", "/", bytes.NewReader(body))
+		if err != nil {
+			t.Errorf("expected no errors in http request, got %v", err)
+		}
+
+		colsNames, _, values, err := ParseInsertRequest(req)
+		if err != tc.err {
+			t.Errorf("expected errors %v in where by request, got %v", tc.err, err)
+		}
+
+		for _, sql := range tc.expectedColNames {
+			if !strings.Contains(colsNames, sql) {
+				t.Errorf("expected %s in %s, but not was!", sql, colsNames)
+			}
+		}
+
+		expectedValuesSTR := strings.Join(tc.expectedValues, " ")
+		for _, value := range values {
+			if !strings.Contains(expectedValuesSTR, value.(string)) {
+				t.Errorf("expected %s in %s", value, expectedValuesSTR)
+			}
+		}
+	}
+}
+
+func TestSetByRequest(t *testing.T) {
+	m := make(map[string]interface{})
+	m["name"] = "prest"
+	mc := make(map[string]interface{})
+	mc["test"] = "prest"
+	mc["dbname"] = "prest"
+
+	var testCases = []struct {
+		description    string
+		body           map[string]interface{}
+		expectedSQL    []string
+		expectedValues []string
+		err            error
+	}{
+		{"set by request more than one field", mc, []string{"dbname=$", "test=$", ", "}, []string{"prest", "prest"}, nil},
+		{"set by request one field", m, []string{"name=$"}, []string{"prest"}, nil},
+		{"set by request empty body", nil, nil, nil, ErrBodyEmpty},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		body, err := json.Marshal(tc.body)
+		if err != nil {
+			t.Errorf("expected no errors in http request, got %v", err)
+		}
+		req, err := http.NewRequest("PUT", "/", bytes.NewReader(body))
+		if err != nil {
+			t.Errorf("expected no errors in http request, got %v", err)
+		}
+
+		setSyntax, values, err := SetByRequest(req, 1)
+		if err != tc.err {
+			t.Errorf("expected errors %v in where by request, got %v", tc.err, err)
+		}
+
+		for _, sql := range tc.expectedSQL {
+			if !strings.Contains(setSyntax, sql) {
+				t.Errorf("expected %s in %s, but not was!", sql, setSyntax)
+			}
+		}
+
+		expectedValuesSTR := strings.Join(tc.expectedValues, " ")
+		for _, value := range values {
+			if !strings.Contains(expectedValuesSTR, value.(string)) {
+				t.Errorf("expected %s in %s", value, expectedValuesSTR)
+			}
+		}
+	}
+}
 
 func TestWhereByRequest(t *testing.T) {
 	var testCases = []struct {
@@ -201,95 +302,45 @@ func TestInvalidPaginateIfPossible(t *testing.T) {
 func TestInsert(t *testing.T) {
 	var testCases = []struct {
 		description string
-		key         string
-		value       string
-		db          string
-		schema      string
-		table       string
-		result      interface{}
-		primaryKey  string
+		sql         string
+		values      []interface{}
 	}{
-		{"Insert data into a table with primary key", "name", "prest-test-insert", "prest", "public", "test4", 1.0, "id"},
-		{"Insert data into a table with primary key named nuveo", "name", "prest-test-insert", "prest", "public", "test6", 1.0, "nuveo"},
-		{"Insert data into a table without primary key", "name", "prest-test-insert", "prest", "public", "test6", nil, ""},
-	}
-
-	t.Log("Insert data with more columns in table")
-	m := make(map[string]interface{}, 0)
-	m["name"] = "prest-test-insert"
-	m["celphone"] = "88888888888"
-	r := api.Request{
-		Data: m,
-	}
-
-	jsonByte, err := Insert("prest", "public", "test5", r)
-	if err != nil {
-		t.Errorf("expected no errors, but got %s", err)
-	}
-	if len(jsonByte) < 1 {
-		t.Errorf("expected valid response body, but got %s", string(jsonByte))
+		{"Insert data into a table with one field", "INSERT INTO prest.public.test4(name) VALUES($1)", []interface{}{"prest-test-insert"}},
+		{"Insert data into a table with more than one field", "INSERT INTO prest.public.test5(name, celphone) VALUES($1, $2)", []interface{}{"prest-test-insert", "88888888"}},
 	}
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		m := make(map[string]interface{}, 0)
-		m[tc.key] = tc.value
-		r := api.Request{
-			Data: m,
-		}
-
-		jsonByte, err := Insert(tc.db, tc.schema, tc.table, r)
+		jsonByte, err := Insert(tc.sql, tc.values...)
 		if err != nil {
 			t.Errorf("expected no errors, but got %s", err)
 		}
 		if len(jsonByte) < 1 {
 			t.Errorf("expected valid response body, but got %s", string(jsonByte))
 		}
-
-		var toJSON map[string]interface{}
-		err = json.Unmarshal(jsonByte, &toJSON)
-		if err != nil {
-			t.Errorf("expected no errors, but got %s", err)
-		}
-
-		if tc.primaryKey != "" && toJSON[tc.primaryKey] != tc.result {
-			t.Errorf("expected %v in result, got %v", toJSON[tc.primaryKey], tc.result)
-		}
 	}
 }
 
-func TestInvalidInsert(t *testing.T) {
+func TestInsertInvalid(t *testing.T) {
 	var testCases = []struct {
 		description string
-		key         string
-		value       string
-		db          string
-		schema      string
-		table       string
+		sql         string
+		values      []interface{}
 	}{
-		{"Insert invalid data into a table with primary key", "prest", "prest-test-insert", "prest", "public", "test6"},
-		{"Insert data into a table with contraints", "name", "prest", "prest", "public", "test3"},
-		{"Insert data into a database invalid", "name", "prest", "0prest", "public", "test3"},
-		{"Insert data into a schema invalid", "name", "prest", "prest", "0public", "test3"},
-		{"Insert data into a table invalid", "name", "prest", "prest", "public", "0test3"},
-		{"Insert data into a request invalid", "0name", "prest", "prest", "public", "test3"},
+		{"Insert data into a table invalid database", "INSERT INTO 0prest.public.test4(name) VALUES($1)", []interface{}{"prest-test-insert"}},
+		{"Insert data into a table invalid schema", "INSERT INTO prest.0public.test4(name) VALUES($1)", []interface{}{"prest-test-insert"}},
+		{"Insert data into a table invalid table", "INSERT INTO prest.public.0test4(name) VALUES($1)", []interface{}{"prest-test-insert"}},
+		{"Insert data into a table with empty name", "INSERT INTO (name) VALUES($1)", []interface{}{"prest-test-insert"}},
 	}
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		m := make(map[string]interface{}, 0)
-		m[tc.key] = tc.value
-		r := api.Request{
-			Data: m,
-		}
-
-		jsonByte, err := Insert(tc.db, tc.schema, tc.table, r)
+		jsonByte, err := Insert(tc.sql, tc.values...)
 		if err == nil {
-			t.Errorf("expected no errors, but got %s", err)
+			t.Errorf("expected  errors, but no has")
 		}
-
 		if len(jsonByte) > 0 {
-			t.Errorf("expected invalid response body, but got %s", string(jsonByte))
+			t.Errorf("expected valid response body, but got %s", string(jsonByte))
 		}
 	}
 }
@@ -297,20 +348,17 @@ func TestInvalidInsert(t *testing.T) {
 func TestDelete(t *testing.T) {
 	var testCases = []struct {
 		description string
-		db          string
-		schema      string
-		table       string
-		partialSQL  string
+		sql         string
 		values      []interface{}
 	}{
-		{"Try Delete data from invalid database", "0prest", "public", "test", "name=$1", []interface{}{"nuveo"}},
-		{"Try Delete data from invalid schema", "prest", "0public", "test", "name=$1", []interface{}{"nuveo"}},
-		{"Try Delete data from invalid table", "prest", "public", "0test", "name=$1", []interface{}{"nuveo"}},
+		{"Try Delete data from invalid database", "DELETE FROM 0prest.public.test WHERE name=$1", []interface{}{"nuveo"}},
+		{"Try Delete data from invalid schema", "DELETE FROM prest.0public.test WHERE name=$1", []interface{}{"nuveo"}},
+		{"Try Delete data from invalid table", "DELETE FROM prest.public.0test WHERE name=$1", []interface{}{"nuveo"}},
 	}
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		response, err := Delete(tc.db, tc.schema, tc.table, tc.partialSQL, tc.values)
+		response, err := Delete(tc.sql, tc.values)
 		if err == nil {
 			t.Errorf("expected error, but got: %s", err)
 		}
@@ -321,7 +369,7 @@ func TestDelete(t *testing.T) {
 	}
 
 	t.Log("Delete data from table")
-	response, err := Delete("prest", "public", "test", "name=$1", []interface{}{"nuveo"})
+	response, err := Delete("DELETE FROM prest.public.test WHERE name=$1", "nuveo")
 	if err != nil {
 		t.Errorf("expected no error, but got: %s", err)
 	}
@@ -334,25 +382,16 @@ func TestDelete(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	var testCases = []struct {
 		description string
-		db          string
-		schema      string
-		table       string
-		partialSQL  string
+		sql         string
 		values      []interface{}
 	}{
-		{"Update data into an invalid database", "0prest", "public", "test3", "name=$1", []interface{}{"prest tester"}},
-		{"Update data into an invalid schema", "prest", "0public", "test3", "name=$1", []interface{}{"prest tester"}},
-		{"Update data into an invalid table", "prest", "public", "0test3", "name=$1", []interface{}{"prest tester"}},
-	}
-	m := make(map[string]interface{}, 0)
-	m["name"] = "prest"
-
-	r := api.Request{
-		Data: m,
+		{"Update data into an invalid database", "UPDATE 0prest.publc.test3 SET name=$1", []interface{}{"prest tester"}},
+		{"Update data into an invalid schema", "UPDATE prest.0publc.test3 SET name=$1", []interface{}{"prest tester"}},
+		{"Update data into an invalid table", "UPDATE prest.publc.0test3 SET name=$1", []interface{}{"prest tester"}},
 	}
 
 	t.Log("Update data into a table")
-	response, err := Update("prest", "public", "test", "name=$1", []interface{}{"prest"}, r)
+	response, err := Update("UPDATE prest.public.test SET name=$2 WHERE name=$1", "prest tester", "prest")
 	if err != nil {
 		t.Errorf("expected no errors, but got: %s", err)
 	}
@@ -363,7 +402,7 @@ func TestUpdate(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		response, err := Update(tc.db, tc.schema, tc.table, tc.partialSQL, tc.values, r)
+		response, err := Update(tc.sql, tc.values...)
 		if err == nil {
 			t.Errorf("expected error, but got: %s", err)
 		}
