@@ -133,14 +133,6 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3O
 PREST_DEBUG=true
 ```
 
-## Debug Mode
-
-- Set environment variable `PREST_DEBUG`
-
-```
-PREST_DEBUG=true
-```
-
 ### Filter (WHERE)
 
 ```
