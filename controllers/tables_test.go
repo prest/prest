@@ -230,7 +230,7 @@ func TestRequestTimeout(t *testing.T) {
 	router.HandleFunc("/{database}/{schema}/{table}", SelectFromTables).Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Microsecond)
 	defer cancel()
 	req, err := http.NewRequest("GET", server.URL+"/prest/public/test5", nil)
 	if err != nil {
