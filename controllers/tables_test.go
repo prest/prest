@@ -1,9 +1,16 @@
 package controllers
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"time"
+
+	"io/ioutil"
+
+	"strings"
 
 	"github.com/gorilla/mux"
 )
@@ -215,5 +222,35 @@ func TestUpdateFromTable(t *testing.T) {
 		t.Log(tc.description)
 		doRequest(t, server.URL+tc.url, tc.request, "PUT", tc.status, "UpdateTable")
 		doRequest(t, server.URL+tc.url, tc.request, "PATCH", tc.status, "UpdateTable")
+	}
+}
+
+func TestRequestTimeout(t *testing.T) {
+	router := mux.NewRouter()
+	router.HandleFunc("/{database}/{schema}/{table}", SelectFromTables).Methods("GET")
+	server := httptest.NewServer(router)
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Microsecond)
+	defer cancel()
+	req, err := http.NewRequest("GET", "/prest/public/test5", nil)
+	if err != nil {
+		t.Errorf("expected no errors, but has %v", err)
+	}
+	req = req.WithContext(ctx)
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Errorf("expected no errors, but has %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("expected status code 400, but got %d", resp.StatusCode)
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Errorf("expected no errors, but has %v", err)
+	}
+	if !strings.Contains(string(body), "context") {
+		t.Error("do not contain a context error message")
 	}
 }
