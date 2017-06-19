@@ -232,7 +232,7 @@ func TestRequestTimeout(t *testing.T) {
 	defer server.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Microsecond)
 	defer cancel()
-	req, err := http.NewRequest("GET", "/prest/public/test5", nil)
+	req, err := http.NewRequest("GET", server.URL+"/prest/public/test5", nil)
 	if err != nil {
 		t.Errorf("expected no errors, but has %v", err)
 	}
