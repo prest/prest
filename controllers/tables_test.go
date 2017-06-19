@@ -8,8 +8,6 @@ import (
 
 	"time"
 
-	"io/ioutil"
-
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -238,19 +236,11 @@ func TestRequestTimeout(t *testing.T) {
 	}
 	req = req.WithContext(ctx)
 	client := http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		t.Errorf("expected no errors, but has %v", err)
+	_, err = client.Do(req)
+	if err == nil {
+		t.Errorf("expected err but not have")
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("expected status code 400, but got %d", resp.StatusCode)
-	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Errorf("expected no errors, but has %v", err)
-	}
-	if !strings.Contains(string(body), "context") {
+	if !strings.Contains(err.Error(), "context") {
 		t.Error("do not contain a context error message")
 	}
 }
