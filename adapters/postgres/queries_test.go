@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/url"
@@ -159,7 +160,7 @@ func TestExecuteScripts(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		_, err := ExecuteScripts(tc.method, tc.sql, tc.values)
+		_, err := ExecuteScripts(context.Background(), tc.method, tc.sql, tc.values)
 		if tc.err != err {
 			t.Errorf("expected no errors, but got %s", err)
 		}
@@ -167,7 +168,7 @@ func TestExecuteScripts(t *testing.T) {
 
 	t.Log("Get errors with invalid HTTP Method")
 	values := make([]interface{}, 0)
-	result, err := ExecuteScripts("ANY", "SELECT * FROM test7", values)
+	result, err := ExecuteScripts(context.Background(), "ANY", "SELECT * FROM test7", values)
 	if len(result) > 0 {
 		t.Errorf("expected empty result, but got %s", result)
 	}

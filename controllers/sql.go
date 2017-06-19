@@ -10,6 +10,7 @@ import (
 
 // ExecuteScriptQuery is a function to execute and return result of script query
 func ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]byte, error) {
+	ctx := rq.Context()
 	sqlPath, err := postgres.GetScript(rq.Method, queriesPath, script)
 	if err != nil {
 		err = fmt.Errorf("could not get script %s/%s, %+v", queriesPath, script, err)
@@ -22,7 +23,7 @@ func ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]
 		return nil, err
 	}
 
-	result, err := postgres.ExecuteScripts(rq.Method, sql, values)
+	result, err := postgres.ExecuteScripts(ctx, rq.Method, sql, values)
 	if err != nil {
 		err = fmt.Errorf("could not execute sql %+v, %s", err, sql)
 		return nil, err

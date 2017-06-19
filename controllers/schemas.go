@@ -10,6 +10,7 @@ import (
 
 // GetSchemas list all (or filter) schemas
 func GetSchemas(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	requestWhere, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -41,7 +42,7 @@ func GetSchemas(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sqlSchemas = fmt.Sprint(sqlSchemas, " ", page)
-	object, err := postgres.Query(sqlSchemas, values...)
+	object, err := postgres.Query(ctx, sqlSchemas, values...)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -125,10 +126,10 @@ func WriteSQL(sql string, values []interface{}) (resultByte []byte, err error) {
 }
 
 // ExecuteScripts run sql templates created by users
-func ExecuteScripts(method, sql string, values []interface{}) (result []byte, err error) {
+func ExecuteScripts(ctx context.Context, method, sql string, values []interface{}) (result []byte, err error) {
 	switch method {
 	case "GET":
-		result, err = Query(sql, values...)
+		result, err = Query(ctx, sql, values...)
 	case "POST", "PUT", "PATCH", "DELETE":
 		result, err = WriteSQL(sql, values)
 	default:
