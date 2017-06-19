@@ -7,6 +7,10 @@
 
 Serve a RESTful API from any PostgreSQL database
 
+## Go version
+
+- 1.8 or higher
+
 ## Postgres version
 
 - 9.4 or higher
