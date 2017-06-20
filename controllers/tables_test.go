@@ -240,7 +240,8 @@ func TestRequestTimeout(t *testing.T) {
 	if err == nil {
 		t.Errorf("expected err but not have")
 	}
-	if !strings.Contains(err.Error(), "context") {
+	message := strings.ToLower(err.Error())
+	if !strings.Contains(message, "context") {
 		t.Error("do not contain a context error message")
 	}
 }
