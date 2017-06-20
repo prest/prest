@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -241,6 +242,7 @@ func TestRequestTimeout(t *testing.T) {
 		t.Errorf("expected err but not have")
 	}
 	message := strings.ToLower(err.Error())
+	fmt.Println(">>>>>>>", message)
 	if !strings.Contains(message, "context") {
 		t.Error("do not contain a context error message")
 	}
