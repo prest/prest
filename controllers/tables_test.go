@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -229,7 +228,7 @@ func TestRequestTimeout(t *testing.T) {
 	router.HandleFunc("/{database}/{schema}/{table}", SelectFromTables).Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Microsecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
 	defer cancel()
 	req, err := http.NewRequest("GET", server.URL+"/prest/public/test5", nil)
 	if err != nil {
@@ -242,7 +241,6 @@ func TestRequestTimeout(t *testing.T) {
 		t.Errorf("expected err but not have")
 	}
 	message := strings.ToLower(err.Error())
-	fmt.Println(">>>>>>>", message)
 	if !strings.Contains(message, "context") {
 		t.Error("do not contain a context error message")
 	}
