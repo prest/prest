@@ -355,6 +355,9 @@ func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
 
 	err = prepare.QueryRow(params...).Scan(&jsonData)
 
+	if len(jsonData) == 0 {
+		jsonData = []byte("[]")
+	}
 	return
 }
 
