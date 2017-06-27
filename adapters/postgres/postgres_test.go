@@ -188,7 +188,7 @@ func TestInvalidWhereByRequest(t *testing.T) {
 }
 
 func TestEmptyTable(t *testing.T) {
-	response, err := Query("SELECT * FROM test_empty_table")
+	response, err := Query(context.Background(), "SELECT * FROM test_empty_table")
 	if err != nil {
 		t.Fatal(err.Error())
 	}
