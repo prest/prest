@@ -28,11 +28,12 @@ docker run -e PREST_HTTP_PORT=3000 \
 	-e PREST_PG_HOST=127.0.0.1 \
 	-e PREST_PG_USER=postgres \
 	-e PREST_PG_PASS=pass \
-	nuveo/prest:0.1
+	nuveo/prest:0.2
 ```
 
 ### Tags
 
+- 0.2 (stable)
 - 0.1 (stable)
 - lastest (developer)
 

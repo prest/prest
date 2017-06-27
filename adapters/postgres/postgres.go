@@ -414,6 +414,9 @@ func Query(ctx context.Context, SQL string, params ...interface{}) (jsonData []b
 		defer prepare.Close()
 
 		err = prepare.QueryRowContext(ctx, params...).Scan(&jsonData)
+		if len(jsonData) == 0 {
+			jsonData = []byte("[]")
+		}
 	}
 	return
 }

@@ -187,6 +187,16 @@ func TestInvalidWhereByRequest(t *testing.T) {
 	}
 }
 
+func TestEmptyTable(t *testing.T) {
+	response, err := Query("SELECT * FROM test_empty_table")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !bytes.Equal(response, []byte("[]")) {
+		t.Fatalf("Query response returned '%v', expected '[]'", string(response))
+	}
+}
+
 func TestQuery(t *testing.T) {
 	var response []byte
 	var err error
