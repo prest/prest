@@ -112,8 +112,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	table := vars["table"]
 
 	// get selected columns, "*" if empty "_columns"
-	cols := postgres.ColumnsByRequest(r)
-	cols = postgres.FieldsPermissions(table, cols, "read")
+	cols := postgres.FieldsPermissions(r, table, "read")
 
 	if len(cols) == 0 {
 		err := fmt.Errorf("you don't have permission for this action, please check the permitted fields for this table")
@@ -163,6 +162,12 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 			query,
 			" WHERE ",
 			requestWhere)
+	}
+
+	groupBySQL := postgres.GroupByClause(r)
+
+	if groupBySQL != "" {
+		sqlSelect = fmt.Sprintf("%s %s", sqlSelect, groupBySQL)
 	}
 
 	order, err := postgres.OrderByRequest(r)
