@@ -470,6 +470,7 @@ func TestChkInvaidIdentifier(t *testing.T) {
 		{"fild'Name", true},
 		{"fild\"Name", true},
 		{"fild;Name", true},
+		{"SUM(test)", false},
 		{"_123456789_123456789_123456789_123456789_123456789_123456789_12345", true},
 	}
 

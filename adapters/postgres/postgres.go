@@ -44,6 +44,8 @@ func chkInvalidIdentifier(identifer ...string) bool {
 		for _, v := range ival {
 			if !unicode.IsLetter(v) &&
 				!unicode.IsDigit(v) &&
+				v != '(' &&
+				v != ')' &&
 				v != '_' &&
 				v != '.' &&
 				v != '-' &&
