@@ -123,6 +123,9 @@ UPDATE %s.%s.%s SET %s`
 
 	// GroupBy query
 	GroupBy = `GROUP BY %s`
+
+	// Having query
+	Having = `HAVING %s %s %s`
 )
 
 var (

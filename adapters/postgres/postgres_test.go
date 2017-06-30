@@ -196,6 +196,14 @@ func TestGroupByClause(t *testing.T) {
 		{"Group by clause with one field", "/prest/public/test5?_groupby=celphone", "GROUP BY celphone", false},
 		{"Group by clause with two fields", "/prest/public/test5?_groupby=celphone,name", "GROUP BY celphone,name", false},
 		{"Group by clause without fields", "/prest/public/test5?_groupby=", "", true},
+
+		// having tests
+		{"Group by clause with having clause", "/prest/public/test5?_groupby=celphone->>having:sum:salary:$gt:500", "GROUP BY celphone HAVING SUM(salary) > 500", false},
+
+		// having errors, but continue with group by
+		{"Group by clause with wrong having clause (insufficient params)", "/prest/public/test5?_groupby=celphone->>having:sum:salary", "GROUP BY celphone", false},
+		{"Group by clause with wrong having clause (wrong query operator)", "/prest/public/test5?_groupby=celphone->>having:sum:salary:$at:500", "GROUP BY celphone", false},
+		{"Group by clause with wrong having clause (wrong group func)", "/prest/public/test5?_groupby=celphone->>having:sun:salary:$gt:500", "GROUP BY celphone", false},
 	}
 
 	for _, tc := range testCases {
