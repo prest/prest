@@ -282,6 +282,28 @@ Examples:
     GET /DATABASE/SCHEMA/TABLE/?_order=fieldname01,-fieldname02,fieldname03
 
 
+## GROUP BY
+
+We support this Group Functions:
+
+| name | Use in request |
+| ------- | ------------- |
+| SUM | sum:field |
+| AVG | avg:field |
+| MAX | max:field |
+| MIN | min:field |
+| MEDIAN | median:field |
+| STDDEV | stddev:field |
+| VARIANCE | variance:field |
+
+### Examples:
+	GET /DATABASE/SCHEMA/TABLE/?_select=fieldname00,fieldname01&_groupby=fieldname01
+
+#### Using Group Functions
+	GET /DATABASE/SCHEMA/TABLE/?_select=fieldname00,sum:fieldname01&_groupby=fieldname01
+
+
+
 ## Executing SQL scripts
 
 If need perform an advanced SQL, you can write some scripts SQL and access them by REST. These scripts are templates where you can pass by URL, values to them.

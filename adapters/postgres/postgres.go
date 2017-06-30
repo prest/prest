@@ -44,6 +44,8 @@ func chkInvalidIdentifier(identifer ...string) bool {
 		for _, v := range ival {
 			if !unicode.IsLetter(v) &&
 				!unicode.IsDigit(v) &&
+				v != '(' &&
+				v != ')' &&
 				v != '_' &&
 				v != '.' &&
 				v != '-' &&
@@ -614,25 +616,39 @@ func TablePermissions(table string, op string) bool {
 }
 
 // FieldsPermissions get fields permissions based in prest configuration
-func FieldsPermissions(table string, cols []string, op string) []string {
+func FieldsPermissions(r *http.Request, table string, op string) []string {
 	restrict := config.PrestConf.AccessConf.Restrict
+	cols := ColumnsByRequest(r)
 	if !restrict {
 		return cols
 	}
+
+	queries := r.URL.Query()
 
 	var permittedCols []string
 	tables := config.PrestConf.AccessConf.Tables
 	for _, t := range tables {
 		if t.Name == table {
-			for _, f := range t.Fields {
-				for _, col := range cols {
-					// return all permitted fields if have "*" in SELECT
-					if op == "read" && col == "*" {
-						return t.Fields
-					}
+			for _, col := range cols {
+				// return all permitted fields if have "*" in SELECT
+				if op == "read" && col == "*" {
+					return t.Fields
+				}
 
-					if col == f {
+				if queries.Get("_groupby") != "" {
+					if strings.Contains(col, ":") {
+						groupFunc, err := NormalizeGroupFunction(col)
+						if err == nil {
+							permittedCols = append(permittedCols, groupFunc)
+						}
+					} else {
 						permittedCols = append(permittedCols, col)
+					}
+				} else {
+					for _, f := range t.Fields {
+						if col == f {
+							permittedCols = append(permittedCols, col)
+						}
 					}
 				}
 			}
@@ -660,4 +676,32 @@ func ColumnsByRequest(r *http.Request) []string {
 		return []string{"*"}
 	}
 	return columns
+}
+
+// GroupByClause get params in request to add group by clause
+func GroupByClause(r *http.Request) (groupBySQL string) {
+	queries := r.URL.Query()
+	groupQuery := queries.Get("_groupby")
+	if groupQuery == "" {
+		return
+	}
+
+	groupBySQL = fmt.Sprintf(statements.GroupBy, groupQuery)
+	return
+}
+
+// NormalizeGroupFunction normalize url params values to sql group functions
+func NormalizeGroupFunction(paramValue string) (groupFuncSQL string, err error) {
+	values := strings.Split(paramValue, ":")
+	groupFunc := strings.ToUpper(values[0])
+
+	switch groupFunc {
+	case "SUM", "AVG", "MAX", "MIN", "MEDIAN", "STDDEV", "VARIANCE":
+		// values[1] it's a field in table
+		groupFuncSQL = fmt.Sprintf("%s(%s)", groupFunc, values[1])
+		return
+	default:
+		err = fmt.Errorf("this function %s is not a valid group function", groupFunc)
+		return
+	}
 }
