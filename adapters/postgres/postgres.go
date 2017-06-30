@@ -681,12 +681,12 @@ func ColumnsByRequest(r *http.Request) []string {
 // GroupByClause get params in request to add group by clause
 func GroupByClause(r *http.Request) (groupBySQL string) {
 	queries := r.URL.Query()
-	countQuery := queries.Get("_groupby")
-	if countQuery == "" {
+	groupQuery := queries.Get("_groupby")
+	if groupQuery == "" {
 		return
 	}
 
-	groupBySQL = fmt.Sprintf("GROUP BY %s", countQuery)
+	groupBySQL = fmt.Sprintf(statements.GroupBy, groupQuery)
 	return
 }
 
