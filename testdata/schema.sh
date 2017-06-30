@@ -18,6 +18,7 @@ psql prest -c "create table test_jsonb_bug(id serial NOT NULL, name text, data j
 psql prest -c "create table testjson(name text, data jsonb);" -U postgres
 psql prest -c "create table testarray(id serial, data character varying(250)[]);" -U postgres
 psql prest -c "create table test_empty_table(id serial, data character varying(250)[]);" -U postgres
+psql prest -c "create table test_group_by_table(id serial, name text, age integer, salary int);" -U postgres
 
 # Inserts
 psql prest -c "insert into test (name) values ('prest tester');" -U postgres
@@ -34,6 +35,11 @@ psql prest -c "insert into test_deleteonly_access (name) values ('test01');" -U 
 psql prest -c "insert into test_jsonb_bug (name, data) values('goku', '{\"techniques\": [\"kamehameha\", \"kaioken\", \"genki-dama\"]}');" -U postgres
 psql prest -c "insert into test_jsonb_bug (name, data) values('goku', '{\"description\": \"testing\"}');" -U postgres
 psql prest -c "insert into testarray (id, data) values(100, '{\"Gohan\",\"Goten\"}');" -U postgres
+
+psql prest -c "insert into test_group_by_table(name, age, salary) values('joao', 20, 1250);" -U postgres
+psql prest -c "insert into test_group_by_table(name, age, salary) values('maria', 19, 3999);" -U postgres
+psql prest -c "insert into test_group_by_table(name, age, salary) values('gopher', 20, 100);" -U postgres
+psql prest -c "insert into test_group_by_table(name, age, salary) values('guitarra humana', 19, 3998);" -U postgres
 
 # Views
 psql prest -c "create table table_to_view(id serial, name text, celphone text);" -U postgres

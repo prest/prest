@@ -7,6 +7,7 @@
 port = 6000
 
 [pg]
+user = "postgres"
 database = "prest"
 
 [access]
@@ -65,4 +66,9 @@ restrict = true  # can access only the tables listed below
     name = "view_test"
     permissions = ["read"]
     fields = ["player"]
+
+    [[access.tables]]
+    name = "test_group_by_table"
+    permissions = ["read"]
+    fields = ["id", "name", "age", "salary"]
 
