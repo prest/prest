@@ -186,6 +186,41 @@ func TestInvalidWhereByRequest(t *testing.T) {
 	}
 }
 
+func TestGroupByClause(t *testing.T) {
+	var testCases = []struct {
+		description string
+		url         string
+		expectedSQL string
+		emptyCase   bool
+	}{
+		{"Group by clause with one field", "/prest/public/test5?_groupby=celphone", "GROUP BY celphone", false},
+		{"Group by clause with two fields", "/prest/public/test5?_groupby=celphone,name", "GROUP BY celphone,name", false},
+		{"Group by clause without fields", "/prest/public/test5?_groupby=", "", true},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		req, err := http.NewRequest("GET", tc.url, nil)
+		if err != nil {
+			t.Errorf("expected no errors in http request, got %v", err)
+		}
+
+		groupBySQL := GroupByClause(req)
+
+		if !tc.emptyCase && groupBySQL == "" {
+			t.Error("expected groupBySQL, got empty string")
+		}
+
+		if tc.emptyCase && groupBySQL != "" {
+			t.Errorf("expected empty, got %v", groupBySQL)
+		}
+
+		if groupBySQL != tc.expectedSQL {
+			t.Errorf("expected %s, got %s", tc.expectedSQL, groupBySQL)
+		}
+	}
+}
+
 func TestEmptyTable(t *testing.T) {
 	response, err := Query("SELECT * FROM test_empty_table")
 	if err != nil {
@@ -435,6 +470,7 @@ func TestChkInvaidIdentifier(t *testing.T) {
 		{"fild'Name", true},
 		{"fild\"Name", true},
 		{"fild;Name", true},
+		{"SUM(test)", false},
 		{"_123456789_123456789_123456789_123456789_123456789_123456789_12345", true},
 	}
 
@@ -736,20 +772,26 @@ func TestTablePermissions(t *testing.T) {
 func TestFieldsPermissions(t *testing.T) {
 	var testCases = []struct {
 		description string
+		url         string
 		table       string
-		fields      []string
 		permission  string
 		resultLen   int
 	}{
-		{"Read valid field", "test_list_only_id", []string{"id"}, "read", 1},
-		{"Read invalid field", "test_list_only_id", []string{"name"}, "read", 0},
-		{"Read non existing field", "test_list_only_id", []string{"non_existing_field"}, "read", 0},
-		{"Select with *", "test_list_only_id", []string{"*"}, "read", 1},
+		{"Read valid field", "/prest/public/test_list_only_id?_select=id", "test_list_only_id", "read", 1},
+		{"Read invalid field", "/prest/public/test_list_only_id?_select=name", "test_list_only_id", "read", 0},
+		{"Read non existing field", "/prest/public/test_list_only_id?_select=non_existing_field", "test_list_only_id", "read", 0},
+		{"Select with *", "/prest/public/test_list_only_id?_select=*", "test_list_only_id", "read", 1},
 	}
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		fields := FieldsPermissions(tc.table, tc.fields, tc.permission)
+
+		r, err := http.NewRequest("GET", tc.url, nil)
+		if err != nil {
+			t.Errorf("expected no errors on NewRequest, but got: %v", err)
+		}
+
+		fields := FieldsPermissions(r, tc.table, tc.permission)
 		if len(fields) != tc.resultLen {
 			t.Errorf("expected %d, got: %d - %v", tc.resultLen, len(fields), fields)
 		}
@@ -759,8 +801,14 @@ func TestFieldsPermissions(t *testing.T) {
 func TestRestrictFalse(t *testing.T) {
 	config.PrestConf.AccessConf.Restrict = false
 
-	t.Log("Read unrestrict")
-	fields := FieldsPermissions("test_list_only_id", []string{"*"}, "read")
+	t.Log("Read unrestrict", config.PrestConf.AccessConf.Restrict)
+
+	r, err := http.NewRequest("GET", "/prest/public/test_list_only_id?_select=*", nil)
+	if err != nil {
+		t.Errorf("expected no errors on NewRequest, but got: %v", err)
+	}
+
+	fields := FieldsPermissions(r, "test_list_only_id", "read")
 	if fields[0] != "*" {
 		t.Errorf("expected '*', got: %s", fields[0])
 	}
@@ -841,6 +889,7 @@ func TestColumnsByRequest(t *testing.T) {
 		}
 	}
 }
+
 func TestParseArray(t *testing.T) {
 	in := []interface{}{"value 1", "value 2", "value 3"}
 	ret := parseArray(in)
@@ -861,5 +910,32 @@ func TestParseArray(t *testing.T) {
 	retString = `{}`
 	if ret != retString {
 		t.Errorf("Error expected %s, got %s", retString, ret)
+	}
+}
+
+func TestNormalizeGroupFunction(t *testing.T) {
+	var testCases = []struct {
+		description string
+		urlValue    string
+		expectedSQL string
+	}{
+		{"Normalize AVG Function", "avg:age", "AVG(age)"},
+		{"Normalize SUM Function", "sum:age", "SUM(age)"},
+		{"Normalize MAX Function", "max:age", "MAX(age)"},
+		{"Normalize MIN Function", "min:age", "MIN(age)"},
+		{"Normalize MEDIAN Function", "median:age", "MEDIAN(age)"},
+		{"Normalize STDDEV Function", "stddev:age", "STDDEV(age)"},
+		{"Normalize VARIANCE Function", "variance:age", "VARIANCE(age)"},
+	}
+
+	for _, tc := range testCases {
+		partialSQL, err := NormalizeGroupFunction(tc.urlValue)
+		if err != nil {
+			t.Errorf("This function should not return error: %s", tc.description)
+		}
+
+		if tc.expectedSQL != partialSQL {
+			t.Errorf("expected: %s, got: %s", tc.expectedSQL, partialSQL)
+		}
 	}
 }
