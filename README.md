@@ -302,6 +302,14 @@ We support this Group Functions:
 #### Using Group Functions
 	GET /DATABASE/SCHEMA/TABLE/?_select=fieldname00,sum:fieldname01&_groupby=fieldname01
 
+#### Having support
+To use Having clause with **Group By**, follow this syntax:
+	
+	_groupby=fieldname->>having:GROUPFUNC:FIELDNAME:CONDITION:VALUE-CONDITION
+	
+Example:
+	
+	GET /DATABASE/SCHEMA/TABLE/?_select=fieldname00,sum:fieldname01&_groupby=fieldname01-->having:sum:fieldname01:$gt:500
 
 
 ## Executing SQL scripts
