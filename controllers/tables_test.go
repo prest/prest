@@ -90,6 +90,7 @@ func TestSelectFromTables(t *testing.T) {
 		{"execute select in a table with select *", "/prest/public/test5?_select=*", "GET", http.StatusOK, ""},
 
 		{"execute select in a table with group by clause", "/prest/public/test_group_by_table?_select=age,sum:salary&_groupby=age", "GET", http.StatusOK, "[{\"age\":20,\"sum\":1350}, \n {\"age\":19,\"sum\":7997}]"},
+		{"Execute select in a table with group by and having clause", "/prest/public/test_group_by_table?_select=age,sum:salary&_groupby=age->>having:sum:salary:$gt:3000", "GET", http.StatusOK, "[{\"age\":19,\"sum\":7997}]"},
 
 		{"execute select in a view without custom where clause", "/prest/public/view_test", "GET", http.StatusOK, ""},
 		{"execute select in a view with count all fields *", "/prest/public/view_test?_count=*", "GET", http.StatusOK, ""},
@@ -109,6 +110,7 @@ func TestSelectFromTables(t *testing.T) {
 		{"execute select in a table with invalid count clause", "/prest/public/test?_count=0name", "GET", http.StatusBadRequest, ""},
 		{"execute select in a table with invalid order clause", "/prest/public/test?_order=0name", "GET", http.StatusBadRequest, ""},
 		{"execute select in a table with invalid fields using group by clause", "/prest/public/test_group_by_table?_select=pa,sum:pum&_groupby=pa", "GET", http.StatusBadRequest, ""},
+		{"execute select in a table with invalid fields using group by and having clause", "/prest/public/test_group_by_table?_select=pa,sum:pum&_groupby=pa->>having:sum:pmu:$eq:150", "GET", http.StatusBadRequest, ""},
 
 		{"execute select in a view with an other column", "/prest/public/view_test?_select=celphone", "GET", http.StatusBadRequest, ""},
 		{"execute select in a view with where and column invalid", "/prest/public/view_test?0celphone=$eq.888888", "GET", http.StatusBadRequest, ""},

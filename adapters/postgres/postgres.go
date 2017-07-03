@@ -686,6 +686,31 @@ func GroupByClause(r *http.Request) (groupBySQL string) {
 		return
 	}
 
+	if strings.Contains(groupQuery, "->>having") {
+		params := strings.Split(groupQuery, ":")
+		groupFieldQuery := strings.Split(groupQuery, "->>having")
+		if len(params) != 5 {
+			groupBySQL = fmt.Sprintf(statements.GroupBy, groupFieldQuery[0])
+			return
+		}
+		// groupFunc, field, condition, conditionValue string
+		groupFunc, err := NormalizeGroupFunction(fmt.Sprintf("%s:%s", params[1], params[2]))
+		if err != nil {
+			groupBySQL = fmt.Sprintf(statements.GroupBy, groupFieldQuery[0])
+			return
+		}
+
+		operator, err := GetQueryOperator(params[3])
+		if err != nil {
+			groupBySQL = fmt.Sprintf(statements.GroupBy, groupFieldQuery[0])
+			return
+		}
+
+		havingQuery := fmt.Sprintf(statements.Having, groupFunc, operator, params[4])
+		groupBySQL = fmt.Sprintf("%s %s", fmt.Sprintf(statements.GroupBy, groupFieldQuery[0]), havingQuery)
+		return
+	}
+
 	groupBySQL = fmt.Sprintf(statements.GroupBy, groupQuery)
 	return
 }
