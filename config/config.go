@@ -5,10 +5,8 @@ import (
 	"log"
 	"os"
 	"os/user"
-	"path"
 	"path/filepath"
 	"strings"
-
 	"github.com/spf13/viper"
 )
 
@@ -50,7 +48,7 @@ var PrestConf *Prest
 
 func viperCfg() {
 	filePath := os.Getenv("PREST_CONF")
-	dir, file := path.Split(filePath)
+	dir, file := filepath.Split(filePath)
 	file = strings.TrimSuffix(file, filepath.Ext(file))
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvPrefix("PREST")
