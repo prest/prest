@@ -1,6 +1,8 @@
 package middlewares
 
 import (
+	"fmt"
+
 	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/middlewares"
 	"github.com/rs/cors"
@@ -17,7 +19,7 @@ var (
 	BaseStack = []negroni.Handler{
 		negroni.Handler(negroni.NewRecovery()),
 		negroni.Handler(negroni.NewLogger()),
-		// negroni.Handler(middlewares.HandlerSet()),
+		negroni.Handler(middlewares.HandlerSet()),
 	}
 )
 
@@ -29,6 +31,7 @@ func initApp() {
 		MiddlewareStack = append(MiddlewareStack, negroni.Handler(middlewares.JwtMiddleware(config.PrestConf.JWTKey)))
 	}
 	if config.PrestConf.CORSAllowOrigin != nil {
+		fmt.Println("Allow origin ", config.PrestConf.CORSAllowOrigin)
 		c := cors.New(cors.Options{
 			AllowedOrigins: config.PrestConf.CORSAllowOrigin,
 		})
