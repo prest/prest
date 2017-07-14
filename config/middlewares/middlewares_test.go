@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -184,6 +185,7 @@ func appTest() *negroni.Negroni {
 
 func TestCors(t *testing.T) {
 	os.Setenv("PREST_DEBUG", "true")
+	os.Setenv("PREST_CONF", "../../testdata/prest.toml")
 	config.Load()
 	app = nil
 	r := router.Get()
@@ -196,7 +198,6 @@ func TestCors(t *testing.T) {
 		middlewares.AccessControl(),
 		negroni.Wrap(crudRoutes),
 	))
-	os.Setenv("PREST_CONF", "../../testdata/prest.toml")
 	n := GetApp()
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
@@ -204,6 +205,9 @@ func TestCors(t *testing.T) {
 	resp, err := http.Get(server.URL)
 	if err != nil {
 		t.Fatal("expected run without errors but was", err)
+	}
+	for key, val := range resp.Header {
+		fmt.Println("Key: ", key, "value:", val)
 	}
 	if resp.Header.Get("Access-Control-Allow-Origin") != "*" {
 		t.Errorf("expected allow origin *, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
