@@ -35,7 +35,7 @@ func initApp() {
 		c := cors.New(cors.Options{
 			AllowedOrigins: config.PrestConf.CORSAllowOrigin,
 		})
-		MiddlewareStack = append(MiddlewareStack, negroni.Handler(c))
+		MiddlewareStack = append(MiddlewareStack, c)
 	}
 	app = negroni.New(MiddlewareStack...)
 }
