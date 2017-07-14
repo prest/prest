@@ -181,3 +181,31 @@ func appTest() *negroni.Negroni {
 	n.UseHandler(r)
 	return n
 }
+
+func TestCors(t *testing.T) {
+	os.Setenv("PREST_DEBUG", "true")
+	config.Load()
+	app = nil
+	r := router.Get()
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
+	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
+
+	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.SelectFromTables).Methods("GET")
+
+	r.PathPrefix("/").Handler(negroni.New(
+		middlewares.AccessControl(),
+		negroni.Wrap(crudRoutes),
+	))
+	os.Setenv("PREST_CONF", "../../testdata/prest.toml")
+	n := GetApp()
+	n.UseHandler(r)
+	server := httptest.NewServer(n)
+	defer server.Close()
+	resp, err := http.Get(server.URL)
+	if err != nil {
+		t.Fatal("expected run without errors but was", err)
+	}
+	if resp.Header.Get("Access-Control-Allow-Origin") != "*" {
+		t.Errorf("expected allow origin *, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
+	}
+}

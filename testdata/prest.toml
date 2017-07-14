@@ -72,3 +72,5 @@ restrict = true  # can access only the tables listed below
     permissions = ["read"]
     fields = ["id", "name", "age", "salary"]
 
+[cors]
+alloworigin = ["*"]
