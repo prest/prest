@@ -229,6 +229,7 @@ func (c *Cors) HandlerFunc(w http.ResponseWriter, r *http.Request) {
 
 // Negroni compatible interface
 func (c *Cors) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	fmt.Println("entrou no cors")
 	if r.Method == "OPTIONS" {
 		c.logf("ServeHTTP: Preflight request")
 		c.handlePreflight(w, r)
