@@ -21,6 +21,7 @@ The resulting handler is a standard net/http handler.
 package cors
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -331,6 +332,7 @@ func (c *Cors) handleActualRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	headers.Set("Access-Control-Allow-Origin", origin)
+	fmt.Println(">>>>>>> setou header, ", origin)
 	if len(c.exposedHeaders) > 0 {
 		headers.Set("Access-Control-Expose-Headers", strings.Join(c.exposedHeaders, ", "))
 	}
