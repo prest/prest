@@ -44,14 +44,17 @@ func permissionByMethod(method string) (permission string) {
 }
 
 func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, format string) {
+	for key, value := range recorder.Header() {
+		if len(value) > 0 {
+			w.Header().Set(key, value[0])
+		}
+	}
 	byt, _ := ioutil.ReadAll(recorder.Body)
-
 	if recorder.Code != http.StatusOK {
 		m := make(map[string]string)
 		m["error"] = strings.TrimSpace(string(byt))
 		byt, _ = json.MarshalIndent(m, "", "\t")
 	}
-
 	switch format {
 	case "xml":
 		xmldata, err := j2x.JsonToXml(byt)
