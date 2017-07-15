@@ -45,7 +45,6 @@ func permissionByMethod(method string) (permission string) {
 
 func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, format string) {
 	for key, value := range recorder.Header() {
-		fmt.Println("Key:", key, "Value:", value)
 		if len(value) > 0 {
 			w.Header().Set(key, value[0])
 		}

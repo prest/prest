@@ -219,18 +219,6 @@
 			"revisionTime": "2017-01-16T02:49:11Z"
 		},
 		{
-			"checksumSHA1": "lZmPAbekxLbMFQirB/vzbdI+5O8=",
-			"path": "github.com/rs/cors",
-			"revision": "8dd4211afb5d08dbb39a533b9bb9e4b486351df6",
-			"revisionTime": "2017-06-08T16:51:55Z"
-		},
-		{
-			"checksumSHA1": "hCRfPlNpqv8tvVivLzmXsoUOf1c=",
-			"path": "github.com/rs/xhandler",
-			"revision": "ed27b6fd65218132ee50cd95f38474a3d8a2cd12",
-			"revisionTime": "2016-06-18T19:32:21Z"
-		},
-		{
 			"checksumSHA1": "lBehULzb2/kIK3wZ0gz2yNmHq9s=",
 			"path": "github.com/spf13/afero",
 			"revision": "72b31426848c6ef12a7a8e216708cb0d1530f074",
