@@ -37,7 +37,7 @@ func initApp() {
 		})
 		MiddlewareStack = append(MiddlewareStack, c)
 	}
-	fmt.Println(">>>>> stack", MiddlewareStack)
+	fmt.Printf(">>>>> stack %T", MiddlewareStack)
 	app = negroni.New(MiddlewareStack...)
 }
 
