@@ -21,15 +21,11 @@ The resulting handler is a standard net/http handler.
 package cors
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
-
-	"github.com/rs/xhandler"
-	"golang.org/x/net/context"
 )
 
 // Options is a configuration container to setup the CORS middleware.
@@ -37,7 +33,7 @@ type Options struct {
 	// AllowedOrigins is a list of origins a cross-domain request can be executed from.
 	// If the special "*" value is present in the list, all origins will be allowed.
 	// An origin may contain a wildcard (*) to replace 0 or more characters
-	// (i.e.: http://*.domain.com). Usage of wildcards implies a small performance penality.
+	// (i.e.: http://*.domain.com). Usage of wildcards implies a small performance penalty.
 	// Only one wildcard can be used per origin.
 	// Default value is ["*"]
 	AllowedOrigins []string
@@ -113,8 +109,10 @@ func New(options Options) *Cors {
 
 	// Allowed Origins
 	if len(options.AllowedOrigins) == 0 {
-		// Default is all origins
-		c.allowedOriginsAll = true
+		if options.AllowOriginFunc == nil {
+			// Default is all origins
+			c.allowedOriginsAll = true
+		}
 	} else {
 		c.allowedOrigins = []string{}
 		c.allowedWOrigins = []wildcard{}
@@ -164,9 +162,20 @@ func New(options Options) *Cors {
 	return c
 }
 
-// Default creates a new Cors handler with default options
+// Default creates a new Cors handler with default options.
 func Default() *Cors {
 	return New(Options{})
+}
+
+// AllowAll create a new Cors handler with permissive configuration allowing all
+// origins with all standard methods with any header and credentials.
+func AllowAll() *Cors {
+	return New(Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"HEAD", "GET", "POST", "PUT", "PATCH", "DELETE"},
+		AllowedHeaders:   []string{"*"},
+		AllowCredentials: true,
+	})
 }
 
 // Handler apply the CORS specification on the request, and add relevant CORS headers
@@ -193,29 +202,6 @@ func (c *Cors) Handler(h http.Handler) http.Handler {
 	})
 }
 
-// HandlerC is net/context aware handler
-func (c *Cors) HandlerC(h xhandler.HandlerC) xhandler.HandlerC {
-	return xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-		if r.Method == "OPTIONS" {
-			c.logf("Handler: Preflight request")
-			c.handlePreflight(w, r)
-			// Preflight requests are standalone and should stop the chain as some other
-			// middleware may not handle OPTIONS requests correctly. One typical example
-			// is authentication middleware ; OPTIONS requests won't carry authentication
-			// headers (see #1)
-			if c.optionPassthrough {
-				h.ServeHTTPC(ctx, w, r)
-			} else {
-				w.WriteHeader(http.StatusOK)
-			}
-		} else {
-			c.logf("Handler: Actual request")
-			c.handleActualRequest(w, r)
-			h.ServeHTTPC(ctx, w, r)
-		}
-	})
-}
-
 // HandlerFunc provides Martini compatible handler
 func (c *Cors) HandlerFunc(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "OPTIONS" {
@@ -229,7 +215,6 @@ func (c *Cors) HandlerFunc(w http.ResponseWriter, r *http.Request) {
 
 // Negroni compatible interface
 func (c *Cors) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	fmt.Println("entrou no cors")
 	if r.Method == "OPTIONS" {
 		c.logf("ServeHTTP: Preflight request")
 		c.handlePreflight(w, r)
@@ -284,7 +269,11 @@ func (c *Cors) handlePreflight(w http.ResponseWriter, r *http.Request) {
 		c.logf("  Preflight aborted: headers '%v' not allowed", reqHeaders)
 		return
 	}
-	headers.Set("Access-Control-Allow-Origin", origin)
+	if c.allowedOriginsAll && !c.allowCredentials {
+		headers.Set("Access-Control-Allow-Origin", "*")
+	} else {
+		headers.Set("Access-Control-Allow-Origin", origin)
+	}
 	// Spec says: Since the list of methods can be unbounded, simply returning the method indicated
 	// by Access-Control-Request-Method (if supported) can be enough
 	headers.Set("Access-Control-Allow-Methods", strings.ToUpper(reqMethod))
@@ -332,8 +321,11 @@ func (c *Cors) handleActualRequest(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
-	headers.Set("Access-Control-Allow-Origin", origin)
-	fmt.Println(">>>>>>> setou header, ", origin)
+	if c.allowedOriginsAll && !c.allowCredentials {
+		headers.Set("Access-Control-Allow-Origin", "*")
+	} else {
+		headers.Set("Access-Control-Allow-Origin", origin)
+	}
 	if len(c.exposedHeaders) > 0 {
 		headers.Set("Access-Control-Expose-Headers", strings.Join(c.exposedHeaders, ", "))
 	}

@@ -219,10 +219,10 @@
 			"revisionTime": "2017-01-16T02:49:11Z"
 		},
 		{
-			"checksumSHA1": "LjPdvMphElL0GOVNQCsmZMVgWIw=",
+			"checksumSHA1": "lZmPAbekxLbMFQirB/vzbdI+5O8=",
 			"path": "github.com/rs/cors",
-			"revision": "a62a804a8a009876ca59105f7899938a1349f4b3",
-			"revisionTime": "2016-06-17T23:19:35Z"
+			"revision": "8dd4211afb5d08dbb39a533b9bb9e4b486351df6",
+			"revisionTime": "2017-06-08T16:51:55Z"
 		},
 		{
 			"checksumSHA1": "hCRfPlNpqv8tvVivLzmXsoUOf1c=",
