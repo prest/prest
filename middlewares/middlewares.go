@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"strings"
+
 	"github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/nuveo/prest/adapters/postgres"
@@ -56,4 +58,14 @@ func JwtMiddleware(key string) negroni.Handler {
 		SigningMethod: jwt.SigningMethodHS256,
 	})
 	return negroni.HandlerFunc(jwtMiddleware.HandlerWithNext)
+}
+
+// Cors middleware
+func Cors(origin []string) negroni.Handler {
+	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+		w.Header().Set("Access-Control-Allow-Origin", strings.Join(origin, ", "))
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+	})
 }

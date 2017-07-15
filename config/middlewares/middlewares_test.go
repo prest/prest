@@ -2,7 +2,6 @@ package middlewares
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -206,10 +205,15 @@ func TestCors(t *testing.T) {
 	if err != nil {
 		t.Fatal("expected run without errors but was", err)
 	}
-	for key, val := range resp.Header {
-		fmt.Println("Key: ", key, "value:", val)
-	}
 	if resp.Header.Get("Access-Control-Allow-Origin") != "*" {
 		t.Errorf("expected allow origin *, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
+	}
+	var body []byte
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal("Expected run without errors but was", err)
+	}
+	if len(body) == 0 {
+		t.Error("body is empty")
 	}
 }
