@@ -67,5 +67,6 @@ func Cors(origin []string) negroni.Handler {
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 		w.Header().Set("Access-Control-Allow-Headers", "*")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		next(w, r)
 	})
 }
