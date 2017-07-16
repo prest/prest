@@ -208,6 +208,9 @@ func TestCors(t *testing.T) {
 	if resp.Header.Get("Access-Control-Allow-Origin") != "*" {
 		t.Errorf("expected allow origin *, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
 	}
+	if resp.Header.Get("Access-Control-Allow-Methods") != "POST, GET, OPTIONS, PUT, PATCH, DELETE" {
+		t.Error("wrong allow methods")
+	}
 	var body []byte
 	body, err = ioutil.ReadAll(resp.Body)
 	if err != nil {

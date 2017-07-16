@@ -46,7 +46,7 @@ func permissionByMethod(method string) (permission string) {
 func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, format string) {
 	for key, value := range recorder.Header() {
 		if len(value) > 0 {
-			w.Header().Set(key, value[0])
+			w.Header().Set(key, recorder.Header().Get(key))
 		}
 	}
 	byt, _ := ioutil.ReadAll(recorder.Body)
