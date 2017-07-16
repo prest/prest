@@ -211,6 +211,9 @@ func TestCors(t *testing.T) {
 	if resp.Header.Get("Access-Control-Allow-Methods") != "POST, GET, OPTIONS, PUT, PATCH, DELETE" {
 		t.Error("wrong allow methods")
 	}
+	if resp.Request.Method != "GET" {
+		t.Errorf("expected method GET, but got %v", resp.Request.Method)
+	}
 	var body []byte
 	body, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
