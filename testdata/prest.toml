@@ -71,6 +71,3 @@ restrict = true  # can access only the tables listed below
     name = "test_group_by_table"
     permissions = ["read"]
     fields = ["id", "name", "age", "salary"]
-
-[cors]
-alloworigin = ["*"]
