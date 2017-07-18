@@ -87,11 +87,10 @@ const (
 	headerAllowHeaders     = "Access-Control-Allow-Headers"
 	headerAllowMethods     = "Access-Control-Allow-Methods"
 	headerOrigin           = "Origin"
-	headerRequestMethod    = "Access-Control-Request-Method"
 )
 
 func checkCors(r *http.Request, origin string) (allowed bool, err error) {
-	_, allowed = defaultAllowMethods[r.Header.Get(headerRequestMethod)]
+	_, allowed = defaultAllowMethods[r.Method]
 	if !allowed {
 		return
 	}
