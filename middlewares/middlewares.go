@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 
 	"strings"
 
@@ -63,10 +64,19 @@ func JwtMiddleware(key string) negroni.Handler {
 // Cors middleware
 func Cors(origin []string) negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		w.Header().Set("Access-Control-Allow-Origin", strings.Join(origin, ", "))
-		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, PATCH, DELETE")
-		w.Header().Set("Access-Control-Allow-Headers", "*")
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		originHeaderValue := strings.Join(origin, ",")
+		w.Header().Set(headerAllowOrigin, originHeaderValue)
+		var methodHeaderValues []string
+		for key := range defaultAllowMethods {
+			methodHeaderValues = append(methodHeaderValues, key)
+		}
+		w.Header().Set(headerAllowMethods, strings.Join(methodHeaderValues, ","))
+		w.Header().Set(headerAllowHeaders, "*")
+		w.Header().Set(headerAllowCredentials, strconv.FormatBool(true))
+		if allowed, err := checkCors(r, originHeaderValue); err != nil || !allowed {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
 		next(w, r)
 	})
 }

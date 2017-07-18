@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"regexp"
+
 	"github.com/clbanning/mxj/j2x"
 	"github.com/nuveo/prest/statements"
 )
@@ -69,4 +71,30 @@ func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, fo
 		w.WriteHeader(recorder.Code)
 		w.Write(byt)
 	}
+}
+
+var defaultAllowMethods = map[string]bool{
+	"GET":    true,
+	"POST":   true,
+	"PUT":    true,
+	"PATCH":  true,
+	"DELETE": true,
+}
+
+const (
+	headerAllowOrigin      = "Access-Control-Allow-Origin"
+	headerAllowCredentials = "Access-Control-Allow-Credentials"
+	headerAllowHeaders     = "Access-Control-Allow-Headers"
+	headerAllowMethods     = "Access-Control-Allow-Methods"
+	headerOrigin           = "Origin"
+	headerRequestMethod    = "Access-Control-Request-Method"
+)
+
+func checkCors(r *http.Request, origin string) (allowed bool, err error) {
+	_, allowed = defaultAllowMethods[r.Header.Get(headerRequestMethod)]
+	if !allowed {
+		return
+	}
+	allowed, err = regexp.Match(origin, []byte(r.Header.Get(headerOrigin)))
+	return
 }

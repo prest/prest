@@ -280,7 +280,7 @@ func TestCorsHead(t *testing.T) {
 	if resp.Request.Method != "HEAD" {
 		t.Errorf("expected method HEAD, but got %v", resp.Request.Method)
 	}
-	if resp.StatusCode == http.StatusOK {
-		t.Error("HTTP status code is 200")
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("expected status code 401 but got %d", resp.StatusCode)
 	}
 }
