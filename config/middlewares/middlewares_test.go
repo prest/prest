@@ -182,21 +182,13 @@ func appTest() *negroni.Negroni {
 	return n
 }
 
-func TestCors(t *testing.T) {
+func TestCorsGet(t *testing.T) {
 	os.Setenv("PREST_DEBUG", "true")
 	os.Setenv("PREST_CONF", "../../testdata/prest.toml")
 	config.Load()
 	app = nil
 	r := router.Get()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
-	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
-
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.SelectFromTables).Methods("GET")
-
-	r.PathPrefix("/").Handler(negroni.New(
-		middlewares.AccessControl(),
-		negroni.Wrap(crudRoutes),
-	))
 	n := GetApp()
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
@@ -221,5 +213,68 @@ func TestCors(t *testing.T) {
 	}
 	if len(body) == 0 {
 		t.Error("body is empty")
+	}
+}
+
+func TestCorsPost(t *testing.T) {
+	os.Setenv("PREST_DEBUG", "true")
+	os.Setenv("PREST_CONF", "../../testdata/prest.toml")
+	config.Load()
+	app = nil
+	r := router.Get()
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
+	n := GetApp()
+	n.UseHandler(r)
+	server := httptest.NewServer(n)
+	defer server.Close()
+	resp, err := http.Post(server.URL, "application/json", nil)
+	if err != nil {
+		t.Fatal("expected run without errors but was", err)
+	}
+	if resp.Header.Get("Access-Control-Allow-Origin") != "*" {
+		t.Errorf("expected allow origin *, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
+	}
+	if resp.Header.Get("Access-Control-Allow-Methods") != "POST, GET, OPTIONS, PUT, PATCH, DELETE" {
+		t.Error("wrong allow methods")
+	}
+	if resp.Request.Method != "POST" {
+		t.Errorf("expected method POST, but got %v", resp.Request.Method)
+	}
+	var body []byte
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal("Expected run without errors but was", err)
+	}
+	if len(body) == 0 {
+		t.Error("body is empty")
+	}
+}
+
+func TestCorsHead(t *testing.T) {
+	os.Setenv("PREST_DEBUG", "true")
+	os.Setenv("PREST_CONF", "../../testdata/prest.toml")
+	config.Load()
+	app = nil
+	r := router.Get()
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
+	n := GetApp()
+	n.UseHandler(r)
+	server := httptest.NewServer(n)
+	defer server.Close()
+	resp, err := http.Get(server.URL)
+	if err != nil {
+		t.Fatal("expected run without errors but was", err)
+	}
+	if resp.Header.Get("Access-Control-Allow-Origin") != "*" {
+		t.Errorf("expected allow origin *, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
+	}
+	if resp.Header.Get("Access-Control-Allow-Methods") != "POST, GET, OPTIONS, PUT, PATCH, DELETE" {
+		t.Error("wrong allow methods")
+	}
+	if resp.Request.Method != "HEAD" {
+		t.Errorf("expected method HEAD, but got %v", resp.Request.Method)
+	}
+	if resp.StatusCode == http.StatusOK {
+		t.Error("HTTP status code is 200")
 	}
 }
