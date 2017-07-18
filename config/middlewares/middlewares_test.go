@@ -200,8 +200,18 @@ func TestCorsGet(t *testing.T) {
 	if resp.Header.Get("Access-Control-Allow-Origin") != "*" {
 		t.Errorf("expected allow origin *, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
 	}
-	if resp.Header.Get("Access-Control-Allow-Methods") != "POST, GET, OPTIONS, PUT, PATCH, DELETE" {
-		t.Error("wrong allow methods")
+	methods := resp.Header.Get("Access-Control-Allow-Methods")
+	if !strings.Contains(methods, "POST") {
+		t.Error("not contain POST")
+	}
+	if !strings.Contains(methods, "PUT") {
+		t.Error("not contain PUT")
+	}
+	if !strings.Contains(methods, "PATCH") {
+		t.Error("not contain PATCH")
+	}
+	if !strings.Contains(methods, "GET") {
+		t.Error("not contain GET")
 	}
 	if resp.Request.Method != "GET" {
 		t.Errorf("expected method GET, but got %v", resp.Request.Method)
@@ -234,8 +244,18 @@ func TestCorsPost(t *testing.T) {
 	if resp.Header.Get("Access-Control-Allow-Origin") != "*" {
 		t.Errorf("expected allow origin *, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
 	}
-	if resp.Header.Get("Access-Control-Allow-Methods") != "POST, GET, OPTIONS, PUT, PATCH, DELETE" {
-		t.Error("wrong allow methods")
+	methods := resp.Header.Get("Access-Control-Allow-Methods")
+	if !strings.Contains(methods, "POST") {
+		t.Error("not contain POST")
+	}
+	if !strings.Contains(methods, "PUT") {
+		t.Error("not contain PUT")
+	}
+	if !strings.Contains(methods, "PATCH") {
+		t.Error("not contain PATCH")
+	}
+	if !strings.Contains(methods, "GET") {
+		t.Error("not contain GET")
 	}
 	if resp.Request.Method != "POST" {
 		t.Errorf("expected method POST, but got %v", resp.Request.Method)
@@ -274,8 +294,18 @@ func TestCorsHead(t *testing.T) {
 	if resp.Header.Get("Access-Control-Allow-Origin") != "*" {
 		t.Errorf("expected allow origin *, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
 	}
-	if resp.Header.Get("Access-Control-Allow-Methods") != "POST, GET, OPTIONS, PUT, PATCH, DELETE" {
-		t.Error("wrong allow methods")
+	methods := resp.Header.Get("Access-Control-Allow-Methods")
+	if !strings.Contains(methods, "POST") {
+		t.Error("not contain POST")
+	}
+	if !strings.Contains(methods, "PUT") {
+		t.Error("not contain PUT")
+	}
+	if !strings.Contains(methods, "PATCH") {
+		t.Error("not contain PATCH")
+	}
+	if !strings.Contains(methods, "GET") {
+		t.Error("not contain GET")
 	}
 	if resp.Request.Method != "HEAD" {
 		t.Errorf("expected method HEAD, but got %v", resp.Request.Method)
