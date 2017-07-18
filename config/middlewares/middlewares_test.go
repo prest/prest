@@ -261,7 +261,13 @@ func TestCorsHead(t *testing.T) {
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
 	defer server.Close()
-	resp, err := http.Get(server.URL)
+	client := http.Client{}
+	req, err := http.NewRequest("HEAD", server.URL, nil)
+	if err != nil {
+		t.Fatal("expected run without errors but was", err)
+	}
+	var resp *http.Response
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatal("expected run without errors but was", err)
 	}
@@ -274,12 +280,7 @@ func TestCorsHead(t *testing.T) {
 	if resp.Request.Method != "HEAD" {
 		t.Errorf("expected method HEAD, but got %v", resp.Request.Method)
 	}
-	var body []byte
-	body, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal("Expected run without errors but was", err)
-	}
-	if len(body) > 0 {
-		t.Errorf("expected body empty, but got %s", string(body))
+	if resp.StatusCode == http.StatusOK {
+		t.Error("HTTP status code is 200")
 	}
 }
