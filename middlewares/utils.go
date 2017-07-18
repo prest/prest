@@ -8,8 +8,6 @@ import (
 	"net/http/httptest"
 	"strings"
 
-	"regexp"
-
 	"github.com/clbanning/mxj/j2x"
 	"github.com/nuveo/prest/statements"
 )
@@ -73,12 +71,12 @@ func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, fo
 	}
 }
 
-var defaultAllowMethods = map[string]bool{
-	"GET":    true,
-	"POST":   true,
-	"PUT":    true,
-	"PATCH":  true,
-	"DELETE": true,
+var defaultAllowMethods = []string{
+	"GET",
+	"POST",
+	"PUT",
+	"PATCH",
+	"DELETE",
 }
 
 const (
@@ -89,13 +87,26 @@ const (
 	headerOrigin           = "Origin"
 )
 
-func checkCors(r *http.Request, origin string) (allowed bool, err error) {
-	_, allowed = defaultAllowMethods[r.Method]
-	if !allowed {
+func checkCors(r *http.Request, origin []string) (allowed bool) {
+	var mAllowed bool
+	for _, m := range defaultAllowMethods {
+		if m == r.Method {
+			mAllowed = true
+			break
+		}
+	}
+	if !mAllowed {
 		return
 	}
-	if origin != "*" {
-		allowed, err = regexp.Match(origin, []byte(r.Header.Get(headerOrigin)))
+	org := r.Header.Get(headerOrigin)
+	var oAllowed bool
+	for _, o := range origin {
+		if o == org {
+			oAllowed = true
+		}
+	}
+	if oAllowed && mAllowed {
+		allowed = true
 	}
 	return
 }

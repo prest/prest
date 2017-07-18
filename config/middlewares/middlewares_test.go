@@ -331,8 +331,8 @@ func TestCorsAllowOriginNotAll(t *testing.T) {
 	if err != nil {
 		t.Fatal("expected run without errors but was", err)
 	}
-	if resp.Header.Get("Access-Control-Allow-Origin") != "*" {
-		t.Errorf("expected allow origin *, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
+	if resp.Header.Get("Access-Control-Allow-Origin") != "http://127.0.0.1" {
+		t.Errorf("expected allow origin http://127.0.0.1, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
 	}
 	methods := resp.Header.Get("Access-Control-Allow-Methods")
 	if !strings.Contains(methods, "POST") {
