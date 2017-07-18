@@ -314,3 +314,48 @@ func TestCorsHead(t *testing.T) {
 		t.Errorf("expected status code 403 but got %d", resp.StatusCode)
 	}
 }
+
+func TestCorsAllowOriginNotAll(t *testing.T) {
+	os.Setenv("PREST_DEBUG", "true")
+	os.Setenv("PREST_CONF", "../../testdata/prest.toml")
+	config.Load()
+	config.PrestConf.CORSAllowOrigin = []string{"http://127.0.0.1"}
+	app = nil
+	r := router.Get()
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
+	n := GetApp()
+	n.UseHandler(r)
+	server := httptest.NewServer(n)
+	defer server.Close()
+	resp, err := http.Post(server.URL, "application/json", nil)
+	if err != nil {
+		t.Fatal("expected run without errors but was", err)
+	}
+	if resp.Header.Get("Access-Control-Allow-Origin") != "*" {
+		t.Errorf("expected allow origin *, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
+	}
+	methods := resp.Header.Get("Access-Control-Allow-Methods")
+	if !strings.Contains(methods, "POST") {
+		t.Error("not contain POST")
+	}
+	if !strings.Contains(methods, "PUT") {
+		t.Error("not contain PUT")
+	}
+	if !strings.Contains(methods, "PATCH") {
+		t.Error("not contain PATCH")
+	}
+	if !strings.Contains(methods, "GET") {
+		t.Error("not contain GET")
+	}
+	if resp.Request.Method != "POST" {
+		t.Errorf("expected method POST, but got %v", resp.Request.Method)
+	}
+	var body []byte
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal("Expected run without errors but was", err)
+	}
+	if len(body) == 0 {
+		t.Error("body is empty")
+	}
+}
