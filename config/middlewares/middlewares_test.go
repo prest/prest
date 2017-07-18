@@ -274,7 +274,12 @@ func TestCorsHead(t *testing.T) {
 	if resp.Request.Method != "HEAD" {
 		t.Errorf("expected method HEAD, but got %v", resp.Request.Method)
 	}
-	if resp.StatusCode == http.StatusOK {
-		t.Error("HTTP status code is 200")
+	var body []byte
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal("Expected run without errors but was", err)
+	}
+	if len(body) > 0 {
+		t.Errorf("expected body empty, but got %s", string(body))
 	}
 }
