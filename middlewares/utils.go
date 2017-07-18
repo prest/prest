@@ -95,6 +95,8 @@ func checkCors(r *http.Request, origin string) (allowed bool, err error) {
 	if !allowed {
 		return
 	}
-	allowed, err = regexp.Match(origin, []byte(r.Header.Get(headerOrigin)))
+	if origin != "*" {
+		allowed, err = regexp.Match(origin, []byte(r.Header.Get(headerOrigin)))
+	}
 	return
 }
