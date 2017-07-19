@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
+
+	"strings"
 
 	"github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
@@ -56,4 +59,19 @@ func JwtMiddleware(key string) negroni.Handler {
 		SigningMethod: jwt.SigningMethodHS256,
 	})
 	return negroni.HandlerFunc(jwtMiddleware.HandlerWithNext)
+}
+
+// Cors middleware
+func Cors(origin []string) negroni.Handler {
+	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+		w.Header().Set(headerAllowOrigin, strings.Join(origin, ","))
+		w.Header().Set(headerAllowMethods, strings.Join(defaultAllowMethods, ","))
+		w.Header().Set(headerAllowHeaders, "*")
+		w.Header().Set(headerAllowCredentials, strconv.FormatBool(true))
+		if allowed := checkCors(r, origin); !allowed {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		next(w, r)
+	})
 }

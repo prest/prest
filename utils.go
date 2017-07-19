@@ -44,14 +44,15 @@ func permissionByMethod(method string) (permission string) {
 }
 
 func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, format string) {
+	for key := range recorder.Header() {
+		w.Header().Set(key, recorder.Header().Get(key))
+	}
 	byt, _ := ioutil.ReadAll(recorder.Body)
-
 	if recorder.Code != http.StatusOK {
 		m := make(map[string]string)
 		m["error"] = strings.TrimSpace(string(byt))
 		byt, _ = json.MarshalIndent(m, "", "\t")
 	}
-
 	switch format {
 	case "xml":
 		xmldata, err := j2x.JsonToXml(byt)
@@ -68,4 +69,45 @@ func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, fo
 		w.WriteHeader(recorder.Code)
 		w.Write(byt)
 	}
+}
+
+var defaultAllowMethods = []string{
+	"GET",
+	"POST",
+	"PUT",
+	"PATCH",
+	"DELETE",
+}
+
+const (
+	headerAllowOrigin      = "Access-Control-Allow-Origin"
+	headerAllowCredentials = "Access-Control-Allow-Credentials"
+	headerAllowHeaders     = "Access-Control-Allow-Headers"
+	headerAllowMethods     = "Access-Control-Allow-Methods"
+	headerOrigin           = "Origin"
+)
+
+func checkCors(r *http.Request, origin []string) (allowed bool) {
+	var mAllowed bool
+	for _, m := range defaultAllowMethods {
+		if m == r.Method {
+			mAllowed = true
+			break
+		}
+	}
+	if !mAllowed {
+		return
+	}
+	org := r.Header.Get(headerOrigin)
+	var oAllowed bool
+	for _, o := range origin {
+		if o == org || o == "*" || org == "*" {
+			oAllowed = true
+			break
+		}
+	}
+	if oAllowed && mAllowed {
+		allowed = true
+	}
+	return
 }
