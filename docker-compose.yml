@@ -1,10 +1,11 @@
-version: "2"
+version: "3"
 services:
     prest:
         build: .
         links:
             - "postgres:postgres"
         environment:
+            # - PREST_DEBUG=true # remove comment for enable DEBUG mode (disable JWT)
             - PREST_PG_HOST=postgres
             - PREST_PG_USER=prest
             - PREST_PG_PASS=prest
