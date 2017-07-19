@@ -99,11 +99,11 @@ func checkCors(r *http.Request, origin []string) (allowed bool) {
 		return
 	}
 	org := r.Header.Get(headerOrigin)
-	fmt.Println(">>>>>>>>>", mAllowed, org, strings.Join(origin, ">>>"))
 	var oAllowed bool
 	for _, o := range origin {
-		if o == org {
+		if o == org || o == "*" || org == "*" {
 			oAllowed = true
+			break
 		}
 	}
 	if oAllowed && mAllowed {

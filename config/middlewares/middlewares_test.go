@@ -331,7 +331,13 @@ func TestCorsAllowOriginNotAll(t *testing.T) {
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
 	defer server.Close()
-	resp, err := http.Post(server.URL, "application/json", nil)
+	client := http.Client{}
+	req, err := http.NewRequest("POST", server.URL, nil)
+	if err != nil {
+		t.Fatal("expected run without errors but was", err)
+	}
+	req.Header.Set("Origin", "http://127.0.0.1")
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatal("expected run without errors but was", err)
 	}
