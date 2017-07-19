@@ -181,3 +181,163 @@ func appTest() *negroni.Negroni {
 	n.UseHandler(r)
 	return n
 }
+
+func TestCorsGet(t *testing.T) {
+	os.Setenv("PREST_DEBUG", "true")
+	os.Setenv("PREST_CORS_ALLOWORIGIN", "*")
+	os.Setenv("PREST_CONF", "../../testdata/prest.toml")
+	config.Load()
+	app = nil
+	r := router.Get()
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
+	n := GetApp()
+	n.UseHandler(r)
+	server := httptest.NewServer(n)
+	defer server.Close()
+	resp, err := http.Get(server.URL)
+	if err != nil {
+		t.Fatal("expected run without errors but was", err)
+	}
+	if resp.Header.Get("Access-Control-Allow-Origin") != "*" {
+		t.Errorf("expected allow origin *, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
+	}
+	methods := resp.Header.Get("Access-Control-Allow-Methods")
+	for _, method := range []string{"GET", "POST", "PUT", "PATCH", "DELETE"} {
+		if !strings.Contains(methods, method) {
+			t.Errorf("do not contain %s", method)
+		}
+	}
+	if resp.Request.Method != "GET" {
+		t.Errorf("expected method GET, but got %v", resp.Request.Method)
+	}
+	var body []byte
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal("Expected run without errors but was", err)
+	}
+	if len(body) == 0 {
+		t.Error("body is empty")
+	}
+}
+
+func TestCorsPost(t *testing.T) {
+	os.Setenv("PREST_DEBUG", "true")
+	os.Setenv("PREST_CORS_ALLOWORIGIN", "*")
+	os.Setenv("PREST_CONF", "../../testdata/prest.toml")
+	config.Load()
+	app = nil
+	r := router.Get()
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
+	n := GetApp()
+	n.UseHandler(r)
+	server := httptest.NewServer(n)
+	defer server.Close()
+	resp, err := http.Post(server.URL, "application/json", nil)
+	if err != nil {
+		t.Fatal("expected run without errors but was", err)
+	}
+	if resp.Header.Get("Access-Control-Allow-Origin") != "*" {
+		t.Errorf("expected allow origin *, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
+	}
+	methods := resp.Header.Get("Access-Control-Allow-Methods")
+	for _, method := range []string{"GET", "POST", "PUT", "PATCH", "DELETE"} {
+		if !strings.Contains(methods, method) {
+			t.Errorf("do not contain %s", method)
+		}
+	}
+	if resp.Request.Method != "POST" {
+		t.Errorf("expected method POST, but got %v", resp.Request.Method)
+	}
+	var body []byte
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal("Expected run without errors but was", err)
+	}
+	if len(body) == 0 {
+		t.Error("body is empty")
+	}
+}
+
+func TestCorsHead(t *testing.T) {
+	os.Setenv("PREST_DEBUG", "true")
+	os.Setenv("PREST_CORS_ALLOWORIGIN", "*")
+	os.Setenv("PREST_CONF", "../../testdata/prest.toml")
+	config.Load()
+	app = nil
+	r := router.Get()
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
+	n := GetApp()
+	n.UseHandler(r)
+	server := httptest.NewServer(n)
+	defer server.Close()
+	client := http.Client{}
+	req, err := http.NewRequest("HEAD", server.URL, nil)
+	if err != nil {
+		t.Fatal("expected run without errors but was", err)
+	}
+	var resp *http.Response
+	resp, err = client.Do(req)
+	if err != nil {
+		t.Fatal("expected run without errors but was", err)
+	}
+	if resp.Header.Get("Access-Control-Allow-Origin") != "*" {
+		t.Errorf("expected allow origin *, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
+	}
+	methods := resp.Header.Get("Access-Control-Allow-Methods")
+	for _, method := range []string{"GET", "POST", "PUT", "PATCH", "DELETE"} {
+		if !strings.Contains(methods, method) {
+			t.Errorf("do not contain %s", method)
+		}
+	}
+	if resp.Request.Method != "HEAD" {
+		t.Errorf("expected method HEAD, but got %v", resp.Request.Method)
+	}
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("expected status code 403 but got %d", resp.StatusCode)
+	}
+}
+
+func TestCorsAllowOriginNotAll(t *testing.T) {
+	os.Setenv("PREST_DEBUG", "true")
+	os.Setenv("PREST_CONF", "../../testdata/prest.toml")
+	os.Setenv("PREST_CORS_ALLOWORIGIN", "http://127.0.0.1")
+	config.Load()
+	config.PrestConf.CORSAllowOrigin = []string{"http://127.0.0.1"}
+	app = nil
+	r := router.Get()
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
+	n := GetApp()
+	n.UseHandler(r)
+	server := httptest.NewServer(n)
+	defer server.Close()
+	client := http.Client{}
+	req, err := http.NewRequest("POST", server.URL, nil)
+	if err != nil {
+		t.Fatal("expected run without errors but was", err)
+	}
+	req.Header.Set("Origin", "http://127.0.0.1")
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal("expected run without errors but was", err)
+	}
+	if resp.Header.Get("Access-Control-Allow-Origin") != "http://127.0.0.1" {
+		t.Errorf("expected allow origin http://127.0.0.1, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
+	}
+	methods := resp.Header.Get("Access-Control-Allow-Methods")
+	for _, method := range []string{"GET", "POST", "PUT", "PATCH", "DELETE"} {
+		if !strings.Contains(methods, method) {
+			t.Errorf("do not contain %s", method)
+		}
+	}
+	if resp.Request.Method != "POST" {
+		t.Errorf("expected method POST, but got %v", resp.Request.Method)
+	}
+	var body []byte
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal("Expected run without errors but was", err)
+	}
+	if len(body) == 0 {
+		t.Error("body is empty")
+	}
+}
