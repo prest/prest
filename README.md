@@ -446,3 +446,6 @@ Example:
 [cors]
 alloworigin = ["http://postgres.rest", "http://foo.com"]
 ```
+## Creating Modules (used pREST with framework)
+
+[Read more](CREATING_MODULES.md)
