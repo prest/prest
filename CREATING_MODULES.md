@@ -11,16 +11,18 @@
 package main
 
 import (
-	"net/http"
 	"log"
+	"net/http"
 
 	"github.com/nuveo/prest/cmd"
-	"github.com/nuveo/prest/config/router"
+	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/config/middlewares"
+	"github.com/nuveo/prest/config/router"
 	"github.com/urfave/negroni"
 )
 
 func main() {
+	config.Load()
 	// Reorder middlewares
 	middlewares.MiddlewareStack = []negroni.Handler{
 		negroni.Handler(negroni.NewRecovery()),
@@ -30,6 +32,9 @@ func main() {
 
 	// Get pREST app
 	n := middlewares.GetApp()
+
+	// Rgister custom middleware
+	n.Use(negroni.HandlerFunc(CustomMiddleware))
 
 	// Get pPREST router
 	r := router.Get()
@@ -43,7 +48,6 @@ func main() {
 
 func Pong(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Pong!"))
-	return
 }
 
 func CustomMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
