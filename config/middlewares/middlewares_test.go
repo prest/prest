@@ -202,17 +202,10 @@ func TestCorsGet(t *testing.T) {
 		t.Errorf("expected allow origin *, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
 	}
 	methods := resp.Header.Get("Access-Control-Allow-Methods")
-	if !strings.Contains(methods, "POST") {
-		t.Error("not contain POST")
-	}
-	if !strings.Contains(methods, "PUT") {
-		t.Error("not contain PUT")
-	}
-	if !strings.Contains(methods, "PATCH") {
-		t.Error("not contain PATCH")
-	}
-	if !strings.Contains(methods, "GET") {
-		t.Error("not contain GET")
+	for _, method := range []string{"GET", "POST", "PUT", "PATCH", "DELETE"} {
+		if !strings.Contains(methods, method) {
+			t.Errorf("do not contain %s", method)
+		}
 	}
 	if resp.Request.Method != "GET" {
 		t.Errorf("expected method GET, but got %v", resp.Request.Method)
@@ -247,17 +240,10 @@ func TestCorsPost(t *testing.T) {
 		t.Errorf("expected allow origin *, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
 	}
 	methods := resp.Header.Get("Access-Control-Allow-Methods")
-	if !strings.Contains(methods, "POST") {
-		t.Error("not contain POST")
-	}
-	if !strings.Contains(methods, "PUT") {
-		t.Error("not contain PUT")
-	}
-	if !strings.Contains(methods, "PATCH") {
-		t.Error("not contain PATCH")
-	}
-	if !strings.Contains(methods, "GET") {
-		t.Error("not contain GET")
+	for _, method := range []string{"GET", "POST", "PUT", "PATCH", "DELETE"} {
+		if !strings.Contains(methods, method) {
+			t.Errorf("do not contain %s", method)
+		}
 	}
 	if resp.Request.Method != "POST" {
 		t.Errorf("expected method POST, but got %v", resp.Request.Method)
@@ -298,17 +284,10 @@ func TestCorsHead(t *testing.T) {
 		t.Errorf("expected allow origin *, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
 	}
 	methods := resp.Header.Get("Access-Control-Allow-Methods")
-	if !strings.Contains(methods, "POST") {
-		t.Error("not contain POST")
-	}
-	if !strings.Contains(methods, "PUT") {
-		t.Error("not contain PUT")
-	}
-	if !strings.Contains(methods, "PATCH") {
-		t.Error("not contain PATCH")
-	}
-	if !strings.Contains(methods, "GET") {
-		t.Error("not contain GET")
+	for _, method := range []string{"GET", "POST", "PUT", "PATCH", "DELETE"} {
+		if !strings.Contains(methods, method) {
+			t.Errorf("do not contain %s", method)
+		}
 	}
 	if resp.Request.Method != "HEAD" {
 		t.Errorf("expected method HEAD, but got %v", resp.Request.Method)
@@ -345,17 +324,10 @@ func TestCorsAllowOriginNotAll(t *testing.T) {
 		t.Errorf("expected allow origin http://127.0.0.1, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
 	}
 	methods := resp.Header.Get("Access-Control-Allow-Methods")
-	if !strings.Contains(methods, "POST") {
-		t.Error("not contain POST")
-	}
-	if !strings.Contains(methods, "PUT") {
-		t.Error("not contain PUT")
-	}
-	if !strings.Contains(methods, "PATCH") {
-		t.Error("not contain PATCH")
-	}
-	if !strings.Contains(methods, "GET") {
-		t.Error("not contain GET")
+	for _, method := range []string{"GET", "POST", "PUT", "PATCH", "DELETE"} {
+		if !strings.Contains(methods, method) {
+			t.Errorf("do not contain %s", method)
+		}
 	}
 	if resp.Request.Method != "POST" {
 		t.Errorf("expected method POST, but got %v", resp.Request.Method)
