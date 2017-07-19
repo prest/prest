@@ -21,6 +21,7 @@ package viper
 
 import (
 	"bytes"
+	"encoding/csv"
 	"fmt"
 	"io"
 	"log"
@@ -40,6 +41,11 @@ import (
 
 var v *Viper
 
+type RemoteResponse struct {
+	Value []byte
+	Error error
+}
+
 func init() {
 	v = New()
 }
@@ -47,6 +53,7 @@ func init() {
 type remoteConfigFactory interface {
 	Get(rp RemoteProvider) (io.Reader, error)
 	Watch(rp RemoteProvider) (io.Reader, error)
+	WatchChannel(rp RemoteProvider) (<-chan *RemoteResponse, chan bool)
 }
 
 // RemoteConfig is optional, see the remote package
@@ -590,32 +597,33 @@ func (v *Viper) Get(key string) interface{} {
 		return nil
 	}
 
-	valType := val
 	if v.typeByDefValue {
 		// TODO(bep) this branch isn't covered by a single test.
+		valType := val
 		path := strings.Split(lcaseKey, v.keyDelim)
 		defVal := v.searchMap(v.defaults, path)
 		if defVal != nil {
 			valType = defVal
 		}
+
+		switch valType.(type) {
+		case bool:
+			return cast.ToBool(val)
+		case string:
+			return cast.ToString(val)
+		case int64, int32, int16, int8, int:
+			return cast.ToInt(val)
+		case float64, float32:
+			return cast.ToFloat64(val)
+		case time.Time:
+			return cast.ToTime(val)
+		case time.Duration:
+			return cast.ToDuration(val)
+		case []string:
+			return cast.ToStringSlice(val)
+		}
 	}
 
-	switch valType.(type) {
-	case bool:
-		return cast.ToBool(val)
-	case string:
-		return cast.ToString(val)
-	case int64, int32, int16, int8, int:
-		return cast.ToInt(val)
-	case float64, float32:
-		return cast.ToFloat64(val)
-	case time.Time:
-		return cast.ToTime(val)
-	case time.Duration:
-		return cast.ToDuration(val)
-	case []string:
-		return cast.ToStringSlice(val)
-	}
 	return val
 }
 
@@ -713,7 +721,15 @@ func (v *Viper) GetSizeInBytes(key string) uint {
 // UnmarshalKey takes a single key and unmarshals it into a Struct.
 func UnmarshalKey(key string, rawVal interface{}) error { return v.UnmarshalKey(key, rawVal) }
 func (v *Viper) UnmarshalKey(key string, rawVal interface{}) error {
-	return mapstructure.Decode(v.Get(key), rawVal)
+	err := decode(v.Get(key), defaultDecoderConfig(rawVal))
+
+	if err != nil {
+		return err
+	}
+
+	v.insensitiviseMaps()
+
+	return nil
 }
 
 // Unmarshal unmarshals the config into a Struct. Make sure that the tags
@@ -880,7 +896,9 @@ func (v *Viper) find(lcaseKey string) interface{} {
 			return cast.ToBool(flag.ValueString())
 		case "stringSlice":
 			s := strings.TrimPrefix(flag.ValueString(), "[")
-			return strings.TrimSuffix(s, "]")
+			s = strings.TrimSuffix(s, "]")
+			res, _ := readAsCSV(s)
+			return res
 		default:
 			return flag.ValueString()
 		}
@@ -947,7 +965,9 @@ func (v *Viper) find(lcaseKey string) interface{} {
 			return cast.ToBool(flag.ValueString())
 		case "stringSlice":
 			s := strings.TrimPrefix(flag.ValueString(), "[")
-			return strings.TrimSuffix(s, "]")
+			s = strings.TrimSuffix(s, "]")
+			res, _ := readAsCSV(s)
+			return res
 		default:
 			return flag.ValueString()
 		}
@@ -955,6 +975,15 @@ func (v *Viper) find(lcaseKey string) interface{} {
 	// last item, no need to check shadowing
 
 	return nil
+}
+
+func readAsCSV(val string) ([]string, error) {
+	if val == "" {
+		return []string{}, nil
+	}
+	stringReader := strings.NewReader(val)
+	csvReader := csv.NewReader(stringReader)
+	return csvReader.Read()
 }
 
 // IsSet checks to see if the key has been set in any of the data locations.
@@ -1093,9 +1122,15 @@ func (v *Viper) ReadInConfig() error {
 		return err
 	}
 
-	v.config = make(map[string]interface{})
+	config := make(map[string]interface{})
 
-	return v.unmarshalReader(bytes.NewReader(file), v.config)
+	err = v.unmarshalReader(bytes.NewReader(file), config)
+	if err != nil {
+		return err
+	}
+
+	v.config = config
+	return nil
 }
 
 // MergeInConfig merges a new configuration with an existing config.
@@ -1249,6 +1284,10 @@ func (v *Viper) WatchRemoteConfig() error {
 	return v.watchKeyValueConfig()
 }
 
+func (v *Viper) WatchRemoteConfigOnChannel() error {
+	return v.watchKeyValueConfigOnChannel()
+}
+
 // Unmarshall a Reader into a map.
 // Should probably be an unexported function.
 func unmarshalReader(in io.Reader, c map[string]interface{}) error {
@@ -1290,6 +1329,23 @@ func (v *Viper) getRemoteConfig(provider RemoteProvider) (map[string]interface{}
 	}
 	err = v.unmarshalReader(reader, v.kvstore)
 	return v.kvstore, err
+}
+
+// Retrieve the first found remote configuration.
+func (v *Viper) watchKeyValueConfigOnChannel() error {
+	for _, rp := range v.remoteProviders {
+		respc, _ := RemoteConfig.WatchChannel(rp)
+		//Todo: Add quit channel
+		go func(rc <-chan *RemoteResponse) {
+			for {
+				b := <-rc
+				reader := bytes.NewReader(b.Value)
+				v.unmarshalReader(reader, v.kvstore)
+			}
+		}(respc)
+		return nil
+	}
+	return RemoteConfigError("No Files Found")
 }
 
 // Retrieve the first found remote configuration.

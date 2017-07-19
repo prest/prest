@@ -24,7 +24,7 @@ import (
 // ------------------- NewMapXml & NewMapXmlReader ... -------------------------
 
 // If XmlCharsetReader != nil, it will be used to decode the XML, if required.
-// Note: if CustomDeocder != nil, then XmlCharsetReader is ignored;
+// Note: if CustomDecoder != nil, then XmlCharsetReader is ignored;
 // set the CustomDecoder attribute instead.
 //   import (
 //	     charset "code.google.com/p/go-charset/charset"
@@ -940,6 +940,34 @@ func mapToXmlIndent(doIndent bool, s *string, key string, value interface{}, pp 
 			break
 		}
 		for _, v := range value.([]interface{}) {
+			if doIndent {
+				p.Indent()
+			}
+			if err := mapToXmlIndent(doIndent, s, key, v, p); err != nil {
+				return err
+			}
+			if doIndent {
+				p.Outdent()
+			}
+		}
+		return nil
+	case []string:
+		// This was added by https://github.com/slotix ... not a type that
+		// would be encountered if mv generated from NewMapXml, NewMapJson.
+		// Could be encountered in AnyXml(), so we'll let it stay, though
+		// it should be merged with case []interface{}, above.
+		//quick fix for []string type 
+		//[]string should be treated exaclty as []interface{}
+		if len(value.([]string)) == 0 {
+			if doIndent {
+				*s += p.padding + p.indent
+			}
+			*s += "<" + key
+			elen = 0
+			endTag = true
+			break
+		}
+		for _, v := range value.([]string) {
 			if doIndent {
 				p.Indent()
 			}
