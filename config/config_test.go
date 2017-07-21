@@ -65,3 +65,15 @@ func TestParse(t *testing.T) {
 		t.Errorf("expected port: 4000, got: %d", cfg.HTTPPort)
 	}
 }
+
+func TestGetDefaultPrestConf(t *testing.T) {
+	prestConf := ""
+	if conf := getDefaultPrestConf(prestConf); conf != "./prest.toml" {
+		t.Errorf("expected ./prest.toml, but got: %q", conf)
+	}
+
+	prestConf = "../prest.toml"
+	if conf := getDefaultPrestConf(prestConf); conf != "../prest.toml" {
+		t.Errorf("expected ../prest.toml, but got: %q", conf)
+	}
+}

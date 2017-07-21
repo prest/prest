@@ -7,6 +7,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+
 	"github.com/spf13/viper"
 )
 
@@ -47,7 +48,7 @@ type Prest struct {
 var PrestConf *Prest
 
 func viperCfg() {
-	filePath := os.Getenv("PREST_CONF")
+	filePath := getDefaultPrestConf(os.Getenv("PREST_CONF"))
 	dir, file := filepath.Split(filePath)
 	file = strings.TrimSuffix(file, filepath.Ext(file))
 	replacer := strings.NewReplacer(".", "_")
@@ -71,6 +72,13 @@ func viperCfg() {
 	}
 
 	viper.SetDefault("queries.location", filepath.Join(user.HomeDir, "queries"))
+}
+
+func getDefaultPrestConf(prestConf string) string {
+	if prestConf == "" {
+		return "./prest.toml"
+	}
+	return prestConf
 }
 
 // Parse pREST config
