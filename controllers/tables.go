@@ -11,6 +11,8 @@ import (
 
 // GetTables list all (or filter) tables
 func GetTables(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	requestWhere, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
@@ -39,7 +41,7 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 
 	sqlTables = fmt.Sprint(sqlTables, order)
 
-	object, err := postgres.Query(sqlTables, values...)
+	object, err := postgres.Query(ctx, sqlTables, values...)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -50,6 +52,7 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 
 // GetTablesByDatabaseAndSchema list all (or filter) tables based on database and schema
 func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	vars := mux.Vars(r)
 	database := vars["database"]
 	schema := vars["schema"]
@@ -95,7 +98,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	valuesAux = append(valuesAux, schema)
 	valuesAux = append(valuesAux, values...)
 
-	object, err := postgres.Query(sqlSchemaTables, valuesAux...)
+	object, err := postgres.Query(ctx, sqlSchemaTables, valuesAux...)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -106,6 +109,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 
 // SelectFromTables perform select in database
 func SelectFromTables(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	vars := mux.Vars(r)
 	database := vars["database"]
 	schema := vars["schema"]
@@ -193,7 +197,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		runQuery = postgres.QueryCount
 	}
 
-	object, err := runQuery(sqlSelect, values...)
+	object, err := runQuery(ctx, sqlSelect, values...)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -204,6 +208,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 
 // InsertInTables perform insert in specific table
 func InsertInTables(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	vars := mux.Vars(r)
 	database := vars["database"]
 	schema := vars["schema"]
@@ -218,7 +223,7 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 
 	sql := fmt.Sprintf(statements.InsertQuery, database, schema, table, names, placeholders)
 
-	object, err := postgres.Insert(sql, values...)
+	object, err := postgres.Insert(ctx, sql, values...)
 	if err != nil {
 		err = fmt.Errorf("could not perform InsertInTables: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -230,6 +235,7 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 
 // DeleteFromTable perform delete sql
 func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	vars := mux.Vars(r)
 	database := vars["database"]
 	schema := vars["schema"]
@@ -247,7 +253,7 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 		sql = fmt.Sprint(sql, " WHERE ", where)
 	}
 
-	object, err := postgres.Delete(sql, values...)
+	object, err := postgres.Delete(ctx, sql, values...)
 	if err != nil {
 		err = fmt.Errorf("could not perform DELETE: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -259,6 +265,7 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 
 // UpdateTable perform update table
 func UpdateTable(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	vars := mux.Vars(r)
 	database := vars["database"]
 	schema := vars["schema"]
@@ -289,7 +296,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 		values = append(whereValues, values...)
 	}
 
-	object, err := postgres.Update(sql, values...)
+	object, err := postgres.Update(ctx, sql, values...)
 	if err != nil {
 		err = fmt.Errorf("could not perform UPDATE: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)

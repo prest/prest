@@ -10,6 +10,7 @@ import (
 
 // GetDatabases list all (or filter) databases
 func GetDatabases(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	requestWhere, values, err := postgres.WhereByRequest(r, 1)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -42,7 +43,7 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sqlDatabases = fmt.Sprint(sqlDatabases, " ", page)
-	object, err := postgres.Query(sqlDatabases, values...)
+	object, err := postgres.Query(ctx, sqlDatabases, values...)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

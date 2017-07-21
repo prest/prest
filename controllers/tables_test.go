@@ -1,9 +1,14 @@
 package controllers
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"time"
+
+	"strings"
 
 	"github.com/gorilla/mux"
 )
@@ -221,5 +226,28 @@ func TestUpdateFromTable(t *testing.T) {
 		t.Log(tc.description)
 		doRequest(t, server.URL+tc.url, tc.request, "PUT", tc.status, "UpdateTable")
 		doRequest(t, server.URL+tc.url, tc.request, "PATCH", tc.status, "UpdateTable")
+	}
+}
+
+func TestRequestTimeout(t *testing.T) {
+	router := mux.NewRouter()
+	router.HandleFunc("/{database}/{schema}/{table}", SelectFromTables).Methods("GET")
+	server := httptest.NewServer(router)
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+	defer cancel()
+	req, err := http.NewRequest("GET", server.URL+"/prest/public/test5", nil)
+	if err != nil {
+		t.Errorf("expected no errors, but has %v", err)
+	}
+	req = req.WithContext(ctx)
+	client := http.Client{}
+	_, err = client.Do(req)
+	if err == nil {
+		t.Errorf("expected err but not have")
+	}
+	message := strings.ToLower(err.Error())
+	if !strings.Contains(message, "context") {
+		t.Error("do not contain a context error message")
 	}
 }

@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -230,7 +231,7 @@ func TestGroupByClause(t *testing.T) {
 }
 
 func TestEmptyTable(t *testing.T) {
-	response, err := Query("SELECT * FROM test_empty_table")
+	response, err := Query(context.Background(), "SELECT * FROM test_empty_table")
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -258,9 +259,9 @@ func TestQuery(t *testing.T) {
 	for _, tc := range testCases {
 		t.Log(tc.description)
 		if tc.param {
-			response, err = Query(tc.sql, "public")
+			response, err = Query(context.Background(), tc.sql, "public")
 		} else {
-			response, err = Query(tc.sql)
+			response, err = Query(context.Background(), tc.sql)
 		}
 
 		if err != tc.err {
@@ -284,7 +285,7 @@ func TestInvalidQuery(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		response, err := Query(tc.sql, "public")
+		response, err := Query(context.Background(), tc.sql, "public")
 
 		if err == nil {
 			t.Error("expected errors, but got nil")
@@ -364,7 +365,7 @@ func TestInsert(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		jsonByte, err := Insert(tc.sql, tc.values...)
+		jsonByte, err := Insert(context.Background(), tc.sql, tc.values...)
 		if err != nil {
 			t.Errorf("expected no errors, but got %s", err)
 		}
@@ -388,7 +389,7 @@ func TestInsertInvalid(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		jsonByte, err := Insert(tc.sql, tc.values...)
+		jsonByte, err := Insert(context.Background(), tc.sql, tc.values...)
 		if err == nil {
 			t.Errorf("expected  errors, but no has")
 		}
@@ -411,7 +412,7 @@ func TestDelete(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		response, err := Delete(tc.sql, tc.values)
+		response, err := Delete(context.Background(), tc.sql, tc.values)
 		if err == nil {
 			t.Errorf("expected error, but got: %s", err)
 		}
@@ -422,7 +423,7 @@ func TestDelete(t *testing.T) {
 	}
 
 	t.Log("Delete data from table")
-	response, err := Delete("DELETE FROM prest.public.test WHERE name=$1", "nuveo")
+	response, err := Delete(context.Background(), "DELETE FROM prest.public.test WHERE name=$1", "nuveo")
 	if err != nil {
 		t.Errorf("expected no error, but got: %s", err)
 	}
@@ -444,7 +445,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	t.Log("Update data into a table")
-	response, err := Update("UPDATE prest.public.test SET name=$2 WHERE name=$1", "prest tester", "prest")
+	response, err := Update(context.Background(), "UPDATE prest.public.test SET name=$2 WHERE name=$1", "prest tester", "prest")
 	if err != nil {
 		t.Errorf("expected no errors, but got: %s", err)
 	}
@@ -455,7 +456,7 @@ func TestUpdate(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		response, err := Update(tc.sql, tc.values...)
+		response, err := Update(context.Background(), tc.sql, tc.values...)
 		if err == nil {
 			t.Errorf("expected error, but got: %s", err)
 		}
