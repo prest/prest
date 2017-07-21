@@ -1,10 +1,10 @@
 package jwtmiddleware
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/gorilla/context"
 	"log"
 	"net/http"
 	"strings"
@@ -129,7 +129,7 @@ func FromAuthHeader(r *http.Request) (string, error) {
 	// TODO: Make this a bit more robust, parsing-wise
 	authHeaderParts := strings.Split(authHeader, " ")
 	if len(authHeaderParts) != 2 || strings.ToLower(authHeaderParts[0]) != "bearer" {
-		return "", fmt.Errorf("Authorization header format must be Bearer {token}")
+		return "", errors.New("Authorization header format must be Bearer {token}")
 	}
 
 	return authHeaderParts[1], nil
@@ -222,14 +222,15 @@ func (m *JWTMiddleware) CheckJWT(w http.ResponseWriter, r *http.Request) error {
 	if !parsedToken.Valid {
 		m.logf("Token is invalid")
 		m.Options.ErrorHandler(w, r, "The token isn't valid")
-		return fmt.Errorf("Token is invalid")
+		return errors.New("Token is invalid")
 	}
 
 	m.logf("JWT: %v", parsedToken)
 
 	// If we get here, everything worked and we can set the
 	// user property in context.
-	context.Set(r, m.Options.UserProperty, parsedToken)
-
+	newRequest := r.WithContext(context.WithValue(r.Context(), m.Options.UserProperty, parsedToken))
+	// Update the current request with the new context information.
+	*r = *newRequest
 	return nil
 }

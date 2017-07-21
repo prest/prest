@@ -64,18 +64,18 @@ You can also use it with Negroni as follows:
 package main
 
 import (
+  "context"
   "fmt"
   "net/http"
 
   "github.com/auth0/go-jwt-middleware"
   "github.com/codegangsta/negroni"
   "github.com/dgrijalva/jwt-go"
-  "github.com/gorilla/context"
   "github.com/gorilla/mux"
 )
 
 var myHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-  user := context.Get(r, "user")
+  user := r.Context().Value("user");
   fmt.Fprintf(w, "This is an authenticated request")
   fmt.Fprintf(w, "Claim content:\n")
   for k, v := range user.(*jwt.Token).Claims {
