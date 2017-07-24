@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"reflect"
 )
 
@@ -11,6 +12,7 @@ var (
 	errPtr      = errors.New("item to input data is not a pointer")
 	errUnsupTyp = errors.New("item to input data has an unupported type")
 	errLength   = errors.New("rows returned is not 1")
+	errMethod   = errors.New("unsupported scan on this reponse")
 	supType     = map[reflect.Kind]bool{
 		reflect.Slice:  true,
 		reflect.Struct: true,
@@ -33,8 +35,9 @@ func validateType(i interface{}) (ref reflect.Value, err error) {
 
 // PrestScanner is a default implementation of postgres.Scanner
 type PrestScanner struct {
-	Buff  *bytes.Buffer
-	Error error
+	Buff   *bytes.Buffer
+	Error  error
+	Method string
 }
 
 // Scan put prest response into a struct or map
@@ -43,6 +46,16 @@ func (p *PrestScanner) Scan(i interface{}) (err error) {
 	if ref, err = validateType(i); err != nil {
 		return
 	}
+	switch p.Method {
+	case http.MethodGet:
+		err = p.scanGET(ref, i)
+	default:
+		err = errMethod
+	}
+	return
+}
+
+func (p *PrestScanner) scanGET(ref reflect.Value, i interface{}) (err error) {
 	decoder := json.NewDecoder(p.Buff)
 	if ref.Elem().Kind() == reflect.Slice {
 		err = decoder.Decode(&i)
