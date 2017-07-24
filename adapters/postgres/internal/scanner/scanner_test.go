@@ -39,6 +39,14 @@ func TestPrestScanner(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected no errors but got %v", err)
 	}
+	tacs := []ComplexType{
+		ComplexType{Name: "test"},
+		ComplexType{Name: "Test"},
+	}
+	byts, err := json.Marshal(tacs)
+	if err != nil {
+		t.Errorf("expected no errors but got %v", err)
+	}
 	var tmap map[string]interface{}
 	var testCases = []struct {
 		name    string
@@ -48,9 +56,10 @@ func TestPrestScanner(t *testing.T) {
 		scErr   error
 	}{
 		{"scan error", &bytes.Buffer{}, errors.New("test error"), tmap, errPtr},
+		{"scan err length", bytes.NewBuffer(byts), nil, &ComplexType{}, errLength},
 		{"scan not slice", bytes.NewBuffer(byt), nil, &ComplexType{}, nil},
 		{"scan slice", bytes.NewBuffer(byt), nil, &act, nil},
-		{"scan slice using map", bytes.NewBuffer(byt), nil, &tmap, nil},
+		{"scan using map", bytes.NewBuffer(byt), nil, &tmap, nil},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

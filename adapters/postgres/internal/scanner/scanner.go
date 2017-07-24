@@ -43,12 +43,13 @@ func (p *PrestScanner) Scan(i interface{}) (err error) {
 	if ref, err = validateType(i); err != nil {
 		return
 	}
+	decoder := json.NewDecoder(p.Buff)
 	if ref.Elem().Kind() == reflect.Slice {
-		err = json.Unmarshal(p.Buff.Bytes(), &i)
+		err = decoder.Decode(&i)
 		return
 	}
 	ret := make([]map[string]interface{}, 0)
-	if err = json.Unmarshal(p.Buff.Bytes(), &ret); err != nil {
+	if err = decoder.Decode(&ret); err != nil {
 		return
 	}
 	if len(ret) != 1 {
