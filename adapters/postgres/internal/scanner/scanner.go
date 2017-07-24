@@ -13,7 +13,7 @@ var (
 	errUnsupTyp = errors.New("item to input data has an unupported type")
 	errLength   = errors.New("rows returned is not 1")
 	errMethod   = errors.New("unsupported scan on this reponse")
-	supType     = map[reflect.Kind]bool{
+	supTypeGET  = map[reflect.Kind]bool{
 		reflect.Slice:  true,
 		reflect.Struct: true,
 		reflect.Map:    true,
@@ -26,7 +26,7 @@ func validateType(i interface{}) (ref reflect.Value, err error) {
 		err = errPtr
 		return
 	}
-	if _, ok := supType[ref.Elem().Kind()]; !ok {
+	if _, ok := supTypeGET[ref.Elem().Kind()]; !ok {
 		err = errUnsupTyp
 		return
 	}
