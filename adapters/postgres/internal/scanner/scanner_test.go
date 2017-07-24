@@ -35,6 +35,7 @@ func TestPrestScanGET(t *testing.T) {
 	type ComplexType struct {
 		Name string `json:"name,omitempty"`
 	}
+	act := make([]ComplexType, 0)
 	tac := []ComplexType{ComplexType{Name: "test"}}
 	byt, err := json.Marshal(tac)
 	if err != nil {
@@ -48,7 +49,9 @@ func TestPrestScanGET(t *testing.T) {
 		scInput interface{}
 		scErr   error
 	}{
-		{"scan GET", bytes.NewBuffer(byt), nil, &tmap, nil},
+		{"scan GET map", bytes.NewBuffer(byt), nil, &tmap, nil},
+		{"scan GET struct", bytes.NewBuffer(byt), nil, &ComplexType{}, nil},
+		{"scan GET slice", bytes.NewBuffer(byt), nil, &act, nil},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
