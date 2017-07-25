@@ -1,0 +1,2 @@
+# adapters
+pREST adapters package
