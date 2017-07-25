@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"net/http"
 	"reflect"
 )
 
@@ -12,8 +11,7 @@ var (
 	errPtr      = errors.New("item to input data is not a pointer")
 	errUnsupTyp = errors.New("item to input data has an unupported type")
 	errLength   = errors.New("rows returned is not 1")
-	errMethod   = errors.New("unsupported scan on this reponse")
-	supTypeGET  = map[reflect.Kind]bool{
+	supType     = map[reflect.Kind]bool{
 		reflect.Slice:  true,
 		reflect.Struct: true,
 		reflect.Map:    true,
@@ -26,7 +24,7 @@ func validateType(i interface{}) (ref reflect.Value, err error) {
 		err = errPtr
 		return
 	}
-	if _, ok := supTypeGET[ref.Elem().Kind()]; !ok {
+	if _, ok := supType[ref.Elem().Kind()]; !ok {
 		err = errUnsupTyp
 		return
 	}
@@ -35,9 +33,9 @@ func validateType(i interface{}) (ref reflect.Value, err error) {
 
 // PrestScanner is a default implementation of postgres.Scanner
 type PrestScanner struct {
-	Buff   *bytes.Buffer
-	Error  error
-	Method string
+	Buff    *bytes.Buffer
+	Error   error
+	IsQuery bool
 }
 
 // Scan put prest response into a struct or map
@@ -46,16 +44,15 @@ func (p *PrestScanner) Scan(i interface{}) (err error) {
 	if ref, err = validateType(i); err != nil {
 		return
 	}
-	switch p.Method {
-	case http.MethodGet:
-		err = p.scanGET(ref, i)
-	default:
-		err = errMethod
+	if p.IsQuery {
+		err = p.scanQuery(ref, i)
+		return
 	}
+	err = p.scanNotQuery(ref, i)
 	return
 }
 
-func (p *PrestScanner) scanGET(ref reflect.Value, i interface{}) (err error) {
+func (p *PrestScanner) scanQuery(ref reflect.Value, i interface{}) (err error) {
 	decoder := json.NewDecoder(p.Buff)
 	if ref.Elem().Kind() == reflect.Slice {
 		err = decoder.Decode(&i)
@@ -75,6 +72,15 @@ func (p *PrestScanner) scanGET(ref reflect.Value, i interface{}) (err error) {
 		return
 	}
 	err = json.Unmarshal(byt, &i)
+	return
+}
+
+func (p *PrestScanner) scanNotQuery(ref reflect.Value, i interface{}) (err error) {
+	if ref.Elem().Kind() == reflect.Slice {
+		err = errUnsupTyp
+		return
+	}
+	err = json.NewDecoder(p.Buff).Decode(&i)
 	return
 }
 
