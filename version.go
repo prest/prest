@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/nuveo/prest/helpers"
+	"github.com/prest/helpers"
 	"github.com/spf13/cobra"
 	// postgres driver for migrate
 	_ "gopkg.in/mattes/migrate.v1/driver/postgres"
