@@ -42,12 +42,10 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sqlDatabases = fmt.Sprint(sqlDatabases, " ", page)
-	object, err := postgres.Query(sqlDatabases, values...)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	sc := postgres.Query(sqlDatabases, values...)
+	if sc.Err() != nil {
+		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(object)
+	w.Write(sc.Bytes())
 }

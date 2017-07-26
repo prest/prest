@@ -12,7 +12,10 @@ import (
 	"strings"
 	"unicode"
 
+	"bytes"
+
 	"github.com/nuveo/prest/adapters/postgres/connection"
+	"github.com/nuveo/prest/adapters/postgres/internal/scanner"
 	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/statements"
 )
@@ -340,40 +343,44 @@ func CountByRequest(req *http.Request) (countQuery string, err error) {
 }
 
 // Query process queries
-func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
+func Query(SQL string, params ...interface{}) (sc Scanner) {
 	db, err := connection.Get()
 	if err != nil {
 		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	SQL = fmt.Sprintf("SELECT json_agg(s) FROM (%s) s", SQL)
-
 	prepare, err := db.Prepare(SQL)
 	if err != nil {
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
 	defer prepare.Close()
-
+	var jsonData []byte
 	err = prepare.QueryRow(params...).Scan(&jsonData)
-
 	if len(jsonData) == 0 {
 		jsonData = []byte("[]")
+	}
+	sc = &scanner.PrestScanner{
+		Error: err,
+		Buff:  bytes.NewBuffer(jsonData),
 	}
 	return
 }
 
 // QueryCount process queries with count
-func QueryCount(SQL string, params ...interface{}) ([]byte, error) {
+func QueryCount(SQL string, params ...interface{}) (sc Scanner) {
 	db, err := connection.Get()
 	if err != nil {
-		log.Println(err)
-		return nil, err
+		sc = &scanner.PrestScanner{Error: err}
+		return
 	}
 
 	prepare, err := db.Prepare(SQL)
 	if err != nil {
-		return nil, err
+		sc = &scanner.PrestScanner{Error: err}
+		return
 	}
 
 	var result struct {
@@ -381,11 +388,17 @@ func QueryCount(SQL string, params ...interface{}) ([]byte, error) {
 	}
 
 	row := prepare.QueryRow(params...)
-	if err := row.Scan(&result.Count); err != nil {
-		return nil, err
+	if err = row.Scan(&result.Count); err != nil {
+		sc = &scanner.PrestScanner{Error: err}
+		return
 	}
-
-	return json.Marshal(result)
+	var byt []byte
+	byt, err = json.Marshal(result)
+	sc = &scanner.PrestScanner{
+		Error: err,
+		Buff:  bytes.NewBuffer(byt),
+	}
+	return
 }
 
 // PaginateIfPossible func
@@ -433,19 +446,19 @@ func parseArray(value interface{}) string {
 }
 
 // Insert execute insert sql into a table
-func Insert(SQL string, params ...interface{}) (jsonData []byte, err error) {
+func Insert(SQL string, params ...interface{}) (sc Scanner) {
 	db, err := connection.Get()
 	if err != nil {
 		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	tx, err := db.Begin()
 	if err != nil {
 		log.Printf("could not begin transaction: %v\n", err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	defer func() {
 		switch err {
 		case nil:
@@ -454,41 +467,42 @@ func Insert(SQL string, params ...interface{}) (jsonData []byte, err error) {
 			tx.Rollback()
 		}
 	}()
-
 	tableName := insertTableNameRegex.FindStringSubmatch(SQL)
 	if len(tableName) < 2 {
 		err = errors.New("unable to find table name")
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
 	SQL = fmt.Sprintf("%s RETURNING row_to_json(%s)", SQL, tableName[2])
-
 	stmt, err := tx.Prepare(SQL)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
+	var jsonData []byte
 	err = stmt.QueryRow(params...).Scan(&jsonData)
+	sc = &scanner.PrestScanner{
+		Error: err,
+		Buff:  bytes.NewBuffer(jsonData),
+	}
 	return
 }
 
 // Delete execute delete sql into a table
-func Delete(SQL string, params ...interface{}) (jsonData []byte, err error) {
-	var result sql.Result
-	var rowsAffected int64
-
+func Delete(SQL string, params ...interface{}) (sc Scanner) {
 	db, err := connection.Get()
 	if err != nil {
 		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	tx, err := db.Begin()
 	if err != nil {
 		log.Printf("could not begin transaction: %v\n", err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	defer func() {
 		switch err {
 		case nil:
@@ -497,40 +511,43 @@ func Delete(SQL string, params ...interface{}) (jsonData []byte, err error) {
 			tx.Rollback()
 		}
 	}()
-
+	var result sql.Result
+	var rowsAffected int64
 	result, err = tx.Exec(SQL, params...)
 	if err != nil {
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	rowsAffected, err = result.RowsAffected()
 	if err != nil {
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	data := make(map[string]interface{})
 	data["rows_affected"] = rowsAffected
+	var jsonData []byte
 	jsonData, err = json.Marshal(data)
+	sc = &scanner.PrestScanner{
+		Error: err,
+		Buff:  bytes.NewBuffer(jsonData),
+	}
 	return
 }
 
 // Update execute update sql into a table
-func Update(SQL string, params ...interface{}) (jsonData []byte, err error) {
-	var result sql.Result
-	var rowsAffected int64
-
+func Update(SQL string, params ...interface{}) (sc Scanner) {
 	db, err := connection.Get()
 	if err != nil {
 		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	tx, err := db.Begin()
 	if err != nil {
 		log.Printf("could not begin transaction: %v\n", err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	defer func() {
 		switch err {
 		case nil:
@@ -539,26 +556,32 @@ func Update(SQL string, params ...interface{}) (jsonData []byte, err error) {
 			tx.Rollback()
 		}
 	}()
-
 	stmt, err := tx.Prepare(SQL)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
+	var result sql.Result
+	var rowsAffected int64
 	result, err = stmt.Exec(params...)
 	if err != nil {
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	rowsAffected, err = result.RowsAffected()
 	if err != nil {
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	data := make(map[string]interface{})
 	data["rows_affected"] = rowsAffected
+	var jsonData []byte
 	jsonData, err = json.Marshal(data)
+	sc = &scanner.PrestScanner{
+		Error: err,
+		Buff:  bytes.NewBuffer(jsonData),
+	}
 	return
 }
 
