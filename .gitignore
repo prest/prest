@@ -28,7 +28,6 @@ data/
 *.iml
 
 # pREST
-prest
 prest-*
 /dist
 prest.toml

@@ -68,3 +68,31 @@
 [[constraint]]
   name = "gopkg.in/mattes/migrate.v1"
   version = "1.3.2"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/prest/adapters"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/prest/cmd"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/prest/config"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/prest/controllers"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/prest/helpers"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/prest/middlewares"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/prest/template"
