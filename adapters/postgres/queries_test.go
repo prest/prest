@@ -116,9 +116,9 @@ func TestValidWriteSQL(t *testing.T) {
 	}
 	for _, tc := range testValidCases {
 		t.Log(tc.description)
-		_, err := WriteSQL(tc.sql, tc.values)
-		if tc.err != err {
-			t.Error(tc.err, err)
+		sc := WriteSQL(tc.sql, tc.values)
+		if tc.err != sc.Err() {
+			t.Error(tc.err, sc.Err())
 		}
 	}
 }
@@ -136,9 +136,9 @@ func TestInvalidWriteSQL(t *testing.T) {
 
 	for _, tc := range testInvalidCases {
 		t.Log(tc.description)
-		_, err := WriteSQL(tc.sql, tc.values)
-		if err == nil {
-			t.Errorf("expected nil, but got %v", err)
+		sc := WriteSQL(tc.sql, tc.values)
+		if sc.Err() == nil {
+			t.Errorf("expected nil, but got %v", sc.Err())
 		}
 	}
 }
@@ -160,20 +160,20 @@ func TestExecuteScripts(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		_, err := ExecuteScripts(tc.method, tc.sql, tc.values)
-		if tc.err != err {
-			t.Errorf("expected no errors, but got %s", err)
+		sc := ExecuteScripts(tc.method, tc.sql, tc.values)
+		if tc.err != sc.Err() {
+			t.Errorf("expected no errors, but got %s", sc.Err())
 		}
 	}
 
 	t.Log("Get errors with invalid HTTP Method")
 	values := make([]interface{}, 0)
-	result, err := ExecuteScripts("ANY", "SELECT * FROM test7", values)
-	if len(result) > 0 {
-		t.Errorf("expected empty result, but got %s", result)
+	sc := ExecuteScripts("ANY", "SELECT * FROM test7", values)
+	if len(sc.Bytes()) > 0 {
+		t.Errorf("expected empty result, but got %s", sc.Bytes())
 	}
 
-	if err == nil {
-		t.Errorf("expected errors, but got %s", err)
+	if sc.Err() == nil {
+		t.Errorf("expected errors, but got %s", sc.Err())
 	}
 }
