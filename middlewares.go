@@ -10,7 +10,7 @@ import (
 
 	"github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/nuveo/prest/adapters/postgres"
+	"github.com/prest/adapters/postgres"
 	"github.com/urfave/negroni"
 )
 
