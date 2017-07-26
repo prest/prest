@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/nuveo/prest/adapters/postgres"
-	"github.com/nuveo/prest/statements"
+	"github.com/prest/adapters/postgres"
+	"github.com/prest/statements"
 )
 
 // GetDatabases list all (or filter) databases

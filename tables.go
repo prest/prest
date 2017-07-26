@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/nuveo/prest/adapters/postgres"
-	"github.com/nuveo/prest/statements"
+	"github.com/prest/adapters/postgres"
+	"github.com/prest/statements"
 )
 
 // GetTables list all (or filter) tables
