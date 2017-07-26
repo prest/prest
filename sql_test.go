@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/nuveo/prest/config"
-	"github.com/nuveo/prest/config/middlewares"
-	"github.com/nuveo/prest/config/router"
+	"github.com/prest/config"
+	"github.com/prest/config/middlewares"
+	"github.com/prest/config/router"
 )
 
 func TestMain(m *testing.M) {

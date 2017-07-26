@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/nuveo/prest/adapters/postgres"
+	"github.com/prest/adapters/postgres"
 )
 
 // ExecuteScriptQuery is a function to execute and return result of script query
