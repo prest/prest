@@ -2,12 +2,6 @@
 
 
 [[projects]]
-  name = "github.com/DATA-DOG/go-sqlmock"
-  packages = ["."]
-  revision = "b983233bc0bbea4dc6e8ec8c8c923d935765ffec"
-  version = "v1.2.0"
-
-[[projects]]
   branch = "master"
   name = "github.com/auth0/go-jwt-middleware"
   packages = ["."]
@@ -111,6 +105,54 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/prest/adapters"
+  packages = ["postgres","postgres/connection"]
+  revision = "f0275bb10f0face2b5fc7dc2021807753a8eba03"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prest/cmd"
+  packages = ["."]
+  revision = "f7d18d41e07705fdfe203d99e9ba101f7b774e6c"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prest/config"
+  packages = [".","middlewares","router"]
+  revision = "166de8e49f39782cf1eee577e56c9c73384f0d7f"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prest/controllers"
+  packages = ["."]
+  revision = "9f650d5e24c173b6579df04c936697d24b2c4dfd"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prest/helpers"
+  packages = ["."]
+  revision = "6515e517e8582c0d0ec2aa75ac43672413dc0701"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prest/middlewares"
+  packages = ["."]
+  revision = "9109e728747955cfb27c3a58118154149b840e45"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prest/statements"
+  packages = ["."]
+  revision = "cbb29dfbcb6d58105c17701f4bafab4bee9c4d34"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prest/template"
+  packages = ["."]
+  revision = "91528fdd9e3a7e7c5dcb802df3f3cb0b4dc0d180"
+
+[[projects]]
+  branch = "master"
   name = "github.com/spf13/afero"
   packages = [".","mem"]
   revision = "9be650865eab0c12963d8753212f4f9c66cdcf12"
@@ -178,6 +220,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "6a9b05ea9f725e050897c03b65ce177817ee89ed6af34e33660cde8b73b71abc"
+  inputs-digest = "8adc32f93ec6d5980d64b11e529cdacfeeedb3e7f1017c2d3c3d96c7f2c49b72"
   solver-name = "gps-cdcl"
   solver-version = 1
