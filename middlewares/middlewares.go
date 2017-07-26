@@ -1,8 +1,8 @@
 package middlewares
 
 import (
-	"github.com/nuveo/prest/config"
-	"github.com/nuveo/prest/middlewares"
+	"github.com/prest/config"
+	"github.com/prest/middlewares"
 	"github.com/urfave/negroni"
 )
 
