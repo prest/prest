@@ -12,9 +12,9 @@ import (
 
 	"path"
 
-	"github.com/nuveo/prest/adapters/postgres/connection"
-	"github.com/nuveo/prest/config"
-	"github.com/nuveo/prest/template"
+	"github.com/prest/adapters/postgres/connection"
+	"github.com/prest/config"
+	"github.com/prest/template"
 )
 
 // GetScript get SQL template file

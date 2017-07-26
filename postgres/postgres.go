@@ -12,9 +12,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/nuveo/prest/adapters/postgres/connection"
-	"github.com/nuveo/prest/config"
-	"github.com/nuveo/prest/statements"
+	"github.com/prest/adapters/postgres/connection"
+	"github.com/prest/config"
+	"github.com/prest/statements"
 )
 
 const (

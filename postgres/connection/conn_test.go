@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
-	config "github.com/nuveo/prest/config"
+	config "github.com/prest/config"
 )
 
 func init() {

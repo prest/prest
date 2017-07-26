@@ -9,8 +9,8 @@ import (
 
 	"bytes"
 
-	"github.com/nuveo/prest/config"
-	"github.com/nuveo/prest/statements"
+	"github.com/prest/config"
+	"github.com/prest/statements"
 )
 
 func TestParseInsertRequest(t *testing.T) {
