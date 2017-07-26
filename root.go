@@ -5,11 +5,11 @@ import (
 	"os"
 
 	"github.com/gorilla/mux"
-	"github.com/nuveo/prest/config"
-	cfgMiddleware "github.com/nuveo/prest/config/middlewares"
-	"github.com/nuveo/prest/config/router"
-	"github.com/nuveo/prest/controllers"
-	"github.com/nuveo/prest/middlewares"
+	"github.com/prest/config"
+	cfgMiddleware "github.com/prest/config/middlewares"
+	"github.com/prest/config/router"
+	"github.com/prest/controllers"
+	"github.com/prest/middlewares"
 	"github.com/spf13/cobra"
 	"github.com/urfave/negroni"
 	// postgres driver for migrate
