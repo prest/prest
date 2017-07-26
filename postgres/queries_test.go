@@ -8,7 +8,7 @@ import (
 	"os/user"
 	"testing"
 
-	"github.com/nuveo/prest/config"
+	"github.com/prest/config"
 )
 
 func TestMain(m *testing.M) {
