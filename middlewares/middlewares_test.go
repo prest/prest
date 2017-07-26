@@ -10,10 +10,10 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/nuveo/prest/config"
-	"github.com/nuveo/prest/config/router"
-	"github.com/nuveo/prest/controllers"
-	"github.com/nuveo/prest/middlewares"
+	"github.com/prest/config"
+	"github.com/prest/config/router"
+	"github.com/prest/controllers"
+	"github.com/prest/middlewares"
 	"github.com/urfave/negroni"
 )
 
