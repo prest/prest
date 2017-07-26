@@ -39,13 +39,12 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 
 	sqlTables = fmt.Sprint(sqlTables, order)
 
-	object, err := postgres.Query(sqlTables, values...)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	sc := postgres.Query(sqlTables, values...)
+	if sc.Err() != nil {
+		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
 	}
-
-	w.Write(object)
+	w.Write(sc.Bytes())
 }
 
 // GetTablesByDatabaseAndSchema list all (or filter) tables based on database and schema
@@ -95,13 +94,12 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	valuesAux = append(valuesAux, schema)
 	valuesAux = append(valuesAux, values...)
 
-	object, err := postgres.Query(sqlSchemaTables, valuesAux...)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	sc := postgres.Query(sqlSchemaTables, valuesAux...)
+	if sc.Err() != nil {
+		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
 	}
-
-	w.Write(object)
+	w.Write(sc.Bytes())
 }
 
 // SelectFromTables perform select in database
@@ -193,13 +191,12 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		runQuery = postgres.QueryCount
 	}
 
-	object, err := runQuery(sqlSelect, values...)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	sc := runQuery(sqlSelect, values...)
+	if sc.Err() != nil {
+		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
 	}
-
-	w.Write(object)
+	w.Write(sc.Bytes())
 }
 
 // InsertInTables perform insert in specific table
@@ -218,14 +215,12 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 
 	sql := fmt.Sprintf(statements.InsertQuery, database, schema, table, names, placeholders)
 
-	object, err := postgres.Insert(sql, values...)
-	if err != nil {
-		err = fmt.Errorf("could not perform InsertInTables: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	sc := postgres.Insert(sql, values...)
+	if sc.Err() != nil {
+		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
 	}
-
-	w.Write(object)
+	w.Write(sc.Bytes())
 }
 
 // DeleteFromTable perform delete sql
@@ -247,14 +242,12 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 		sql = fmt.Sprint(sql, " WHERE ", where)
 	}
 
-	object, err := postgres.Delete(sql, values...)
-	if err != nil {
-		err = fmt.Errorf("could not perform DELETE: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	sc := postgres.Delete(sql, values...)
+	if sc.Err() != nil {
+		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
 	}
-
-	w.Write(object)
+	w.Write(sc.Bytes())
 }
 
 // UpdateTable perform update table
@@ -289,12 +282,10 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 		values = append(whereValues, values...)
 	}
 
-	object, err := postgres.Update(sql, values...)
-	if err != nil {
-		err = fmt.Errorf("could not perform UPDATE: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	sc := postgres.Update(sql, values...)
+	if sc.Err() != nil {
+		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
 	}
-
-	w.Write(object)
+	w.Write(sc.Bytes())
 }

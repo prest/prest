@@ -41,11 +41,10 @@ func GetSchemas(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sqlSchemas = fmt.Sprint(sqlSchemas, " ", page)
-	object, err := postgres.Query(sqlSchemas, values...)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	sc := postgres.Query(sqlSchemas, values...)
+	if sc.Err() != nil {
+		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
 	}
-
-	w.Write(object)
+	w.Write(sc.Bytes())
 }

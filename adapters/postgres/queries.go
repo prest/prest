@@ -13,6 +13,7 @@ import (
 	"path"
 
 	"github.com/nuveo/prest/adapters/postgres/connection"
+	"github.com/nuveo/prest/adapters/postgres/internal/scanner"
 	"github.com/nuveo/prest/config"
 	"github.com/nuveo/prest/template"
 )
@@ -74,16 +75,18 @@ func ParseScript(scriptPath string, queryURL url.Values) (sqlQuery string, value
 }
 
 // WriteSQL perform INSERT's, UPDATE's, DELETE's operations
-func WriteSQL(sql string, values []interface{}) (resultByte []byte, err error) {
+func WriteSQL(sql string, values []interface{}) (sc Scanner) {
 	db, err := connection.Get()
 	if err != nil {
 		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
 
 	tx, err := db.Begin()
 	if err != nil {
 		log.Printf("could not begin transaction: %v\n", err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
 
@@ -107,32 +110,37 @@ func WriteSQL(sql string, values []interface{}) (resultByte []byte, err error) {
 		tx.Rollback()
 		log.Printf("sql = %+v\n", sql)
 		err = fmt.Errorf("could not peform sql: %v", err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		// err here is nil, ever!
 		err = fmt.Errorf("could not rows affected: %v", err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
 
 	data := make(map[string]interface{})
 	data["rows_affected"] = rowsAffected
+	var resultByte []byte
 	resultByte, err = json.Marshal(data)
-
+	sc = &scanner.PrestScanner{
+		Error: err,
+		Buff:  bytes.NewBuffer(resultByte),
+	}
 	return
 }
 
 // ExecuteScripts run sql templates created by users
-func ExecuteScripts(method, sql string, values []interface{}) (result []byte, err error) {
+func ExecuteScripts(method, sql string, values []interface{}) (sc Scanner) {
 	switch method {
 	case "GET":
-		result, err = Query(sql, values...)
+		sc = Query(sql, values...)
 	case "POST", "PUT", "PATCH", "DELETE":
-		result, err = WriteSQL(sql, values)
+		sc = WriteSQL(sql, values)
 	default:
-		err = fmt.Errorf("invalid method %s", err)
+		sc = &scanner.PrestScanner{Error: fmt.Errorf("invalid method %s", method)}
 	}
 
 	return
