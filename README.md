@@ -449,3 +449,23 @@ alloworigin = ["http://postgres.rest", "http://foo.com"]
 ## Creating Modules (used pREST with framework)
 
 [Read more](CREATING_MODULES.md)
+
+## Running tests
+
+Create a test database and insert dummy data for specs
+
+```
+PREST_PG_HOST=127.0.0.1 PREST_PG_DATABASE=prest sh ./testdata/schema.sh
+```
+
+Run migrations on test database
+
+```
+PREST_PG_HOST=127.0.0.1 PREST_PG_DATABASE=prest sh ./testdata/migrations_test.sh
+```
+
+Run tests
+
+```
+PREST_PG_HOST=127.0.0.1 PREST_PG_DATABASE=prest sh ./testdata/test.sh
+```
