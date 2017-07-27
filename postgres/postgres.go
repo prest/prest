@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -11,8 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
-
-	"bytes"
 
 	"github.com/prest/adapters/postgres/connection"
 	"github.com/prest/adapters/postgres/internal/scanner"
@@ -343,11 +342,11 @@ func Query(SQL string, params ...interface{}) (sc Scanner) {
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
+	SQL = fmt.Sprintf("SELECT json_agg(s) FROM (%s) s", SQL)
 	// Debug mode
 	if config.PrestConf.Debug {
 		log.Println(SQL)
 	}
-	SQL = fmt.Sprintf("SELECT json_agg(s) FROM (%s) s", SQL)
 	prepare, err := db.Prepare(SQL)
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
