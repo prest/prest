@@ -22,13 +22,13 @@ func ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]
 		return nil, err
 	}
 
-	result, err := postgres.ExecuteScripts(rq.Method, sql, values)
-	if err != nil {
-		err = fmt.Errorf("could not execute sql %+v, %s", err, sql)
+	sc := postgres.ExecuteScripts(rq.Method, sql, values)
+	if sc.Err() != nil {
+		err = fmt.Errorf("could not execute sql %+v, %s", sc.Err(), sql)
 		return nil, err
 	}
 
-	return result, nil
+	return sc.Bytes(), nil
 }
 
 // ExecuteFromScripts is a controller to peform SQL in scripts created by users
