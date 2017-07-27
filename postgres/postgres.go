@@ -71,7 +71,6 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 	pid := initialPlaceholderID
 	for key, val := range r.URL.Query() {
 		if !strings.HasPrefix(key, "_") {
-
 			value = val[0]
 			if val[0] != "" {
 				op = removeOperatorRegex.FindString(val[0])
@@ -278,14 +277,12 @@ func SelectFields(fields []string) (sql string, err error) {
 		err = errors.New("you must select at least one field")
 		return
 	}
-
 	for _, field := range fields {
 		if chkInvalidIdentifier(field) {
 			err = fmt.Errorf("invalid identifier %s", field)
 			return
 		}
 	}
-
 	sql = fmt.Sprintf("SELECT %s FROM", strings.Join(fields, ","))
 	return
 }
@@ -325,20 +322,16 @@ func OrderByRequest(r *http.Request) (values string, err error) {
 func CountByRequest(req *http.Request) (countQuery string, err error) {
 	queries := req.URL.Query()
 	countFields := queries.Get("_count")
-
 	if countFields == "" {
 		return
 	}
-
 	for _, field := range strings.Split(countFields, ",") {
 		if field != "*" && chkInvalidIdentifier(field) {
 			err = errors.New("Invalid identifier")
 			return
 		}
 	}
-
 	countQuery = fmt.Sprintf("SELECT COUNT(%s) FROM", countFields)
-
 	return
 }
 
@@ -349,6 +342,10 @@ func Query(SQL string, params ...interface{}) (sc Scanner) {
 		log.Println(err)
 		sc = &scanner.PrestScanner{Error: err}
 		return
+	}
+	// Debug mode
+	if config.PrestConf.Debug {
+		log.Println(SQL)
 	}
 	SQL = fmt.Sprintf("SELECT json_agg(s) FROM (%s) s", SQL)
 	prepare, err := db.Prepare(SQL)
@@ -377,7 +374,10 @@ func QueryCount(SQL string, params ...interface{}) (sc Scanner) {
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
+	// Debug mode
+	if config.PrestConf.Debug {
+		log.Println(SQL)
+	}
 	prepare, err := db.Prepare(SQL)
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
@@ -474,6 +474,11 @@ func Insert(SQL string, params ...interface{}) (sc Scanner) {
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
+
+	// Debug mode
+	if config.PrestConf.Debug {
+		log.Println(SQL)
+	}
 	SQL = fmt.Sprintf("%s RETURNING row_to_json(%s)", SQL, tableName[2])
 	stmt, err := tx.Prepare(SQL)
 	if err != nil {
@@ -512,6 +517,10 @@ func Delete(SQL string, params ...interface{}) (sc Scanner) {
 			tx.Rollback()
 		}
 	}()
+	// Debug mode
+	if config.PrestConf.Debug {
+		log.Println(SQL)
+	}
 	var result sql.Result
 	var rowsAffected int64
 	result, err = tx.Exec(SQL, params...)
@@ -562,6 +571,10 @@ func Update(SQL string, params ...interface{}) (sc Scanner) {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
 		sc = &scanner.PrestScanner{Error: err}
 		return
+	}
+	// Debug mode
+	if config.PrestConf.Debug {
+		log.Println(SQL)
 	}
 	var result sql.Result
 	var rowsAffected int64
