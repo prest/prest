@@ -101,7 +101,7 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 		middlewares.AccessControl(),
 		negroni.Wrap(crudRoutes),
 	))
-	os.Setenv("PREST_CONF", "../../testdata/prest.toml")
+	os.Setenv("PREST_CONF", "../testdata/prest.toml")
 	n := GetApp()
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
@@ -185,7 +185,7 @@ func appTest() *negroni.Negroni {
 func TestCorsGet(t *testing.T) {
 	os.Setenv("PREST_DEBUG", "true")
 	os.Setenv("PREST_CORS_ALLOWORIGIN", "*")
-	os.Setenv("PREST_CONF", "../../testdata/prest.toml")
+	os.Setenv("PREST_CONF", "../testdata/prest.toml")
 	config.Load()
 	app = nil
 	r := router.Get()
@@ -223,7 +223,7 @@ func TestCorsGet(t *testing.T) {
 func TestCorsPost(t *testing.T) {
 	os.Setenv("PREST_DEBUG", "true")
 	os.Setenv("PREST_CORS_ALLOWORIGIN", "*")
-	os.Setenv("PREST_CONF", "../../testdata/prest.toml")
+	os.Setenv("PREST_CONF", "../testdata/prest.toml")
 	config.Load()
 	app = nil
 	r := router.Get()
@@ -261,7 +261,7 @@ func TestCorsPost(t *testing.T) {
 func TestCorsHead(t *testing.T) {
 	os.Setenv("PREST_DEBUG", "true")
 	os.Setenv("PREST_CORS_ALLOWORIGIN", "*")
-	os.Setenv("PREST_CONF", "../../testdata/prest.toml")
+	os.Setenv("PREST_CONF", "../testdata/prest.toml")
 	config.Load()
 	app = nil
 	r := router.Get()
@@ -299,7 +299,7 @@ func TestCorsHead(t *testing.T) {
 
 func TestCorsAllowOriginNotAll(t *testing.T) {
 	os.Setenv("PREST_DEBUG", "true")
-	os.Setenv("PREST_CONF", "../../testdata/prest.toml")
+	os.Setenv("PREST_CONF", "../testdata/prest.toml")
 	os.Setenv("PREST_CORS_ALLOWORIGIN", "http://127.0.0.1")
 	config.Load()
 	config.PrestConf.CORSAllowOrigin = []string{"http://127.0.0.1"}
