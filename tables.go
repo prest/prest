@@ -110,7 +110,11 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	table := vars["table"]
 
 	// get selected columns, "*" if empty "_columns"
-	cols := postgres.FieldsPermissions(r, table, "read")
+	cols, err := postgres.FieldsPermissions(r, table, "read")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	if len(cols) == 0 {
 		err := fmt.Errorf("you don't have permission for this action, please check the permitted fields for this table")
