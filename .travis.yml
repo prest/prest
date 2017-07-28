@@ -1,0 +1,30 @@
+dist: trusty
+
+sudo: required
+
+addons:
+  postgresql: "9.6"
+
+language: go
+
+os:
+    - linux
+
+go:
+  - 1.7
+  - 1.8
+  - tip
+
+matrix:
+  allow_failures:
+  - go: tip
+
+env:
+   - PREST_PG_USER=postgres PREST_PG_DATABASE=prest PREST_PG_PORT=5432 PREST_CONF=$TRAVIS_BUILD_DIR/testdata/prest.toml
+
+before_script:
+    - sh testdata/schema.sh
+    - go get -v -d ./...
+
+script:
+    - sh test.sh
