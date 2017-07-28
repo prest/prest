@@ -27,6 +27,7 @@ const (
 
 var removeOperatorRegex *regexp.Regexp
 var insertTableNameRegex *regexp.Regexp
+var groupRegex *regexp.Regexp
 
 // ErrBodyEmpty err throw when body is empty
 var ErrBodyEmpty = errors.New("body is empty")
@@ -34,6 +35,7 @@ var ErrBodyEmpty = errors.New("body is empty")
 func init() {
 	removeOperatorRegex = regexp.MustCompile(`\$[a-z]+.`)
 	insertTableNameRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.]*\.)*(\w+)\s*\(`)
+	groupRegex = regexp.MustCompile(`\(([^\)]+)\)`)
 }
 
 // chkInvalidIdentifier return true if identifier is invalid
@@ -652,46 +654,76 @@ func TablePermissions(table string, op string) bool {
 }
 
 // FieldsPermissions get fields permissions based in prest configuration
-func FieldsPermissions(r *http.Request, table string, op string) []string {
+func FieldsPermissions(r *http.Request, table string, op string) (fields []string, err error) {
 	restrict := config.PrestConf.AccessConf.Restrict
 	cols := ColumnsByRequest(r)
+	queries := r.URL.Query()
+	if queries.Get("_groupby") != "" {
+		cols, err = normalizeAll(cols)
+		if err != nil {
+			return
+		}
+	}
 	if !restrict {
-		return cols
+		fields = cols
+		return
 	}
 
-	queries := r.URL.Query()
-
-	var permittedCols []string
 	tables := config.PrestConf.AccessConf.Tables
 	for _, t := range tables {
 		if t.Name == table {
 			for _, col := range cols {
 				// return all permitted fields if have "*" in SELECT
 				if op == "read" && col == "*" {
-					return t.Fields
+					fields = t.Fields
+					return
 				}
-
-				if queries.Get("_groupby") != "" {
-					if strings.Contains(col, ":") {
-						groupFunc, err := NormalizeGroupFunction(col)
-						if err == nil {
-							permittedCols = append(permittedCols, groupFunc)
-						}
-					} else {
-						permittedCols = append(permittedCols, col)
-					}
-				} else {
-					for _, f := range t.Fields {
-						if col == f {
-							permittedCols = append(permittedCols, col)
-						}
-					}
+				pField := checkField(col, t.Fields)
+				if pField != "" {
+					fields = append(fields, pField)
 				}
 			}
-			return permittedCols
+			return
 		}
 	}
-	return nil
+	return nil, errors.New("0 tables configured")
+}
+
+func checkField(col string, fields []string) (p string) {
+	// regex get field from func group
+	fieldName := groupRegex.FindStringSubmatch(col)
+	for _, f := range fields {
+		if len(fieldName) == 2 && fieldName[1] == f {
+			p = col
+			return
+		}
+		if col == f {
+			p = col
+			return
+		}
+	}
+	return
+}
+
+func normalizeAll(cols []string) (pCols []string, err error) {
+	for _, col := range cols {
+		var gf string
+		gf, err = normalizeColumn(col)
+		if err != nil {
+			return
+		}
+		pCols = append(pCols, gf)
+	}
+	return
+}
+
+func normalizeColumn(col string) (gf string, err error) {
+	if strings.Contains(col, ":") {
+		gf, err = NormalizeGroupFunction(col)
+		return
+	}
+	gf = col
+	return
 }
 
 // ColumnsByRequest extract columns and return as array of strings
@@ -755,7 +787,6 @@ func GroupByClause(r *http.Request) (groupBySQL string) {
 func NormalizeGroupFunction(paramValue string) (groupFuncSQL string, err error) {
 	values := strings.Split(paramValue, ":")
 	groupFunc := strings.ToUpper(values[0])
-
 	switch groupFunc {
 	case "SUM", "AVG", "MAX", "MIN", "MEDIAN", "STDDEV", "VARIANCE":
 		// values[1] it's a field in table

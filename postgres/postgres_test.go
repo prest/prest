@@ -788,6 +788,7 @@ func TestFieldsPermissions(t *testing.T) {
 		{"Read invalid field", "/prest/public/test_list_only_id?_select=name", "test_list_only_id", "read", 0},
 		{"Read non existing field", "/prest/public/test_list_only_id?_select=non_existing_field", "test_list_only_id", "read", 0},
 		{"Select with *", "/prest/public/test_list_only_id?_select=*", "test_list_only_id", "read", 1},
+		{"Select with group function", "/prest/public/test_group_by_table?_select=age,sum:salary&_groupby=age", "test_group_by_table", "read", 2},
 	}
 
 	for _, tc := range testCases {
@@ -798,9 +799,12 @@ func TestFieldsPermissions(t *testing.T) {
 			t.Errorf("expected no errors on NewRequest, but got: %v", err)
 		}
 
-		fields := FieldsPermissions(r, tc.table, tc.permission)
+		fields, err := FieldsPermissions(r, tc.table, tc.permission)
+		if err != nil {
+			t.Errorf("expected no errors, but got %v", err)
+		}
 		if len(fields) != tc.resultLen {
-			t.Errorf("expected %d, got: %d - %v", tc.resultLen, len(fields), fields)
+			t.Errorf("expected %d in table: %s, got: %d - %v", tc.resultLen, tc.table, len(fields), fields)
 		}
 	}
 }
@@ -815,7 +819,10 @@ func TestRestrictFalse(t *testing.T) {
 		t.Errorf("expected no errors on NewRequest, but got: %v", err)
 	}
 
-	fields := FieldsPermissions(r, "test_list_only_id", "read")
+	fields, err := FieldsPermissions(r, "test_list_only_id", "read")
+	if err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
 	if fields[0] != "*" {
 		t.Errorf("expected '*', got: %s", fields[0])
 	}
