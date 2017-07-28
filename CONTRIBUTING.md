@@ -8,7 +8,7 @@ This document explains how to contribute changes to the pREST project.
 
 Please search the issues on the issue tracker with a variety of keywords to ensure your bug is not already reported.
 
-If unique, [open an issue](https://github.com/nuveo/prest/issues/new) and answer the questions so we can understand and reproduce the problematic behavior.
+If unique, [open an issue](https://github.com/prest/prest/issues/new) and answer the questions so we can understand and reproduce the problematic behavior.
 
 To show us that the issue you are having is in pREST itself, please write clear, concise instructions so we can reproduce the behavior (even if it seems obvious). The more detailed and specific you are, the faster we can fix the issue. Check out [How to Report Bugs Effectively](http://www.chiark.greenend.org.uk/~sgtatham/bugs.html).
 
@@ -18,7 +18,7 @@ Please be kind, remember that pREST comes at no cost to you, and you're getting 
 
 The project welcomes submissions but please let everyone know what you're working on if you want to change or add something to the pREST repository.
 
-Before starting to write something new for the pREST project, please [file an issue](https://github.com/nuveo/prest/issues/new).
+Before starting to write something new for the pREST project, please [file an issue](https://github.com/prest/prest/issues/new).
 
 This process gives everyone a chance to validate the design, helps prevent duplication of effort, and ensures that the idea fits inside the goals for the project and tools. It also checks that the design is sound before code is written; the code review tool is not the place for high-level discussions.
 
@@ -48,13 +48,13 @@ Please use your real name, we really dislike pseudonyms or anonymous contributio
 
 ## Maintainers
 
-To make sure every PR is checked, we have [team maintainers](MAINTAINERS). Every PR **MUST** be reviewed by at least two maintainers (or owners) before it can get merged. A maintainer should be a contributor of pREST and contributed at least 4 accepted PRs. A contributor should apply as a maintainer in the [Gitter develop channel](https://gitter.im/nuveo/prest). The owners or the team maintainers may invite the contributor. A maintainer should spend some time on code reviews. If a maintainer has no time to do that, they should apply to leave the maintainers team and we will give them the honor of being a member of the **advisors team**. Of course, if an advisor has time to code review, we will gladly welcome them back to the maintainers team. If a maintainer is inactive for more than 3 months and forgets to leave the maintainers team, the owners may move him or her from the maintainers team to the advisors team.
+To make sure every PR is checked, we have [team maintainers](MAINTAINERS). Every PR **MUST** be reviewed by at least two maintainers (or owners) before it can get merged. A maintainer should be a contributor of pREST and contributed at least 4 accepted PRs. A contributor should apply as a maintainer in the [Gitter develop channel](https://gitter.im/prest/prest). The owners or the team maintainers may invite the contributor. A maintainer should spend some time on code reviews. If a maintainer has no time to do that, they should apply to leave the maintainers team and we will give them the honor of being a member of the **advisors team**. Of course, if an advisor has time to code review, we will gladly welcome them back to the maintainers team. If a maintainer is inactive for more than 3 months and forgets to leave the maintainers team, the owners may move him or her from the maintainers team to the advisors team.
 
 ## Owners
 
-Since pREST is maintained by Nuveo (and community), Nuveo does not provide professional support for pREST, to keep the development healthy we will elect three owners every year. All contributors may vote to elect up to three candidates, one of which will be the main owner, and the other two the assistant owners. When the new owners have been elected, the old owners will give up ownership to the newly elected owners. If an owner is unable to do so, the other owners will assist in ceding ownership to the newly elected owners.
+Since pREST is maintained by Community, [Nuveo](https://nuveo.com.br/en) (company that has idealized) does not provide professional support for pREST, to keep the development healthy we will elect three owners every year. All contributors may vote to elect up to three candidates, one of which will be the main owner, and the other two the assistant owners. When the new owners have been elected, the old owners will give up ownership to the newly elected owners. If an owner is unable to do so, the other owners will assist in ceding ownership to the newly elected owners.
 
-After the election, the new owners should proactively agree with our [CONTRIBUTING](CONTRIBUTING.md) requirements on the [Gitter main channel](https://gitter.im/nuveo/prest). Below are the words to speak:
+After the election, the new owners should proactively agree with our [CONTRIBUTING](CONTRIBUTING.md) requirements on the [Gitter main channel](https://gitter.im/prest/prest). Below are the words to speak:
 
 ```
 I'm honored to having been elected an owner of pREST, I agree with [CONTRIBUTING](CONTRIBUTING.md). I will spend part of my time on pREST and lead the development of pREST.
