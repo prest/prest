@@ -7,7 +7,7 @@ import (
 )
 
 func TestLoad(t *testing.T) {
-	os.Setenv("PREST_CONF", "../testdata/prest.toml")
+	os.Setenv("PREST_CONF", "testdata/prest.toml")
 
 	Load()
 	if len(PrestConf.AccessConf.Tables) < 2 {
@@ -21,7 +21,7 @@ func TestLoad(t *testing.T) {
 }
 
 func TestParse(t *testing.T) {
-	os.Setenv("PREST_CONF", "../testdata/prest.toml")
+	os.Setenv("PREST_CONF", "testdata/prest.toml")
 	viperCfg()
 	cfg := &Prest{}
 	err := Parse(cfg)
@@ -51,8 +51,22 @@ func TestParse(t *testing.T) {
 		t.Errorf("expected port: 4000, got: %d", cfg.HTTPPort)
 	}
 
+	os.Setenv("PREST_CONF", "")
 	os.Setenv("PREST_HTTP_PORT", "4000")
-	os.Setenv("PREST_CONF", "../testdata/prest.toml")
+	viperCfg()
+	cfg = &Prest{}
+	err = Parse(cfg)
+
+	if err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+
+	if cfg.HTTPPort != 4000 {
+		t.Errorf("expected port: 4000, got: %d", cfg.HTTPPort)
+	}
+
+	os.Setenv("PREST_HTTP_PORT", "4000")
+	os.Setenv("PREST_CONF", "testdata/prest.toml")
 	viperCfg()
 	cfg = &Prest{}
 	err = Parse(cfg)
