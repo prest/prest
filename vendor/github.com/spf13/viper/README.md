@@ -11,6 +11,7 @@ Many Go projects are built using Viper including:
 * [Docker Notary](https://github.com/docker/Notary)
 * [BloomApi](https://www.bloomapi.com/)
 * [doctl](https://github.com/digitalocean/doctl)
+* [Clairctl](https://github.com/jgsqware/clairctl)
 
 [![Build Status](https://travis-ci.org/spf13/viper.svg)](https://travis-ci.org/spf13/viper) [![Join the chat at https://gitter.im/spf13/viper](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/spf13/viper?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![GoDoc](https://godoc.org/github.com/spf13/viper?status.svg)](https://godoc.org/github.com/spf13/viper)
 
@@ -116,10 +117,10 @@ Optionally you can provide a function for Viper to run each time a change occurs
 **Make sure you add all of the configPaths prior to calling `WatchConfig()`**
 
 ```go
-		viper.WatchConfig()
-		viper.OnConfigChange(func(e fsnotify.Event) {
-			fmt.Println("Config file changed:", e.Name)
-		})
+viper.WatchConfig()
+viper.OnConfigChange(func(e fsnotify.Event) {
+	fmt.Println("Config file changed:", e.Name)
+})
 ```
 
 ### Reading Config from io.Reader
@@ -236,13 +237,26 @@ Like `BindEnv`, the value is not set when the binding method is called, but when
 it is accessed. This means you can bind as early as you want, even in an
 `init()` function.
 
-The `BindPFlag()` method provides this functionality.
+For individual flags, the `BindPFlag()` method provides this functionality.
 
 Example:
 
 ```go
 serverCmd.Flags().Int("port", 1138, "Port to run Application server on")
 viper.BindPFlag("port", serverCmd.Flags().Lookup("port"))
+```
+
+You can also bind an existing set of pflags (pflag.FlagSet):
+
+Example:
+
+```go
+pflag.Int("flagname", 1234, "help message for flagname")
+
+pflag.Parse()
+viper.BindPFlags(pflag.CommandLine)
+
+i := viper.GetInt("flagname") // retrieve values from viper instead of pflag
 ```
 
 The use of [pflag](https://github.com/spf13/pflag/) in Viper does not preclude
@@ -263,9 +277,17 @@ import (
 )
 
 func main() {
+
+	// using standard library "flag" package
+	flag.Int("flagname", 1234, "help message for flagname")
+
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
-    ...
+	viper.BindPFlags(pflag.CommandLine)
+
+	i := viper.GetInt("flagname") // retrieve value from viper
+
+	...
 }
 ```
 

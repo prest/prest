@@ -14,10 +14,10 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/nuveo/prest/cmd"
-	"github.com/nuveo/prest/config"
-	"github.com/nuveo/prest/config/middlewares"
-	"github.com/nuveo/prest/config/router"
+	"github.com/prest/cmd"
+	"github.com/prest/config"
+	"github.com/prest/config/middlewares"
+	"github.com/prest/config/router"
 	"github.com/urfave/negroni"
 )
 

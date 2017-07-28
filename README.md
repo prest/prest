@@ -1,9 +1,9 @@
 # pREST
-[![Build Status](https://travis-ci.org/nuveo/prest.svg?branch=master)](https://travis-ci.org/nuveo/prest)
-[![GoDoc](https://godoc.org/github.com/nuveo/prest?status.png)](https://godoc.org/github.com/nuveo/prest)
-[![Go Report Card](https://goreportcard.com/badge/github.com/nuveo/prest)](https://goreportcard.com/report/github.com/nuveo/prest)
-[![codecov](https://codecov.io/gh/nuveo/prest/branch/master/graph/badge.svg)](https://codecov.io/gh/nuveo/prest)
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/nuveo/prest?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Build Status](https://travis-ci.org/prest/prest.svg?branch=master)](https://travis-ci.org/prest/prest)
+[![GoDoc](https://godoc.org/github.com/prest/prest?status.png)](https://godoc.org/github.com/prest/prest)
+[![Go Report Card](https://goreportcard.com/badge/github.com/prest/prest)](https://goreportcard.com/report/github.com/prest/prest)
+[![codecov](https://codecov.io/gh/prest/prest/branch/master/graph/badge.svg)](https://codecov.io/gh/prest/prest)
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/prest/prest?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Serve a RESTful API from any PostgreSQL database
 
@@ -17,14 +17,14 @@ There is the PostgREST written in haskell, keep a haskell software in production
 
 ## Docker
 
-https://hub.docker.com/r/nuveo/prest/
+https://hub.docker.com/r/prest/prest/
 
 ```
 docker run -e PREST_HTTP_PORT=3000 \
 	-e PREST_PG_HOST=127.0.0.1 \
 	-e PREST_PG_USER=postgres \
 	-e PREST_PG_PASS=pass \
-	nuveo/prest:0.2
+	prest/prest:0.2
 ```
 
 ### Tags
@@ -35,7 +35,7 @@ docker run -e PREST_HTTP_PORT=3000 \
 
 ## Install
 
-    go get github.com/nuveo/prest
+    go get github.com/prest/prest
 
 ## Run
 
@@ -304,11 +304,11 @@ We support this Group Functions:
 
 #### Having support
 To use Having clause with **Group By**, follow this syntax:
-	
+
 	_groupby=fieldname->>having:GROUPFUNC:FIELDNAME:CONDITION:VALUE-CONDITION
-	
+
 Example:
-	
+
 	GET /DATABASE/SCHEMA/TABLE/?_select=fieldname00,sum:fieldname01&_groupby=fieldname01-->having:sum:fieldname01:$gt:500
 
 
@@ -388,10 +388,10 @@ DELETE /_QUERIES/bar/some_delete?field1=foo
 - *isSet* return true if param is set
 
 ```sql
-SELECT * FROM table 
+SELECT * FROM table
 {{if isSet "field1"}}
 WHERE name = "{{.field1}}"
-{{end}} 
+{{end}}
 ;
 ```
 
@@ -433,7 +433,7 @@ fields = ["id", "name"]
 |fields|Fields permitted for select|
 
 
-Configuration example: [prest.toml](https://github.com/nuveo/prest/blob/master/testdata/prest.toml)
+Configuration example: [prest.toml](https://github.com/prest/prest/blob/master/testdata/prest.toml)
 
 
 ## CORS Support

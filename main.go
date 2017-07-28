@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/nuveo/prest/cmd"
-	"github.com/nuveo/prest/config"
+	"github.com/prest/cmd"
+	"github.com/prest/config"
 )
 
 func main() {

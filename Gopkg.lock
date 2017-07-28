@@ -2,12 +2,6 @@
 
 
 [[projects]]
-  name = "github.com/DATA-DOG/go-sqlmock"
-  packages = ["."]
-  revision = "b983233bc0bbea4dc6e8ec8c8c923d935765ffec"
-  version = "v1.2.0"
-
-[[projects]]
   branch = "master"
   name = "github.com/auth0/go-jwt-middleware"
   packages = ["."]
@@ -111,6 +105,54 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/prest/adapters"
+  packages = ["postgres","postgres/connection","postgres/internal/scanner"]
+  revision = "557ae5b961e4855d1afde55f0dabcc04b53a8555"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prest/cmd"
+  packages = ["."]
+  revision = "f7d18d41e07705fdfe203d99e9ba101f7b774e6c"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prest/config"
+  packages = [".","middlewares","router"]
+  revision = "d9878e15eec3f75b1b25c88abca53bf923d2c36c"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prest/controllers"
+  packages = ["."]
+  revision = "7da58d1f72070001bb9e38ebabb37867f94956b8"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prest/helpers"
+  packages = ["."]
+  revision = "6515e517e8582c0d0ec2aa75ac43672413dc0701"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prest/middlewares"
+  packages = ["."]
+  revision = "9109e728747955cfb27c3a58118154149b840e45"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prest/statements"
+  packages = ["."]
+  revision = "cbb29dfbcb6d58105c17701f4bafab4bee9c4d34"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prest/template"
+  packages = ["."]
+  revision = "4bb12828ef5600163ea626f7a7dd2e82b6f922f4"
+
+[[projects]]
+  branch = "master"
   name = "github.com/spf13/afero"
   packages = [".","mem"]
   revision = "9be650865eab0c12963d8753212f4f9c66cdcf12"
@@ -125,7 +167,7 @@
   branch = "master"
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "715f41bd7a70b5111f898b71ab484da52ee6266d"
+  revision = "34594c771f2c18301dc152640ad40ece28795373"
 
 [[projects]]
   branch = "master"
@@ -134,16 +176,16 @@
   revision = "0efa5202c04663c757d84f90f5219c1250baf94f"
 
 [[projects]]
-  branch = "master"
   name = "github.com/spf13/pflag"
   packages = ["."]
   revision = "e57e3eeb33f795204c1ca35f56c44f83227c6e66"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
   name = "github.com/spf13/viper"
   packages = ["."]
-  revision = "df7314a14e26fea5443bb6e696b207d14d9a266d"
+  revision = "25b30aa063fc18e48662b86996252eabdcf2f0c7"
 
 [[projects]]
   name = "github.com/urfave/negroni"
@@ -155,7 +197,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "c4489faa6e5ab84c0ef40d6ee878f7a030281f0f"
+  revision = "515fc15b65f1e0398c810790cb89f6bde11dddca"
 
 [[projects]]
   branch = "master"
@@ -178,6 +220,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "6a9b05ea9f725e050897c03b65ce177817ee89ed6af34e33660cde8b73b71abc"
+  inputs-digest = "c8cf461e787fdb1e7c3e02fd30dd93373057dc0575a01862a9050101df82eef0"
   solver-name = "gps-cdcl"
   solver-version = 1
