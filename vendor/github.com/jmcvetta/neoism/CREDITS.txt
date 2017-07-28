@@ -1,0 +1,8 @@
+N: Jason McVetta
+E: jason.mcvetta@gmail.com
+D: Principal author
+
+N: Javier de la Rosa
+W: https://github.com/versae
+D: install_local_neo4j.bash and related elements of .travis.yml copied from
+D: https://github.com/versae/neo4j-rest-client under GPL v3

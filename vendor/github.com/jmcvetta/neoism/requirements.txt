@@ -1,0 +1,5 @@
+#
+# Python depenencies - used for automated testing on CircleCI
+#
+
+httpie

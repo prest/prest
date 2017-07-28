@@ -13,7 +13,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	os.Setenv("PREST_CONF", "../testdata/prest.toml")
+	os.Setenv("PREST_CONF", "testdata/prest.toml")
 	config.Load()
 
 	createMockScripts(config.PrestConf.QueriesPath)

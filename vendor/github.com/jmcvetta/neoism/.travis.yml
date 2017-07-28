@@ -1,0 +1,31 @@
+language: go
+go: 
+  - 1.1
+  - 1.2
+  - 1.3
+  - 1.4
+  - 1.5
+  - tip
+notificaitons:
+  email:
+    recipients:
+      jason.mcvetta@gmail.com
+    on_success: change
+    on_failure: always
+before_script:
+  - go get -v github.com/bmizerany/assert
+  - go get -v github.com/jmcvetta/randutil
+#
+# Lines below copied from # https://github.com/versae/neo4j-rest-client/blob/master/.travis.yml
+#
+before_install:
+  - sh start-neo4j.sh
+  - sh set_neo4j_password.sh
+
+env:
+  global:
+    - NEO4J_VERSION="2.2.5"
+    - NEO4J_URL=http://neo4j:foobar@localhost:7474/db/data/
+
+script:
+  - go test -v

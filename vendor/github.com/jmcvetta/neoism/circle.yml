@@ -1,0 +1,13 @@
+#
+# Configuration file for CircleCI automated testing
+#
+
+machine:
+  services:
+    - neo4j
+  environment:
+    NEO4J_URL: http://neo4j:foobar@localhost:7474/db/data/
+
+test:
+  pre:
+    - http -a neo4j:neo4j POST http://localhost:7474/user/neo4j/password password=foobar

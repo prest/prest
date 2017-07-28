@@ -230,18 +230,17 @@ func TestGroupByClause(t *testing.T) {
 }
 
 func TestEmptyTable(t *testing.T) {
-	response, err := Query("SELECT * FROM test_empty_table")
-	if err != nil {
-		t.Fatal(err.Error())
+	sc := Query("SELECT * FROM test_empty_table")
+	if sc.Err() != nil {
+		t.Fatal(sc.Err())
 	}
-	if !bytes.Equal(response, []byte("[]")) {
-		t.Fatalf("Query response returned '%v', expected '[]'", string(response))
+	if !bytes.Equal(sc.Bytes(), []byte("[]")) {
+		t.Fatalf("Query response returned '%v', expected '[]'", string(sc.Bytes()))
 	}
 }
 
 func TestQuery(t *testing.T) {
-	var response []byte
-	var err error
+	var sc Scanner
 
 	var testCases = []struct {
 		description string
@@ -258,17 +257,17 @@ func TestQuery(t *testing.T) {
 	for _, tc := range testCases {
 		t.Log(tc.description)
 		if tc.param {
-			response, err = Query(tc.sql, "public")
+			sc = Query(tc.sql, "public")
 		} else {
-			response, err = Query(tc.sql)
+			sc = Query(tc.sql)
 		}
 
-		if err != tc.err {
-			t.Errorf("expected no errors, but got %s", err)
+		if sc.Err() != tc.err {
+			t.Errorf("expected no errors, but got %s", sc.Err())
 		}
 
-		if len(response) < tc.jsonMinLen {
-			t.Errorf("expected valid json response, but got %v", string(response))
+		if len(sc.Bytes()) < tc.jsonMinLen {
+			t.Errorf("expected valid json response, but got %v", string(sc.Bytes()))
 		}
 	}
 }
@@ -284,14 +283,14 @@ func TestInvalidQuery(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		response, err := Query(tc.sql, "public")
+		sc := Query(tc.sql, "public")
 
-		if err == nil {
+		if sc.Err() == nil {
 			t.Error("expected errors, but got nil")
 		}
 
-		if response != nil {
-			t.Errorf("expected no response, but got %s", string(response))
+		if sc.Bytes() != nil {
+			t.Errorf("expected no response, but got %s", string(sc.Bytes()))
 		}
 	}
 }
@@ -364,12 +363,12 @@ func TestInsert(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		jsonByte, err := Insert(tc.sql, tc.values...)
-		if err != nil {
-			t.Errorf("expected no errors, but got %s", err)
+		sc := Insert(tc.sql, tc.values...)
+		if sc.Err() != nil {
+			t.Errorf("expected no errors, but got %s", sc.Err())
 		}
-		if len(jsonByte) < 1 {
-			t.Errorf("expected valid response body, but got %s", string(jsonByte))
+		if len(sc.Bytes()) < 1 {
+			t.Errorf("expected valid response body, but got %s", string(sc.Bytes()))
 		}
 	}
 }
@@ -388,12 +387,12 @@ func TestInsertInvalid(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		jsonByte, err := Insert(tc.sql, tc.values...)
-		if err == nil {
+		sc := Insert(tc.sql, tc.values...)
+		if sc.Err() == nil {
 			t.Errorf("expected  errors, but no has")
 		}
-		if len(jsonByte) > 0 {
-			t.Errorf("expected valid response body, but got %s", string(jsonByte))
+		if len(sc.Bytes()) > 0 {
+			t.Errorf("expected valid response body, but got %s", string(sc.Bytes()))
 		}
 	}
 }
@@ -411,24 +410,24 @@ func TestDelete(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		response, err := Delete(tc.sql, tc.values)
-		if err == nil {
-			t.Errorf("expected error, but got: %s", err)
+		sc := Delete(tc.sql, tc.values)
+		if sc.Err() == nil {
+			t.Errorf("expected error, but got: %s", sc.Err())
 		}
 
-		if len(response) > 0 {
-			t.Errorf("expected empty response body, but got %s", string(response))
+		if len(sc.Bytes()) > 0 {
+			t.Errorf("expected empty response body, but got %s", string(sc.Bytes()))
 		}
 	}
 
 	t.Log("Delete data from table")
-	response, err := Delete("DELETE FROM prest.public.test WHERE name=$1", "nuveo")
-	if err != nil {
-		t.Errorf("expected no error, but got: %s", err)
+	sc := Delete("DELETE FROM prest.public.test WHERE name=$1", "nuveo")
+	if sc.Err() != nil {
+		t.Errorf("expected no error, but got: %s", sc.Err())
 	}
 
-	if len(response) < 1 {
-		t.Errorf("expected response body, but got %s", string(response))
+	if len(sc.Bytes()) < 1 {
+		t.Errorf("expected response body, but got %s", string(sc.Bytes()))
 	}
 }
 
@@ -444,24 +443,24 @@ func TestUpdate(t *testing.T) {
 	}
 
 	t.Log("Update data into a table")
-	response, err := Update("UPDATE prest.public.test SET name=$2 WHERE name=$1", "prest tester", "prest")
-	if err != nil {
-		t.Errorf("expected no errors, but got: %s", err)
+	sc := Update("UPDATE prest.public.test SET name=$2 WHERE name=$1", "prest tester", "prest")
+	if sc.Err() != nil {
+		t.Errorf("expected no errors, but got: %s", sc.Err())
 	}
 
-	if len(response) < 1 {
-		t.Errorf("expected a valid response body, but got %s", string(response))
+	if len(sc.Bytes()) < 1 {
+		t.Errorf("expected a valid response body, but got %s", string(sc.Bytes()))
 	}
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		response, err := Update(tc.sql, tc.values...)
-		if err == nil {
-			t.Errorf("expected error, but got: %s", err)
+		sc := Update(tc.sql, tc.values...)
+		if sc.Err() == nil {
+			t.Errorf("expected error, but got: %s", sc.Err())
 		}
 
-		if len(response) > 0 {
-			t.Errorf("expected empty response body, but got %s", string(response))
+		if len(sc.Bytes()) > 0 {
+			t.Errorf("expected empty response body, but got %s", string(sc.Bytes()))
 		}
 	}
 }
@@ -789,6 +788,7 @@ func TestFieldsPermissions(t *testing.T) {
 		{"Read invalid field", "/prest/public/test_list_only_id?_select=name", "test_list_only_id", "read", 0},
 		{"Read non existing field", "/prest/public/test_list_only_id?_select=non_existing_field", "test_list_only_id", "read", 0},
 		{"Select with *", "/prest/public/test_list_only_id?_select=*", "test_list_only_id", "read", 1},
+		{"Select with group function", "/prest/public/test_group_by_table?_select=age,sum:salary&_groupby=age", "test_group_by_table", "read", 2},
 	}
 
 	for _, tc := range testCases {
@@ -799,9 +799,12 @@ func TestFieldsPermissions(t *testing.T) {
 			t.Errorf("expected no errors on NewRequest, but got: %v", err)
 		}
 
-		fields := FieldsPermissions(r, tc.table, tc.permission)
+		fields, err := FieldsPermissions(r, tc.table, tc.permission)
+		if err != nil {
+			t.Errorf("expected no errors, but got %v", err)
+		}
 		if len(fields) != tc.resultLen {
-			t.Errorf("expected %d, got: %d - %v", tc.resultLen, len(fields), fields)
+			t.Errorf("expected %d in table: %s, got: %d - %v", tc.resultLen, tc.table, len(fields), fields)
 		}
 	}
 }
@@ -816,7 +819,10 @@ func TestRestrictFalse(t *testing.T) {
 		t.Errorf("expected no errors on NewRequest, but got: %v", err)
 	}
 
-	fields := FieldsPermissions(r, "test_list_only_id", "read")
+	fields, err := FieldsPermissions(r, "test_list_only_id", "read")
+	if err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
 	if fields[0] != "*" {
 		t.Errorf("expected '*', got: %s", fields[0])
 	}

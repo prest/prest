@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -13,6 +14,7 @@ import (
 	"unicode"
 
 	"github.com/prest/adapters/postgres/connection"
+	"github.com/prest/adapters/postgres/internal/scanner"
 	"github.com/prest/config"
 	"github.com/prest/statements"
 )
@@ -25,6 +27,7 @@ const (
 
 var removeOperatorRegex *regexp.Regexp
 var insertTableNameRegex *regexp.Regexp
+var groupRegex *regexp.Regexp
 
 // ErrBodyEmpty err throw when body is empty
 var ErrBodyEmpty = errors.New("body is empty")
@@ -32,6 +35,7 @@ var ErrBodyEmpty = errors.New("body is empty")
 func init() {
 	removeOperatorRegex = regexp.MustCompile(`\$[a-z]+.`)
 	insertTableNameRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.]*\.)*(\w+)\s*\(`)
+	groupRegex = regexp.MustCompile(`\(([^\)]+)\)`)
 }
 
 // chkInvalidIdentifier return true if identifier is invalid
@@ -68,7 +72,6 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 	pid := initialPlaceholderID
 	for key, val := range r.URL.Query() {
 		if !strings.HasPrefix(key, "_") {
-
 			value = val[0]
 			if val[0] != "" {
 				op = removeOperatorRegex.FindString(val[0])
@@ -275,14 +278,12 @@ func SelectFields(fields []string) (sql string, err error) {
 		err = errors.New("you must select at least one field")
 		return
 	}
-
 	for _, field := range fields {
 		if chkInvalidIdentifier(field) {
 			err = fmt.Errorf("invalid identifier %s", field)
 			return
 		}
 	}
-
 	sql = fmt.Sprintf("SELECT %s FROM", strings.Join(fields, ","))
 	return
 }
@@ -322,58 +323,66 @@ func OrderByRequest(r *http.Request) (values string, err error) {
 func CountByRequest(req *http.Request) (countQuery string, err error) {
 	queries := req.URL.Query()
 	countFields := queries.Get("_count")
-
 	if countFields == "" {
 		return
 	}
-
 	for _, field := range strings.Split(countFields, ",") {
 		if field != "*" && chkInvalidIdentifier(field) {
 			err = errors.New("Invalid identifier")
 			return
 		}
 	}
-
 	countQuery = fmt.Sprintf("SELECT COUNT(%s) FROM", countFields)
-
 	return
 }
 
 // Query process queries
-func Query(SQL string, params ...interface{}) (jsonData []byte, err error) {
+func Query(SQL string, params ...interface{}) (sc Scanner) {
 	db, err := connection.Get()
 	if err != nil {
 		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	SQL = fmt.Sprintf("SELECT json_agg(s) FROM (%s) s", SQL)
-
+	// Debug mode
+	if config.PrestConf.Debug {
+		log.Println(SQL)
+	}
 	prepare, err := db.Prepare(SQL)
 	if err != nil {
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
 	defer prepare.Close()
-
+	var jsonData []byte
 	err = prepare.QueryRow(params...).Scan(&jsonData)
-
 	if len(jsonData) == 0 {
 		jsonData = []byte("[]")
+	}
+	sc = &scanner.PrestScanner{
+		Error:   err,
+		Buff:    bytes.NewBuffer(jsonData),
+		IsQuery: true,
 	}
 	return
 }
 
 // QueryCount process queries with count
-func QueryCount(SQL string, params ...interface{}) ([]byte, error) {
+func QueryCount(SQL string, params ...interface{}) (sc Scanner) {
 	db, err := connection.Get()
 	if err != nil {
-		log.Println(err)
-		return nil, err
+		sc = &scanner.PrestScanner{Error: err}
+		return
 	}
-
+	// Debug mode
+	if config.PrestConf.Debug {
+		log.Println(SQL)
+	}
 	prepare, err := db.Prepare(SQL)
 	if err != nil {
-		return nil, err
+		sc = &scanner.PrestScanner{Error: err}
+		return
 	}
 
 	var result struct {
@@ -381,11 +390,17 @@ func QueryCount(SQL string, params ...interface{}) ([]byte, error) {
 	}
 
 	row := prepare.QueryRow(params...)
-	if err := row.Scan(&result.Count); err != nil {
-		return nil, err
+	if err = row.Scan(&result.Count); err != nil {
+		sc = &scanner.PrestScanner{Error: err}
+		return
 	}
-
-	return json.Marshal(result)
+	var byt []byte
+	byt, err = json.Marshal(result)
+	sc = &scanner.PrestScanner{
+		Error: err,
+		Buff:  bytes.NewBuffer(byt),
+	}
+	return
 }
 
 // PaginateIfPossible func
@@ -433,19 +448,19 @@ func parseArray(value interface{}) string {
 }
 
 // Insert execute insert sql into a table
-func Insert(SQL string, params ...interface{}) (jsonData []byte, err error) {
+func Insert(SQL string, params ...interface{}) (sc Scanner) {
 	db, err := connection.Get()
 	if err != nil {
 		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	tx, err := db.Begin()
 	if err != nil {
 		log.Printf("could not begin transaction: %v\n", err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	defer func() {
 		switch err {
 		case nil:
@@ -454,41 +469,47 @@ func Insert(SQL string, params ...interface{}) (jsonData []byte, err error) {
 			tx.Rollback()
 		}
 	}()
-
 	tableName := insertTableNameRegex.FindStringSubmatch(SQL)
 	if len(tableName) < 2 {
 		err = errors.New("unable to find table name")
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	SQL = fmt.Sprintf("%s RETURNING row_to_json(%s)", SQL, tableName[2])
 
+	// Debug mode
+	if config.PrestConf.Debug {
+		log.Println(SQL)
+	}
+	SQL = fmt.Sprintf("%s RETURNING row_to_json(%s)", SQL, tableName[2])
 	stmt, err := tx.Prepare(SQL)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
+	var jsonData []byte
 	err = stmt.QueryRow(params...).Scan(&jsonData)
+	sc = &scanner.PrestScanner{
+		Error: err,
+		Buff:  bytes.NewBuffer(jsonData),
+	}
 	return
 }
 
 // Delete execute delete sql into a table
-func Delete(SQL string, params ...interface{}) (jsonData []byte, err error) {
-	var result sql.Result
-	var rowsAffected int64
-
+func Delete(SQL string, params ...interface{}) (sc Scanner) {
 	db, err := connection.Get()
 	if err != nil {
 		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	tx, err := db.Begin()
 	if err != nil {
 		log.Printf("could not begin transaction: %v\n", err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	defer func() {
 		switch err {
 		case nil:
@@ -497,40 +518,47 @@ func Delete(SQL string, params ...interface{}) (jsonData []byte, err error) {
 			tx.Rollback()
 		}
 	}()
-
+	// Debug mode
+	if config.PrestConf.Debug {
+		log.Println(SQL)
+	}
+	var result sql.Result
+	var rowsAffected int64
 	result, err = tx.Exec(SQL, params...)
 	if err != nil {
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	rowsAffected, err = result.RowsAffected()
 	if err != nil {
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	data := make(map[string]interface{})
 	data["rows_affected"] = rowsAffected
+	var jsonData []byte
 	jsonData, err = json.Marshal(data)
+	sc = &scanner.PrestScanner{
+		Error: err,
+		Buff:  bytes.NewBuffer(jsonData),
+	}
 	return
 }
 
 // Update execute update sql into a table
-func Update(SQL string, params ...interface{}) (jsonData []byte, err error) {
-	var result sql.Result
-	var rowsAffected int64
-
+func Update(SQL string, params ...interface{}) (sc Scanner) {
 	db, err := connection.Get()
 	if err != nil {
 		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	tx, err := db.Begin()
 	if err != nil {
 		log.Printf("could not begin transaction: %v\n", err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	defer func() {
 		switch err {
 		case nil:
@@ -539,26 +567,36 @@ func Update(SQL string, params ...interface{}) (jsonData []byte, err error) {
 			tx.Rollback()
 		}
 	}()
-
 	stmt, err := tx.Prepare(SQL)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
+	// Debug mode
+	if config.PrestConf.Debug {
+		log.Println(SQL)
+	}
+	var result sql.Result
+	var rowsAffected int64
 	result, err = stmt.Exec(params...)
 	if err != nil {
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	rowsAffected, err = result.RowsAffected()
 	if err != nil {
+		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	data := make(map[string]interface{})
 	data["rows_affected"] = rowsAffected
+	var jsonData []byte
 	jsonData, err = json.Marshal(data)
+	sc = &scanner.PrestScanner{
+		Error: err,
+		Buff:  bytes.NewBuffer(jsonData),
+	}
 	return
 }
 
@@ -616,46 +654,76 @@ func TablePermissions(table string, op string) bool {
 }
 
 // FieldsPermissions get fields permissions based in prest configuration
-func FieldsPermissions(r *http.Request, table string, op string) []string {
+func FieldsPermissions(r *http.Request, table string, op string) (fields []string, err error) {
 	restrict := config.PrestConf.AccessConf.Restrict
 	cols := ColumnsByRequest(r)
+	queries := r.URL.Query()
+	if queries.Get("_groupby") != "" {
+		cols, err = normalizeAll(cols)
+		if err != nil {
+			return
+		}
+	}
 	if !restrict {
-		return cols
+		fields = cols
+		return
 	}
 
-	queries := r.URL.Query()
-
-	var permittedCols []string
 	tables := config.PrestConf.AccessConf.Tables
 	for _, t := range tables {
 		if t.Name == table {
 			for _, col := range cols {
 				// return all permitted fields if have "*" in SELECT
 				if op == "read" && col == "*" {
-					return t.Fields
+					fields = t.Fields
+					return
 				}
-
-				if queries.Get("_groupby") != "" {
-					if strings.Contains(col, ":") {
-						groupFunc, err := NormalizeGroupFunction(col)
-						if err == nil {
-							permittedCols = append(permittedCols, groupFunc)
-						}
-					} else {
-						permittedCols = append(permittedCols, col)
-					}
-				} else {
-					for _, f := range t.Fields {
-						if col == f {
-							permittedCols = append(permittedCols, col)
-						}
-					}
+				pField := checkField(col, t.Fields)
+				if pField != "" {
+					fields = append(fields, pField)
 				}
 			}
-			return permittedCols
+			return
 		}
 	}
-	return nil
+	return nil, errors.New("0 tables configured")
+}
+
+func checkField(col string, fields []string) (p string) {
+	// regex get field from func group
+	fieldName := groupRegex.FindStringSubmatch(col)
+	for _, f := range fields {
+		if len(fieldName) == 2 && fieldName[1] == f {
+			p = col
+			return
+		}
+		if col == f {
+			p = col
+			return
+		}
+	}
+	return
+}
+
+func normalizeAll(cols []string) (pCols []string, err error) {
+	for _, col := range cols {
+		var gf string
+		gf, err = normalizeColumn(col)
+		if err != nil {
+			return
+		}
+		pCols = append(pCols, gf)
+	}
+	return
+}
+
+func normalizeColumn(col string) (gf string, err error) {
+	if strings.Contains(col, ":") {
+		gf, err = NormalizeGroupFunction(col)
+		return
+	}
+	gf = col
+	return
 }
 
 // ColumnsByRequest extract columns and return as array of strings
@@ -719,7 +787,6 @@ func GroupByClause(r *http.Request) (groupBySQL string) {
 func NormalizeGroupFunction(paramValue string) (groupFuncSQL string, err error) {
 	values := strings.Split(paramValue, ":")
 	groupFunc := strings.ToUpper(values[0])
-
 	switch groupFunc {
 	case "SUM", "AVG", "MAX", "MIN", "MEDIAN", "STDDEV", "VARIANCE":
 		// values[1] it's a field in table
