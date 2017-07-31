@@ -48,7 +48,7 @@ func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, fo
 		w.Header().Set(key, recorder.Header().Get(key))
 	}
 	byt, _ := ioutil.ReadAll(recorder.Body)
-	if recorder.Code != http.StatusOK {
+	if recorder.Code >= 400 {
 		m := make(map[string]string)
 		m["error"] = strings.TrimSpace(string(byt))
 		byt, _ = json.MarshalIndent(m, "", "\t")
