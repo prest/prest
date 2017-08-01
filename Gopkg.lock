@@ -137,7 +137,7 @@
   branch = "master"
   name = "github.com/prest/middlewares"
   packages = ["."]
-  revision = "9109e728747955cfb27c3a58118154149b840e45"
+  revision = "30f9da57710e3da7d94176f909ceba3610051391"
 
 [[projects]]
   branch = "master"
