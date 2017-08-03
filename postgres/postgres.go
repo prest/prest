@@ -6,13 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
 
+	"github.com/nuveo/log"
 	"github.com/prest/adapters/postgres/connection"
 	"github.com/prest/adapters/postgres/internal/scanner"
 	"github.com/prest/config"
@@ -345,10 +345,7 @@ func Query(SQL string, params ...interface{}) (sc Scanner) {
 		return
 	}
 	SQL = fmt.Sprintf("SELECT json_agg(s) FROM (%s) s", SQL)
-	// Debug mode
-	if config.PrestConf.Debug {
-		log.Println(SQL)
-	}
+	log.Debugln(SQL, " parameters: ", params)
 	prepare, err := db.Prepare(SQL)
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
@@ -375,10 +372,7 @@ func QueryCount(SQL string, params ...interface{}) (sc Scanner) {
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	// Debug mode
-	if config.PrestConf.Debug {
-		log.Println(SQL)
-	}
+	log.Debugln(SQL, " parameters: ", params)
 	prepare, err := db.Prepare(SQL)
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
@@ -475,11 +469,7 @@ func Insert(SQL string, params ...interface{}) (sc Scanner) {
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
-	// Debug mode
-	if config.PrestConf.Debug {
-		log.Println(SQL)
-	}
+	log.Debugln(SQL, " parameters: ", params)
 	SQL = fmt.Sprintf("%s RETURNING row_to_json(%s)", SQL, tableName[2])
 	stmt, err := tx.Prepare(SQL)
 	if err != nil {
@@ -518,10 +508,7 @@ func Delete(SQL string, params ...interface{}) (sc Scanner) {
 			tx.Rollback()
 		}
 	}()
-	// Debug mode
-	if config.PrestConf.Debug {
-		log.Println(SQL)
-	}
+	log.Debugln(SQL, " parameters: ", params)
 	var result sql.Result
 	var rowsAffected int64
 	result, err = tx.Exec(SQL, params...)
@@ -573,10 +560,7 @@ func Update(SQL string, params ...interface{}) (sc Scanner) {
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	// Debug mode
-	if config.PrestConf.Debug {
-		log.Println(SQL)
-	}
+	log.Debugln(SQL, " parameters: ", params)
 	var result sql.Result
 	var rowsAffected int64
 	result, err = stmt.Exec(params...)
