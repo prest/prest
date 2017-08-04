@@ -50,10 +50,10 @@
   revision = "392dba7d905ed5d04a5794ba89f558b27e2ba1ca"
 
 [[projects]]
-  branch = "master"
   name = "github.com/inconshreveable/mousetrap"
   packages = ["."]
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
+  version = "v1.0"
 
 [[projects]]
   branch = "master"
@@ -76,8 +76,8 @@
 [[projects]]
   name = "github.com/mattn/go-colorable"
   packages = ["."]
-  revision = "941b50ebc6efddf4c41c8e4537a5f68a4e686b24"
-  version = "v0.0.8"
+  revision = "167de6bfdfba052fa6b2d3664c8f5272e23c9072"
+  version = "v0.0.9"
 
 [[projects]]
   name = "github.com/mattn/go-isatty"
@@ -90,6 +90,12 @@
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
   revision = "d0303fe809921458f417bcf828397a65db30a7e4"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/nuveo/log"
+  packages = ["."]
+  revision = "cd5a20b3efb2a25d74e8c68e66e4d3fe786c7c34"
 
 [[projects]]
   name = "github.com/pelletier/go-buffruneio"
@@ -107,7 +113,7 @@
   branch = "master"
   name = "github.com/prest/adapters"
   packages = ["postgres","postgres/connection","postgres/internal/scanner"]
-  revision = "557ae5b961e4855d1afde55f0dabcc04b53a8555"
+  revision = "49e5421e4a9791b1de4f0c62ebc31030fc846ce6"
 
 [[projects]]
   branch = "master"
@@ -119,7 +125,7 @@
   branch = "master"
   name = "github.com/prest/config"
   packages = [".","middlewares","router"]
-  revision = "d9878e15eec3f75b1b25c88abca53bf923d2c36c"
+  revision = "93f08c4642c74cf21fde91c403b47c276466e791"
 
 [[projects]]
   branch = "master"
@@ -167,7 +173,7 @@
   branch = "master"
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "34594c771f2c18301dc152640ad40ece28795373"
+  revision = "b26b538f693051ac6518e65672de3144ce3fbedc"
 
 [[projects]]
   branch = "master"
@@ -197,13 +203,13 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "515fc15b65f1e0398c810790cb89f6bde11dddca"
+  revision = "d8f5ea21b9295e315e612b4bcf4bedea93454d4d"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
   packages = ["internal/gen","internal/triegen","internal/ucd","transform","unicode/cldr","unicode/norm"]
-  revision = "836efe42bb4aa16aaa17b9c155d8813d336ed720"
+  revision = "3bd178b88a8180be2df394a1fbb81313916f0e7b"
 
 [[projects]]
   name = "gopkg.in/mattes/migrate.v1"

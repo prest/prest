@@ -2,12 +2,12 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
 
+	"github.com/nuveo/log"
 	"github.com/spf13/viper"
 )
 
@@ -129,16 +129,17 @@ func Load() {
 	}
 
 	if !PrestConf.AccessConf.Restrict {
-		fmt.Println("You are running pREST in public mode.")
+		log.Warningln("You are running pREST in public mode.")
 	}
 
 	if PrestConf.Debug {
-		fmt.Println("You are running pREST in debug mode.")
+		log.DebugMode = PrestConf.Debug
+		log.Warningln("You are running pREST in debug mode.")
 	}
 
 	if _, err = os.Stat(PrestConf.QueriesPath); os.IsNotExist(err) {
 		if err = os.MkdirAll(PrestConf.QueriesPath, 0700); os.IsNotExist(err) {
-			fmt.Printf("Queries directory %s is not created", PrestConf.QueriesPath)
+			log.Errorf("Queries directory %s is not created", PrestConf.QueriesPath)
 		}
 	}
 }
