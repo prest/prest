@@ -289,6 +289,13 @@ type IPv6Mreq struct {
 	Interface uint32
 }
 
+type PacketMreq struct {
+	Ifindex int32
+	Type    uint16
+	Alen    uint16
+	Address [8]uint8
+}
+
 type Msghdr struct {
 	Name       *byte
 	Namelen    uint32
@@ -383,6 +390,7 @@ const (
 	SizeofIPMreq            = 0x8
 	SizeofIPMreqn           = 0xc
 	SizeofIPv6Mreq          = 0x14
+	SizeofPacketMreq        = 0x10
 	SizeofMsghdr            = 0x38
 	SizeofCmsghdr           = 0x10
 	SizeofInet4Pktinfo      = 0xc

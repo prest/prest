@@ -6,13 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
 
+	"github.com/nuveo/log"
 	"github.com/prest/adapters/postgres/connection"
 	"github.com/prest/adapters/postgres/internal/scanner"
 	"github.com/prest/config"
@@ -163,7 +163,7 @@ func SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, 
 
 		switch value.(type) {
 		case []interface{}:
-			values = append(values, parseArray(value))
+			values = append(values, FormatArray(value))
 		default:
 			values = append(values, value)
 		}
@@ -197,7 +197,7 @@ func ParseInsertRequest(r *http.Request) (colsName string, colsValue string, val
 
 		switch value.(type) {
 		case []interface{}:
-			values = append(values, parseArray(value))
+			values = append(values, FormatArray(value))
 		default:
 			values = append(values, value)
 		}
@@ -345,10 +345,7 @@ func Query(SQL string, params ...interface{}) (sc Scanner) {
 		return
 	}
 	SQL = fmt.Sprintf("SELECT json_agg(s) FROM (%s) s", SQL)
-	// Debug mode
-	if config.PrestConf.Debug {
-		log.Println(SQL)
-	}
+	log.Debugln(SQL, " parameters: ", params)
 	prepare, err := db.Prepare(SQL)
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
@@ -375,10 +372,7 @@ func QueryCount(SQL string, params ...interface{}) (sc Scanner) {
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	// Debug mode
-	if config.PrestConf.Debug {
-		log.Println(SQL)
-	}
+	log.Debugln(SQL, " parameters: ", params)
 	prepare, err := db.Prepare(SQL)
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
@@ -425,7 +419,9 @@ func PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 	return
 }
 
-func parseArray(value interface{}) string {
+// FormatArray format slice to a postgres array format
+// today support a slice of string and int
+func FormatArray(value interface{}) string {
 	switch value.(type) {
 	case []interface{}:
 		var aux string
@@ -433,7 +429,7 @@ func parseArray(value interface{}) string {
 			if aux != "" {
 				aux += ","
 			}
-			aux += parseArray(v)
+			aux += FormatArray(v)
 		}
 		return "{" + aux + "}"
 	case string:
@@ -475,11 +471,7 @@ func Insert(SQL string, params ...interface{}) (sc Scanner) {
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
-	// Debug mode
-	if config.PrestConf.Debug {
-		log.Println(SQL)
-	}
+	log.Debugln(SQL, " parameters: ", params)
 	SQL = fmt.Sprintf("%s RETURNING row_to_json(%s)", SQL, tableName[2])
 	stmt, err := tx.Prepare(SQL)
 	if err != nil {
@@ -518,10 +510,7 @@ func Delete(SQL string, params ...interface{}) (sc Scanner) {
 			tx.Rollback()
 		}
 	}()
-	// Debug mode
-	if config.PrestConf.Debug {
-		log.Println(SQL)
-	}
+	log.Debugln(SQL, " parameters: ", params)
 	var result sql.Result
 	var rowsAffected int64
 	result, err = tx.Exec(SQL, params...)
@@ -573,10 +562,7 @@ func Update(SQL string, params ...interface{}) (sc Scanner) {
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	// Debug mode
-	if config.PrestConf.Debug {
-		log.Println(SQL)
-	}
+	log.Debugln(SQL, " parameters: ", params)
 	var result sql.Result
 	var rowsAffected int64
 	result, err = stmt.Exec(params...)

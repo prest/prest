@@ -904,23 +904,23 @@ func TestColumnsByRequest(t *testing.T) {
 	}
 }
 
-func TestParseArray(t *testing.T) {
+func TestFormatArray(t *testing.T) {
 	in := []interface{}{"value 1", "value 2", "value 3"}
-	ret := parseArray(in)
+	ret := FormatArray(in)
 	retString := `{"value 1","value 2","value 3"}`
 	if ret != retString {
 		t.Errorf("Error expected %s, got %s", retString, ret)
 	}
 
 	in = []interface{}{10, 20, 30}
-	ret = parseArray(in)
+	ret = FormatArray(in)
 	retString = `{10,20,30}`
 	if ret != retString {
 		t.Errorf("Error expected %s, got %s", retString, ret)
 	}
 
 	in = []interface{}{}
-	ret = parseArray(in)
+	ret = FormatArray(in)
 	retString = `{}`
 	if ret != retString {
 		t.Errorf("Error expected %s, got %s", retString, ret)
