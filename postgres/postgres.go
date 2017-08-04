@@ -163,7 +163,7 @@ func SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, 
 
 		switch value.(type) {
 		case []interface{}:
-			values = append(values, parseArray(value))
+			values = append(values, FormatArray(value))
 		default:
 			values = append(values, value)
 		}
@@ -197,7 +197,7 @@ func ParseInsertRequest(r *http.Request) (colsName string, colsValue string, val
 
 		switch value.(type) {
 		case []interface{}:
-			values = append(values, parseArray(value))
+			values = append(values, FormatArray(value))
 		default:
 			values = append(values, value)
 		}
@@ -419,7 +419,9 @@ func PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 	return
 }
 
-func parseArray(value interface{}) string {
+// FormatArray format slice to a postgres array format
+// today support a slice of string and int
+func FormatArray(value interface{}) string {
 	switch value.(type) {
 	case []interface{}:
 		var aux string
@@ -427,7 +429,7 @@ func parseArray(value interface{}) string {
 			if aux != "" {
 				aux += ","
 			}
-			aux += parseArray(v)
+			aux += FormatArray(v)
 		}
 		return "{" + aux + "}"
 	case string:
