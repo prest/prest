@@ -420,16 +420,35 @@ func PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 }
 
 // FormatArray format slice to a postgres array format
-// today support a slice of string and int
+// today support a slice of string, int and fmt.Stringer
 func FormatArray(value interface{}) string {
+	var aux string
+	var check = func(aux string, value interface{}) (ret string) {
+		if aux != "" {
+			aux += ","
+		}
+		ret = aux + FormatArray(value)
+		return
+	}
 	switch value.(type) {
+	case []fmt.Stringer:
+		for _, v := range value.([]fmt.Stringer) {
+			aux = check(aux, v)
+		}
+		return "{" + aux + "}"
 	case []interface{}:
-		var aux string
 		for _, v := range value.([]interface{}) {
-			if aux != "" {
-				aux += ","
-			}
-			aux += FormatArray(v)
+			aux = check(aux, v)
+		}
+		return "{" + aux + "}"
+	case []string:
+		for _, v := range value.([]string) {
+			aux = check(aux, v)
+		}
+		return "{" + aux + "}"
+	case []int:
+		for _, v := range value.([]int) {
+			aux = check(aux, v)
 		}
 		return "{" + aux + "}"
 	case string:
@@ -439,6 +458,9 @@ func FormatArray(value interface{}) string {
 		return `"` + aux + `"`
 	case int:
 		return strconv.Itoa(value.(int))
+	case fmt.Stringer:
+		v := value.(fmt.Stringer)
+		return FormatArray(v.String())
 	}
 	return ""
 }
