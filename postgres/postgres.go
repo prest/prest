@@ -46,7 +46,7 @@ func chkInvalidIdentifier(identifer ...string) bool {
 		if ival == "" || len(ival) > 63 || unicode.IsDigit([]rune(ival)[0]) {
 			return true
 		}
-
+		count := 0
 		for _, v := range ival {
 			if !unicode.IsLetter(v) &&
 				!unicode.IsDigit(v) &&
@@ -57,9 +57,16 @@ func chkInvalidIdentifier(identifer ...string) bool {
 				v != '-' &&
 				v != '*' &&
 				v != '[' &&
-				v != ']' {
+				v != ']' &&
+				v != '"' {
 				return true
 			}
+			if unicode.Is(unicode.Quotation_Mark, v) {
+				count++
+			}
+		}
+		if count%2 != 0 {
+			return true
 		}
 	}
 	return false
@@ -98,8 +105,9 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 						err = fmt.Errorf("invalid identifier: %+v", jsonField)
 						return
 					}
-
-					whereKey = append(whereKey, fmt.Sprintf(`"%s"->>'%s' %s $%d`, jsonField[0], jsonField[1], op, pid))
+					fields := strings.Split(jsonField[0], ".")
+					jsonField[0] = fmt.Sprintf(`"%s"`, strings.Join(fields, `"."`))
+					whereKey = append(whereKey, fmt.Sprintf(`%s->>'%s' %s $%d`, jsonField[0], jsonField[1], op, pid))
 					whereValues = append(whereValues, value)
 				default:
 					if chkInvalidIdentifier(keyInfo[0]) {
@@ -115,14 +123,15 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 				err = fmt.Errorf("invalid identifier: %s", key)
 				return
 			}
-
+			fields := strings.Split(key, ".")
+			key = fmt.Sprintf(`"%s"`, strings.Join(fields, `"."`))
 			if value != "" {
-				whereKey = append(whereKey, fmt.Sprintf(`"%s" %s $%d`, key, op, pid))
+				whereKey = append(whereKey, fmt.Sprintf(`%s %s $%d`, key, op, pid))
 				whereValues = append(whereValues, value)
 
 				pid++
 			} else {
-				whereKey = append(whereKey, fmt.Sprintf(`"%s" %s`, key, op))
+				whereKey = append(whereKey, fmt.Sprintf(`%s %s`, key, op))
 			}
 		}
 	}
@@ -161,7 +170,9 @@ func SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, 
 			err = errors.New("Set: Invalid identifier")
 			return
 		}
-		fields = append(fields, fmt.Sprintf(`"%s"=$%d`, key, initialPlaceholderID))
+		keys := strings.Split(key, ".")
+		key = fmt.Sprintf(`"%s"`, strings.Join(keys, `"."`))
+		fields = append(fields, fmt.Sprintf(`%s=$%d`, key, initialPlaceholderID))
 
 		switch value.(type) {
 		case []interface{}:
@@ -295,7 +306,8 @@ func SelectFields(fields []string) (sql string, err error) {
 			return
 		}
 		if field != `*` {
-			fields[i] = fmt.Sprintf(`"%s"`, field)
+			f := strings.Split(field, ".")
+			fields[i] = fmt.Sprintf(`"%s"`, strings.Join(f, `"."`))
 		}
 	}
 	sql = fmt.Sprintf("SELECT %s FROM", strings.Join(fields, ","))
@@ -317,7 +329,8 @@ func OrderByRequest(r *http.Request) (values string, err error) {
 				values = ""
 				return
 			}
-			field = fmt.Sprintf(`"%s"`, field)
+			f := strings.Split(field, ".")
+			field = fmt.Sprintf(`"%s"`, strings.Join(f, `"."`))
 			if strings.HasPrefix(field, `"-`) {
 				field = strings.Replace(field, `"-`, `"`, 1)
 				field = fmt.Sprintf(`%s DESC`, field)
@@ -348,7 +361,8 @@ func CountByRequest(req *http.Request) (countQuery string, err error) {
 			return
 		}
 		if field != `*` {
-			fields[i] = fmt.Sprintf(`"%s"`, field)
+			f := strings.Split(field, ".")
+			fields[i] = fmt.Sprintf(`"%s"`, strings.Join(f, `"."`))
 		}
 	}
 	countQuery = fmt.Sprintf("SELECT COUNT(%s) FROM", strings.Join(fields, ","))
@@ -787,8 +801,13 @@ func GroupByClause(r *http.Request) (groupBySQL string) {
 	if strings.Contains(groupQuery, "->>having") {
 		params := strings.Split(groupQuery, ":")
 		groupFieldQuery := strings.Split(groupQuery, "->>having")
+
 		fields := strings.Split(groupFieldQuery[0], ",")
-		groupFieldQuery[0] = fmt.Sprintf(`"%s"`, strings.Join(fields, `","`))
+		for i, field := range fields {
+			f := strings.Split(field, ".")
+			fields[i] = fmt.Sprintf(`"%s"`, strings.Join(f, `"."`))
+		}
+		groupFieldQuery[0] = strings.Join(fields, ",")
 		if len(params) != 5 {
 			groupBySQL = fmt.Sprintf(statements.GroupBy, groupFieldQuery[0])
 			return
@@ -811,7 +830,11 @@ func GroupByClause(r *http.Request) (groupBySQL string) {
 		return
 	}
 	fields := strings.Split(groupQuery, ",")
-	groupQuery = fmt.Sprintf(`"%s"`, strings.Join(fields, `","`))
+	for i, field := range fields {
+		f := strings.Split(field, ".")
+		fields[i] = fmt.Sprintf(`"%s"`, strings.Join(f, `"."`))
+	}
+	groupQuery = strings.Join(fields, ",")
 	groupBySQL = fmt.Sprintf(statements.GroupBy, groupQuery)
 	return
 }

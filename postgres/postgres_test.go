@@ -69,6 +69,8 @@ func TestSetByRequest(t *testing.T) {
 	mc := make(map[string]interface{})
 	mc["test"] = "prest"
 	mc["dbname"] = "prest"
+	ma := make(map[string]interface{})
+	ma["c.name"] = "prest"
 
 	var testCases = []struct {
 		description    string
@@ -79,6 +81,7 @@ func TestSetByRequest(t *testing.T) {
 	}{
 		{"set by request more than one field", mc, []string{`"dbname"=$`, `"test"=$`, ", "}, []string{"prest", "prest"}, nil},
 		{"set by request one field", m, []string{`"name"=$`}, []string{"prest"}, nil},
+		{"set by request alias", ma, []string{`"c".`, `"name"=$`}, []string{"prest"}, nil},
 		{"set by request empty body", nil, nil, nil, ErrBodyEmpty},
 	}
 
@@ -122,6 +125,7 @@ func TestWhereByRequest(t *testing.T) {
 		err            error
 	}{
 		{"Where by request without paginate", "/databases?dbname=$eq.prest&test=$eq.cool", []string{`"dbname" = $`, `"test" = $`, " AND "}, []string{"prest", "cool"}, nil},
+		{"Where by request with alias", "/databases?dbname=$eq.prest&c.test=$eq.cool", []string{`"dbname" = $`, `"c".`, `"test" = $`, " AND "}, []string{"prest", "cool"}, nil},
 		{"Where by request with spaced values", "/prest/public/test5?name=$eq.prest tester", []string{`"name" = $`}, []string{"prest tester"}, nil},
 		{"Where by request with jsonb field", "/prest/public/test_jsonb_bug?name=$eq.goku&data->>description:jsonb=$eq.testing", []string{`"name" = $`, `"data"->>'description' = $`, " AND "}, []string{"goku", "testing"}, nil},
 		{"Where by request with dot values", "/prest/public/test5?name=$eq.prest.txt tester", []string{`"name" = $`}, []string{"prest.txt tester"}, nil},
@@ -195,10 +199,12 @@ func TestGroupByClause(t *testing.T) {
 	}{
 		{"Group by clause with one field", "/prest/public/test5?_groupby=celphone", `GROUP BY "celphone"`, false},
 		{"Group by clause with two fields", "/prest/public/test5?_groupby=celphone,name", `GROUP BY "celphone","name"`, false},
+		{"Group by clause with two fields", "/prest/public/test5?_groupby=c.celphone,c.name", `GROUP BY "c"."celphone","c"."name"`, false},
 		{"Group by clause without fields", "/prest/public/test5?_groupby=", "", true},
 
 		// having tests
 		{"Group by clause with having clause", "/prest/public/test5?_groupby=celphone->>having:sum:salary:$gt:500", `GROUP BY "celphone" HAVING SUM("salary") > 500`, false},
+		{"Group by clause with having clause", "/prest/public/test5?_groupby=c.celphone->>having:sum:salary:$gt:500", `GROUP BY "c"."celphone" HAVING SUM("salary") > 500`, false},
 
 		// having errors, but continue with group by
 		{"Group by clause with wrong having clause (insufficient params)", "/prest/public/test5?_groupby=celphone->>having:sum:salary", `GROUP BY "celphone"`, false},
@@ -480,6 +486,7 @@ func TestChkInvaidIdentifier(t *testing.T) {
 		{"fild\"Name", true},
 		{"fild;Name", true},
 		{"SUM(test)", false},
+		{`SUM("test")`, false},
 		{"_123456789_123456789_123456789_123456789_123456789_123456789_12345", true},
 	}
 
@@ -721,6 +728,24 @@ func TestOrderByRequest(t *testing.T) {
 		}
 	}
 
+	t.Log("Query ORDER BY with alias")
+	expectedSQL = []string{"ORDER BY", `"c"."name"`, `"c"."number" DESC`}
+
+	r, err = http.NewRequest("GET", "/prest/public/test?_order=c.name,-c.number", nil)
+	if err != nil {
+		t.Errorf("expected no errors on NewRequest, got: %v", err)
+	}
+
+	order, err = OrderByRequest(r)
+	if err != nil {
+		t.Errorf("expected no errors on OrderByRequest, got: %v", err)
+	}
+	for _, sql := range expectedSQL {
+		if !strings.Contains(order, sql) {
+			t.Errorf("expected %s in %s, but no was!", sql, order)
+		}
+	}
+
 	t.Log("Query ORDER BY empty")
 	r, err = http.NewRequest("GET", "/prest/public/test?_order=", nil)
 	if err != nil {
@@ -843,6 +868,7 @@ func TestSelectFields(t *testing.T) {
 		expectedSQL string
 	}{
 		{"One field", []string{"test"}, `SELECT "test" FROM`},
+		{"One field with alias", []string{"c.test"}, `SELECT "c"."test" FROM`},
 		{"More field", []string{"test", "test02"}, `SELECT "test","test02" FROM`},
 	}
 	var testErrorCases = []struct {
