@@ -8,6 +8,7 @@ psql -h $DB_HOST -p $DB_PORT -U $DB_USER -c "create database $DB_NAME;"
 
 # Create tables
 psql -d $DB_NAME -h $DB_HOST -p $DB_PORT -U $DB_USER -c "create table test(id serial, name text);"
+psql -d $DB_NAME -h $DB_HOST -p $DB_PORT -U $DB_USER -c "create table \"Reply\"(id serial, name text);"
 psql -d $DB_NAME -h $DB_HOST -p $DB_PORT -U $DB_USER -c "create table test2(name text, number integer);"
 psql -d $DB_NAME -h $DB_HOST -p $DB_PORT -U $DB_USER -c "create table test3(id serial, name text UNIQUE);"
 psql -d $DB_NAME -h $DB_HOST -p $DB_PORT -U $DB_USER -c "create table test4(id serial primary key, name text UNIQUE);"

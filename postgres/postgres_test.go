@@ -77,8 +77,8 @@ func TestSetByRequest(t *testing.T) {
 		expectedValues []string
 		err            error
 	}{
-		{"set by request more than one field", mc, []string{"dbname=$", "test=$", ", "}, []string{"prest", "prest"}, nil},
-		{"set by request one field", m, []string{"name=$"}, []string{"prest"}, nil},
+		{"set by request more than one field", mc, []string{`"dbname"=$`, `"test"=$`, ", "}, []string{"prest", "prest"}, nil},
+		{"set by request one field", m, []string{`"name"=$`}, []string{"prest"}, nil},
 		{"set by request empty body", nil, nil, nil, ErrBodyEmpty},
 	}
 
@@ -121,10 +121,10 @@ func TestWhereByRequest(t *testing.T) {
 		expectedValues []string
 		err            error
 	}{
-		{"Where by request without paginate", "/databases?dbname=$eq.prest&test=$eq.cool", []string{"dbname = $", "test = $", " AND "}, []string{"prest", "cool"}, nil},
-		{"Where by request with spaced values", "/prest/public/test5?name=$eq.prest tester", []string{"name = $"}, []string{"prest tester"}, nil},
-		{"Where by request with jsonb field", "/prest/public/test_jsonb_bug?name=$eq.goku&data->>description:jsonb=$eq.testing", []string{"name = $", "data->>'description' = $", " AND "}, []string{"goku", "testing"}, nil},
-		{"Where by request with dot values", "/prest/public/test5?name=$eq.prest.txt tester", []string{"name = $"}, []string{"prest.txt tester"}, nil},
+		{"Where by request without paginate", "/databases?dbname=$eq.prest&test=$eq.cool", []string{`"dbname" = $`, `"test" = $`, " AND "}, []string{"prest", "cool"}, nil},
+		{"Where by request with spaced values", "/prest/public/test5?name=$eq.prest tester", []string{`"name" = $`}, []string{"prest tester"}, nil},
+		{"Where by request with jsonb field", "/prest/public/test_jsonb_bug?name=$eq.goku&data->>description:jsonb=$eq.testing", []string{`"name" = $`, `"data"->>'description' = $`, " AND "}, []string{"goku", "testing"}, nil},
+		{"Where by request with dot values", "/prest/public/test5?name=$eq.prest.txt tester", []string{`"name" = $`}, []string{"prest.txt tester"}, nil},
 	}
 
 	for _, tc := range testCases {
@@ -193,17 +193,17 @@ func TestGroupByClause(t *testing.T) {
 		expectedSQL string
 		emptyCase   bool
 	}{
-		{"Group by clause with one field", "/prest/public/test5?_groupby=celphone", "GROUP BY celphone", false},
-		{"Group by clause with two fields", "/prest/public/test5?_groupby=celphone,name", "GROUP BY celphone,name", false},
+		{"Group by clause with one field", "/prest/public/test5?_groupby=celphone", `GROUP BY "celphone"`, false},
+		{"Group by clause with two fields", "/prest/public/test5?_groupby=celphone,name", `GROUP BY "celphone","name"`, false},
 		{"Group by clause without fields", "/prest/public/test5?_groupby=", "", true},
 
 		// having tests
-		{"Group by clause with having clause", "/prest/public/test5?_groupby=celphone->>having:sum:salary:$gt:500", "GROUP BY celphone HAVING SUM(salary) > 500", false},
+		{"Group by clause with having clause", "/prest/public/test5?_groupby=celphone->>having:sum:salary:$gt:500", `GROUP BY "celphone" HAVING SUM("salary") > 500`, false},
 
 		// having errors, but continue with group by
-		{"Group by clause with wrong having clause (insufficient params)", "/prest/public/test5?_groupby=celphone->>having:sum:salary", "GROUP BY celphone", false},
-		{"Group by clause with wrong having clause (wrong query operator)", "/prest/public/test5?_groupby=celphone->>having:sum:salary:$at:500", "GROUP BY celphone", false},
-		{"Group by clause with wrong having clause (wrong group func)", "/prest/public/test5?_groupby=celphone->>having:sun:salary:$gt:500", "GROUP BY celphone", false},
+		{"Group by clause with wrong having clause (insufficient params)", "/prest/public/test5?_groupby=celphone->>having:sum:salary", `GROUP BY "celphone"`, false},
+		{"Group by clause with wrong having clause (wrong query operator)", "/prest/public/test5?_groupby=celphone->>having:sum:salary:$at:500", `GROUP BY "celphone"`, false},
+		{"Group by clause with wrong having clause (wrong group func)", "/prest/public/test5?_groupby=celphone->>having:sun:salary:$gt:500", `GROUP BY "celphone"`, false},
 	}
 
 	for _, tc := range testCases {
@@ -251,6 +251,7 @@ func TestQuery(t *testing.T) {
 	}{
 		{"Query execution", "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name ASC", false, 1, nil},
 		{"Query execution 2", "SELECT number FROM prest.public.test2 ORDER BY number ASC", false, 1, nil},
+		{"Query execution with quotes", `SELECT "number" FROM "prest"."public"."test2" ORDER BY "number" ASC`, false, 1, nil},
 		{"Query execution with params", "SELECT schema_name FROM information_schema.schemata WHERE schema_name = $1 ORDER BY schema_name ASC", true, 1, nil},
 	}
 
@@ -357,8 +358,9 @@ func TestInsert(t *testing.T) {
 		sql         string
 		values      []interface{}
 	}{
-		{"Insert data into a table with one field", "INSERT INTO prest.public.test4(name) VALUES($1)", []interface{}{"prest-test-insert"}},
-		{"Insert data into a table with more than one field", "INSERT INTO prest.public.test5(name, celphone) VALUES($1, $2)", []interface{}{"prest-test-insert", "88888888"}},
+		{"Insert data into a table with one field", `INSERT INTO prest.public.test4(name) VALUES($1)`, []interface{}{"prest-test-insert"}},
+		{"Insert data into a table with more than one field", `INSERT INTO prest.public.test5(name, celphone) VALUES($1, $2)`, []interface{}{"prest-test-insert", "88888888"}},
+		{"Insert data into a table with more than one field and with quotes case sensitive", `INSERT INTO "prest"."public"."Reply"("name") VALUES($1)`, []interface{}{"prest-test-insert"}},
 	}
 
 	for _, tc := range testCases {
@@ -421,7 +423,7 @@ func TestDelete(t *testing.T) {
 	}
 
 	t.Log("Delete data from table")
-	sc := Delete("DELETE FROM prest.public.test WHERE name=$1", "nuveo")
+	sc := Delete(`DELETE FROM "prest"."public"."test" WHERE "name"=$1`, "nuveo")
 	if sc.Err() != nil {
 		t.Errorf("expected no error, but got: %s", sc.Err())
 	}
@@ -443,7 +445,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	t.Log("Update data into a table")
-	sc := Update("UPDATE prest.public.test SET name=$2 WHERE name=$1", "prest tester", "prest")
+	sc := Update(`UPDATE "prest"."public"."test" SET "name"=$2 WHERE "name"=$1`, "prest tester", "prest")
 	if sc.Err() != nil {
 		t.Errorf("expected no errors, but got: %s", sc.Err())
 	}
@@ -496,7 +498,7 @@ func TestJoinByRequest(t *testing.T) {
 		expectedValues  []string
 		testEmptyResult bool
 	}{
-		{"Join by request", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name", []string{"INNER JOIN", "test2 ON ", "test2.name = test.name"}, false},
+		{"Join by request", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name", []string{"INNER JOIN", `"test2" ON `, `"test2"."name" = "test"."name"`}, false},
 		{"Join empty params", "/prest/public/test?_join", []string{}, true},
 		{"Join missing param", "/prest/public/test?_join=inner:test2:test2.name:$eq", []string{}, true},
 		{"Join invalid operator", "/prest/public/test?_join=inner:test2:test2.name:notexist:test.name", []string{}, true},
@@ -531,7 +533,7 @@ func TestJoinByRequest(t *testing.T) {
 	}
 
 	t.Log("Join with where")
-	var expectedSQL = []string{"name = $", "data->>'description' = $", " AND "}
+	var expectedSQL = []string{`"name" = $`, `"data"->>'description' = $`, " AND "}
 	var expectedValues = []string{"nuveo", "bla"}
 
 	r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name&name=$eq.nuveo&data->>description:jsonb=$eq.bla", nil)
@@ -546,8 +548,8 @@ func TestJoinByRequest(t *testing.T) {
 
 	joinStr := strings.Join(join, " ")
 
-	if !strings.Contains(joinStr, " INNER JOIN test2 ON test2.name = test.name") {
-		t.Errorf("expected %s in INNER JOIN test2 ON test2.name = test.name, but no was!", joinStr)
+	if !strings.Contains(joinStr, ` INNER JOIN "test2" ON "test2"."name" = "test"."name"`) {
+		t.Errorf(`expected %s in INNER JOIN "test2" ON "test2"."name" = "test"."name", but no was!`, joinStr)
 	}
 
 	where, values, err := WhereByRequest(r, 1)
@@ -576,7 +578,7 @@ func TestCountFields(t *testing.T) {
 		expectedSQL string
 		testError   bool
 	}{
-		{"Count fields from table", "/prest/public/test5?_count=celphone", "SELECT COUNT(celphone) FROM", false},
+		{"Count fields from table", "/prest/public/test5?_count=celphone", `SELECT COUNT("celphone") FROM`, false},
 		{"Count all from table", "/prest/public/test5?_count=*", "SELECT COUNT(*) FROM", false},
 		{"Count with empty params", "/prest/public/test5?_count=", "", false},
 		{"Count with invalid columns", "/prest/public/test5?_count=celphone,0name", "", true},
@@ -702,7 +704,7 @@ func TestGetQueryOperator(t *testing.T) {
 
 func TestOrderByRequest(t *testing.T) {
 	t.Log("Query ORDER BY")
-	var expectedSQL = []string{"ORDER BY", "name", "number DESC"}
+	var expectedSQL = []string{"ORDER BY", `"name"`, `"number" DESC`}
 
 	r, err := http.NewRequest("GET", "/prest/public/test?_order=name,-number", nil)
 	if err != nil {
@@ -840,8 +842,8 @@ func TestSelectFields(t *testing.T) {
 		fields      []string
 		expectedSQL string
 	}{
-		{"One field", []string{"test"}, "SELECT test FROM"},
-		{"More field", []string{"test", "test02"}, "SELECT test,test02 FROM"},
+		{"One field", []string{"test"}, `SELECT "test" FROM`},
+		{"More field", []string{"test", "test02"}, `SELECT "test","test02" FROM`},
 	}
 	var testErrorCases = []struct {
 		description string
@@ -937,13 +939,13 @@ func TestNormalizeGroupFunction(t *testing.T) {
 		urlValue    string
 		expectedSQL string
 	}{
-		{"Normalize AVG Function", "avg:age", "AVG(age)"},
-		{"Normalize SUM Function", "sum:age", "SUM(age)"},
-		{"Normalize MAX Function", "max:age", "MAX(age)"},
-		{"Normalize MIN Function", "min:age", "MIN(age)"},
-		{"Normalize MEDIAN Function", "median:age", "MEDIAN(age)"},
-		{"Normalize STDDEV Function", "stddev:age", "STDDEV(age)"},
-		{"Normalize VARIANCE Function", "variance:age", "VARIANCE(age)"},
+		{"Normalize AVG Function", "avg:age", `AVG("age")`},
+		{"Normalize SUM Function", "sum:age", `SUM("age")`},
+		{"Normalize MAX Function", "max:age", `MAX("age")`},
+		{"Normalize MIN Function", "min:age", `MIN("age")`},
+		{"Normalize MEDIAN Function", "median:age", `MEDIAN("age")`},
+		{"Normalize STDDEV Function", "stddev:age", `STDDEV("age")`},
+		{"Normalize VARIANCE Function", "variance:age", `VARIANCE("age")`},
 	}
 
 	for _, tc := range testCases {
