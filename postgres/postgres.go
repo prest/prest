@@ -85,13 +85,23 @@ func init() {
 	groupRegex = regexp.MustCompile(`\"(.+?)\"`)
 }
 
+func getStmt() *stmt {
+	if stmts == nil {
+		stmts = &stmt{
+			mtx:        &sync.Mutex{},
+			prepareMap: make(map[string]*sql.Stmt),
+		}
+	}
+	return stmts
+}
+
 func prepare(db *sqlx.DB, SQL string) (stmt *sql.Stmt, err error) {
-	stmt, err = stmts.prepare(db, SQL)
+	stmt, err = getStmt().prepare(db, SQL)
 	return
 }
 
 func prepareTx(db *sql.Tx, SQL string) (stmt *sql.Stmt, err error) {
-	stmt, err = stmts.prepareTx(db, SQL)
+	stmt, err = getStmt().prepareTx(db, SQL)
 	return
 }
 
