@@ -300,17 +300,26 @@ func SelectFields(fields []string) (sql string, err error) {
 		err = errors.New("you must select at least one field")
 		return
 	}
-	for i, field := range fields {
+	var aux []string
+	for _, field := range fields {
 		if field != "*" && chkInvalidIdentifier(field) {
 			err = fmt.Errorf("invalid identifier %s", field)
 			return
 		}
 		if field != `*` {
 			f := strings.Split(field, ".")
-			fields[i] = fmt.Sprintf(`"%s"`, strings.Join(f, `"."`))
+
+			isFunction, _ := regexp.MatchString(groupRegex.String(), field)
+			if isFunction {
+				aux = append(aux, strings.Join(f, `.`))
+				continue
+			}
+			aux = append(aux, fmt.Sprintf(`"%s"`, strings.Join(f, `"."`)))
+			continue
 		}
+		aux = append(aux, `*`)
 	}
-	sql = fmt.Sprintf("SELECT %s FROM", strings.Join(fields, ","))
+	sql = fmt.Sprintf("SELECT %s FROM", strings.Join(aux, ","))
 	return
 }
 
