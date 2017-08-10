@@ -98,14 +98,19 @@ func WriteSQL(sql string, values []interface{}) (sc Scanner) {
 			tx.Rollback()
 		}
 	}()
-
+	stmt, err := prepareTx(tx, sql)
+	if err != nil {
+		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
 	valuesAux := make([]interface{}, 0, len(values))
 
 	for i := 0; i < len(values); i++ {
 		valuesAux = append(valuesAux, values[i])
 	}
 
-	result, err := tx.Exec(sql, valuesAux...)
+	result, err := stmt.Exec(valuesAux...)
 	if err != nil {
 		tx.Rollback()
 		log.Printf("sql = %+v\n", sql)
