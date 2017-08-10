@@ -98,7 +98,7 @@ func WriteSQL(sql string, values []interface{}) (sc Scanner) {
 			tx.Rollback()
 		}
 	}()
-	stmt, err := prepareTx(tx, sql)
+	stmt, err := PrepareTx(tx, sql)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
 		sc = &scanner.PrestScanner{Error: err}

@@ -991,7 +991,7 @@ func TestNormalizeGroupFunction(t *testing.T) {
 func BenchmarkPrepare(b *testing.B) {
 	db := connection.MustGet()
 	for index := 0; index < b.N; index++ {
-		_, err := prepare(db, `SELECT * FROM "Reply"`)
+		_, err := Prepare(db, `SELECT * FROM "Reply"`)
 		if err != nil {
 			b.Fail()
 		}
@@ -1005,7 +1005,7 @@ func BenchmarkPrepareTx(b *testing.B) {
 		if err != nil {
 			b.Fail()
 		}
-		_, err = prepareTx(tx, `insert into test (name) values ('prest tester')`)
+		_, err = PrepareTx(tx, `insert into test (name) values ('prest tester')`)
 		if err != nil {
 			tx.Rollback()
 			b.Fail()

@@ -35,18 +35,20 @@ var groupRegex *regexp.Regexp
 // ErrBodyEmpty err throw when body is empty
 var ErrBodyEmpty = errors.New("body is empty")
 
-var stmts *stmt
+var stmts *Stmt
 
-type stmt struct {
-	mtx        *sync.Mutex
-	prepareMap map[string]*sql.Stmt
+// Stmt statement representation
+type Stmt struct {
+	Mtx        *sync.Mutex
+	PrepareMap map[string]*sql.Stmt
 }
 
-func (s *stmt) prepare(db *sqlx.DB, SQL string) (statement *sql.Stmt, err error) {
+// Prepare statement
+func (s *Stmt) Prepare(db *sqlx.DB, SQL string) (statement *sql.Stmt, err error) {
 	var exists bool
-	s.mtx.Lock()
-	statement, exists = s.prepareMap[SQL]
-	s.mtx.Unlock()
+	s.Mtx.Lock()
+	statement, exists = s.PrepareMap[SQL]
+	s.Mtx.Unlock()
 	if exists {
 		return
 	}
@@ -54,17 +56,18 @@ func (s *stmt) prepare(db *sqlx.DB, SQL string) (statement *sql.Stmt, err error)
 	if err != nil {
 		return
 	}
-	s.mtx.Lock()
-	s.prepareMap[SQL] = statement
-	s.mtx.Unlock()
+	s.Mtx.Lock()
+	s.PrepareMap[SQL] = statement
+	s.Mtx.Unlock()
 	return
 }
 
-func (s *stmt) prepareTx(db *sql.Tx, SQL string) (statement *sql.Stmt, err error) {
+// PrepareTx  statement
+func (s *Stmt) PrepareTx(db *sql.Tx, SQL string) (statement *sql.Stmt, err error) {
 	var exists bool
-	s.mtx.Lock()
-	statement, exists = s.prepareMap[SQL]
-	s.mtx.Unlock()
+	s.Mtx.Lock()
+	statement, exists = s.PrepareMap[SQL]
+	s.Mtx.Unlock()
 	if exists {
 		return
 	}
@@ -72,9 +75,9 @@ func (s *stmt) prepareTx(db *sql.Tx, SQL string) (statement *sql.Stmt, err error
 	if err != nil {
 		return
 	}
-	s.mtx.Lock()
-	s.prepareMap[SQL] = statement
-	s.mtx.Unlock()
+	s.Mtx.Lock()
+	s.PrepareMap[SQL] = statement
+	s.Mtx.Unlock()
 	return
 }
 
@@ -85,23 +88,26 @@ func init() {
 	groupRegex = regexp.MustCompile(`\"(.+?)\"`)
 }
 
-func getStmt() *stmt {
+// GetStmt get statement
+func GetStmt() *Stmt {
 	if stmts == nil {
-		stmts = &stmt{
-			mtx:        &sync.Mutex{},
-			prepareMap: make(map[string]*sql.Stmt),
+		stmts = &Stmt{
+			Mtx:        &sync.Mutex{},
+			PrepareMap: make(map[string]*sql.Stmt),
 		}
 	}
 	return stmts
 }
 
-func prepare(db *sqlx.DB, SQL string) (stmt *sql.Stmt, err error) {
-	stmt, err = getStmt().prepare(db, SQL)
+// Prepare statement func
+func Prepare(db *sqlx.DB, SQL string) (stmt *sql.Stmt, err error) {
+	stmt, err = GetStmt().Prepare(db, SQL)
 	return
 }
 
-func prepareTx(db *sql.Tx, SQL string) (stmt *sql.Stmt, err error) {
-	stmt, err = getStmt().prepareTx(db, SQL)
+// PrepareTx statement func
+func PrepareTx(db *sql.Tx, SQL string) (stmt *sql.Stmt, err error) {
+	stmt, err = GetStmt().PrepareTx(db, SQL)
 	return
 }
 
@@ -453,7 +459,7 @@ func Query(SQL string, params ...interface{}) (sc Scanner) {
 	}
 	SQL = fmt.Sprintf("SELECT json_agg(s) FROM (%s) s", SQL)
 	log.Debugln(SQL, " parameters: ", params)
-	p, err := prepare(db, SQL)
+	p, err := Prepare(db, SQL)
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
 		return
@@ -480,7 +486,7 @@ func QueryCount(SQL string, params ...interface{}) (sc Scanner) {
 		return
 	}
 	log.Debugln(SQL, " parameters: ", params)
-	p, err := prepare(db, SQL)
+	p, err := Prepare(db, SQL)
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
 		return
@@ -605,7 +611,7 @@ func Insert(SQL string, params ...interface{}) (sc Scanner) {
 	}
 	log.Debugln(SQL, " parameters: ", params)
 	SQL = fmt.Sprintf(`%s RETURNING row_to_json("%s")`, SQL, tableName[2])
-	stmt, err := prepareTx(tx, SQL)
+	stmt, err := PrepareTx(tx, SQL)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -643,7 +649,7 @@ func Delete(SQL string, params ...interface{}) (sc Scanner) {
 		}
 	}()
 	log.Debugln(SQL, " parameters: ", params)
-	stmt, err := prepareTx(tx, SQL)
+	stmt, err := PrepareTx(tx, SQL)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -694,7 +700,7 @@ func Update(SQL string, params ...interface{}) (sc Scanner) {
 			tx.Rollback()
 		}
 	}()
-	stmt, err := prepareTx(tx, SQL)
+	stmt, err := PrepareTx(tx, SQL)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
 		sc = &scanner.PrestScanner{Error: err}
