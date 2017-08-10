@@ -19,6 +19,11 @@ restrict = true  # can access only the tables listed below
     fields = ["id", "name"]
 
     [[access.tables]]
+    name = "Reply"
+    permissions = ["read", "write", "delete"]
+    fields = ["id", "name"]
+
+    [[access.tables]]
     name = "testarray"
     permissions = ["read", "write", "delete"]
     fields = ["id", "data"]

@@ -38,7 +38,6 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sqlTables = fmt.Sprint(sqlTables, order)
-
 	sc := postgres.Query(sqlTables, values...)
 	if sc.Err() != nil {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
@@ -93,7 +92,6 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	valuesAux = append(valuesAux, database)
 	valuesAux = append(valuesAux, schema)
 	valuesAux = append(valuesAux, values...)
-
 	sc := postgres.Query(sqlSchemaTables, valuesAux...)
 	if sc.Err() != nil {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
@@ -127,8 +125,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	query := fmt.Sprintf("%s %s.%s.%s", selectStr, database, schema, table)
+	query := fmt.Sprintf(`%s "%s"."%s"."%s"`, selectStr, database, schema, table)
 
 	countQuery, err := postgres.CountByRequest(r)
 	if err != nil {
@@ -137,7 +134,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if countQuery != "" {
-		query = fmt.Sprintf("%s %s.%s.%s", countQuery, database, schema, table)
+		query = fmt.Sprintf(`%s "%s"."%s"."%s"`, countQuery, database, schema, table)
 	}
 
 	joinValues, err := postgres.JoinByRequest(r)
