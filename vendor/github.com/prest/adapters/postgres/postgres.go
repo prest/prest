@@ -26,6 +26,7 @@ const (
 )
 
 var removeOperatorRegex *regexp.Regexp
+var insertTableNameQuotesRegex *regexp.Regexp
 var insertTableNameRegex *regexp.Regexp
 var groupRegex *regexp.Regexp
 
@@ -35,7 +36,8 @@ var ErrBodyEmpty = errors.New("body is empty")
 func init() {
 	removeOperatorRegex = regexp.MustCompile(`\$[a-z]+.`)
 	insertTableNameRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.]*\.)*(\w+)\s*\(`)
-	groupRegex = regexp.MustCompile(`\(([^\)]+)\)`)
+	insertTableNameQuotesRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.|"]*\.)*"(\w+)"\s*\(`)
+	groupRegex = regexp.MustCompile(`\"(.+?)\"`)
 }
 
 // chkInvalidIdentifier return true if identifier is invalid
@@ -44,7 +46,7 @@ func chkInvalidIdentifier(identifer ...string) bool {
 		if ival == "" || len(ival) > 63 || unicode.IsDigit([]rune(ival)[0]) {
 			return true
 		}
-
+		count := 0
 		for _, v := range ival {
 			if !unicode.IsLetter(v) &&
 				!unicode.IsDigit(v) &&
@@ -55,9 +57,16 @@ func chkInvalidIdentifier(identifer ...string) bool {
 				v != '-' &&
 				v != '*' &&
 				v != '[' &&
-				v != ']' {
+				v != ']' &&
+				v != '"' {
 				return true
 			}
+			if unicode.Is(unicode.Quotation_Mark, v) {
+				count++
+			}
+		}
+		if count%2 != 0 {
+			return true
 		}
 	}
 	return false
@@ -96,8 +105,9 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 						err = fmt.Errorf("invalid identifier: %+v", jsonField)
 						return
 					}
-
-					whereKey = append(whereKey, fmt.Sprintf("%s->>'%s' %s $%d", jsonField[0], jsonField[1], op, pid))
+					fields := strings.Split(jsonField[0], ".")
+					jsonField[0] = fmt.Sprintf(`"%s"`, strings.Join(fields, `"."`))
+					whereKey = append(whereKey, fmt.Sprintf(`%s->>'%s' %s $%d`, jsonField[0], jsonField[1], op, pid))
 					whereValues = append(whereValues, value)
 				default:
 					if chkInvalidIdentifier(keyInfo[0]) {
@@ -113,14 +123,15 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 				err = fmt.Errorf("invalid identifier: %s", key)
 				return
 			}
-
+			fields := strings.Split(key, ".")
+			key = fmt.Sprintf(`"%s"`, strings.Join(fields, `"."`))
 			if value != "" {
-				whereKey = append(whereKey, fmt.Sprintf("%s %s $%d", key, op, pid))
+				whereKey = append(whereKey, fmt.Sprintf(`%s %s $%d`, key, op, pid))
 				whereValues = append(whereValues, value)
 
 				pid++
 			} else {
-				whereKey = append(whereKey, fmt.Sprintf("%s %s", key, op))
+				whereKey = append(whereKey, fmt.Sprintf(`%s %s`, key, op))
 			}
 		}
 	}
@@ -159,7 +170,9 @@ func SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, 
 			err = errors.New("Set: Invalid identifier")
 			return
 		}
-		fields = append(fields, fmt.Sprintf("%s=$%d", key, initialPlaceholderID))
+		keys := strings.Split(key, ".")
+		key = fmt.Sprintf(`"%s"`, strings.Join(keys, `"."`))
+		fields = append(fields, fmt.Sprintf(`%s=$%d`, key, initialPlaceholderID))
 
 		switch value.(type) {
 		case []interface{}:
@@ -193,7 +206,7 @@ func ParseInsertRequest(r *http.Request) (colsName string, colsValue string, val
 			err = errors.New("Insert: Invalid identifier")
 			return
 		}
-		fields = append(fields, key)
+		fields = append(fields, fmt.Sprintf(`"%s"`, key))
 
 		switch value.(type) {
 		case []interface{}:
@@ -265,10 +278,19 @@ func JoinByRequest(r *http.Request) (values []string, err error) {
 	if err != nil {
 		return
 	}
-
-	joinQuery := fmt.Sprintf(" %s JOIN %s ON %s %s %s ", strings.ToUpper(joinArgs[0]), joinArgs[1], joinArgs[2], op, joinArgs[4])
+	errJoin := errors.New("invalid join clause")
+	spl := strings.Split(joinArgs[2], ".")
+	if len(spl) != 2 {
+		err = errJoin
+		return
+	}
+	splj := strings.Split(joinArgs[4], ".")
+	if len(splj) != 2 {
+		err = errJoin
+		return
+	}
+	joinQuery := fmt.Sprintf(` %s JOIN "%s" ON "%s"."%s" %s "%s"."%s" `, strings.ToUpper(joinArgs[0]), joinArgs[1], spl[0], spl[1], op, splj[0], splj[1])
 	values = append(values, joinQuery)
-
 	return
 }
 
@@ -278,13 +300,26 @@ func SelectFields(fields []string) (sql string, err error) {
 		err = errors.New("you must select at least one field")
 		return
 	}
+	var aux []string
 	for _, field := range fields {
-		if chkInvalidIdentifier(field) {
+		if field != "*" && chkInvalidIdentifier(field) {
 			err = fmt.Errorf("invalid identifier %s", field)
 			return
 		}
+		if field != `*` {
+			f := strings.Split(field, ".")
+
+			isFunction, _ := regexp.MatchString(groupRegex.String(), field)
+			if isFunction {
+				aux = append(aux, strings.Join(f, `.`))
+				continue
+			}
+			aux = append(aux, fmt.Sprintf(`"%s"`, strings.Join(f, `"."`)))
+			continue
+		}
+		aux = append(aux, `*`)
 	}
-	sql = fmt.Sprintf("SELECT %s FROM", strings.Join(fields, ","))
+	sql = fmt.Sprintf("SELECT %s FROM", strings.Join(aux, ","))
 	return
 }
 
@@ -303,9 +338,11 @@ func OrderByRequest(r *http.Request) (values string, err error) {
 				values = ""
 				return
 			}
-
-			if strings.HasPrefix(field, "-") {
-				field = fmt.Sprintf("%s DESC", field[1:])
+			f := strings.Split(field, ".")
+			field = fmt.Sprintf(`"%s"`, strings.Join(f, `"."`))
+			if strings.HasPrefix(field, `"-`) {
+				field = strings.Replace(field, `"-`, `"`, 1)
+				field = fmt.Sprintf(`%s DESC`, field)
 			}
 
 			values = fmt.Sprintf("%s %s", values, field)
@@ -326,13 +363,18 @@ func CountByRequest(req *http.Request) (countQuery string, err error) {
 	if countFields == "" {
 		return
 	}
-	for _, field := range strings.Split(countFields, ",") {
+	fields := strings.Split(countFields, ",")
+	for i, field := range fields {
 		if field != "*" && chkInvalidIdentifier(field) {
 			err = errors.New("Invalid identifier")
 			return
 		}
+		if field != `*` {
+			f := strings.Split(field, ".")
+			fields[i] = fmt.Sprintf(`"%s"`, strings.Join(f, `"."`))
+		}
 	}
-	countQuery = fmt.Sprintf("SELECT COUNT(%s) FROM", countFields)
+	countQuery = fmt.Sprintf("SELECT COUNT(%s) FROM", strings.Join(fields, ","))
 	return
 }
 
@@ -487,14 +529,17 @@ func Insert(SQL string, params ...interface{}) (sc Scanner) {
 			tx.Rollback()
 		}
 	}()
-	tableName := insertTableNameRegex.FindStringSubmatch(SQL)
+	tableName := insertTableNameQuotesRegex.FindStringSubmatch(SQL)
 	if len(tableName) < 2 {
-		err = errors.New("unable to find table name")
-		sc = &scanner.PrestScanner{Error: err}
-		return
+		tableName = insertTableNameRegex.FindStringSubmatch(SQL)
+		if len(tableName) < 2 {
+			err = errors.New("unable to find table name")
+			sc = &scanner.PrestScanner{Error: err}
+			return
+		}
 	}
 	log.Debugln(SQL, " parameters: ", params)
-	SQL = fmt.Sprintf("%s RETURNING row_to_json(%s)", SQL, tableName[2])
+	SQL = fmt.Sprintf(`%s RETURNING row_to_json("%s")`, SQL, tableName[2])
 	stmt, err := tx.Prepare(SQL)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
@@ -765,6 +810,13 @@ func GroupByClause(r *http.Request) (groupBySQL string) {
 	if strings.Contains(groupQuery, "->>having") {
 		params := strings.Split(groupQuery, ":")
 		groupFieldQuery := strings.Split(groupQuery, "->>having")
+
+		fields := strings.Split(groupFieldQuery[0], ",")
+		for i, field := range fields {
+			f := strings.Split(field, ".")
+			fields[i] = fmt.Sprintf(`"%s"`, strings.Join(f, `"."`))
+		}
+		groupFieldQuery[0] = strings.Join(fields, ",")
 		if len(params) != 5 {
 			groupBySQL = fmt.Sprintf(statements.GroupBy, groupFieldQuery[0])
 			return
@@ -786,7 +838,12 @@ func GroupByClause(r *http.Request) (groupBySQL string) {
 		groupBySQL = fmt.Sprintf("%s %s", fmt.Sprintf(statements.GroupBy, groupFieldQuery[0]), havingQuery)
 		return
 	}
-
+	fields := strings.Split(groupQuery, ",")
+	for i, field := range fields {
+		f := strings.Split(field, ".")
+		fields[i] = fmt.Sprintf(`"%s"`, strings.Join(f, `"."`))
+	}
+	groupQuery = strings.Join(fields, ",")
 	groupBySQL = fmt.Sprintf(statements.GroupBy, groupQuery)
 	return
 }
@@ -798,7 +855,11 @@ func NormalizeGroupFunction(paramValue string) (groupFuncSQL string, err error) 
 	switch groupFunc {
 	case "SUM", "AVG", "MAX", "MIN", "MEDIAN", "STDDEV", "VARIANCE":
 		// values[1] it's a field in table
-		groupFuncSQL = fmt.Sprintf("%s(%s)", groupFunc, values[1])
+		v := values[1]
+		if v != "*" {
+			values[1] = fmt.Sprintf(`"%s"`, v)
+		}
+		groupFuncSQL = fmt.Sprintf(`%s(%s)`, groupFunc, values[1])
 		return
 	default:
 		err = fmt.Errorf("this function %s is not a valid group function", groupFunc)

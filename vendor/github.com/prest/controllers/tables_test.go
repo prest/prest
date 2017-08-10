@@ -80,6 +80,7 @@ func TestSelectFromTables(t *testing.T) {
 	}{
 		{"execute select in a table with array", "/prest/public/testarray", "GET", http.StatusOK, "[{\"id\":100,\"data\":[\"Gohan\",\"Goten\"]}]"},
 		{"execute select in a table without custom where clause", "/prest/public/test", "GET", http.StatusOK, ""},
+		{"execute select in a table case sentive", "/prest/public/Reply", "GET", http.StatusOK, "[{\"id\":1,\"name\":\"prest tester\"}]"},
 		{"execute select in a table with count all fields *", "/prest/public/test?_count=*", "GET", http.StatusOK, ""},
 		{"execute select in a table with count function", "/prest/public/test?_count=name", "GET", http.StatusOK, ""},
 		{"execute select in a table with custom where clause", "/prest/public/test?name=$eq.nuveo", "GET", http.StatusOK, ""},
@@ -90,7 +91,7 @@ func TestSelectFromTables(t *testing.T) {
 		{"execute select in a table with select *", "/prest/public/test5?_select=*", "GET", http.StatusOK, ""},
 
 		{"execute select in a table with group by clause", "/prest/public/test_group_by_table?_select=age,sum:salary&_groupby=age", "GET", http.StatusOK, "[{\"age\":20,\"sum\":1350}, \n {\"age\":19,\"sum\":7997}]"},
-		{"Execute select in a table with group by and having clause", "/prest/public/test_group_by_table?_select=age,sum:salary&_groupby=age->>having:sum:salary:$gt:3000", "GET", http.StatusOK, "[{\"age\":19,\"sum\":7997}]"},
+		{"execute select in a table with group by and having clause", "/prest/public/test_group_by_table?_select=age,sum:salary&_groupby=age->>having:sum:salary:$gt:3000", "GET", http.StatusOK, "[{\"age\":19,\"sum\":7997}]"},
 
 		{"execute select in a view without custom where clause", "/prest/public/view_test", "GET", http.StatusOK, ""},
 		{"execute select in a view with count all fields *", "/prest/public/view_test?_count=*", "GET", http.StatusOK, ""},
@@ -101,7 +102,6 @@ func TestSelectFromTables(t *testing.T) {
 		{"execute select in a view with custom where clause and pagination", "/prest/public/view_test?player=$eq.gopher&_page=1&_page_size=20", "GET", http.StatusOK, ""},
 		{"execute select in a view with select fields", "/prest/public/view_test?_select=player", "GET", http.StatusOK, ""},
 
-		// errors
 		{"execute select in a table with invalid join clause", "/prest/public/test?_join=inner:test2:test2.name", "GET", http.StatusBadRequest, ""},
 		{"execute select in a table with invalid where clause", "/prest/public/test?0name=$eq.nuveo", "GET", http.StatusBadRequest, ""},
 		{"execute select in a table with order clause and column invalid", "/prest/public/test?_order=0name", "GET", http.StatusBadRequest, ""},
@@ -122,6 +122,9 @@ func TestSelectFromTables(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
+		//config.PrestConf = &config.Prest{}
+		//config.Load()
+
 		if tc.body != "" {
 			doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "SelectFromTables", tc.body)
 			continue

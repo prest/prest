@@ -65,7 +65,7 @@
   branch = "master"
   name = "github.com/lib/pq"
   packages = [".","oid"]
-  revision = "dd1fe2071026ce53f36a39112e645b4d4f5793a4"
+  revision = "e42267488fe361b9dc034be7a6bffef5b195bceb"
 
 [[projects]]
   name = "github.com/magiconair/properties"
@@ -113,7 +113,7 @@
   branch = "master"
   name = "github.com/prest/adapters"
   packages = ["postgres","postgres/connection","postgres/internal/scanner"]
-  revision = "69fc98d5442bad002ff77de40cf0d1bcf999fa56"
+  revision = "ecfe333d09c97529111a95418f92a162589811ad"
 
 [[projects]]
   branch = "master"
@@ -131,7 +131,7 @@
   branch = "master"
   name = "github.com/prest/controllers"
   packages = ["."]
-  revision = "7da58d1f72070001bb9e38ebabb37867f94956b8"
+  revision = "19c7291495c5842b1107783d0bdb7720ff8418ca"
 
 [[projects]]
   branch = "master"
@@ -149,7 +149,7 @@
   branch = "master"
   name = "github.com/prest/statements"
   packages = ["."]
-  revision = "cbb29dfbcb6d58105c17701f4bafab4bee9c4d34"
+  revision = "0a7bec557aa6c9c0d8d20a208dccc04f8795dc8e"
 
 [[projects]]
   branch = "master"
@@ -203,13 +203,13 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "d8f5ea21b9295e315e612b4bcf4bedea93454d4d"
+  revision = "e42485b6e20ae7d2304ec72e535b103ed350cc02"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
   packages = ["internal/gen","internal/triegen","internal/ucd","transform","unicode/cldr","unicode/norm"]
-  revision = "3bd178b88a8180be2df394a1fbb81313916f0e7b"
+  revision = "f6122ddd15425dbc9d7d052fad9cbced931ba90c"
 
 [[projects]]
   name = "gopkg.in/mattes/migrate.v1"

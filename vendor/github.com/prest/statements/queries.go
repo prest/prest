@@ -111,15 +111,15 @@ FROM`
 
 	// InsertQuery query
 	InsertQuery = `
-INSERT INTO %s.%s.%s(%s) VALUES(%s)`
+INSERT INTO "%s"."%s"."%s"(%s) VALUES(%s)`
 
 	// DeleteQuery query
 	DeleteQuery = `
-DELETE FROM %s.%s.%s`
+DELETE FROM "%s"."%s"."%s"`
 
 	// UpdateQuery query
 	UpdateQuery = `
-UPDATE %s.%s.%s SET %s`
+UPDATE "%s"."%s"."%s" SET %s`
 
 	// GroupBy query
 	GroupBy = `GROUP BY %s`
