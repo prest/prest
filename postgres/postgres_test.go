@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/prest/adapters/postgres/connection"
+
 	"bytes"
 
 	"github.com/prest/config"
@@ -983,5 +985,31 @@ func TestNormalizeGroupFunction(t *testing.T) {
 		if tc.expectedSQL != partialSQL {
 			t.Errorf("expected: %s, got: %s", tc.expectedSQL, partialSQL)
 		}
+	}
+}
+
+func BenchmarkPrepare(b *testing.B) {
+	db := connection.MustGet()
+	for index := 0; index < b.N; index++ {
+		_, err := Prepare(db, `SELECT * FROM "Reply"`)
+		if err != nil {
+			b.Fail()
+		}
+	}
+}
+
+func BenchmarkPrepareTx(b *testing.B) {
+	db := connection.MustGet()
+	for index := 0; index < b.N; index++ {
+		tx, err := db.Begin()
+		if err != nil {
+			b.Fail()
+		}
+		_, err = PrepareTx(tx, `insert into test (name) values ('prest tester')`)
+		if err != nil {
+			tx.Rollback()
+			b.Fail()
+		}
+		tx.Commit()
 	}
 }
