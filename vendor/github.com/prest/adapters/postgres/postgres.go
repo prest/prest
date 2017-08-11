@@ -10,8 +10,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/nuveo/log"
 	"github.com/prest/adapters/postgres/connection"
 	"github.com/prest/adapters/postgres/internal/scanner"
@@ -33,11 +35,80 @@ var groupRegex *regexp.Regexp
 // ErrBodyEmpty err throw when body is empty
 var ErrBodyEmpty = errors.New("body is empty")
 
+var stmts *Stmt
+
+// Stmt statement representation
+type Stmt struct {
+	Mtx        *sync.Mutex
+	PrepareMap map[string]*sql.Stmt
+}
+
+// Prepare statement
+func (s *Stmt) Prepare(db *sqlx.DB, SQL string) (statement *sql.Stmt, err error) {
+	var exists bool
+	s.Mtx.Lock()
+	statement, exists = s.PrepareMap[SQL]
+	s.Mtx.Unlock()
+	if exists {
+		return
+	}
+	statement, err = db.Prepare(SQL)
+	if err != nil {
+		return
+	}
+	s.Mtx.Lock()
+	s.PrepareMap[SQL] = statement
+	s.Mtx.Unlock()
+	return
+}
+
+// PrepareTx  statement
+func (s *Stmt) PrepareTx(db *sql.Tx, SQL string) (statement *sql.Stmt, err error) {
+	var exists bool
+	s.Mtx.Lock()
+	statement, exists = s.PrepareMap[SQL]
+	s.Mtx.Unlock()
+	if exists {
+		return
+	}
+	statement, err = db.Prepare(SQL)
+	if err != nil {
+		return
+	}
+	s.Mtx.Lock()
+	s.PrepareMap[SQL] = statement
+	s.Mtx.Unlock()
+	return
+}
+
 func init() {
 	removeOperatorRegex = regexp.MustCompile(`\$[a-z]+.`)
 	insertTableNameRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.]*\.)*(\w+)\s*\(`)
 	insertTableNameQuotesRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.|"]*\.)*"(\w+)"\s*\(`)
 	groupRegex = regexp.MustCompile(`\"(.+?)\"`)
+}
+
+// GetStmt get statement
+func GetStmt() *Stmt {
+	if stmts == nil {
+		stmts = &Stmt{
+			Mtx:        &sync.Mutex{},
+			PrepareMap: make(map[string]*sql.Stmt),
+		}
+	}
+	return stmts
+}
+
+// Prepare statement func
+func Prepare(db *sqlx.DB, SQL string) (stmt *sql.Stmt, err error) {
+	stmt, err = GetStmt().Prepare(db, SQL)
+	return
+}
+
+// PrepareTx statement func
+func PrepareTx(db *sql.Tx, SQL string) (stmt *sql.Stmt, err error) {
+	stmt, err = GetStmt().PrepareTx(db, SQL)
+	return
 }
 
 // chkInvalidIdentifier return true if identifier is invalid
@@ -388,14 +459,14 @@ func Query(SQL string, params ...interface{}) (sc Scanner) {
 	}
 	SQL = fmt.Sprintf("SELECT json_agg(s) FROM (%s) s", SQL)
 	log.Debugln(SQL, " parameters: ", params)
-	prepare, err := db.Prepare(SQL)
+	p, err := Prepare(db, SQL)
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	defer prepare.Close()
+	defer p.Close()
 	var jsonData []byte
-	err = prepare.QueryRow(params...).Scan(&jsonData)
+	err = p.QueryRow(params...).Scan(&jsonData)
 	if len(jsonData) == 0 {
 		jsonData = []byte("[]")
 	}
@@ -415,7 +486,7 @@ func QueryCount(SQL string, params ...interface{}) (sc Scanner) {
 		return
 	}
 	log.Debugln(SQL, " parameters: ", params)
-	prepare, err := db.Prepare(SQL)
+	p, err := Prepare(db, SQL)
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
 		return
@@ -425,7 +496,7 @@ func QueryCount(SQL string, params ...interface{}) (sc Scanner) {
 		Count int64 `json:"count"`
 	}
 
-	row := prepare.QueryRow(params...)
+	row := p.QueryRow(params...)
 	if err = row.Scan(&result.Count); err != nil {
 		sc = &scanner.PrestScanner{Error: err}
 		return
@@ -540,7 +611,7 @@ func Insert(SQL string, params ...interface{}) (sc Scanner) {
 	}
 	log.Debugln(SQL, " parameters: ", params)
 	SQL = fmt.Sprintf(`%s RETURNING row_to_json("%s")`, SQL, tableName[2])
-	stmt, err := tx.Prepare(SQL)
+	stmt, err := PrepareTx(tx, SQL)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -578,9 +649,15 @@ func Delete(SQL string, params ...interface{}) (sc Scanner) {
 		}
 	}()
 	log.Debugln(SQL, " parameters: ", params)
+	stmt, err := PrepareTx(tx, SQL)
+	if err != nil {
+		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
 	var result sql.Result
 	var rowsAffected int64
-	result, err = tx.Exec(SQL, params...)
+	result, err = stmt.Exec(params...)
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
 		return
@@ -623,7 +700,7 @@ func Update(SQL string, params ...interface{}) (sc Scanner) {
 			tx.Rollback()
 		}
 	}()
-	stmt, err := tx.Prepare(SQL)
+	stmt, err := PrepareTx(tx, SQL)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
 		sc = &scanner.PrestScanner{Error: err}
