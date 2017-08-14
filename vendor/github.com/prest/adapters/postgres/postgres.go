@@ -62,25 +62,6 @@ func (s *Stmt) Prepare(db *sqlx.DB, SQL string) (statement *sql.Stmt, err error)
 	return
 }
 
-// PrepareTx  statement
-func (s *Stmt) PrepareTx(db *sql.Tx, SQL string) (statement *sql.Stmt, err error) {
-	var exists bool
-	s.Mtx.Lock()
-	statement, exists = s.PrepareMap[SQL]
-	s.Mtx.Unlock()
-	if exists {
-		return
-	}
-	statement, err = db.Prepare(SQL)
-	if err != nil {
-		return
-	}
-	s.Mtx.Lock()
-	s.PrepareMap[SQL] = statement
-	s.Mtx.Unlock()
-	return
-}
-
 func init() {
 	removeOperatorRegex = regexp.MustCompile(`\$[a-z]+.`)
 	insertTableNameRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.]*\.)*(\w+)\s*\(`)
@@ -102,12 +83,6 @@ func GetStmt() *Stmt {
 // Prepare statement func
 func Prepare(db *sqlx.DB, SQL string) (stmt *sql.Stmt, err error) {
 	stmt, err = GetStmt().Prepare(db, SQL)
-	return
-}
-
-// PrepareTx statement func
-func PrepareTx(db *sql.Tx, SQL string) (stmt *sql.Stmt, err error) {
-	stmt, err = GetStmt().PrepareTx(db, SQL)
 	return
 }
 
@@ -464,7 +439,6 @@ func Query(SQL string, params ...interface{}) (sc Scanner) {
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	defer p.Close()
 	var jsonData []byte
 	err = p.QueryRow(params...).Scan(&jsonData)
 	if len(jsonData) == 0 {
@@ -586,20 +560,6 @@ func Insert(SQL string, params ...interface{}) (sc Scanner) {
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	tx, err := db.Begin()
-	if err != nil {
-		log.Printf("could not begin transaction: %v\n", err)
-		sc = &scanner.PrestScanner{Error: err}
-		return
-	}
-	defer func() {
-		switch err {
-		case nil:
-			tx.Commit()
-		default:
-			tx.Rollback()
-		}
-	}()
 	tableName := insertTableNameQuotesRegex.FindStringSubmatch(SQL)
 	if len(tableName) < 2 {
 		tableName = insertTableNameRegex.FindStringSubmatch(SQL)
@@ -611,7 +571,7 @@ func Insert(SQL string, params ...interface{}) (sc Scanner) {
 	}
 	log.Debugln(SQL, " parameters: ", params)
 	SQL = fmt.Sprintf(`%s RETURNING row_to_json("%s")`, SQL, tableName[2])
-	stmt, err := PrepareTx(tx, SQL)
+	stmt, err := Prepare(db, SQL)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -634,22 +594,8 @@ func Delete(SQL string, params ...interface{}) (sc Scanner) {
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	tx, err := db.Begin()
-	if err != nil {
-		log.Printf("could not begin transaction: %v\n", err)
-		sc = &scanner.PrestScanner{Error: err}
-		return
-	}
-	defer func() {
-		switch err {
-		case nil:
-			tx.Commit()
-		default:
-			tx.Rollback()
-		}
-	}()
 	log.Debugln(SQL, " parameters: ", params)
-	stmt, err := PrepareTx(tx, SQL)
+	stmt, err := Prepare(db, SQL)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -686,21 +632,7 @@ func Update(SQL string, params ...interface{}) (sc Scanner) {
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	tx, err := db.Begin()
-	if err != nil {
-		log.Printf("could not begin transaction: %v\n", err)
-		sc = &scanner.PrestScanner{Error: err}
-		return
-	}
-	defer func() {
-		switch err {
-		case nil:
-			tx.Commit()
-		default:
-			tx.Rollback()
-		}
-	}()
-	stmt, err := PrepareTx(tx, SQL)
+	stmt, err := Prepare(db, SQL)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
 		sc = &scanner.PrestScanner{Error: err}

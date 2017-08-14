@@ -113,7 +113,7 @@
   branch = "master"
   name = "github.com/prest/adapters"
   packages = ["postgres","postgres/connection","postgres/internal/scanner"]
-  revision = "bb91b770027b47ec96a2ae62f1b77678a18b274e"
+  revision = "984f436ea163bb8e079fee187cc62c3fcfe907a0"
 
 [[projects]]
   branch = "master"
@@ -203,13 +203,13 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "e42485b6e20ae7d2304ec72e535b103ed350cc02"
+  revision = "c84c1ab9fd18cdd4c23dd021c10f5f46dea95e46"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
   packages = ["internal/gen","internal/triegen","internal/ucd","transform","unicode/cldr","unicode/norm"]
-  revision = "f6122ddd15425dbc9d7d052fad9cbced931ba90c"
+  revision = "e56139fd9c5bc7244c76116c68e500765bb6db6b"
 
 [[projects]]
   name = "gopkg.in/mattes/migrate.v1"
@@ -221,7 +221,7 @@
   branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "25c4ec802a7d637f88d584ab26798e94ad14c13b"
+  revision = "eb3733d160e74a9c7e442f435eb3bea458e1d19f"
 
 [solve-meta]
   analyzer-name = "dep"

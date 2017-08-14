@@ -988,6 +988,61 @@ func TestNormalizeGroupFunction(t *testing.T) {
 	}
 }
 
+func TestCacheQuery(t *testing.T) {
+	sc := Query(`SELECT * FROM "Reply"`)
+	if err := sc.Err(); err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+	sc = Query(`SELECT * FROM "Reply"`)
+	if err := sc.Err(); err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+}
+
+func TestCacheQueryCount(t *testing.T) {
+	sc := QueryCount(`SELECT COUNT(*) FROM "Reply"`)
+	if err := sc.Err(); err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+	sc = QueryCount(`SELECT COUNT(*) FROM "Reply"`)
+	if err := sc.Err(); err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+}
+
+func TestCacheInsert(t *testing.T) {
+	sc := Insert("INSERT INTO test(name) VALUES('testcache')")
+	if err := sc.Err(); err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+	sc = Insert("INSERT INTO test(name) VALUES('testcache')")
+	if err := sc.Err(); err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+}
+
+func TestCacheUpdate(t *testing.T) {
+	sc := Update("UPDATE test SET name='test cache' WHERE name='testcache'")
+	if err := sc.Err(); err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+	sc = Update("UPDATE test SET name='test cache' WHERE name='testcache'")
+	if err := sc.Err(); err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+}
+
+func TestCacheDelete(t *testing.T) {
+	sc := Delete("DELETE FROM test WHERE name='test cache'")
+	if err := sc.Err(); err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+	sc = Delete("DELETE FROM test WHERE name='test cache'")
+	if err := sc.Err(); err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+}
+
 func BenchmarkPrepare(b *testing.B) {
 	db := connection.MustGet()
 	for index := 0; index < b.N; index++ {
@@ -995,21 +1050,5 @@ func BenchmarkPrepare(b *testing.B) {
 		if err != nil {
 			b.Fail()
 		}
-	}
-}
-
-func BenchmarkPrepareTx(b *testing.B) {
-	db := connection.MustGet()
-	for index := 0; index < b.N; index++ {
-		tx, err := db.Begin()
-		if err != nil {
-			b.Fail()
-		}
-		_, err = PrepareTx(tx, `insert into test (name) values ('prest tester')`)
-		if err != nil {
-			tx.Rollback()
-			b.Fail()
-		}
-		tx.Commit()
 	}
 }
