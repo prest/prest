@@ -4,14 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	gotemplate "text/template"
 
-	"path"
-
+	"github.com/nuveo/log"
 	"github.com/prest/adapters/postgres/connection"
 	"github.com/prest/adapters/postgres/internal/scanner"
 	"github.com/prest/config"
@@ -82,23 +81,7 @@ func WriteSQL(sql string, values []interface{}) (sc Scanner) {
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
-	tx, err := db.Begin()
-	if err != nil {
-		log.Printf("could not begin transaction: %v\n", err)
-		sc = &scanner.PrestScanner{Error: err}
-		return
-	}
-
-	defer func() {
-		switch err {
-		case nil:
-			tx.Commit()
-		default:
-			tx.Rollback()
-		}
-	}()
-	stmt, err := PrepareTx(tx, sql)
+	stmt, err := Prepare(db, sql)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -112,7 +95,6 @@ func WriteSQL(sql string, values []interface{}) (sc Scanner) {
 
 	result, err := stmt.Exec(valuesAux...)
 	if err != nil {
-		tx.Rollback()
 		log.Printf("sql = %+v\n", sql)
 		err = fmt.Errorf("could not peform sql: %v", err)
 		sc = &scanner.PrestScanner{Error: err}
