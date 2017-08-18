@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -87,7 +86,7 @@ func Parse(cfg *Prest) (err error) {
 	if err != nil {
 		switch err.(type) {
 		case viper.ConfigFileNotFoundError:
-			fmt.Println("Running without config file")
+			log.Warningln("Running without config file.")
 		default:
 			return
 		}
