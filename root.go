@@ -6,7 +6,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/prest/config"
-	cfgMiddleware "github.com/prest/config/middlewares"
 	"github.com/prest/config/router"
 	"github.com/prest/controllers"
 	"github.com/prest/middlewares"
@@ -49,7 +48,7 @@ func Execute() {
 }
 
 func app() {
-	n := cfgMiddleware.GetApp()
+	n := middlewares.GetApp()
 	r := router.Get()
 	r.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
 	r.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
