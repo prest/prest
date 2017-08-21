@@ -24,7 +24,7 @@ func TestInitApp(t *testing.T) {
 	app = nil
 	initApp()
 	if app == nil {
-		t.Errorf("App should not be nil.")
+		t.Errorf("app should not be nil.")
 	}
 	MiddlewareStack = []negroni.Handler{}
 }
@@ -33,7 +33,7 @@ func TestGetApp(t *testing.T) {
 	app = nil
 	n := GetApp()
 	if n == nil {
-		t.Errorf("Should return an app.")
+		t.Errorf("should return an app.")
 	}
 	MiddlewareStack = []negroni.Handler{}
 }
@@ -51,11 +51,11 @@ func TestGetAppWithReorderedMiddleware(t *testing.T) {
 	defer server.Close()
 	resp, err := http.Get(server.URL)
 	if err != nil {
-		t.Fatal("Expected run without errors but was", err.Error())
+		t.Fatal("expected run without errors but was", err.Error())
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		t.Fatal("Expected run without errors but was", err.Error())
+		t.Fatal("expected run without errors but was", err.Error())
 	}
 	defer resp.Body.Close()
 	if !strings.Contains(string(body), "Calling custom middleware") {
@@ -107,11 +107,11 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 	defer server.Close()
 	resp, err := http.Get(server.URL)
 	if err != nil {
-		t.Fatal("Expected run without errors but was", err.Error())
+		t.Fatal("expected run without errors but was", err.Error())
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		t.Fatal("Expected run without errors but was", err.Error())
+		t.Fatal("expected run without errors but was", err.Error())
 	}
 	defer resp.Body.Close()
 	if !strings.Contains(string(body), "custom route") {
@@ -122,11 +122,11 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 	}
 	resp, err = http.Get(server.URL + "/prest/public/test_write_and_delete_access")
 	if err != nil {
-		t.Fatal("Expected run without errors but was", err.Error())
+		t.Fatal("expected run without errors but was", err.Error())
 	}
 	body, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		t.Fatal("Expected run without errors but was", err.Error())
+		t.Fatal("expected run without errors but was", err.Error())
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
@@ -212,7 +212,7 @@ func TestCorsGet(t *testing.T) {
 	var body []byte
 	body, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		t.Fatal("Expected run without errors but was", err)
+		t.Fatal("expected run without errors but was", err)
 	}
 	if len(body) == 0 {
 		t.Error("body is empty")
