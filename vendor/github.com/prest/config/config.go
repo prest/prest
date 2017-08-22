@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -27,21 +26,22 @@ type AccessConf struct {
 // Prest basic config
 type Prest struct {
 	// HTTPPort Declare which http port the PREST used
-	HTTPPort        int
-	PGHost          string
-	PGPort          int
-	PGUser          string
-	PGPass          string
-	PGDatabase      string
-	PGMaxIdleConn   int
-	PGMAxOpenConn   int
-	PGConnTimeout   int
-	JWTKey          string
-	MigrationsPath  string
-	QueriesPath     string
-	AccessConf      AccessConf
-	CORSAllowOrigin []string
-	Debug           bool
+	HTTPPort         int
+	PGHost           string
+	PGPort           int
+	PGUser           string
+	PGPass           string
+	PGDatabase       string
+	PGMaxIdleConn    int
+	PGMAxOpenConn    int
+	PGConnTimeout    int
+	JWTKey           string
+	MigrationsPath   string
+	QueriesPath      string
+	AccessConf       AccessConf
+	CORSAllowOrigin  []string
+	CORSAllowHeaders []string
+	Debug            bool
 }
 
 // PrestConf config variable
@@ -65,6 +65,7 @@ func viperCfg() {
 	viper.SetDefault("pg.maxopenconn", 10)
 	viper.SetDefault("pg.conntimeout", 10)
 	viper.SetDefault("debug", false)
+	viper.SetDefault("cors.allowheaders", []string{"*"})
 
 	user, err := user.Current()
 	if err != nil {
@@ -87,7 +88,7 @@ func Parse(cfg *Prest) (err error) {
 	if err != nil {
 		switch err.(type) {
 		case viper.ConfigFileNotFoundError:
-			fmt.Println("Running without config file")
+			log.Warningln("Running without config file.")
 		default:
 			return
 		}
@@ -106,6 +107,7 @@ func Parse(cfg *Prest) (err error) {
 	cfg.AccessConf.Restrict = viper.GetBool("access.restrict")
 	cfg.QueriesPath = viper.GetString("queries.location")
 	cfg.CORSAllowOrigin = viper.GetStringSlice("cors.alloworigin")
+	cfg.CORSAllowHeaders = viper.GetStringSlice("cors.allowheaders")
 	cfg.Debug = viper.GetBool("debug")
 
 	var t []TablesConf

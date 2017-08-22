@@ -80,6 +80,14 @@ func GetStmt() *Stmt {
 	return stmts
 }
 
+// ClearStmt used to reset the cache and allow multiple tests
+func ClearStmt() {
+	if stmts != nil {
+		stmts = nil
+		stmts = GetStmt()
+	}
+}
+
 // Prepare statement func
 func Prepare(db *sqlx.DB, SQL string) (stmt *sql.Stmt, err error) {
 	stmt, err = GetStmt().Prepare(db, SQL)

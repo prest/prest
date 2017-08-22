@@ -77,6 +77,7 @@ var defaultAllowMethods = []string{
 	"PUT",
 	"PATCH",
 	"DELETE",
+	"OPTIONS",
 }
 
 const (

@@ -8,8 +8,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/prest/config"
-	"github.com/prest/config/middlewares"
 	"github.com/prest/config/router"
+	"github.com/prest/middlewares"
 )
 
 func TestMain(m *testing.M) {
