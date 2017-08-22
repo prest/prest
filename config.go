@@ -27,7 +27,7 @@ func initApp() {
 		MiddlewareStack = append(MiddlewareStack, JwtMiddleware(config.PrestConf.JWTKey))
 	}
 	if config.PrestConf.CORSAllowOrigin != nil {
-		MiddlewareStack = append(MiddlewareStack, Cors(config.PrestConf.CORSAllowOrigin))
+		MiddlewareStack = append(MiddlewareStack, Cors(config.PrestConf.CORSAllowOrigin, config.PrestConf.CORSAllowHeaders))
 	}
 	app = negroni.New(MiddlewareStack...)
 }
