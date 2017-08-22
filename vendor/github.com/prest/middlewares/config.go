@@ -2,7 +2,6 @@ package middlewares
 
 import (
 	"github.com/prest/config"
-	"github.com/prest/middlewares"
 	"github.com/urfave/negroni"
 )
 
@@ -16,7 +15,7 @@ var (
 	BaseStack = []negroni.Handler{
 		negroni.Handler(negroni.NewRecovery()),
 		negroni.Handler(negroni.NewLogger()),
-		middlewares.HandlerSet(),
+		HandlerSet(),
 	}
 )
 
@@ -25,10 +24,10 @@ func initApp() {
 		MiddlewareStack = append(MiddlewareStack, BaseStack...)
 	}
 	if !config.PrestConf.Debug {
-		MiddlewareStack = append(MiddlewareStack, middlewares.JwtMiddleware(config.PrestConf.JWTKey))
+		MiddlewareStack = append(MiddlewareStack, JwtMiddleware(config.PrestConf.JWTKey))
 	}
 	if config.PrestConf.CORSAllowOrigin != nil {
-		MiddlewareStack = append(MiddlewareStack, middlewares.Cors(config.PrestConf.CORSAllowOrigin))
+		MiddlewareStack = append(MiddlewareStack, Cors(config.PrestConf.CORSAllowOrigin, config.PrestConf.CORSAllowHeaders))
 	}
 	app = negroni.New(MiddlewareStack...)
 }

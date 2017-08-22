@@ -113,25 +113,25 @@
   branch = "master"
   name = "github.com/prest/adapters"
   packages = ["postgres","postgres/connection","postgres/internal/scanner"]
-  revision = "984f436ea163bb8e079fee187cc62c3fcfe907a0"
+  revision = "ee8d242b190eea9e31c68ca016d74e035e4c2235"
 
 [[projects]]
   branch = "master"
   name = "github.com/prest/cmd"
   packages = ["."]
-  revision = "f7d18d41e07705fdfe203d99e9ba101f7b774e6c"
+  revision = "4890cf744a98b00d8014856307e3f5178520b090"
 
 [[projects]]
   branch = "master"
   name = "github.com/prest/config"
-  packages = [".","middlewares","router"]
-  revision = "93f08c4642c74cf21fde91c403b47c276466e791"
+  packages = [".","router"]
+  revision = "23838e7a0cbcd4ef2806934d39592b9ff62a3b27"
 
 [[projects]]
   branch = "master"
   name = "github.com/prest/controllers"
   packages = ["."]
-  revision = "19c7291495c5842b1107783d0bdb7720ff8418ca"
+  revision = "9c37a728cc4c614e3ee42cbdeff91555425902ce"
 
 [[projects]]
   branch = "master"
@@ -143,7 +143,7 @@
   branch = "master"
   name = "github.com/prest/middlewares"
   packages = ["."]
-  revision = "30f9da57710e3da7d94176f909ceba3610051391"
+  revision = "06c3a147da0622efeb8bf1d60f5cbc0673e55cd8"
 
 [[projects]]
   branch = "master"
@@ -173,7 +173,7 @@
   branch = "master"
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "b26b538f693051ac6518e65672de3144ce3fbedc"
+  revision = "4a7b7e65864c064d48dce82efbbfed2bdc0bf2aa"
 
 [[projects]]
   branch = "master"
@@ -188,10 +188,10 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/spf13/viper"
   packages = ["."]
   revision = "25b30aa063fc18e48662b86996252eabdcf2f0c7"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/urfave/negroni"
@@ -203,7 +203,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "c84c1ab9fd18cdd4c23dd021c10f5f46dea95e46"
+  revision = "07c182904dbd53199946ba614a412c61d3c548f5"
 
 [[projects]]
   branch = "master"
