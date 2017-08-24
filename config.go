@@ -34,7 +34,8 @@ func initApp() {
 
 // GetApp get negroni
 func GetApp() *negroni.Negroni {
-	// init application every time
-	initApp()
+	if app == nil {
+		initApp()
+	}
 	return app
 }
