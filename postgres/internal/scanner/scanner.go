@@ -62,6 +62,9 @@ func (p *PrestScanner) scanQuery(ref reflect.Value, i interface{}) (err error) {
 	if err = decoder.Decode(&ret); err != nil {
 		return
 	}
+	if len(ret) == 0 {
+		return
+	}
 	if len(ret) != 1 {
 		err = errLength
 		return
