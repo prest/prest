@@ -181,6 +181,7 @@ struct ltchars {
 #include <linux/serial.h>
 #include <linux/can.h>
 #include <linux/vm_sockets.h>
+#include <linux/taskstats.h>
 #include <net/route.h>
 #include <asm/termbits.h>
 
@@ -413,6 +414,7 @@ ccflags="$@"
 		$2 ~ /^SECCOMP_MODE_/ ||
 		$2 ~ /^SPLICE_/ ||
 		$2 ~ /^(VM|VMADDR)_/ ||
+		$2 ~ /^(TASKSTATS|TS)_/ ||
 		$2 ~ /^XATTR_(CREATE|REPLACE)/ ||
 		$2 !~ "WMESGLEN" &&
 		$2 ~ /^W[A-Z0-9]+$/ ||

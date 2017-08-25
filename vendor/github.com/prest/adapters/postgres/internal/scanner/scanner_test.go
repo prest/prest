@@ -152,6 +152,7 @@ func TestPrestScan(t *testing.T) {
 		{"scan not slice", bytes.NewBuffer(byt), nil, &ComplexType{}, nil, true},
 		{"scan slice", bytes.NewBuffer(byt), nil, &act, nil, true},
 		{"scan using map", bytes.NewBuffer(byt), nil, &tmap, nil, true},
+		{"scan empty table", bytes.NewBuffer([]byte("[]")), nil, &tmap, nil, true},
 		{"scan not query", bytes.NewBuffer(b), nil, &tmap, nil, false},
 	}
 	for _, tc := range testCases {
