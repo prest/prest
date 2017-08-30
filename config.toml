@@ -13,7 +13,7 @@ googleAnalytics = ""
 	description = "A fully RESTful API from any existing PostgreSQL database."
 
 	github_user   = "prest"
-	github_repo   = "docs"
+	github_repo   = "prest"
 	github_banner = true
 
 	custom_css = []
@@ -23,12 +23,12 @@ googleAnalytics = ""
 	favicon = "favicon.ico"
 
 [params.sidebar]
-	logo = "favicon.ico"
+    logo = "logo.png"
 
 
 	github_button  = true
-	travis_button  = false
-	codecov_button = false
+	travis_button  = true
+	codecov_button = true
 	gratipay = ""
 
 	show_relations = true
