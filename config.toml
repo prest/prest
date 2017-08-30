@@ -1,0 +1,38 @@
+baseurl = "prest.github.io/"
+languageCode = "en-us"
+metadataformat = "yaml"
+title = "pREST"
+theme = "hugo-alabaster-theme"
+
+publishDir = "docs"
+disqusShortname = ""
+googleAnalytics = ""
+
+[params]
+	name = "pREST"
+	description = "A fully RESTful API from any existing PostgreSQL database."
+
+	github_user   = "prest"
+	github_repo   = "docs"
+	github_banner = true
+
+	custom_css = []
+	custom_js  = []
+
+	highlightjs = "css/highlight.css"
+	favicon = "favicon.ico"
+
+[params.sidebar]
+	logo = "favicon.ico"
+
+
+	github_button  = true
+	travis_button  = false
+	codecov_button = false
+	gratipay = ""
+
+	show_relations = true
+
+[params.footer]
+	copyright = "[Digitalcraftsman](https://github.com/digitalcraftsman)"
+	show_powered_by = true
