@@ -1,21 +1,53 @@
 ---
 date: 2016-04-23T15:21:22+02:00
-title: Foreword
+title: Getting Started
 type: homepage
 menu: main
-weight: 0
+weight: 10
 ---
 
-## What is Alabaster?
+## What is pREST?
 
-[Alabaster](https://github.com/bitprophet/alabaster) was originally a theme for the popular documentation tool [Sphinx](http://www.sphinx-doc.org/en/stable/). This theme port to Hugo theme is all about documentations. It should allow you to easily create a documentation for your projects.
+pREST is a way to serve a RESTful API from any PostgreSQL 9.4+ database.
 
-[Fabric](http://www.fabfile.org/) and [Invoke](http://www.pyinvoke.org/) are two examples of the Alabaster theme in the wild.
+## Installation
 
-The following pages will guide you through the setup, introduce you to the very basics of [Hugo](https://gohugo.io) and show you the capabilities of this theme. Have a look at the [Roadmap]({{< relref "roadmap/index.md" >}}) if you're curious about what comes next.
+```sh
+go get github.com/prest/prest
+```
 
-## Acknowledgements
+## Running
 
-Last but not I want to give a big shout-out to [Jeff Forcier](https://github.com/bitprophet), [Kenneth Reitz](https://github.com/kennethreitz) and [Armin Ronacher](https://github.com/mitsuhiko). Their work and modifications on the original codebase made this port possible.
+Initally can use some environment variables by example:
 
-Furthermore, thanks to [Steve Francia](https://gihub.com/spf13) for creating Hugo and the [awesome community](https://github.com/spf13/hugo/graphs/contributors) around the project.
+- PREST\_HTTP_PORT (default 3000)
+- PREST\_PG_HOST (default 127.0.0.1)
+- PREST\_PG_USER
+- PREST\_PG_PASS
+- PREST\_PG_DATABASE
+- PREST\_PG_PORT (default 5432)
+- PREST\_JWT_KEY
+
+```sh
+PREST_PG_USER=postgres \ 
+PREST_PG_DATABASE=prest \
+PREST_PG_PORT=5432 \
+PREST_HTTP_PORT=3010 \
+prest # Binary installed
+```
+
+In case needs use it via Docker: https://hub.docker.com/r/prest/prest/
+
+```sh
+docker run -e PREST_HTTP_PORT=3000 \
+	-e PREST_PG_HOST=127.0.0.1 \
+	-e PREST_PG_USER=postgres \
+	-e PREST_PG_PASS=pass \
+	prest/prest:0.2
+```
+
+### Tags
+
+- 0.2 (stable)
+- 0.1 (stable)
+- lastest (developer)
