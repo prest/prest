@@ -1,10 +1,9 @@
-baseurl = "prest.github.io/docs/"
+baseurl = "prest.github.io/"
 languageCode = "en-us"
 metadataformat = "yaml"
 title = "pREST"
 theme = "hugo-alabaster-theme"
 
-publishDir = "docs"
 disqusShortname = ""
 googleAnalytics = ""
 
