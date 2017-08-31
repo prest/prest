@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Query-statements on pREST</title>
+    <link>prest.github.io/query-statements/</link>
+    <description>Recent content in Query-statements on pREST</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 30 Aug 2017 19:06:04 -0300</lastBuildDate>
+    
+	<atom:link href="prest.github.io/query-statements/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Query Statements</title>
+      <link>prest.github.io/query-statements/</link>
+      <pubDate>Wed, 30 Aug 2017 19:06:04 -0300</pubDate>
+      
+      <guid>prest.github.io/query-statements/</guid>
+      <description>Query Statements Filter (WHERE) GET /DATABASE/SCHEMA/TABLE?FIELD=$eq.VALUE  Query Operators:
+   Name Description     $eq Matches values that are equal to a specified value.   $gt Matches values that are greater than a specified value.   $gte Matches values that are greater than or equal to a specified value.   $lt Matches values that are less than a specified value.   $lte Matches values that are less than or equal to a specified value.</description>
+    </item>
+    
+  </channel>
+</rss>

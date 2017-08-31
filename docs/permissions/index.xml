@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Permissions on pREST</title>
+    <link>prest.github.io/permissions/</link>
+    <description>Recent content in Permissions on pREST</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 30 Aug 2017 19:06:32 -0300</lastBuildDate>
+    
+	<atom:link href="prest.github.io/permissions/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Permissions</title>
+      <link>prest.github.io/permissions/</link>
+      <pubDate>Wed, 30 Aug 2017 19:06:32 -0300</pubDate>
+      
+      <guid>prest.github.io/permissions/</guid>
+      <description>Restrict mode In the prest.toml you can configure read/write/delete permissions of each table.
+[access] restrict = true # can access only the tables listed below  restrict = false: (default) the prest will serve in publish mode. You can write/read/delete everydata without configure permissions.
+restruct = true: you need configure the permissions of all tables.
+Table permissions Example:
+[[access.tables]] name = &amp;quot;test&amp;quot; permissions = [&amp;quot;read&amp;quot;, &amp;quot;write&amp;quot;, &amp;quot;delete&amp;quot;] fields = [&amp;quot;id&amp;quot;, &amp;quot;name&amp;quot;]     attribute description     table Table name   permissions Table permissions.</description>
+    </item>
+    
+  </channel>
+</rss>

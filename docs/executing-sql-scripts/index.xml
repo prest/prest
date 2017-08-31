@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Executing-sql-scripts on pREST</title>
+    <link>prest.github.io/executing-sql-scripts/</link>
+    <description>Recent content in Executing-sql-scripts on pREST</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 30 Aug 2017 19:06:24 -0300</lastBuildDate>
+    
+	<atom:link href="prest.github.io/executing-sql-scripts/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Executing SQL Scripts</title>
+      <link>prest.github.io/executing-sql-scripts/</link>
+      <pubDate>Wed, 30 Aug 2017 19:06:24 -0300</pubDate>
+      
+      <guid>prest.github.io/executing-sql-scripts/</guid>
+      <description>If need perform an advanced SQL, you can write some scripts SQL and access them by REST. These scripts are templates where you can pass by URL, values to them.
+_awesome_folder/example_ofpowerful.read.sql:
+SELECT * FROM table WHERE name = &amp;quot;{{.field1}}&amp;quot; OR name = &amp;quot;{{.field2}}&amp;quot;;  Get result:
+GET /_QUERIES/awesome_folder/example_of_powerful?field1=foo&amp;amp;field2=bar  To activate it, you need configure a location to scripts in your prest.toml like:
+[queries] location = /path/to/queries/  Scripts templates rules In your scripts, the fields to replace have to look like: field1 or field2 are examples</description>
+    </item>
+    
+  </channel>
+</rss>

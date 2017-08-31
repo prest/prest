@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  
+  <url>
+    <loc>prest.github.io/</loc>
+    <lastmod>2016-04-23T15:21:22+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>prest.github.io/configurations/</loc>
+    <lastmod>2017-08-30T19:05:46-03:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>prest.github.io/query-statements/</loc>
+    <lastmod>2017-08-30T19:06:04-03:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>prest.github.io/permissions/</loc>
+    <lastmod>2017-08-30T19:06:32-03:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>prest.github.io/executing-sql-scripts/</loc>
+    <lastmod>2017-08-30T19:06:24-03:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>prest.github.io/cors-support/</loc>
+    <lastmod>2017-08-30T19:06:49-03:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>prest.github.io/prest-as-web-framework/</loc>
+    <lastmod>2017-08-30T19:07:05-03:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>prest.github.io/contribute/</loc>
+    <lastmod>2017-08-30T19:07:12-03:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>prest.github.io/roadmap/</loc>
+    <lastmod>2016-04-23T20:08:11+01:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>prest.github.io/categories/</loc>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>prest.github.io/configurations/</loc>
+    <lastmod>2017-08-30T19:05:46-03:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>prest.github.io/contribute/</loc>
+    <lastmod>2017-08-30T19:07:12-03:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>prest.github.io/cors-support/</loc>
+    <lastmod>2017-08-30T19:06:49-03:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>prest.github.io/executing-sql-scripts/</loc>
+    <lastmod>2017-08-30T19:06:24-03:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>prest.github.io/permissions/</loc>
+    <lastmod>2017-08-30T19:06:32-03:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>prest.github.io/prest-as-web-framework/</loc>
+    <lastmod>2017-08-30T19:07:05-03:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>prest.github.io/query-statements/</loc>
+    <lastmod>2017-08-30T19:06:04-03:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>prest.github.io/roadmap/</loc>
+    <lastmod>2016-04-23T20:08:11+01:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>prest.github.io/tags/</loc>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>prest.github.io/</loc>
+    <lastmod>2016-04-23T15:21:22+02:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+</urlset>

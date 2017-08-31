@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>pREST</title>
+    <link>prest.github.io/</link>
+    <description>Recent content on pREST</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sat, 23 Apr 2016 15:21:22 +0200</lastBuildDate>
+    
+	<atom:link href="prest.github.io/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Getting Started</title>
+      <link>prest.github.io/</link>
+      <pubDate>Sat, 23 Apr 2016 15:21:22 +0200</pubDate>
+      
+      <guid>prest.github.io/</guid>
+      <description>What is pREST? pREST is a way to serve a RESTful API from any PostgreSQL 9.4+ database.
+Installation go get github.com/prest/prest  Running Initally can use some environment variables by example:
+ PREST_HTTP_PORT (default 3000) PREST_PG_HOST (default 127.0.0.1) PREST_PG_USER PREST_PG_PASS PREST_PG_DATABASE PREST_PG_PORT (default 5432) PREST_JWT_KEY  PREST_PG_USER=postgres \ PREST_PG_DATABASE=prest \ PREST_PG_PORT=5432 \ PREST_HTTP_PORT=3010 \ prest # Binary installed  In case needs use it via Docker: https://hub.docker.com/r/prest/prest/
+docker run -e PREST_HTTP_PORT=3000 \ -e PREST_PG_HOST=127.</description>
+    </item>
+    
+    <item>
+      <title>Configurations</title>
+      <link>prest.github.io/configurations/</link>
+      <pubDate>Wed, 30 Aug 2017 19:05:46 -0300</pubDate>
+      
+      <guid>prest.github.io/configurations/</guid>
+      <description>Configurations Via environment variables or via toml file.
+Environment vars  PREST_HTTP_PORT (default 3000) PREST_PG_HOST (default 127.0.0.1) PREST_PG_USER PREST_PG_PASS PREST_PG_DATABASE PREST_PG_PORT (default 5432) PREST_JWT_KEY  TOML Optionally the pREST can be configured by TOML file.
+ You can follow this sample and create your own prest.toml file and put this on the same folder that you run prest command.  migrations = &amp;quot;./migrations&amp;quot; [http] port = 6000 [jwt] key = &amp;quot;secret&amp;quot; [pg] host = &amp;quot;127.</description>
+    </item>
+    
+    <item>
+      <title>Query Statements</title>
+      <link>prest.github.io/query-statements/</link>
+      <pubDate>Wed, 30 Aug 2017 19:06:04 -0300</pubDate>
+      
+      <guid>prest.github.io/query-statements/</guid>
+      <description>Query Statements Filter (WHERE) GET /DATABASE/SCHEMA/TABLE?FIELD=$eq.VALUE  Query Operators:
+   Name Description     $eq Matches values that are equal to a specified value.   $gt Matches values that are greater than a specified value.   $gte Matches values that are greater than or equal to a specified value.   $lt Matches values that are less than a specified value.   $lte Matches values that are less than or equal to a specified value.</description>
+    </item>
+    
+    <item>
+      <title>Permissions</title>
+      <link>prest.github.io/permissions/</link>
+      <pubDate>Wed, 30 Aug 2017 19:06:32 -0300</pubDate>
+      
+      <guid>prest.github.io/permissions/</guid>
+      <description>Restrict mode In the prest.toml you can configure read/write/delete permissions of each table.
+[access] restrict = true # can access only the tables listed below  restrict = false: (default) the prest will serve in publish mode. You can write/read/delete everydata without configure permissions.
+restruct = true: you need configure the permissions of all tables.
+Table permissions Example:
+[[access.tables]] name = &amp;quot;test&amp;quot; permissions = [&amp;quot;read&amp;quot;, &amp;quot;write&amp;quot;, &amp;quot;delete&amp;quot;] fields = [&amp;quot;id&amp;quot;, &amp;quot;name&amp;quot;]     attribute description     table Table name   permissions Table permissions.</description>
+    </item>
+    
+    <item>
+      <title>Executing SQL Scripts</title>
+      <link>prest.github.io/executing-sql-scripts/</link>
+      <pubDate>Wed, 30 Aug 2017 19:06:24 -0300</pubDate>
+      
+      <guid>prest.github.io/executing-sql-scripts/</guid>
+      <description>If need perform an advanced SQL, you can write some scripts SQL and access them by REST. These scripts are templates where you can pass by URL, values to them.
+_awesome_folder/example_ofpowerful.read.sql:
+SELECT * FROM table WHERE name = &amp;quot;{{.field1}}&amp;quot; OR name = &amp;quot;{{.field2}}&amp;quot;;  Get result:
+GET /_QUERIES/awesome_folder/example_of_powerful?field1=foo&amp;amp;field2=bar  To activate it, you need configure a location to scripts in your prest.toml like:
+[queries] location = /path/to/queries/  Scripts templates rules In your scripts, the fields to replace have to look like: field1 or field2 are examples</description>
+    </item>
+    
+    <item>
+      <title>CORS Support</title>
+      <link>prest.github.io/cors-support/</link>
+      <pubDate>Wed, 30 Aug 2017 19:06:49 -0300</pubDate>
+      
+      <guid>prest.github.io/cors-support/</guid>
+      <description>In the prest.toml you can configurate the CORS allowed origin:
+Example:
+[cors] alloworigin = [&amp;quot;http://postgres.rest&amp;quot;, &amp;quot;http://foo.com&amp;quot;]  </description>
+    </item>
+    
+    <item>
+      <title>Using pREST as web framework</title>
+      <link>prest.github.io/prest-as-web-framework/</link>
+      <pubDate>Wed, 30 Aug 2017 19:07:05 -0300</pubDate>
+      
+      <guid>prest.github.io/prest-as-web-framework/</guid>
+      <description>In order to create custom modules for pREST you need extends the router and register the custom new routes.
+Hello World example package main import ( &amp;quot;net/http&amp;quot; &amp;quot;github.com/prest/cmd&amp;quot; &amp;quot;github.com/prest/config&amp;quot; &amp;quot;github.com/prest/config/router&amp;quot; &amp;quot;github.com/prest/middlewares&amp;quot; ) func main() { // Get pREST app config.Load() middlewares.GetApp() // Get pPREST router r := router.Get() // Register custom routes r.HandleFunc(&amp;quot;/ping&amp;quot;, Pong).Methods(&amp;quot;GET&amp;quot;) // Call pREST cmd cmd.Execute() } func Pong(w http.ResponseWriter, r *http.Request) { w.Write([]byte(&amp;quot;Pong!&amp;quot;)) }  Creating own custom Middlewares Using the previous sample we can create our middleware as a function and use that with GetApp() that returns a Negroni object.</description>
+    </item>
+    
+    <item>
+      <title>Contribute</title>
+      <link>prest.github.io/contribute/</link>
+      <pubDate>Wed, 30 Aug 2017 19:07:12 -0300</pubDate>
+      
+      <guid>prest.github.io/contribute/</guid>
+      <description>Did you found an bug or you would like to suggest a new feature? I&amp;rsquo;m open for feedback. Please open a new issue and let me know what you think.
+You&amp;rsquo;re also welcome to contribute with pull requests.
+Running tests Clone the repository and create a test database and insert dummy data for specs.
+PREST_PG_HOST=127.0.0.1 PREST_PG_DATABASE=prest sh ./testdata/schema.sh  Run migrations on test database.
+PREST_PG_HOST=127.0.0.1 PREST_PG_DATABASE=prest sh ./testdata/migrations_test.sh  Run tests.</description>
+    </item>
+    
+    <item>
+      <title>Roadmap</title>
+      <link>prest.github.io/roadmap/</link>
+      <pubDate>Sat, 23 Apr 2016 20:08:11 +0100</pubDate>
+      
+      <guid>prest.github.io/roadmap/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

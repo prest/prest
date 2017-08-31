@@ -1,0 +1,194 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head lang="en-us">
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+	<meta name="description" content="A fully RESTful API from any existing PostgreSQL database.">
+	<meta name="generator" content="Hugo 0.25.1" />
+	
+	<title> pREST</title>
+	
+	<link rel="stylesheet" href="prest.github.io/css/alabaster.css" type="text/css" />
+	<link rel="stylesheet" href="prest.github.io/css/highlight.css" type="text/css" />
+
+	
+
+	<link rel="shortcut icon" href="prest.github.io/favicon.ico" type="image/x-icon"/>
+</head>
+
+	<body role="document">
+		<div class="document">
+			<div class="documentwrapper">
+				<div class="bodywrapper">
+					<div class="body" role="main">
+						
+	
+		<h1>Getting Started</h1>
+		
+
+<h2 id="what-is-prest">What is pREST?</h2>
+
+<p>pREST is a way to serve a RESTful API from any PostgreSQL 9.4+ database.</p>
+
+<h2 id="installation">Installation</h2>
+
+<pre><code class="language-sh">go get github.com/prest/prest
+</code></pre>
+
+<h2 id="running">Running</h2>
+
+<p>Initally can use some environment variables by example:</p>
+
+<ul>
+<li>PREST_HTTP_PORT (default 3000)</li>
+<li>PREST_PG_HOST (default 127.0.0.1)</li>
+<li>PREST_PG_USER</li>
+<li>PREST_PG_PASS</li>
+<li>PREST_PG_DATABASE</li>
+<li>PREST_PG_PORT (default 5432)</li>
+<li>PREST_JWT_KEY</li>
+</ul>
+
+<pre><code class="language-sh">PREST_PG_USER=postgres \ 
+PREST_PG_DATABASE=prest \
+PREST_PG_PORT=5432 \
+PREST_HTTP_PORT=3010 \
+prest # Binary installed
+</code></pre>
+
+<p>In case needs use it via Docker: <a href="https://hub.docker.com/r/prest/prest/">https://hub.docker.com/r/prest/prest/</a></p>
+
+<pre><code class="language-sh">docker run -e PREST_HTTP_PORT=3000 \
+	-e PREST_PG_HOST=127.0.0.1 \
+	-e PREST_PG_USER=postgres \
+	-e PREST_PG_PASS=pass \
+	prest/prest:0.2
+</code></pre>
+
+<h3 id="tags">Tags</h3>
+
+<ul>
+<li>0.2 (stable)</li>
+<li>0.1 (stable)</li>
+<li>lastest (developer)</li>
+</ul>
+
+	
+
+
+						
+					</div>
+				</div>
+			</div>
+			
+			<div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+	<div class="sphinxsidebarwrapper">
+		<p class="logo">
+			<a href="prest.github.io/">
+				<img class="logo" src="prest.github.io/logo.png" alt="Logo"/>
+				<h1 class="logo logo-name">pREST</h1>
+			</a>
+		</p>
+		
+		<p class="blurb">A fully RESTful API from any existing PostgreSQL database.</p>
+
+		
+
+	<p>
+		<iframe src="https://ghbtns.com/github-btn.html?user=prest&repo=prest&type=watch&count=true&size=large"
+		allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+	</p>
+
+	<p>
+		<a href="https://travis-ci.org/prest/prest">
+			<img
+			alt="https://secure.travis-ci.org/prest/prest.svg?branch=master"
+			src="https://secure.travis-ci.org/prest/prest.svg?branch=master"
+			/>
+		</a>
+	</p>
+
+	<p>
+		<a href="https://codecov.io/github/prest/prest">
+			<img
+			alt="https://codecov.io/github/prest/prest/coverage.svg?branch=master"
+			src="https://codecov.io/github/prest/prest/coverage.svg?branch=master"
+			/>
+		</a>
+	</p>
+		
+
+		
+
+<h3>Navigation</h3>
+<ul>
+	
+	<li class="toctree-l1">
+		<a class="reference internal" href="prest.github.io/">Getting Started</a>
+	</li>
+	
+	<li class="toctree-l1">
+		<a class="reference internal" href="prest.github.io/configurations/">Configurations</a>
+	</li>
+	
+	<li class="toctree-l1">
+		<a class="reference internal" href="prest.github.io/query-statements/">Query Statements</a>
+	</li>
+	
+	<li class="toctree-l1">
+		<a class="reference internal" href="prest.github.io/executing-sql-scripts/">Executing SQL Scripts</a>
+	</li>
+	
+	<li class="toctree-l1">
+		<a class="reference internal" href="prest.github.io/permissions/">Permissions</a>
+	</li>
+	
+	<li class="toctree-l1">
+		<a class="reference internal" href="prest.github.io/cors-support/">CORS Support</a>
+	</li>
+	
+	<li class="toctree-l1">
+		<a class="reference internal" href="prest.github.io/prest-as-web-framework/">Using pREST as web framework</a>
+	</li>
+	
+	<li class="toctree-l1">
+		<a class="reference internal" href="prest.github.io/contribute/">Contribute</a>
+	</li>
+	
+	<li class="toctree-l1">
+		<a class="reference internal" href="prest.github.io/roadmap/">Roadmap</a>
+	</li>
+	
+</ul>
+
+
+		
+
+	</div>
+</div>
+<div class="clearer"></div>
+</div>
+			<div class="footer">
+	&copy; 2017 <a href="https://github.com/digitalcraftsman">Digitalcraftsman</a>
+	|
+	Powered by <a href="http://gohugo.io/">Hugo 0.25.1</a>
+	&amp; <a href="https://github.com/digitalcraftsman/hugo-alabaster-theme">Alabaster</a>
+	
+</div>
+
+<a href="https://github.com/prest/prest" class="github">
+    <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" class="github"/>
+</a>
+
+
+			
+
+			<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.3.0/highlight.min.js"></script>
+			<script>hljs.initHighlightingOnLoad();</script>
+			
+
+			
+		</div>
+	</body>
+</html>
