@@ -1,4 +1,4 @@
-baseurl = "prest.github.io/"
+baseurl = "prest.github.io/docs/"
 languageCode = "en-us"
 metadataformat = "yaml"
 title = "pREST"
