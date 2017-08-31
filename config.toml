@@ -1,4 +1,4 @@
-baseurl = "postgres.rest/"
+baseurl = "https://postgres.rest/"
 languageCode = "en-us"
 metadataformat = "yaml"
 title = "pREST"
