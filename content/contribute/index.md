@@ -5,6 +5,10 @@ weight: 16
 menu: main
 ---
 
+Did you found an bug or you would like to suggest a new feature? I'm open for feedback. Please open a new [issue](https://github.com/prest/prest/issues) and let me know what you think.
+
+You're also welcome to contribute with [pull requests](https://github.com/prest/prest/pulls).
+
 ## Running tests
 
 Clone the repository and create a test database and insert dummy data for specs.
