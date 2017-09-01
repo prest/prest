@@ -5,7 +5,7 @@ title = "pREST"
 theme = "hugo-alabaster-theme"
 
 disqusShortname = ""
-googleAnalytics = ""
+googleAnalytics = "UA-105743002-1"
 
 [params]
 	name = "pREST"
