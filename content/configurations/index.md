@@ -5,8 +5,6 @@ weight: 11
 menu: main
 ---
 
-## Configurations
-
 Via environment variables or via toml file.
 
 ### Environment vars

@@ -5,9 +5,6 @@ weight: 12
 menu: main
 ---
 
-## Query Statements
-
-
 ### Filter (WHERE)
 
 ```
