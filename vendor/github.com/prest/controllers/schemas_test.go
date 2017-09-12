@@ -6,9 +6,13 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
+	"github.com/prest/adapters/postgres"
+	"github.com/prest/config"
 )
 
 func TestGetSchemas(t *testing.T) {
+	config.Load()
+	postgres.Load()
 
 	var testCases = []struct {
 		description string

@@ -31,7 +31,7 @@ func validateType(i interface{}) (ref reflect.Value, err error) {
 	return
 }
 
-// PrestScanner is a default implementation of postgres.Scanner
+// PrestScanner is a default implementation of adapter.Scanner
 type PrestScanner struct {
 	Buff    *bytes.Buffer
 	Error   error

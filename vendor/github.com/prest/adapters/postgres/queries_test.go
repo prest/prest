@@ -40,7 +40,7 @@ func TestValidGetScript(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		_, err := GetScript(tc.method, tc.path, tc.file)
+		_, err := Postgres{}.GetScript(tc.method, tc.path, tc.file)
 		if err != tc.err {
 			t.Errorf("expected no errors, but got %s", err)
 		}
@@ -61,7 +61,7 @@ func TestInvalidGetScript(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		_, err := GetScript(tc.method, tc.path, tc.file)
+		_, err := Postgres{}.GetScript(tc.method, tc.path, tc.file)
 		if err == nil {
 			t.Errorf("expected no error, but got %s", err)
 		}
@@ -79,7 +79,7 @@ func TestParseScript(t *testing.T) {
 	scriptPath := fmt.Sprint(user.HomeDir, "/queries/fulltable/%s")
 
 	t.Log("Parse script with get_all file")
-	sql, _, err := ParseScript(fmt.Sprintf(scriptPath, "get_all.read.sql"), queryURL)
+	sql, _, err := Postgres{}.ParseScript(fmt.Sprintf(scriptPath, "get_all.read.sql"), queryURL)
 	if err != nil {
 		t.Errorf("expected no error, but got: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestParseScript(t *testing.T) {
 	queryURL.Set("notable", "123")
 
 	t.Log("Try Parse Script with noexistent script")
-	sql, _, err = ParseScript(fmt.Sprintf(scriptPath, "gt_all.read.sql"), queryURL)
+	sql, _, err = Postgres{}.ParseScript(fmt.Sprintf(scriptPath, "gt_all.read.sql"), queryURL)
 	if err == nil {
 		t.Errorf("expected error, but got: %v", err)
 	}
@@ -160,7 +160,7 @@ func TestExecuteScripts(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := ExecuteScripts(tc.method, tc.sql, tc.values)
+		sc := Postgres{}.ExecuteScripts(tc.method, tc.sql, tc.values)
 		if tc.err != sc.Err() {
 			t.Errorf("expected no errors, but got %s", sc.Err())
 		}
@@ -168,7 +168,7 @@ func TestExecuteScripts(t *testing.T) {
 
 	t.Log("Get errors with invalid HTTP Method")
 	values := make([]interface{}, 0)
-	sc := ExecuteScripts("ANY", "SELECT * FROM test7", values)
+	sc := Postgres{}.ExecuteScripts("ANY", "SELECT * FROM test7", values)
 	if len(sc.Bytes()) > 0 {
 		t.Errorf("expected empty result, but got %s", sc.Bytes())
 	}

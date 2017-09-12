@@ -7,9 +7,14 @@ import (
 	"net/http/httptest"
 
 	"github.com/gorilla/mux"
+	"github.com/prest/adapters/postgres"
+	"github.com/prest/config"
 )
 
 func TestGetDatabases(t *testing.T) {
+	config.Load()
+	postgres.Load()
+
 	var testCases = []struct {
 		description string
 		url         string
