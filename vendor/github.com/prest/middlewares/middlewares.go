@@ -10,7 +10,7 @@ import (
 
 	"github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/prest/adapters/postgres"
+	"github.com/prest/config"
 	"github.com/urfave/negroni"
 )
 
@@ -40,7 +40,7 @@ func AccessControl() negroni.Handler {
 			return
 		}
 
-		if postgres.TablePermissions(mapPath["table"], permission) {
+		if config.Adapter.TablePermissions(mapPath["table"], permission) {
 			next(rw, rq)
 			return
 		}

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/nuveo/log"
+	"github.com/prest/adapters"
 	"github.com/spf13/viper"
 )
 
@@ -46,6 +47,9 @@ type Prest struct {
 
 // PrestConf config variable
 var PrestConf *Prest
+
+// Adapter adapter variable
+var Adapter adapters.Adapter
 
 func viperCfg() {
 	filePath := getDefaultPrestConf(os.Getenv("PREST_CONF"))

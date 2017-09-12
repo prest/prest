@@ -5,20 +5,20 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/adapters/postgres"
+	"github.com/prest/config"
 	"github.com/prest/statements"
 )
 
 // GetTables list all (or filter) tables
 func GetTables(w http.ResponseWriter, r *http.Request) {
-	requestWhere, values, err := postgres.WhereByRequest(r, 1)
+	requestWhere, values, err := config.Adapter.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	order, err := postgres.OrderByRequest(r)
+	order, err := config.Adapter.OrderByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform OrderByRequest: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -38,7 +38,7 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sqlTables = fmt.Sprint(sqlTables, order)
-	sc := postgres.Query(sqlTables, values...)
+	sc := config.Adapter.Query(sqlTables, values...)
 	if sc.Err() != nil {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
@@ -52,7 +52,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 	schema := vars["schema"]
 
-	requestWhere, values, err := postgres.WhereByRequest(r, 3)
+	requestWhere, values, err := config.Adapter.WhereByRequest(r, 3)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -67,7 +67,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 		sqlSchemaTables = fmt.Sprint(sqlSchemaTables, " AND ", requestWhere)
 	}
 
-	order, err := postgres.OrderByRequest(r)
+	order, err := config.Adapter.OrderByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform OrderByRequest: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -79,7 +79,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 		sqlSchemaTables = fmt.Sprint(sqlSchemaTables, statements.SchemaTablesOrderBy)
 	}
 
-	page, err := postgres.PaginateIfPossible(r)
+	page, err := config.Adapter.PaginateIfPossible(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform PaginateIfPossible: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -92,7 +92,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	valuesAux = append(valuesAux, database)
 	valuesAux = append(valuesAux, schema)
 	valuesAux = append(valuesAux, values...)
-	sc := postgres.Query(sqlSchemaTables, valuesAux...)
+	sc := config.Adapter.Query(sqlSchemaTables, valuesAux...)
 	if sc.Err() != nil {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
@@ -108,7 +108,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	table := vars["table"]
 
 	// get selected columns, "*" if empty "_columns"
-	cols, err := postgres.FieldsPermissions(r, table, "read")
+	cols, err := config.Adapter.FieldsPermissions(r, table, "read")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -120,14 +120,14 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	selectStr, err := postgres.SelectFields(cols)
+	selectStr, err := config.Adapter.SelectFields(cols)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	query := fmt.Sprintf(`%s "%s"."%s"."%s"`, selectStr, database, schema, table)
 
-	countQuery, err := postgres.CountByRequest(r)
+	countQuery, err := config.Adapter.CountByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform CountByRequest: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -137,7 +137,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		query = fmt.Sprintf(`%s "%s"."%s"."%s"`, countQuery, database, schema, table)
 	}
 
-	joinValues, err := postgres.JoinByRequest(r)
+	joinValues, err := config.Adapter.JoinByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform JoinByRequest: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -148,7 +148,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		query = fmt.Sprint(query, j)
 	}
 
-	requestWhere, values, err := postgres.WhereByRequest(r, 1)
+	requestWhere, values, err := config.Adapter.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -163,13 +163,13 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 			requestWhere)
 	}
 
-	groupBySQL := postgres.GroupByClause(r)
+	groupBySQL := config.Adapter.GroupByClause(r)
 
 	if groupBySQL != "" {
 		sqlSelect = fmt.Sprintf("%s %s", sqlSelect, groupBySQL)
 	}
 
-	order, err := postgres.OrderByRequest(r)
+	order, err := config.Adapter.OrderByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform OrderByRequest: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -179,7 +179,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		sqlSelect = fmt.Sprintf("%s %s", sqlSelect, order)
 	}
 
-	page, err := postgres.PaginateIfPossible(r)
+	page, err := config.Adapter.PaginateIfPossible(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform PaginateIfPossible: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -187,9 +187,9 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 	sqlSelect = fmt.Sprint(sqlSelect, " ", page)
 
-	runQuery := postgres.Query
+	runQuery := config.Adapter.Query
 	if countQuery != "" {
-		runQuery = postgres.QueryCount
+		runQuery = config.Adapter.QueryCount
 	}
 
 	sc := runQuery(sqlSelect, values...)
@@ -207,7 +207,7 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	names, placeholders, values, err := postgres.ParseInsertRequest(r)
+	names, placeholders, values, err := config.Adapter.ParseInsertRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform InsertInTables: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -216,7 +216,7 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 
 	sql := fmt.Sprintf(statements.InsertQuery, database, schema, table, names, placeholders)
 
-	sc := postgres.Insert(sql, values...)
+	sc := config.Adapter.Insert(sql, values...)
 	if sc.Err() != nil {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
@@ -231,7 +231,7 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	where, values, err := postgres.WhereByRequest(r, 1)
+	where, values, err := config.Adapter.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -243,7 +243,7 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 		sql = fmt.Sprint(sql, " WHERE ", where)
 	}
 
-	sc := postgres.Delete(sql, values...)
+	sc := config.Adapter.Delete(sql, values...)
 	if sc.Err() != nil {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
@@ -258,7 +258,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	where, whereValues, err := postgres.WhereByRequest(r, 1)
+	where, whereValues, err := config.Adapter.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -267,7 +267,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 
 	pid := len(whereValues) + 1 // placeholder id
 
-	setSyntax, values, err := postgres.SetByRequest(r, pid)
+	setSyntax, values, err := config.Adapter.SetByRequest(r, pid)
 	if err != nil {
 		err = fmt.Errorf("could not perform UPDATE: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -283,7 +283,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 		values = append(whereValues, values...)
 	}
 
-	sc := postgres.Update(sql, values...)
+	sc := config.Adapter.Update(sql, values...)
 	if sc.Err() != nil {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return

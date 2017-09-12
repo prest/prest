@@ -6,7 +6,14 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
+	"github.com/prest/adapters/postgres"
+	"github.com/prest/config"
 )
+
+func init() {
+	config.Load()
+	postgres.Load()
+}
 
 func TestGetTables(t *testing.T) {
 	var testCases = []struct {

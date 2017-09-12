@@ -4,25 +4,25 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/prest/adapters/postgres"
+	"github.com/prest/config"
 	"github.com/prest/statements"
 )
 
 // GetSchemas list all (or filter) schemas
 func GetSchemas(w http.ResponseWriter, r *http.Request) {
-	requestWhere, values, err := postgres.WhereByRequest(r, 1)
+	requestWhere, values, err := config.Adapter.WhereByRequest(r, 1)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	sqlSchemas, hasCount := postgres.SchemaClause(r)
+	sqlSchemas, hasCount := config.Adapter.SchemaClause(r)
 
 	if requestWhere != "" {
 		sqlSchemas = fmt.Sprint(sqlSchemas, " WHERE ", requestWhere)
 	}
 
-	order, err := postgres.OrderByRequest(r)
+	order, err := config.Adapter.OrderByRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -34,14 +34,14 @@ func GetSchemas(w http.ResponseWriter, r *http.Request) {
 		sqlSchemas = fmt.Sprint(sqlSchemas, fmt.Sprintf(statements.SchemasOrderBy, statements.FieldSchemaName))
 	}
 
-	page, err := postgres.PaginateIfPossible(r)
+	page, err := config.Adapter.PaginateIfPossible(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	sqlSchemas = fmt.Sprint(sqlSchemas, " ", page)
-	sc := postgres.Query(sqlSchemas, values...)
+	sc := config.Adapter.Query(sqlSchemas, values...)
 	if sc.Err() != nil {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
