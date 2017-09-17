@@ -113,7 +113,7 @@
   branch = "master"
   name = "github.com/prest/adapters"
   packages = ["postgres","postgres/connection","postgres/internal/scanner"]
-  revision = "687a9123bfdac4a6cd410328e6edc52b7cf3d5ae"
+  revision = "7ee75847400c50b1224f1830fef01313b997f586"
 
 [[projects]]
   branch = "master"

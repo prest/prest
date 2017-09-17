@@ -61,12 +61,15 @@ func TestPrestScanQuery(t *testing.T) {
 			if s.Err() != tc.stErr {
 				t.Errorf("expected %v, but got %v", tc.stErr, s.Err())
 			}
-			err := s.scanQuery(reflect.ValueOf(tc.scInput), tc.scInput)
+			l, err := s.scanQuery(reflect.ValueOf(tc.scInput), tc.scInput)
 			if err != tc.scErr {
 				t.Errorf("expected %v, but got %v", tc.scErr, err)
 			}
 			if string(s.Bytes()) != tc.stInput.String() {
 				t.Errorf("expected %v, but got %v", tc.stInput.Bytes(), s.Bytes())
+			}
+			if l != 1 {
+				t.Errorf("len is not 1")
 			}
 		})
 	}
@@ -104,12 +107,15 @@ func TestPrestScanNotQuery(t *testing.T) {
 			if s.Err() != tc.stErr {
 				t.Errorf("expected %v, but got %v", tc.stErr, s.Err())
 			}
-			err := s.scanNotQuery(reflect.ValueOf(tc.scInput), tc.scInput)
+			l, err := s.scanNotQuery(reflect.ValueOf(tc.scInput), tc.scInput)
 			if err != tc.scErr {
 				t.Errorf("expected %v, but got %v", tc.scErr, err)
 			}
 			if string(s.Bytes()) != tc.stInput.String() {
 				t.Errorf("expected %v, but got %v", tc.stInput.Bytes(), s.Bytes())
+			}
+			if l != 1 {
+				t.Errorf("len is not 1")
 			}
 		})
 	}
@@ -146,14 +152,15 @@ func TestPrestScan(t *testing.T) {
 		scInput interface{}
 		scErr   error
 		isQuery bool
+		len     int
 	}{
-		{"scan error", &bytes.Buffer{}, errors.New("test error"), tmap, errPtr, true},
-		{"scan err length", bytes.NewBuffer(byts), nil, &ComplexType{}, errLength, true},
-		{"scan not slice", bytes.NewBuffer(byt), nil, &ComplexType{}, nil, true},
-		{"scan slice", bytes.NewBuffer(byt), nil, &act, nil, true},
-		{"scan using map", bytes.NewBuffer(byt), nil, &tmap, nil, true},
-		{"scan empty table", bytes.NewBuffer([]byte("[]")), nil, &tmap, nil, true},
-		{"scan not query", bytes.NewBuffer(b), nil, &tmap, nil, false},
+		{"scan error", &bytes.Buffer{}, errors.New("test error"), tmap, errPtr, true, 0},
+		{"scan err length", bytes.NewBuffer(byts), nil, &ComplexType{}, errLength, true, 2},
+		{"scan not slice", bytes.NewBuffer(byt), nil, &ComplexType{}, nil, true, 1},
+		{"scan slice", bytes.NewBuffer(byt), nil, &act, nil, true, 1},
+		{"scan using map", bytes.NewBuffer(byt), nil, &tmap, nil, true, 1},
+		{"scan empty table", bytes.NewBuffer([]byte("[]")), nil, &tmap, nil, true, 0},
+		{"scan not query", bytes.NewBuffer(b), nil, &tmap, nil, false, 1},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -165,12 +172,15 @@ func TestPrestScan(t *testing.T) {
 			if s.Err() != tc.stErr {
 				t.Errorf("expected %v, but got %v", tc.stErr, s.Err())
 			}
-			err := s.Scan(tc.scInput)
+			l, err := s.Scan(tc.scInput)
 			if err != tc.scErr {
 				t.Errorf("expected %v, but got %v", tc.scErr, err)
 			}
 			if string(s.Bytes()) != tc.stInput.String() {
 				t.Errorf("expected %v, but got %v", tc.stInput.Bytes(), s.Bytes())
+			}
+			if l != tc.len {
+				t.Errorf("expected %v, but got %v", tc.len, l)
 			}
 		})
 	}
