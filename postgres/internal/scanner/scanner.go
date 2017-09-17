@@ -39,29 +39,31 @@ type PrestScanner struct {
 }
 
 // Scan put prest response into a struct or map
-func (p *PrestScanner) Scan(i interface{}) (err error) {
+func (p *PrestScanner) Scan(i interface{}) (l int, err error) {
 	var ref reflect.Value
 	if ref, err = validateType(i); err != nil {
 		return
 	}
 	if p.IsQuery {
-		err = p.scanQuery(ref, i)
+		l, err = p.scanQuery(ref, i)
 		return
 	}
-	err = p.scanNotQuery(ref, i)
+	l, err = p.scanNotQuery(ref, i)
 	return
 }
 
-func (p *PrestScanner) scanQuery(ref reflect.Value, i interface{}) (err error) {
+func (p *PrestScanner) scanQuery(ref reflect.Value, i interface{}) (l int, err error) {
 	decoder := json.NewDecoder(p.Buff)
 	if ref.Elem().Kind() == reflect.Slice {
 		err = decoder.Decode(&i)
+		l = ref.Elem().Len()
 		return
 	}
 	ret := make([]map[string]interface{}, 0)
 	if err = decoder.Decode(&ret); err != nil {
 		return
 	}
+	l = len(ret)
 	if len(ret) == 0 {
 		return
 	}
@@ -78,7 +80,9 @@ func (p *PrestScanner) scanQuery(ref reflect.Value, i interface{}) (err error) {
 	return
 }
 
-func (p *PrestScanner) scanNotQuery(ref reflect.Value, i interface{}) (err error) {
+func (p *PrestScanner) scanNotQuery(ref reflect.Value, i interface{}) (l int, err error) {
+	const notQueryReturnLen = 1
+	l = notQueryReturnLen
 	if ref.Elem().Kind() == reflect.Slice {
 		err = errUnsupTyp
 		return
