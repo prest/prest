@@ -152,6 +152,9 @@ Query Operators:
 | $ne | Matches all values that are not equal to a specified value.|
 | $in | Matches any of the values specified in an array.|
 | $nin | Matches none of the values specified in an array.|
+| $any | Matches any of the values specified in an array (comma seperated string).|
+| $some | SOME is a synonym for ANY. |
+| $all | Matches values if all comparisons yield true. |
 | $null | Matches if field is null|
 | $notnull | Matches if field is not null|
 
