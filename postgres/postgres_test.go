@@ -684,6 +684,9 @@ func TestGetQueryOperator(t *testing.T) {
 		{"$lte", "<="},
 		{"$in", "IN"},
 		{"$nin", "NOT IN"},
+		{"$any", "ANY"},
+		{"$some", "SOME"},
+		{"$all", "ALL"},
 		{"$notnull", "IS NOT NULL"},
 		{"$null", "IS NULL"},
 	}
