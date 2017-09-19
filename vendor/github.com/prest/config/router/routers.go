@@ -5,7 +5,7 @@ import "github.com/gorilla/mux"
 var router *mux.Router
 
 func initRouter() {
-	router = mux.NewRouter()
+	router = mux.NewRouter().StrictSlash(true)
 }
 
 // Get Router for pREST

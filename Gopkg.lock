@@ -125,7 +125,7 @@
   branch = "master"
   name = "github.com/prest/config"
   packages = [".","router"]
-  revision = "23838e7a0cbcd4ef2806934d39592b9ff62a3b27"
+  revision = "11ec32bbc8c32bd951c1aa51c8dc72edab084d3b"
 
 [[projects]]
   branch = "master"
