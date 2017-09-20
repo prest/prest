@@ -162,7 +162,7 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 					fields := strings.Split(jsonField[0], ".")
 					jsonField[0] = fmt.Sprintf(`"%s"`, strings.Join(fields, `"."`))
 					whereKey = append(whereKey, fmt.Sprintf(`%s->>'%s' %s $%d`, jsonField[0], jsonField[1], op, pid))
-					whereValues = append(whereValues, value)
+					values = append(values, value)
 				default:
 					if chkInvalidIdentifier(keyInfo[0]) {
 						err = fmt.Errorf("invalid identifier: %s", keyInfo[0])
@@ -179,13 +179,27 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 			}
 			fields := strings.Split(key, ".")
 			key = fmt.Sprintf(`"%s"`, strings.Join(fields, `"."`))
-			if value != "" {
+
+			switch op {
+			case "IN", "NOT IN":
+				v := strings.Split(value, ",")
+				keyParams := make([]string, len(v))
+				for i := 0; i < len(v); i++ {
+					whereValues = append(whereValues, v[i])
+					keyParams[i] = fmt.Sprintf(`$%d`, pid+i)
+				}
+				pid += len(v)
+				whereKey = append(whereKey, fmt.Sprintf(`%s %s (%s)`, key, op, strings.Join(keyParams, ",")))
+			case "ANY", "SOME", "ALL":
+				whereKey = append(whereKey, fmt.Sprintf(`%s = %s ($%d)`, key, op, pid))
+				whereValues = append(whereValues, FormatArray(strings.Split(value, ",")))
+				pid++
+			case "IS NULL", "IS NOT NULL":
+				whereKey = append(whereKey, fmt.Sprintf(`%s %s`, key, op))
+			default: // "=", "!=", ">", ">=", "<", "<="
 				whereKey = append(whereKey, fmt.Sprintf(`%s %s $%d`, key, op, pid))
 				whereValues = append(whereValues, value)
-
 				pid++
-			} else {
-				whereKey = append(whereKey, fmt.Sprintf(`%s %s`, key, op))
 			}
 		}
 	}
@@ -196,12 +210,11 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 		} else {
 			whereSyntax += " AND " + whereKey[i]
 		}
-
-		if i < len(whereValues) {
-			values = append(values, whereValues[i])
-		}
 	}
 
+	for i := 0; i < len(whereValues); i++ {
+		values = append(values, whereValues[i])
+	}
 	return
 }
 
@@ -692,6 +705,12 @@ func GetQueryOperator(op string) (string, error) {
 		return "IN", nil
 	case "nin":
 		return "NOT IN", nil
+	case "any":
+		return "ANY", nil
+	case "some":
+		return "SOME", nil
+	case "all":
+		return "ALL", nil
 	case "notnull":
 		return "IS NOT NULL", nil
 	case "null":
