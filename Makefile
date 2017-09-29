@@ -1,7 +1,7 @@
 COMMIT_HASH=`git rev-parse --short HEAD>/dev/null`
 DIST := dist
-IMPORT := github.com/nuveo/prest
-LDFLAGS := -X "github.com/nuveo/prest/helpers/prest.CommitHash=${COMMIT_HASH}"
+IMPORT := github.com/prest/prest
+LDFLAGS := -X "github.com/prest/prest/helpers/prest.CommitHash=${COMMIT_HASH}"
 OUT := 'prest'
 TARGETS ?= linux/*,darwin/*,windows/*
 

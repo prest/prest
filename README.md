@@ -157,6 +157,10 @@ Query Operators:
 | $all | Matches values if all comparisons yield true. |
 | $null | Matches if field is null|
 | $notnull | Matches if field is not null|
+| $true | Matches if field is true|
+| $nottrue | Matches if field is not true|
+| $false | Matches if field is false|
+| $notfalse | Matches if field is not false|
 
 
 ### Filter (WHERE) with JSONb field
