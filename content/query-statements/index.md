@@ -23,8 +23,12 @@ Query Operators:
 | $ne | Matches all values that are not equal to a specified value.|
 | $in | Matches any of the values specified in an array.|
 | $nin | Matches none of the values specified in an array.|
-| $null | Matches if field is null|
-| $notnull | Matches if field is not null|
+| $null | Matches if field is null.|
+| $notnull | Matches if field is not null.|
+| $true | Matches if field is true.|
+| $nottrue | Matches if field is not true.|
+| $false | Matches if field is false.|
+| $notfalse | Matches if field is not false.|
 
 
 ### Filter (WHERE) with JSONb field
