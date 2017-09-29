@@ -194,7 +194,7 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 				whereKey = append(whereKey, fmt.Sprintf(`%s = %s ($%d)`, key, op, pid))
 				whereValues = append(whereValues, FormatArray(strings.Split(value, ",")))
 				pid++
-			case "IS NULL", "IS NOT NULL":
+			case "IS NULL", "IS NOT NULL", "IS TRUE", "IS NOT TRUE", "IS FALSE", "IS NOT FALSE":
 				whereKey = append(whereKey, fmt.Sprintf(`%s %s`, key, op))
 			default: // "=", "!=", ">", ">=", "<", "<="
 				whereKey = append(whereKey, fmt.Sprintf(`%s %s $%d`, key, op, pid))
@@ -715,6 +715,14 @@ func GetQueryOperator(op string) (string, error) {
 		return "IS NOT NULL", nil
 	case "null":
 		return "IS NULL", nil
+	case "true":
+		return "IS TRUE", nil
+	case "nottrue":
+		return "IS NOT TRUE", nil
+	case "false":
+		return "IS FALSE", nil
+	case "notfalse":
+		return "IS NOT FALSE", nil
 	}
 
 	err := errors.New("Invalid operator")
