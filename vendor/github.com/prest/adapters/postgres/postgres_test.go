@@ -689,6 +689,10 @@ func TestGetQueryOperator(t *testing.T) {
 		{"$all", "ALL"},
 		{"$notnull", "IS NOT NULL"},
 		{"$null", "IS NULL"},
+		{"$true", "IS TRUE"},
+		{"$nottrue", "IS NOT TRUE"},
+		{"$false", "IS FALSE"},
+		{"$notfalse", "IS NOT FALSE"},
 	}
 
 	for _, tc := range testCases {
