@@ -142,25 +142,26 @@ GET /DATABASE/SCHEMA/TABLE?FIELD=$eq.VALUE
 
 Query Operators:
 
-| Name | Description |
-|-------|-------------|
-| $eq | Matches values that are equal to a specified value.|
-| $gt | Matches values that are greater than a specified value.|
-| $gte | Matches values that are greater than or equal to a specified value.|
-| $lt | Matches values that are less than a specified value.|
-| $lte | Matches values that are less than or equal to a specified value.|
-| $ne | Matches all values that are not equal to a specified value.|
-| $in | Matches any of the values specified in an array.|
-| $nin | Matches none of the values specified in an array.|
-| $any | Matches any of the values specified in an array (comma seperated string).|
-| $some | SOME is a synonym for ANY. |
-| $all | Matches values if all comparisons yield true. |
-| $null | Matches if field is null|
-| $notnull | Matches if field is not null|
-| $true | Matches if field is true|
-| $nottrue | Matches if field is not true|
-| $false | Matches if field is false|
-| $notfalse | Matches if field is not false|
+| Name        | Description                                                                  | Query String                  | SQL
+|-------------|------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+| $eq         | Matches values that are equal to a specified value.                          | ?name=$eq.ronaldo             | WHERE name='ronaldo'                           |
+| $ne         | Matches all values that are not equal to a specified value.                  | ?name=$ne.ronaldo             | WHERE name!='ronaldo'                          |
+| $like       | Matches values that encapsulate a subset of the specified value              | ?name=$like.%25ldo            | WHERE name LIKE '%ldo'                         |
+| $gt         | Matches values that are greater than a specified value.                      | ?age=$gt.25                   | WHERE age > 25                                 |
+| $gte        | Matches values that are greater than or equal to a specified value.          | ?age=$gte.25                  | WHERE age >= 25                                |
+| $lt         | Matches values that are less than a specified value.                         | ?age=$tl.25                   | WHERE age < 25                                 |
+| $lte        | Matches values that are less than or equal to a specified value.             | ?age=$lte.25                  | WHERE age <= 25                                |
+| $in         | Matches any of the values specified in an array.                             | ?name=$in.cristiano,ronaldo   | WHERE name IN ('cristiano', 'messi')           |
+| $nin        | Matches none of the values specified in an array.                            | ?name=$any.cristiano,messi    | WHERE name NOT IN ('cristiano', 'messi')       |
+| $any        | Matches any of the values specified in an array (comma seperated string).    | ?name=$any.crisiano,messi     | WHERE name ANY (ARRAY['cristiano', 'messi'])   |
+| $some       | SOME is a synonym for ANY.                                                   | ?name=$some.cristiano,messi   | WHERE name ANY (ARRAY['cristiano', 'messi'])   |
+| $all        | Matches values if all comparisons yield true.                                | ?age=$all.cristiano,messi     | WHERE name ALL (ARRAY['cristiano', 'messi'])   |
+| $null       | Matches if field is null                                                     | ?age=$null                    | WHERE age IS NULL                              |
+| $notnull    | Matches if field is not null                                                 | ?age=$notnull                 | WHERE age IS NOT NULL                          |
+| $true       | Matches if field is true                                                     | ?is_rich=$true                | WHERE is_rich IS TRUE                          |
+| $nottrue    | Matches if field is not true                                                 | ?is_rich=$nottrue             | WHERE is_rich IS NOT TRUE                      |
+| $false      | Matches if field is false                                                    | ?is_rich=$false               | WHERE is_rich IS FALSE                         |
+| $notfalse   | Matches if field is not false                                                | ?is_rich=$notfalse            | WHERE is_rich IS NOT FALSE                     |
 
 
 ### Filter (WHERE) with JSONb field
