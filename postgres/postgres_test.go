@@ -131,6 +131,7 @@ func TestWhereByRequest(t *testing.T) {
 		{"Where by request with spaced values", "/prest/public/test5?name=$eq.prest tester", []string{`"name" = $`}, []string{"prest tester"}, nil},
 		{"Where by request with jsonb field", "/prest/public/test_jsonb_bug?name=$eq.goku&data->>description:jsonb=$eq.testing", []string{`"name" = $`, `"data"->>'description' = $`, " AND "}, []string{"goku", "testing"}, nil},
 		{"Where by request with dot values", "/prest/public/test5?name=$eq.prest.txt tester", []string{`"name" = $`}, []string{"prest.txt tester"}, nil},
+		{"Where by request with like", "/prest/public/test5?name=$like.%25val%25&phonenumber=123456", []string{`"name" LIKE $`, `"phonenumber" = $`, " AND "}, []string{"%val%", "123456"}, nil},
 	}
 
 	for _, tc := range testCases {
@@ -693,6 +694,7 @@ func TestGetQueryOperator(t *testing.T) {
 		{"$nottrue", "IS NOT TRUE"},
 		{"$false", "IS FALSE"},
 		{"$notfalse", "IS NOT FALSE"},
+		{"$like", "LIKE"},
 	}
 
 	for _, tc := range testCases {

@@ -723,6 +723,8 @@ func GetQueryOperator(op string) (string, error) {
 		return "IS FALSE", nil
 	case "notfalse":
 		return "IS NOT FALSE", nil
+	case "like":
+		return "LIKE", nil
 	}
 
 	err := errors.New("Invalid operator")
