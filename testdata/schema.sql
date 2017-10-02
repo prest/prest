@@ -32,9 +32,9 @@ INSERT INTO test_readonly_access (name) VALUES ('test01');
 INSERT INTO test_write_and_delete_access (name) VALUES ('test01');
 INSERT INTO test_list_only_id (name) VALUES ('test01');
 INSERT INTO test_deleteonly_access (name) VALUES ('test01');
-INSERT INTO test_jsonb_bug (name, data) values('goku', '{\"techniques\": [\"kamehameha\", \"kaioken\", \"genki-dama\"]}');
-INSERT INTO test_jsonb_bug (name, data) values('goku', '{\"description\": \"testing\"}');
-INSERT INTO testarray (id, data) values(100, '{\"Gohan\",\"Goten\"}');
+INSERT INTO test_jsonb_bug (name, data) values('goku', '{"techniques": ["kamehameha", "kaioken", "genki-dama"]}');
+INSERT INTO test_jsonb_bug (name, data) values('goku', '{"description": "testing"}');
+INSERT INTO testarray (id, data) values(100, '{"Gohan","Goten"}');
 
 INSERT INTO test_group_by_table(name, age, salary) values('joao', 20, 1250);
 INSERT INTO test_group_by_table(name, age, salary) values('maria', 19, 3999);
