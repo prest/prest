@@ -1,7 +1,4 @@
-DROP DATABASE IF EXISTS :DB_NAME;
-CREATE DATABASE :DB_NAME;
-
--- CREATE TABLEs
+-- CREATE TABLES
 CREATE TABLE test(id serial, name text);
 CREATE TABLE test2(name text, number integer);
 CREATE TABLE test3(id serial, name text UNIQUE);
