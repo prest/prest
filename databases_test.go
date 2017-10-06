@@ -24,6 +24,8 @@ func TestGetDatabases(t *testing.T) {
 		{"Get databases with custom where invalid clause", "/databases?0datname=prest", "GET", http.StatusBadRequest},
 		{"Get databases with custom where and pagination invalid", "/databases?datname=$eq.prest&_page=A", "GET", http.StatusBadRequest},
 		{"Get databases with noexistent column", "/databases?datatata=$eq.test", "GET", http.StatusBadRequest},
+		{"Get databases with distinct", "/databases?_distinct=true", "GET", http.StatusOK},
+		{"Get databases with invalid distinct", "/databases?_distinct", "GET", http.StatusOK},
 	}
 
 	router := mux.NewRouter()

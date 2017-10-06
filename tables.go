@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/prest/adapters/postgres"
@@ -32,6 +33,15 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 	sqlTables := fmt.Sprint(
 		statements.TablesSelect,
 		statements.TablesWhere)
+
+	distinct, err := postgres.DistinctClause(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if distinct != "" {
+		sqlTables = strings.Replace(sqlTables, "SELECT", distinct, 1)
+	}
 
 	if requestWhere != "" {
 		sqlTables = fmt.Sprintf("%s AND %s", sqlTables, requestWhere)
