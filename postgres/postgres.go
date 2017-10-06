@@ -845,6 +845,18 @@ func ColumnsByRequest(r *http.Request) []string {
 	return columns
 }
 
+// DistinctClause get params in request to add distinct clause
+func DistinctClause(r *http.Request) (distinctQuery string, err error) {
+	queries := r.URL.Query()
+	checkQuery := queries.Get("_distinct")
+	distinctQuery = ""
+
+	if checkQuery == "true" {
+		distinctQuery = fmt.Sprintf("SELECT DISTINCT")
+	}
+	return
+}
+
 // GroupByClause get params in request to add group by clause
 func GroupByClause(r *http.Request) (groupBySQL string) {
 	queries := r.URL.Query()

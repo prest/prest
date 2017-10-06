@@ -943,6 +943,36 @@ func TestColumnsByRequest(t *testing.T) {
 	}
 }
 
+func TestDistinctClause(t *testing.T) {
+	var testCase = []struct {
+		description string
+		url         string
+		expected    string
+		err         error
+	}{
+		{"Valid distinct true", "/databases?dbname=prest&test=cool&_distinct=true", "SELECT DISTINCT", nil},
+		{"Valid distinct false", "/databases?dbname=prest&test=cool&_distinct=false", "", nil},
+		{"Invalid distinct", "/databases?dbname=prest&test=cool", "", nil},
+	}
+
+	for _, tc := range testCase {
+		t.Log(tc.description)
+		req, err := http.NewRequest("GET", tc.url, nil)
+		if err != nil {
+			t.Errorf("expected no errors in http request, but got %s", err)
+		}
+
+		sql, err := DistinctClause(req)
+		if err != nil {
+			t.Errorf("expected no errors, but got %s", err)
+		}
+
+		if !strings.Contains(tc.expected, sql) {
+			t.Errorf("expected %s in %s, but not was!", tc.expected, sql)
+		}
+	}
+}
+
 type str struct{}
 
 func (s str) String() string {
