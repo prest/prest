@@ -139,6 +139,15 @@ Parameters:
 | $in | Matches any of the values specified in an array.|
 | $nin | Matches none of the values specified in an array.|
 
+## DISTINCT
+
+To use *DISTINCT* clause with SELECT, follow this syntax `_distinct=true`.
+
+Examples:
+```
+    GET /DATABASE/SCHEMA/TABLE/?_distinct=true
+```
+
 ## ORDER BY
 
 Using *ORDER BY* in queries you must pass in *GET* request the attribute `_order` with fieldname(s) as value. For *DESC* order, use the prefix `-`. For *multiple* orders, the fields are separated by comma.
