@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/prest/adapters/postgres"
 	"github.com/prest/statements"
@@ -21,6 +22,15 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 
 	if requestWhere != "" {
 		sqlDatabases = fmt.Sprint(sqlDatabases, " AND ", requestWhere)
+	}
+
+	distinct, err := postgres.DistinctClause(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if distinct != "" {
+		sqlDatabases = strings.Replace(sqlDatabases, "SELECT", distinct, 1)
 	}
 
 	order, err := postgres.OrderByRequest(r)

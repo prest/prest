@@ -1,6 +1,7 @@
 package log
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -147,4 +148,30 @@ func TestHTTPError(t *testing.T) {
 		t.Fatalf("Error, 'HTTPError' write to client %q, expected %q", string(body), valueExpected)
 	}
 
+}
+
+func TestMaxLineSize(t *testing.T) {
+	now = func() time.Time { return time.Unix(1498405744, 0) }
+	DebugMode = false
+
+	MaxLineSize = 30
+	out, err := getOutput(Printf, "0123456789012345678901234567890123456789")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	expectedValue := []byte("\x1b[37m2017/06/25 15:49:04 [msg]...")
+	if !bytes.Equal(out, expectedValue) {
+		t.Fatalf("Error, printed %q, expected %q", string(out), expectedValue)
+	}
+
+	out, err = getOutput(Println, "0123456789012345678901234567890123456789")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	expectedValue = []byte("\x1b[37m2017/06/25 15:49:04 [msg]...\n")
+	if !bytes.Equal(out, expectedValue) {
+		t.Fatalf("Error, printed %q, expected %q", string(out), expectedValue)
+	}
 }

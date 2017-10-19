@@ -14,18 +14,24 @@ type msgType uint8
 type outType uint8
 
 const (
-	MessageLog   msgType = 0
-	Message2Log  msgType = 1
-	WarningLog   msgType = 2
-	DebugLog     msgType = 3
-	ErrorLog     msgType = 4
-	FormattedOut outType = 0
-	LineOut      outType = 1
+	MessageLog         msgType = 0
+	Message2Log        msgType = 1
+	WarningLog         msgType = 2
+	DebugLog           msgType = 3
+	ErrorLog           msgType = 4
+	FormattedOut       outType = 0
+	LineOut            outType = 1
+	DefaultMaxLineSize int     = 2000
 )
 
 var (
 	// DebugMode Enable debug mode
 	DebugMode bool
+
+	// MaxLineSize limits the size of the line, if the size
+	// exceeds that indicated by MaxLineSize the system cuts
+	// the string and adds "..." at the end.
+	MaxLineSize = DefaultMaxLineSize
 
 	// Colors contain color array
 	Colors = []string{
@@ -127,11 +133,16 @@ func pln(m msgType, o outType, msg ...interface{}) {
 		lineBreak = "\n"
 	}
 
-	fmt.Printf("%s%s [%s] %s%s\033[0;00m%s",
+	output = fmt.Sprintf("%s%s [%s] %s%s\033[0;00m",
 		Colors[m],
 		now().UTC().Format("2006/01/02 15:04:05"),
 		Prefixes[m],
 		debugInfo,
-		output,
-		lineBreak)
+		output)
+
+	if len(output) > MaxLineSize {
+		output = output[:MaxLineSize] + "..."
+	}
+	output = output + lineBreak
+	fmt.Print(output)
 }

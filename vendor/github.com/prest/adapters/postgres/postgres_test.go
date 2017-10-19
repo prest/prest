@@ -131,6 +131,7 @@ func TestWhereByRequest(t *testing.T) {
 		{"Where by request with spaced values", "/prest/public/test5?name=$eq.prest tester", []string{`"name" = $`}, []string{"prest tester"}, nil},
 		{"Where by request with jsonb field", "/prest/public/test_jsonb_bug?name=$eq.goku&data->>description:jsonb=$eq.testing", []string{`"name" = $`, `"data"->>'description' = $`, " AND "}, []string{"goku", "testing"}, nil},
 		{"Where by request with dot values", "/prest/public/test5?name=$eq.prest.txt tester", []string{`"name" = $`}, []string{"prest.txt tester"}, nil},
+		{"Where by request with like", "/prest/public/test5?name=$like.%25val%25&phonenumber=123456", []string{`"name" LIKE $`, `"phonenumber" = $`, " AND "}, []string{"%val%", "123456"}, nil},
 	}
 
 	for _, tc := range testCases {
@@ -693,6 +694,7 @@ func TestGetQueryOperator(t *testing.T) {
 		{"$nottrue", "IS NOT TRUE"},
 		{"$false", "IS FALSE"},
 		{"$notfalse", "IS NOT FALSE"},
+		{"$like", "LIKE"},
 	}
 
 	for _, tc := range testCases {
@@ -937,6 +939,36 @@ func TestColumnsByRequest(t *testing.T) {
 		selectStr := strings.Join(selectQuery, ",")
 		if selectStr != tc.expectedSQL {
 			t.Errorf("expected %s, got: %s", tc.expectedSQL, selectStr)
+		}
+	}
+}
+
+func TestDistinctClause(t *testing.T) {
+	var testCase = []struct {
+		description string
+		url         string
+		expected    string
+		err         error
+	}{
+		{"Valid distinct true", "/databases?dbname=prest&test=cool&_distinct=true", "SELECT DISTINCT", nil},
+		{"Valid distinct false", "/databases?dbname=prest&test=cool&_distinct=false", "", nil},
+		{"Invalid distinct", "/databases?dbname=prest&test=cool", "", nil},
+	}
+
+	for _, tc := range testCase {
+		t.Log(tc.description)
+		req, err := http.NewRequest("GET", tc.url, nil)
+		if err != nil {
+			t.Errorf("expected no errors in http request, but got %s", err)
+		}
+
+		sql, err := DistinctClause(req)
+		if err != nil {
+			t.Errorf("expected no errors, but got %s", err)
+		}
+
+		if !strings.Contains(tc.expected, sql) {
+			t.Errorf("expected %s in %s, but not was!", tc.expected, sql)
 		}
 	}
 }

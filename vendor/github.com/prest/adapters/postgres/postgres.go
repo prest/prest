@@ -723,6 +723,8 @@ func GetQueryOperator(op string) (string, error) {
 		return "IS FALSE", nil
 	case "notfalse":
 		return "IS NOT FALSE", nil
+	case "like":
+		return "LIKE", nil
 	}
 
 	err := errors.New("Invalid operator")
@@ -841,6 +843,18 @@ func ColumnsByRequest(r *http.Request) []string {
 		return []string{"*"}
 	}
 	return columns
+}
+
+// DistinctClause get params in request to add distinct clause
+func DistinctClause(r *http.Request) (distinctQuery string, err error) {
+	queries := r.URL.Query()
+	checkQuery := queries.Get("_distinct")
+	distinctQuery = ""
+
+	if checkQuery == "true" {
+		distinctQuery = fmt.Sprintf("SELECT DISTINCT")
+	}
+	return
 }
 
 // GroupByClause get params in request to add group by clause
