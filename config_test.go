@@ -51,8 +51,13 @@ func TestParse(t *testing.T) {
 		t.Errorf("expected port: 4000, got: %d", cfg.HTTPPort)
 	}
 
+	if !cfg.EnableDefaultJWT {
+		t.Error("expected true but got false")
+	}
+
 	os.Setenv("PREST_CONF", "")
 	os.Setenv("PREST_HTTP_PORT", "4000")
+	os.Setenv("PREST_JWT_DEFAULT", "false")
 	viperCfg()
 	cfg = &Prest{}
 	err = Parse(cfg)
@@ -63,6 +68,10 @@ func TestParse(t *testing.T) {
 
 	if cfg.HTTPPort != 4000 {
 		t.Errorf("expected port: 4000, got: %d", cfg.HTTPPort)
+	}
+
+	if cfg.EnableDefaultJWT {
+		t.Error("expected false but got true")
 	}
 
 	os.Setenv("PREST_HTTP_PORT", "4000")
