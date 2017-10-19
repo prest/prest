@@ -169,10 +169,31 @@ func TestDebug(t *testing.T) {
 	}
 }
 
+func TestEnableDefaultJWT(t *testing.T) {
+	app = nil
+	os.Setenv("PREST_JWT_DEFAULT", "false")
+	os.Setenv("PREST_DEBUG", "false")
+	config.Load()
+	nd := appTest()
+	serverd := httptest.NewServer(nd)
+	defer serverd.Close()
+	respd, err := http.Get(serverd.URL)
+	if err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+	if respd.StatusCode != http.StatusNotImplemented {
+		t.Errorf("expected status code 501, but got %d", respd.StatusCode)
+	}
+}
+
 func appTest() *negroni.Negroni {
 	n := GetApp()
 	r := router.Get()
-
+	if !config.PrestConf.Debug && !config.PrestConf.EnableDefaultJWT {
+		n.UseHandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotImplemented)
+		})
+	}
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("test app"))
 	}).Methods("GET")
