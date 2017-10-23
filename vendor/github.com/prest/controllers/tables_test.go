@@ -20,6 +20,7 @@ func TestGetTables(t *testing.T) {
 		{"Get tables with custom order clause", "/tables?_order=c.relname", "GET", http.StatusOK},
 		{"Get tables with custom where clause and pagination", "/tables?c.relname=$eq.test&_page=1&_page_size=20", "GET", http.StatusOK},
 		{"Get tables with COUNT clause", "/tables?_count=*", "GET", http.StatusOK},
+		{"Get tables with distinct clause", "/tables?_distinct=true", "GET", http.StatusOK},
 		{"Get tables with custom where invalid clause", "/tables?0c.relname=$eq.test", "GET", http.StatusBadRequest},
 		{"Get tables with ORDER BY and invalid column", "/tables?_order=0c.relname", "GET", http.StatusBadRequest},
 		{"Get tables with noexistent column", "/tables?c.rolooo=$eq.test", "GET", http.StatusBadRequest},
@@ -47,6 +48,7 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 		{"Get tables by database and schema with custom where clause", "/prest/public?t.tablename=$eq.test", "GET", http.StatusOK},
 		{"Get tables by database and schema with order clause", "/prest/public?t.tablename=$eq.test&_order=t.tablename", "GET", http.StatusOK},
 		{"Get tables by database and schema with custom where clause and pagination", "/prest/public?t.tablename=$eq.test&_page=1&_page_size=20", "GET", http.StatusOK},
+		{"Get tables by database and schema with distinct clause", "/prest/public?_distinct=true", "GET", http.StatusOK},
 		// errors
 		{"Get tables by database and schema with custom where invalid clause", "/prest/public?0t.tablename=$eq.test", "GET", http.StatusBadRequest},
 		{"Get tables by databases and schema with custom where and pagination invalid", "/prest/public?t.tablename=$eq.test&_page=A&_page_size=20", "GET", http.StatusBadRequest},
@@ -89,6 +91,7 @@ func TestSelectFromTables(t *testing.T) {
 		{"execute select in a table with custom where clause and pagination", "/prest/public/test?name=$eq.nuveo&_page=1&_page_size=20", "GET", http.StatusOK, ""},
 		{"execute select in a table with select fields", "/prest/public/test5?_select=celphone,name", "GET", http.StatusOK, ""},
 		{"execute select in a table with select *", "/prest/public/test5?_select=*", "GET", http.StatusOK, ""},
+		{"execute select in a table with select * and distinct", "/prest/public/test5?_select=*&_distinct=true", "GET", http.StatusOK, ""},
 
 		{"execute select in a table with group by clause", "/prest/public/test_group_by_table?_select=age,sum:salary&_groupby=age", "GET", http.StatusOK, "[{\"age\":20,\"sum\":1350}, \n {\"age\":19,\"sum\":7997}]"},
 		{"execute select in a table with group by and having clause", "/prest/public/test_group_by_table?_select=age,sum:salary&_groupby=age->>having:sum:salary:$gt:3000", "GET", http.StatusOK, "[{\"age\":19,\"sum\":7997}]"},

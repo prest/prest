@@ -1,6 +1,7 @@
 package afero
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -109,6 +110,8 @@ func TestPermSet(t *testing.T) {
 	const dirPathAll = "/my/path/to/dir"
 
 	const fileMode = os.FileMode(0765)
+	// directories will also have the directory bit set
+	const dirMode = fileMode | os.ModeDir
 
 	fs := NewMemMapFs()
 
@@ -131,7 +134,7 @@ func TestPermSet(t *testing.T) {
 	}
 
 	// Test Mkdir
-	err = fs.Mkdir(dirPath, fileMode)
+	err = fs.Mkdir(dirPath, dirMode)
 	if err != nil {
 		t.Errorf("MkDir Create failed: %s", err)
 		return
@@ -141,13 +144,14 @@ func TestPermSet(t *testing.T) {
 		t.Errorf("Stat failed: %s", err)
 		return
 	}
-	if s.Mode().String() != fileMode.String() {
-		t.Errorf("Permissions Incorrect: %s != %s", s.Mode().String(), fileMode.String())
+	// sets File
+	if s.Mode().String() != dirMode.String() {
+		t.Errorf("Permissions Incorrect: %s != %s", s.Mode().String(), dirMode.String())
 		return
 	}
 
 	// Test MkdirAll
-	err = fs.MkdirAll(dirPathAll, fileMode)
+	err = fs.MkdirAll(dirPathAll, dirMode)
 	if err != nil {
 		t.Errorf("MkDir Create failed: %s", err)
 		return
@@ -157,8 +161,8 @@ func TestPermSet(t *testing.T) {
 		t.Errorf("Stat failed: %s", err)
 		return
 	}
-	if s.Mode().String() != fileMode.String() {
-		t.Errorf("Permissions Incorrect: %s != %s", s.Mode().String(), fileMode.String())
+	if s.Mode().String() != dirMode.String() {
+		t.Errorf("Permissions Incorrect: %s != %s", s.Mode().String(), dirMode.String())
 		return
 	}
 }
@@ -342,4 +346,76 @@ func TestRacingDeleteAndClose(t *testing.T) {
 		fs.Remove(pathname)
 	}()
 	close(in)
+}
+
+// This test should be run with the race detector on:
+// go test -run TestMemFsDataRace -race
+func TestMemFsDataRace(t *testing.T) {
+	const dir = "test_dir"
+	fs := NewMemMapFs()
+
+	if err := fs.MkdirAll(dir, 0777); err != nil {
+		t.Fatal(err)
+	}
+
+	const n = 1000
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		for i := 0; i < n; i++ {
+			fname := filepath.Join(dir, fmt.Sprintf("%d.txt", i))
+			if err := WriteFile(fs, fname, []byte(""), 0777); err != nil {
+				panic(err)
+			}
+			if err := fs.Remove(fname); err != nil {
+				panic(err)
+			}
+		}
+	}()
+
+loop:
+	for {
+		select {
+		case <-done:
+			break loop
+		default:
+			_, err := ReadDir(fs, dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+}
+
+func TestMemFsDirMode(t *testing.T) {
+	fs := NewMemMapFs()
+	err := fs.Mkdir("/testDir1", 0644)
+	if err != nil {
+		t.Error(err)
+	}
+	err = fs.MkdirAll("/sub/testDir2", 0644)
+	if err != nil {
+		t.Error(err)
+	}
+	info, err := fs.Stat("/testDir1")
+	if err != nil {
+		t.Error(err)
+	}
+	if !info.IsDir() {
+		t.Error("should be a directory")
+	}
+	if !info.Mode().IsDir() {
+		t.Error("FileMode is not directory")
+	}
+	info, err = fs.Stat("/sub/testDir2")
+	if err != nil {
+		t.Error(err)
+	}
+	if !info.IsDir() {
+		t.Error("should be a directory")
+	}
+	if !info.Mode().IsDir() {
+		t.Error("FileMode is not directory")
+	}
 }
