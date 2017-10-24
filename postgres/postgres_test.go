@@ -1091,3 +1091,14 @@ func BenchmarkPrepare(b *testing.B) {
 		}
 	}
 }
+
+func TestDisableCache(t *testing.T) {
+	sc := Query(`SELECT * FROM "Reply"`)
+	if err := sc.Err(); err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+	_, ok := stmts.PrepareMap[`SELECT * FROM "Reply"`]
+	if ok {
+		t.Error("has query in cache")
+	}
+}
