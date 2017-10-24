@@ -43,6 +43,7 @@ type Prest struct {
 	CORSAllowHeaders []string
 	Debug            bool
 	EnableDefaultJWT bool
+	EnableCache      bool
 }
 
 // PrestConf config variable
@@ -68,6 +69,7 @@ func viperCfg() {
 	viper.SetDefault("debug", false)
 	viper.SetDefault("jwt.default", true)
 	viper.SetDefault("cors.allowheaders", []string{"*"})
+	viper.SetDefault("cache.enable", true)
 
 	user, err := user.Current()
 	if err != nil {
@@ -112,6 +114,7 @@ func Parse(cfg *Prest) (err error) {
 	cfg.CORSAllowHeaders = viper.GetStringSlice("cors.allowheaders")
 	cfg.Debug = viper.GetBool("debug")
 	cfg.EnableDefaultJWT = viper.GetBool("jwt.default")
+	cfg.EnableCache = viper.GetBool("cache.enable")
 
 	var t []TablesConf
 	err = viper.UnmarshalKey("access.tables", &t)
