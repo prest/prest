@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 
@@ -1093,12 +1094,16 @@ func BenchmarkPrepare(b *testing.B) {
 }
 
 func TestDisableCache(t *testing.T) {
+	os.Setenv("PREST_CACHE_ENABLE", "false")
+	config.Load()
+	ClearStmt()
 	sc := Query(`SELECT * FROM "Reply"`)
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
-	_, ok := stmts.PrepareMap[`SELECT * FROM "Reply"`]
+	_, ok := stmts.PrepareMap[`SELECT json_agg(s) FROM (SELECT * FROM "Reply") s`]
 	if ok {
 		t.Error("has query in cache")
 	}
+	os.Setenv("PREST_CACHE_ENABLE", "true")
 }
