@@ -45,20 +45,24 @@ type Stmt struct {
 
 // Prepare statement
 func (s *Stmt) Prepare(db *sqlx.DB, SQL string) (statement *sql.Stmt, err error) {
-	var exists bool
-	s.Mtx.Lock()
-	statement, exists = s.PrepareMap[SQL]
-	s.Mtx.Unlock()
-	if exists {
-		return
+	if config.PrestConf.EnableCache {
+		var exists bool
+		s.Mtx.Lock()
+		statement, exists = s.PrepareMap[SQL]
+		s.Mtx.Unlock()
+		if exists {
+			return
+		}
 	}
 	statement, err = db.Prepare(SQL)
 	if err != nil {
 		return
 	}
-	s.Mtx.Lock()
-	s.PrepareMap[SQL] = statement
-	s.Mtx.Unlock()
+	if config.PrestConf.EnableCache {
+		s.Mtx.Lock()
+		s.PrepareMap[SQL] = statement
+		s.Mtx.Unlock()
+	}
 	return
 }
 
