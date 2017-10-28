@@ -38,6 +38,12 @@ user = "postgres"
 pass = "mypass"
 port = 5432
 database = "prest"
+
+[ssl]
+mode = "disable"
+sslcert = "./PATH"
+sslkey = "./PATH"
+sslrootcert = "./PATH"
 ```
 
 ## Authorization
@@ -46,6 +52,17 @@ database = "prest"
 
 ```sh
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+```
+
+### SSL
+
+- There is 4 options to set on ssl mode:
+
+```toml
+"disable" -  # no SSL (default)
+"require" - # Always SSL (skip verification)
+"verify-ca" - # Always SSL (verify that the certificate presented by the server was signed by a trusted CA)
+"verify-full" - # Always SSL (verify that the certification presented by the server was signed by a trusted CA and the server host name matches the one in the certificate)
 ```
 
 ### Debug Mode
