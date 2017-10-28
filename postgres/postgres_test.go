@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/prest/adapters"
 	"github.com/prest/adapters/postgres/connection"
 
 	"bytes"
@@ -16,7 +17,14 @@ import (
 	"github.com/prest/statements"
 )
 
+func init() {
+	config.Load()
+	Load()
+}
+
 func TestParseInsertRequest(t *testing.T) {
+	config.Load()
+	Load()
 	m := make(map[string]interface{})
 	m["name"] = "prest"
 	mc := make(map[string]interface{})
@@ -46,7 +54,7 @@ func TestParseInsertRequest(t *testing.T) {
 			t.Errorf("expected no errors in http request, got %v", err)
 		}
 
-		colsNames, _, values, err := ParseInsertRequest(req)
+		colsNames, _, values, err := config.PrestConf.Adapter.ParseInsertRequest(req)
 		if err != tc.err {
 			t.Errorf("expected errors %v in where by request, got %v", tc.err, err)
 		}
@@ -99,7 +107,7 @@ func TestSetByRequest(t *testing.T) {
 			t.Errorf("expected no errors in http request, got %v", err)
 		}
 
-		setSyntax, values, err := SetByRequest(req, 1)
+		setSyntax, values, err := config.PrestConf.Adapter.SetByRequest(req, 1)
 		if err != tc.err {
 			t.Errorf("expected errors %v in where by request, got %v", tc.err, err)
 		}
@@ -142,7 +150,7 @@ func TestWhereByRequest(t *testing.T) {
 			t.Errorf("expected no errors in http request, got %v", err)
 		}
 
-		where, values, err := WhereByRequest(req, 1)
+		where, values, err := config.PrestConf.Adapter.WhereByRequest(req, 1)
 		if err != nil {
 			t.Errorf("expected no errors in where by request, got %v", err)
 		}
@@ -179,7 +187,7 @@ func TestInvalidWhereByRequest(t *testing.T) {
 			t.Errorf("expected no errors in http request, got %v", err)
 		}
 
-		where, values, err := WhereByRequest(req, 1)
+		where, values, err := config.PrestConf.Adapter.WhereByRequest(req, 1)
 		if err == nil {
 			t.Errorf("expected errors in where by request, got %v", err)
 		}
@@ -223,7 +231,7 @@ func TestGroupByClause(t *testing.T) {
 			t.Errorf("expected no errors in http request, got %v", err)
 		}
 
-		groupBySQL := GroupByClause(req)
+		groupBySQL := config.PrestConf.Adapter.GroupByClause(req)
 
 		if !tc.emptyCase && groupBySQL == "" {
 			t.Error("expected groupBySQL, got empty string")
@@ -240,7 +248,7 @@ func TestGroupByClause(t *testing.T) {
 }
 
 func TestEmptyTable(t *testing.T) {
-	sc := Query("SELECT * FROM test_empty_table")
+	sc := config.PrestConf.Adapter.Query("SELECT * FROM test_empty_table")
 	if sc.Err() != nil {
 		t.Fatal(sc.Err())
 	}
@@ -250,7 +258,7 @@ func TestEmptyTable(t *testing.T) {
 }
 
 func TestQuery(t *testing.T) {
-	var sc Scanner
+	var sc adapters.Scanner
 
 	var testCases = []struct {
 		description string
@@ -268,9 +276,9 @@ func TestQuery(t *testing.T) {
 	for _, tc := range testCases {
 		t.Log(tc.description)
 		if tc.param {
-			sc = Query(tc.sql, "public")
+			sc = config.PrestConf.Adapter.Query(tc.sql, "public")
 		} else {
-			sc = Query(tc.sql)
+			sc = config.PrestConf.Adapter.Query(tc.sql)
 		}
 
 		if sc.Err() != tc.err {
@@ -294,7 +302,7 @@ func TestInvalidQuery(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := Query(tc.sql, "public")
+		sc := config.PrestConf.Adapter.Query(tc.sql, "public")
 
 		if sc.Err() == nil {
 			t.Error("expected errors, but got nil")
@@ -324,7 +332,7 @@ func TestPaginateIfPossible(t *testing.T) {
 			t.Errorf("expected no errors in http request, but got %s", err)
 		}
 
-		sql, err := PaginateIfPossible(req)
+		sql, err := config.PrestConf.Adapter.PaginateIfPossible(req)
 		if err != nil {
 			t.Errorf("expected no errors, but got %s", err)
 		}
@@ -351,7 +359,7 @@ func TestInvalidPaginateIfPossible(t *testing.T) {
 			t.Errorf("expected no errors in http request, but got %s", err)
 		}
 
-		sql, err := PaginateIfPossible(req)
+		sql, err := config.PrestConf.Adapter.PaginateIfPossible(req)
 		if err == nil {
 			t.Errorf("expected errors, but got %s", err)
 		}
@@ -375,7 +383,7 @@ func TestInsert(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := Insert(tc.sql, tc.values...)
+		sc := config.PrestConf.Adapter.Insert(tc.sql, tc.values...)
 		if sc.Err() != nil {
 			t.Errorf("expected no errors, but got %s", sc.Err())
 		}
@@ -399,7 +407,7 @@ func TestInsertInvalid(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := Insert(tc.sql, tc.values...)
+		sc := config.PrestConf.Adapter.Insert(tc.sql, tc.values...)
 		if sc.Err() == nil {
 			t.Errorf("expected  errors, but no has")
 		}
@@ -422,7 +430,7 @@ func TestDelete(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := Delete(tc.sql, tc.values)
+		sc := config.PrestConf.Adapter.Delete(tc.sql, tc.values)
 		if sc.Err() == nil {
 			t.Errorf("expected error, but got: %s", sc.Err())
 		}
@@ -433,7 +441,7 @@ func TestDelete(t *testing.T) {
 	}
 
 	t.Log("Delete data from table")
-	sc := Delete(`DELETE FROM "prest"."public"."test" WHERE "name"=$1`, "nuveo")
+	sc := config.PrestConf.Adapter.Delete(`DELETE FROM "prest"."public"."test" WHERE "name"=$1`, "nuveo")
 	if sc.Err() != nil {
 		t.Errorf("expected no error, but got: %s", sc.Err())
 	}
@@ -455,7 +463,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	t.Log("Update data into a table")
-	sc := Update(`UPDATE "prest"."public"."test" SET "name"=$2 WHERE "name"=$1`, "prest tester", "prest")
+	sc := config.PrestConf.Adapter.Update(`UPDATE "prest"."public"."test" SET "name"=$2 WHERE "name"=$1`, "prest tester", "prest")
 	if sc.Err() != nil {
 		t.Errorf("expected no errors, but got: %s", sc.Err())
 	}
@@ -466,7 +474,7 @@ func TestUpdate(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := Update(tc.sql, tc.values...)
+		sc := config.PrestConf.Adapter.Update(tc.sql, tc.values...)
 		if sc.Err() == nil {
 			t.Errorf("expected error, but got: %s", sc.Err())
 		}
@@ -523,7 +531,7 @@ func TestJoinByRequest(t *testing.T) {
 			t.Errorf("expected no errors on NewRequest, got %v", err)
 		}
 
-		join, err := JoinByRequest(req)
+		join, err := config.PrestConf.Adapter.JoinByRequest(req)
 		if tc.testEmptyResult {
 			if join != nil {
 				t.Errorf("expected empty response, but got: %v", join)
@@ -552,7 +560,7 @@ func TestJoinByRequest(t *testing.T) {
 		t.Errorf("expected no errorn on New Request, got %v", err)
 	}
 
-	join, err := JoinByRequest(r)
+	join, err := config.PrestConf.Adapter.JoinByRequest(r)
 	if err != nil {
 		t.Errorf("expected no errors, but got: %v", err)
 	}
@@ -563,7 +571,7 @@ func TestJoinByRequest(t *testing.T) {
 		t.Errorf(`expected %s in INNER JOIN "test2" ON "test2"."name" = "test"."name", but no was!`, joinStr)
 	}
 
-	where, values, err := WhereByRequest(r, 1)
+	where, values, err := config.PrestConf.Adapter.WhereByRequest(r, 1)
 	if err != nil {
 		t.Errorf("expected no errors, got: %v", err)
 	}
@@ -602,7 +610,7 @@ func TestCountFields(t *testing.T) {
 			t.Errorf("expected no errors on NewRequest, got: %v", err)
 		}
 
-		sql, err := CountByRequest(req)
+		sql, err := config.PrestConf.Adapter.CountByRequest(req)
 		if tc.testError {
 			if err == nil {
 				t.Error("expected errors, but no was!")
@@ -641,7 +649,7 @@ func TestDatabaseClause(t *testing.T) {
 			t.Errorf("expected no errors on NewRequest, got: %v", err)
 		}
 
-		query, _ := DatabaseClause(r)
+		query, _ := config.PrestConf.Adapter.DatabaseClause(r)
 		if query != tc.queryExpected {
 			t.Errorf("query unexpected, got: %s", query)
 		}
@@ -666,7 +674,7 @@ func TestSchemaClause(t *testing.T) {
 			t.Errorf("expected no errors on NewRequest, got: %v", err)
 		}
 
-		query, _ := SchemaClause(r)
+		query, _ := config.PrestConf.Adapter.SchemaClause(r)
 		if query != tc.queryExpected {
 			t.Errorf("query unexpected, got: %s", query)
 		}
@@ -730,7 +738,7 @@ func TestOrderByRequest(t *testing.T) {
 		t.Errorf("expected no errors on NewRequest, got: %v", err)
 	}
 
-	order, err := OrderByRequest(r)
+	order, err := config.PrestConf.Adapter.OrderByRequest(r)
 	if err != nil {
 		t.Errorf("expected no errors on OrderByRequest, got: %v", err)
 	}
@@ -748,7 +756,7 @@ func TestOrderByRequest(t *testing.T) {
 		t.Errorf("expected no errors on NewRequest, got: %v", err)
 	}
 
-	order, err = OrderByRequest(r)
+	order, err = config.PrestConf.Adapter.OrderByRequest(r)
 	if err != nil {
 		t.Errorf("expected no errors on OrderByRequest, got: %v", err)
 	}
@@ -764,7 +772,7 @@ func TestOrderByRequest(t *testing.T) {
 		t.Errorf("expected no errors on NewRequest, got: %v", err)
 	}
 
-	order, err = OrderByRequest(r)
+	order, err = config.PrestConf.Adapter.OrderByRequest(r)
 	if err != nil {
 		t.Errorf("expected no errors on OrderByRequest, got: %v", err)
 	}
@@ -779,7 +787,7 @@ func TestOrderByRequest(t *testing.T) {
 		t.Errorf("expected no errors on NewRequest, got: %v", err)
 	}
 
-	order, err = OrderByRequest(r)
+	order, err = config.PrestConf.Adapter.OrderByRequest(r)
 	if err == nil {
 		t.Errorf("expected errors on OrderByRequest, got: %v", err)
 	}
@@ -806,7 +814,7 @@ func TestTablePermissions(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		p := TablePermissions(tc.table, tc.permission)
+		p := config.PrestConf.Adapter.TablePermissions(tc.table, tc.permission)
 
 		if p != tc.out {
 			t.Errorf("expected %v, got %v", tc.out, p)
@@ -838,7 +846,7 @@ func TestFieldsPermissions(t *testing.T) {
 			t.Errorf("expected no errors on NewRequest, but got: %v", err)
 		}
 
-		fields, err := FieldsPermissions(r, tc.table, tc.permission)
+		fields, err := config.PrestConf.Adapter.FieldsPermissions(r, tc.table, tc.permission)
 		if err != nil {
 			t.Errorf("expected no errors, but got %v", err)
 		}
@@ -858,7 +866,7 @@ func TestRestrictFalse(t *testing.T) {
 		t.Errorf("expected no errors on NewRequest, but got: %v", err)
 	}
 
-	fields, err := FieldsPermissions(r, "test_list_only_id", "read")
+	fields, err := config.PrestConf.Adapter.FieldsPermissions(r, "test_list_only_id", "read")
 	if err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
@@ -867,7 +875,7 @@ func TestRestrictFalse(t *testing.T) {
 	}
 
 	t.Log("Restrict disabled")
-	p := TablePermissions("test_readonly_access", "delete")
+	p := config.PrestConf.Adapter.TablePermissions("test_readonly_access", "delete")
 	if !p {
 		t.Errorf("expected %v, got: %v", p, !p)
 	}
@@ -894,7 +902,7 @@ func TestSelectFields(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sql, err := SelectFields(tc.fields)
+		sql, err := config.PrestConf.Adapter.SelectFields(tc.fields)
 		if err != nil {
 			t.Errorf("expected no errors, but got: %v", err)
 		}
@@ -906,7 +914,7 @@ func TestSelectFields(t *testing.T) {
 
 	for _, tc := range testErrorCases {
 		t.Log(tc.description)
-		sql, err := SelectFields(tc.fields)
+		sql, err := config.PrestConf.Adapter.SelectFields(tc.fields)
 		if err == nil {
 			t.Errorf("expected errors, but got: %v", err)
 		}
@@ -936,7 +944,7 @@ func TestColumnsByRequest(t *testing.T) {
 			t.Errorf("expected no errors on NewRequest, but got: %v", err)
 		}
 
-		selectQuery := ColumnsByRequest(r)
+		selectQuery := columnsByRequest(r)
 		selectStr := strings.Join(selectQuery, ",")
 		if selectStr != tc.expectedSQL {
 			t.Errorf("expected %s, got: %s", tc.expectedSQL, selectStr)
@@ -963,7 +971,7 @@ func TestDistinctClause(t *testing.T) {
 			t.Errorf("expected no errors in http request, but got %s", err)
 		}
 
-		sql, err := DistinctClause(req)
+		sql, err := config.PrestConf.Adapter.DistinctClause(req)
 		if err != nil {
 			t.Errorf("expected no errors, but got %s", err)
 		}
@@ -1029,55 +1037,55 @@ func TestNormalizeGroupFunction(t *testing.T) {
 }
 
 func TestCacheQuery(t *testing.T) {
-	sc := Query(`SELECT * FROM "Reply"`)
+	sc := config.PrestConf.Adapter.Query(`SELECT * FROM "Reply"`)
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
-	sc = Query(`SELECT * FROM "Reply"`)
+	sc = config.PrestConf.Adapter.Query(`SELECT * FROM "Reply"`)
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
 }
 
 func TestCacheQueryCount(t *testing.T) {
-	sc := QueryCount(`SELECT COUNT(*) FROM "Reply"`)
+	sc := config.PrestConf.Adapter.QueryCount(`SELECT COUNT(*) FROM "Reply"`)
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
-	sc = QueryCount(`SELECT COUNT(*) FROM "Reply"`)
+	sc = config.PrestConf.Adapter.QueryCount(`SELECT COUNT(*) FROM "Reply"`)
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
 }
 
 func TestCacheInsert(t *testing.T) {
-	sc := Insert("INSERT INTO test(name) VALUES('testcache')")
+	sc := config.PrestConf.Adapter.Insert("INSERT INTO test(name) VALUES('testcache')")
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
-	sc = Insert("INSERT INTO test(name) VALUES('testcache')")
+	sc = config.PrestConf.Adapter.Insert("INSERT INTO test(name) VALUES('testcache')")
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
 }
 
 func TestCacheUpdate(t *testing.T) {
-	sc := Update("UPDATE test SET name='test cache' WHERE name='testcache'")
+	sc := config.PrestConf.Adapter.Update("UPDATE test SET name='test cache' WHERE name='testcache'")
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
-	sc = Update("UPDATE test SET name='test cache' WHERE name='testcache'")
+	sc = config.PrestConf.Adapter.Update("UPDATE test SET name='test cache' WHERE name='testcache'")
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
 }
 
 func TestCacheDelete(t *testing.T) {
-	sc := Delete("DELETE FROM test WHERE name='test cache'")
+	sc := config.PrestConf.Adapter.Delete("DELETE FROM test WHERE name='test cache'")
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
-	sc = Delete("DELETE FROM test WHERE name='test cache'")
+	sc = config.PrestConf.Adapter.Delete("DELETE FROM test WHERE name='test cache'")
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
@@ -1096,8 +1104,9 @@ func BenchmarkPrepare(b *testing.B) {
 func TestDisableCache(t *testing.T) {
 	os.Setenv("PREST_CACHE_ENABLE", "false")
 	config.Load()
+	Load()
 	ClearStmt()
-	sc := Query(`SELECT * FROM "Reply"`)
+	sc := config.PrestConf.Adapter.Query(`SELECT * FROM "Reply"`)
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}

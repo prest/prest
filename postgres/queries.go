@@ -11,14 +11,15 @@ import (
 	gotemplate "text/template"
 
 	"github.com/nuveo/log"
+	"github.com/prest/adapters"
+	"github.com/prest/adapters/internal/scanner"
 	"github.com/prest/adapters/postgres/connection"
-	"github.com/prest/adapters/postgres/internal/scanner"
 	"github.com/prest/config"
 	"github.com/prest/template"
 )
 
 // GetScript get SQL template file
-func GetScript(verb, folder, scriptName string) (script string, err error) {
+func (adapter *Postgres) GetScript(verb, folder, scriptName string) (script string, err error) {
 	verbs := map[string]string{
 		"GET":    ".read.sql",
 		"POST":   ".write.sql",
@@ -44,7 +45,7 @@ func GetScript(verb, folder, scriptName string) (script string, err error) {
 }
 
 // ParseScript use values sent by users and add on script
-func ParseScript(scriptPath string, queryURL url.Values) (sqlQuery string, values []interface{}, err error) {
+func (adapter *Postgres) ParseScript(scriptPath string, queryURL url.Values) (sqlQuery string, values []interface{}, err error) {
 	_, tplName := path.Split(scriptPath)
 	q := make(map[string]string)
 	pid := 1
@@ -74,7 +75,7 @@ func ParseScript(scriptPath string, queryURL url.Values) (sqlQuery string, value
 }
 
 // WriteSQL perform INSERT's, UPDATE's, DELETE's operations
-func WriteSQL(sql string, values []interface{}) (sc Scanner) {
+func WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
 	db, err := connection.Get()
 	if err != nil {
 		log.Println(err)
@@ -120,10 +121,10 @@ func WriteSQL(sql string, values []interface{}) (sc Scanner) {
 }
 
 // ExecuteScripts run sql templates created by users
-func ExecuteScripts(method, sql string, values []interface{}) (sc Scanner) {
+func (adapter *Postgres) ExecuteScripts(method, sql string, values []interface{}) (sc adapters.Scanner) {
 	switch method {
 	case "GET":
-		sc = Query(sql, values...)
+		sc = adapter.Query(sql, values...)
 	case "POST", "PUT", "PATCH", "DELETE":
 		sc = WriteSQL(sql, values)
 	default:
