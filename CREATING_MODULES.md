@@ -19,6 +19,8 @@ import (
 func main() {
 	// Get pREST app
 	config.Load()
+	// Set Adapter postgres
+	postgres.Load()
 	middlewares.GetApp()
 
 	// Get pPREST router
@@ -55,6 +57,8 @@ import (
 
 func main() {
 	config.Load()
+	// Set Adapter postgres
+	postgres.Load()
 
 	// Get pREST app
 	n := middlewares.GetApp()
@@ -100,6 +104,8 @@ import (
 
 func main() {
 	config.Load()
+	// Set Adapter postgres
+	postgres.Load()
 	// Reorder middlewares
 	middlewares.MiddlewareStack = []negroni.Handler{
 		negroni.Handler(negroni.NewRecovery()),
