@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/nuveo/log"
+	"github.com/prest/adapters"
 	"github.com/spf13/viper"
 )
 
@@ -42,6 +43,7 @@ type Prest struct {
 	CORSAllowOrigin  []string
 	CORSAllowHeaders []string
 	Debug            bool
+	Adapter          adapters.Adapter
 	EnableDefaultJWT bool
 	EnableCache      bool
 }
