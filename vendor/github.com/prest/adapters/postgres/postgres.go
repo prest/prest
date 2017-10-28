@@ -15,11 +15,16 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/nuveo/log"
+	"github.com/prest/adapters"
+	"github.com/prest/adapters/internal/scanner"
 	"github.com/prest/adapters/postgres/connection"
-	"github.com/prest/adapters/postgres/internal/scanner"
 	"github.com/prest/config"
 	"github.com/prest/statements"
 )
+
+//Postgres adapter postgresql
+type Postgres struct {
+}
 
 const (
 	pageNumberKey   = "_page"
@@ -45,21 +50,30 @@ type Stmt struct {
 
 // Prepare statement
 func (s *Stmt) Prepare(db *sqlx.DB, SQL string) (statement *sql.Stmt, err error) {
-	var exists bool
-	s.Mtx.Lock()
-	statement, exists = s.PrepareMap[SQL]
-	s.Mtx.Unlock()
-	if exists {
-		return
+	if config.PrestConf.EnableCache {
+		var exists bool
+		s.Mtx.Lock()
+		statement, exists = s.PrepareMap[SQL]
+		s.Mtx.Unlock()
+		if exists {
+			return
+		}
 	}
 	statement, err = db.Prepare(SQL)
 	if err != nil {
 		return
 	}
-	s.Mtx.Lock()
-	s.PrepareMap[SQL] = statement
-	s.Mtx.Unlock()
+	if config.PrestConf.EnableCache {
+		s.Mtx.Lock()
+		s.PrepareMap[SQL] = statement
+		s.Mtx.Unlock()
+	}
 	return
+}
+
+// Load postgres
+func Load() {
+	config.PrestConf.Adapter = &Postgres{}
 }
 
 func init() {
@@ -127,7 +141,7 @@ func chkInvalidIdentifier(identifer ...string) bool {
 }
 
 // WhereByRequest create interface for queries + where
-func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []interface{}, err error) {
+func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []interface{}, err error) {
 	whereKey := []string{}
 	whereValues := []string{}
 	var value, op string
@@ -219,7 +233,7 @@ func WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax stri
 }
 
 // SetByRequest create a set clause for SQL
-func SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, values []interface{}, err error) {
+func (adapter *Postgres) SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, values []interface{}, err error) {
 	body := make(map[string]interface{})
 	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return
@@ -255,7 +269,7 @@ func SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, 
 }
 
 // ParseInsertRequest create insert SQL
-func ParseInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error) {
+func (adapter *Postgres) ParseInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error) {
 	body := make(map[string]interface{})
 	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return
@@ -294,7 +308,7 @@ func ParseInsertRequest(r *http.Request) (colsName string, colsValue string, val
 }
 
 // DatabaseClause return a SELECT `query`
-func DatabaseClause(req *http.Request) (query string, hasCount bool) {
+func (adapter *Postgres) DatabaseClause(req *http.Request) (query string, hasCount bool) {
 	queries := req.URL.Query()
 	countQuery := queries.Get("_count")
 
@@ -308,7 +322,7 @@ func DatabaseClause(req *http.Request) (query string, hasCount bool) {
 }
 
 // SchemaClause return a SELECT `query`
-func SchemaClause(req *http.Request) (query string, hasCount bool) {
+func (adapter *Postgres) SchemaClause(req *http.Request) (query string, hasCount bool) {
 	queries := req.URL.Query()
 	countQuery := queries.Get("_count")
 
@@ -322,7 +336,7 @@ func SchemaClause(req *http.Request) (query string, hasCount bool) {
 }
 
 // JoinByRequest implements join in queries
-func JoinByRequest(r *http.Request) (values []string, err error) {
+func (adapter *Postgres) JoinByRequest(r *http.Request) (values []string, err error) {
 	queries := r.URL.Query()
 
 	if queries.Get("_join") == "" {
@@ -362,7 +376,7 @@ func JoinByRequest(r *http.Request) (values []string, err error) {
 }
 
 // SelectFields query
-func SelectFields(fields []string) (sql string, err error) {
+func (adapter *Postgres) SelectFields(fields []string) (sql string, err error) {
 	if len(fields) == 0 {
 		err = errors.New("you must select at least one field")
 		return
@@ -391,7 +405,7 @@ func SelectFields(fields []string) (sql string, err error) {
 }
 
 // OrderByRequest implements ORDER BY in queries
-func OrderByRequest(r *http.Request) (values string, err error) {
+func (adapter *Postgres) OrderByRequest(r *http.Request) (values string, err error) {
 	queries := r.URL.Query()
 	reqOrder := queries.Get("_order")
 
@@ -424,7 +438,7 @@ func OrderByRequest(r *http.Request) (values string, err error) {
 }
 
 // CountByRequest implements COUNT(fields) OPERTATION
-func CountByRequest(req *http.Request) (countQuery string, err error) {
+func (adapter *Postgres) CountByRequest(req *http.Request) (countQuery string, err error) {
 	queries := req.URL.Query()
 	countFields := queries.Get("_count")
 	if countFields == "" {
@@ -446,7 +460,7 @@ func CountByRequest(req *http.Request) (countQuery string, err error) {
 }
 
 // Query process queries
-func Query(SQL string, params ...interface{}) (sc Scanner) {
+func (adapter *Postgres) Query(SQL string, params ...interface{}) (sc adapters.Scanner) {
 	db, err := connection.Get()
 	if err != nil {
 		log.Println(err)
@@ -474,7 +488,7 @@ func Query(SQL string, params ...interface{}) (sc Scanner) {
 }
 
 // QueryCount process queries with count
-func QueryCount(SQL string, params ...interface{}) (sc Scanner) {
+func (adapter *Postgres) QueryCount(SQL string, params ...interface{}) (sc adapters.Scanner) {
 	db, err := connection.Get()
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
@@ -506,7 +520,7 @@ func QueryCount(SQL string, params ...interface{}) (sc Scanner) {
 }
 
 // PaginateIfPossible func
-func PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
+func (adapter *Postgres) PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 	values := r.URL.Query()
 	if _, ok := values[pageNumberKey]; !ok {
 		paginatedQuery = ""
@@ -574,7 +588,7 @@ func FormatArray(value interface{}) string {
 }
 
 // Insert execute insert sql into a table
-func Insert(SQL string, params ...interface{}) (sc Scanner) {
+func (adapter *Postgres) Insert(SQL string, params ...interface{}) (sc adapters.Scanner) {
 	db, err := connection.Get()
 	if err != nil {
 		log.Println(err)
@@ -608,7 +622,7 @@ func Insert(SQL string, params ...interface{}) (sc Scanner) {
 }
 
 // Delete execute delete sql into a table
-func Delete(SQL string, params ...interface{}) (sc Scanner) {
+func (adapter *Postgres) Delete(SQL string, params ...interface{}) (sc adapters.Scanner) {
 	db, err := connection.Get()
 	if err != nil {
 		log.Println(err)
@@ -646,7 +660,7 @@ func Delete(SQL string, params ...interface{}) (sc Scanner) {
 }
 
 // Update execute update sql into a table
-func Update(SQL string, params ...interface{}) (sc Scanner) {
+func (adapter *Postgres) Update(SQL string, params ...interface{}) (sc adapters.Scanner) {
 	db, err := connection.Get()
 	if err != nil {
 		log.Println(err)
@@ -733,7 +747,7 @@ func GetQueryOperator(op string) (string, error) {
 }
 
 // TablePermissions get tables permissions based in prest configuration
-func TablePermissions(table string, op string) bool {
+func (adapter *Postgres) TablePermissions(table string, op string) bool {
 	restrict := config.PrestConf.AccessConf.Restrict
 	if !restrict {
 		return true
@@ -753,9 +767,9 @@ func TablePermissions(table string, op string) bool {
 }
 
 // FieldsPermissions get fields permissions based in prest configuration
-func FieldsPermissions(r *http.Request, table string, op string) (fields []string, err error) {
+func (adapter *Postgres) FieldsPermissions(r *http.Request, table string, op string) (fields []string, err error) {
 	restrict := config.PrestConf.AccessConf.Restrict
-	cols := ColumnsByRequest(r)
+	cols := columnsByRequest(r)
 	queries := r.URL.Query()
 	if queries.Get("_groupby") != "" {
 		cols, err = normalizeAll(cols)
@@ -825,8 +839,8 @@ func normalizeColumn(col string) (gf string, err error) {
 	return
 }
 
-// ColumnsByRequest extract columns and return as array of strings
-func ColumnsByRequest(r *http.Request) []string {
+// columnsByRequest extract columns and return as array of strings
+func columnsByRequest(r *http.Request) []string {
 	u, _ := r.URL.Parse(r.URL.String())
 	columnsArr := u.Query()["_select"]
 	var columns []string
@@ -846,7 +860,7 @@ func ColumnsByRequest(r *http.Request) []string {
 }
 
 // DistinctClause get params in request to add distinct clause
-func DistinctClause(r *http.Request) (distinctQuery string, err error) {
+func (adapter *Postgres) DistinctClause(r *http.Request) (distinctQuery string, err error) {
 	queries := r.URL.Query()
 	checkQuery := queries.Get("_distinct")
 	distinctQuery = ""
@@ -858,7 +872,7 @@ func DistinctClause(r *http.Request) (distinctQuery string, err error) {
 }
 
 // GroupByClause get params in request to add group by clause
-func GroupByClause(r *http.Request) (groupBySQL string) {
+func (adapter *Postgres) GroupByClause(r *http.Request) (groupBySQL string) {
 	queries := r.URL.Query()
 	groupQuery := queries.Get("_groupby")
 	if groupQuery == "" {

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
+	"github.com/prest/adapters/postgres"
 	"github.com/prest/config"
 	"github.com/prest/config/router"
 	"github.com/prest/middlewares"
@@ -104,6 +105,7 @@ func TestRenderWithXML(t *testing.T) {
 	}
 	os.Setenv("PREST_DEBUG", "true")
 	config.Load()
+	postgres.Load()
 	n := middlewares.GetApp()
 	r := router.Get()
 
