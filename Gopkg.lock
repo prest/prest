@@ -107,19 +107,19 @@
   branch = "master"
   name = "github.com/prest/adapters"
   packages = [".","internal/scanner","postgres","postgres/connection"]
-  revision = "87f2a43e292eee6d7ba5762284e30c62b3f35791"
+  revision = "35168a610e2f51c556c4a5d3f45efb535bdba8fd"
 
 [[projects]]
   branch = "master"
   name = "github.com/prest/cmd"
   packages = ["."]
-  revision = "4890cf744a98b00d8014856307e3f5178520b090"
+  revision = "5e4eebebd658363939d5b2b928b78bb4c6aa17e4"
 
 [[projects]]
   branch = "master"
   name = "github.com/prest/config"
   packages = [".","router"]
-  revision = "66054993908738e81420f05bdec9be6cb1db1969"
+  revision = "9665a525a8df084bd754b9167e6d9ea5c9b80861"
 
 [[projects]]
   branch = "master"
