@@ -16,8 +16,8 @@
 [[projects]]
   name = "github.com/dgrijalva/jwt-go"
   packages = ["."]
-  revision = "d2709f9f1f31ebcda9651b03077758c1f3a0018c"
-  version = "v3.0.0"
+  revision = "dbeaa9332f19a944acb5736b4456cfcc02140e29"
+  version = "v3.1.0"
 
 [[projects]]
   name = "github.com/fatih/color"
@@ -59,13 +59,13 @@
   branch = "master"
   name = "github.com/jmoiron/sqlx"
   packages = [".","reflectx"]
-  revision = "d9bd385d68c068f1fabb5057e3dedcbcbb039d0f"
+  revision = "3379e5993990b1f927fc8db926485e6f6becf2d2"
 
 [[projects]]
   branch = "master"
   name = "github.com/lib/pq"
   packages = [".","oid"]
-  revision = "017e4c14d80628353eaee677a1aeffe47a10c0dc"
+  revision = "b609790bd85edf8e9ab7e0f8912750a786177bcf"
 
 [[projects]]
   name = "github.com/magiconair/properties"
@@ -106,8 +106,8 @@
 [[projects]]
   branch = "master"
   name = "github.com/prest/adapters"
-  packages = ["postgres","postgres/connection","postgres/internal/scanner"]
-  revision = "f11912f09766762d10731a651c79c5c61d9ed1d4"
+  packages = [".","internal/scanner","postgres","postgres/connection"]
+  revision = "87f2a43e292eee6d7ba5762284e30c62b3f35791"
 
 [[projects]]
   branch = "master"
@@ -119,13 +119,13 @@
   branch = "master"
   name = "github.com/prest/config"
   packages = [".","router"]
-  revision = "23df0f5a236376d21b84c18a47e9ea4a1755eda5"
+  revision = "66054993908738e81420f05bdec9be6cb1db1969"
 
 [[projects]]
   branch = "master"
   name = "github.com/prest/controllers"
   packages = ["."]
-  revision = "e55ed9a9dea707093e5f423cb4259113bda16470"
+  revision = "0d568c2474bb92d47ae28896b265945207945f10"
 
 [[projects]]
   branch = "master"
@@ -137,7 +137,7 @@
   branch = "master"
   name = "github.com/prest/middlewares"
   packages = ["."]
-  revision = "b07db21a642c16b4950ebcd1e302dd5069d5b9cd"
+  revision = "6d97a19c35aa59eb6ba9b645f3ebbd9cb425fdb3"
 
 [[projects]]
   branch = "master"
@@ -155,7 +155,7 @@
   branch = "master"
   name = "github.com/spf13/afero"
   packages = [".","mem"]
-  revision = "e67d870304c4bca21331b02f414f970df13aa694"
+  revision = "5660eeed305fe5f69c8fc6cf899132a459a97064"
 
 [[projects]]
   name = "github.com/spf13/cast"
@@ -164,10 +164,10 @@
   version = "v1.1.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/spf13/cobra"
   packages = ["."]
   revision = "7b2c5ac9fc04fc5efafb60700713d4fa609b777b"
+  version = "v0.0.1"
 
 [[projects]]
   branch = "master"
@@ -197,13 +197,13 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "8dbc5d05d6edcc104950cc299a1ce6641235bc86"
+  revision = "661970f62f5897bc0cd5fdca7e087ba8a98a8fa1"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
   packages = ["internal/gen","internal/triegen","internal/ucd","transform","unicode/cldr","unicode/norm"]
-  revision = "c01e4764d870b77f8abe5096ee19ad20d80e8075"
+  revision = "6eab0e8f74e86c598ec3b6fad4888e0c11482d48"
 
 [[projects]]
   name = "gopkg.in/mattes/migrate.v1"
@@ -220,6 +220,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c8cf461e787fdb1e7c3e02fd30dd93373057dc0575a01862a9050101df82eef0"
+  inputs-digest = "04ac9a57c7e06f17e43cd4135417264d208d4c7f526c1526ede92cec78f3ee37"
   solver-name = "gps-cdcl"
   solver-version = 1

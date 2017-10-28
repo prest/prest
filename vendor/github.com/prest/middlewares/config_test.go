@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
+	"github.com/prest/adapters/postgres"
 	"github.com/prest/config"
 	"github.com/prest/config/router"
 	"github.com/prest/controllers"
@@ -18,6 +19,7 @@ import (
 
 func init() {
 	config.Load()
+	postgres.Load()
 }
 
 func TestInitApp(t *testing.T) {
@@ -89,6 +91,7 @@ func TestGetAppWithoutReorderedMiddleware(t *testing.T) {
 func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 	os.Setenv("PREST_DEBUG", "true")
 	config.Load()
+	postgres.Load()
 	app = nil
 	r := router.Get()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
