@@ -25,7 +25,7 @@ var migrateCmd = &cobra.Command{
 }
 
 func driverURL() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", config.PrestConf.PGUser, config.PrestConf.PGPass, config.PrestConf.PGHost, config.PrestConf.PGPort, config.PrestConf.PGDatabase)
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s", config.PrestConf.PGUser, config.PrestConf.PGPass, config.PrestConf.PGHost, config.PrestConf.PGPort, config.PrestConf.PGDatabase, config.PrestConf.SSLMode)
 }
 
 func writePipe(pipe chan interface{}) (ok bool) {

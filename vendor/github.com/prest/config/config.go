@@ -33,6 +33,10 @@ type Prest struct {
 	PGUser           string
 	PGPass           string
 	PGDatabase       string
+	SSLMode          string
+	SSLCert          string
+	SSLKey           string
+	SSLRootCert      string
 	PGMaxIdleConn    int
 	PGMAxOpenConn    int
 	PGConnTimeout    int
@@ -65,6 +69,7 @@ func viperCfg() {
 	viper.SetDefault("http.port", 3000)
 	viper.SetDefault("pg.host", "127.0.0.1")
 	viper.SetDefault("pg.port", 5432)
+	viper.SetDefault("ssl.mode", "disable")
 	viper.SetDefault("pg.maxidleconn", 10)
 	viper.SetDefault("pg.maxopenconn", 10)
 	viper.SetDefault("pg.conntimeout", 10)
@@ -105,6 +110,10 @@ func Parse(cfg *Prest) (err error) {
 	cfg.PGUser = viper.GetString("pg.user")
 	cfg.PGPass = viper.GetString("pg.pass")
 	cfg.PGDatabase = viper.GetString("pg.database")
+	cfg.SSLMode = viper.GetString("ssl.mode")
+	cfg.SSLCert = viper.GetString("ssl.cert")
+	cfg.SSLKey = viper.GetString("ssl.key")
+	cfg.SSLRootCert = viper.GetString("ssl.rootcert")
 	cfg.PGMaxIdleConn = viper.GetInt("pg.maxidleconn")
 	cfg.PGMAxOpenConn = viper.GetInt("pg.maxopenconn")
 	cfg.PGConnTimeout = viper.GetInt("pg.conntimeout")

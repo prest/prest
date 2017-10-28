@@ -20,14 +20,24 @@ var (
 // Get get postgres connection
 func Get() (*sqlx.DB, error) {
 	if DB == nil {
-		dbURI := fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=disable connect_timeout=%d",
+		dbURI := fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=%v connect_timeout=%d",
 			config.PrestConf.PGUser,
 			config.PrestConf.PGDatabase,
 			config.PrestConf.PGHost,
 			config.PrestConf.PGPort,
+			config.PrestConf.SSLMode,
 			config.PrestConf.PGConnTimeout)
 		if config.PrestConf.PGPass != "" {
 			dbURI += " password=" + config.PrestConf.PGPass
+		}
+		if config.PrestConf.SSLCert != "" {
+			dbURI += " sslcert=" + config.PrestConf.SSLCert
+		}
+		if config.PrestConf.SSLKey != "" {
+			dbURI += " sslkey=" + config.PrestConf.SSLKey
+		}
+		if config.PrestConf.SSLRootCert != "" {
+			dbURI += " sslrootcert=" + config.PrestConf.SSLRootCert
 		}
 		DB, err = sqlx.Connect("postgres", dbURI)
 		if err != nil {
