@@ -938,3 +938,8 @@ func NormalizeGroupFunction(paramValue string) (groupFuncSQL string, err error) 
 		return
 	}
 }
+
+// SetDatabase set the current database name in use
+func (adapter *Postgres) SetDatabase(name string) {
+	connection.SetDatabase(name)
+}
