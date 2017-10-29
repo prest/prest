@@ -29,4 +29,5 @@ type Adapter interface {
 	SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, values []interface{}, err error)
 	Update(SQL string, params ...interface{}) (sc Scanner)
 	DistinctClause(r *http.Request) (distinctQuery string, err error)
+	SetDatabase(name string)
 }

@@ -62,6 +62,8 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 	schema := vars["schema"]
 
+	config.PrestConf.Adapter.SetDatabase(database)
+
 	requestWhere, values, err := config.PrestConf.Adapter.WhereByRequest(r, 3)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
@@ -116,6 +118,8 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 	schema := vars["schema"]
 	table := vars["table"]
+
+	config.PrestConf.Adapter.SetDatabase(database)
 
 	// get selected columns, "*" if empty "_columns"
 	cols, err := config.PrestConf.Adapter.FieldsPermissions(r, table, "read")
@@ -217,6 +221,8 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
+	config.PrestConf.Adapter.SetDatabase(database)
+
 	names, placeholders, values, err := config.PrestConf.Adapter.ParseInsertRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform InsertInTables: %v", err)
@@ -240,6 +246,8 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 	schema := vars["schema"]
 	table := vars["table"]
+
+	config.PrestConf.Adapter.SetDatabase(database)
 
 	where, values, err := config.PrestConf.Adapter.WhereByRequest(r, 1)
 	if err != nil {
@@ -267,6 +275,8 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 	schema := vars["schema"]
 	table := vars["table"]
+
+	config.PrestConf.Adapter.SetDatabase(database)
 
 	where, whereValues, err := config.PrestConf.Adapter.WhereByRequest(r, 1)
 	if err != nil {
