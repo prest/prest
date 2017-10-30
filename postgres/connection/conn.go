@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	"database/sql"
-
 	"github.com/jmoiron/sqlx"
 	"github.com/prest/config"
 	// Used pg drive on sqlx
@@ -18,6 +16,7 @@ var (
 	currDatabase string
 )
 
+// ConnectionPool struct
 type ConnectionPool struct {
 	Mtx *sync.Mutex
 	DB  map[string]*sqlx.DB
@@ -74,6 +73,7 @@ func Get() (*sqlx.DB, error) {
 	return DB, nil
 }
 
+// GetPool of connection
 func GetPool() *ConnectionPool {
 	if pool == nil {
 		pool = &ConnectionPool{
@@ -97,6 +97,7 @@ func getDatabaseFromPool(name string) *sqlx.DB {
 	return DB
 }
 
+// AddDatabaseToPool add connection to pool
 func AddDatabaseToPool(name string, DB *sqlx.DB) {
 	var p *ConnectionPool
 
@@ -117,15 +118,6 @@ func MustGet() *sqlx.DB {
 		panic(fmt.Sprintf("Unable to connect to database: %v\n", err))
 	}
 	return DB
-}
-
-// SetNativeDB enable to override sqlx native db
-func SetNativeDB(native *sql.DB) {
-	var DB *sqlx.DB
-
-	DB = getDatabaseFromPool(GetDatabase())
-	DB.DB = native
-	AddDatabaseToPool("__native", DB)
 }
 
 // SetDatabase set current database in use
