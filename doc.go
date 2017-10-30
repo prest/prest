@@ -2,7 +2,7 @@
 pREST - Serve a RESTful API from any PostgreSQL database
 
 Install
-    go install github.com/nuveo/prest
+    go install github.com/prest/prest
 
 Run
 
