@@ -13,14 +13,14 @@ import (
 )
 
 var (
-	err error
-	pool *ConnectionPool
+	err          error
+	pool         *ConnectionPool
 	currDatabase string
 )
 
 type ConnectionPool struct {
-	Mtx	*sync.Mutex
-	DB	map[string]*sqlx.DB
+	Mtx *sync.Mutex
+	DB  map[string]*sqlx.DB
 }
 
 // GetURI postgres connection URI
@@ -50,13 +50,12 @@ func GetURI(DBName string) string {
 		dbURI += " sslrootcert=" + config.PrestConf.SSLRootCert
 	}
 
-
 	return dbURI
 }
 
 // Get get postgres connection
 func Get() (*sqlx.DB, error) {
-	var DB	*sqlx.DB
+	var DB *sqlx.DB
 
 	DB = getDatabaseFromPool(GetDatabase())
 	if DB != nil {
@@ -70,24 +69,24 @@ func Get() (*sqlx.DB, error) {
 	DB.SetMaxIdleConns(config.PrestConf.PGMaxIdleConn)
 	DB.SetMaxOpenConns(config.PrestConf.PGMAxOpenConn)
 
-	addDatabaseToPool(GetDatabase(), DB)
+	AddDatabaseToPool(GetDatabase(), DB)
 
 	return DB, nil
 }
 
 func GetPool() *ConnectionPool {
 	if pool == nil {
-		pool = &ConnectionPool {
-			Mtx:	&sync.Mutex{},
-			DB:		make(map[string]*sqlx.DB),
+		pool = &ConnectionPool{
+			Mtx: &sync.Mutex{},
+			DB:  make(map[string]*sqlx.DB),
 		}
 	}
 	return pool
 }
 
 func getDatabaseFromPool(name string) *sqlx.DB {
-	var DB	*sqlx.DB
-	var p	*ConnectionPool
+	var DB *sqlx.DB
+	var p *ConnectionPool
 
 	p = GetPool()
 
@@ -98,8 +97,8 @@ func getDatabaseFromPool(name string) *sqlx.DB {
 	return DB
 }
 
-func addDatabaseToPool(name string, DB *sqlx.DB) {
-	var p	*ConnectionPool
+func AddDatabaseToPool(name string, DB *sqlx.DB) {
+	var p *ConnectionPool
 
 	p = GetPool()
 
@@ -126,7 +125,7 @@ func SetNativeDB(native *sql.DB) {
 
 	DB = getDatabaseFromPool(GetDatabase())
 	DB.DB = native
-	addDatabaseToPool("__native", DB)
+	AddDatabaseToPool("__native", DB)
 }
 
 // SetDatabase set current database in use
