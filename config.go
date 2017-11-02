@@ -33,6 +33,7 @@ type Prest struct {
 	PGUser           string
 	PGPass           string
 	PGDatabase       string
+	ContextPath      string
 	SSLMode          string
 	SSLCert          string
 	SSLKey           string
@@ -77,6 +78,7 @@ func viperCfg() {
 	viper.SetDefault("jwt.default", true)
 	viper.SetDefault("cors.allowheaders", []string{"*"})
 	viper.SetDefault("cache.enable", true)
+	viper.SetDefault("context", "/")
 
 	user, err := user.Current()
 	if err != nil {
@@ -126,6 +128,7 @@ func Parse(cfg *Prest) (err error) {
 	cfg.Debug = viper.GetBool("debug")
 	cfg.EnableDefaultJWT = viper.GetBool("jwt.default")
 	cfg.EnableCache = viper.GetBool("cache.enable")
+	cfg.ContextPath = viper.GetString("context")
 
 	var t []TablesConf
 	err = viper.UnmarshalKey("access.tables", &t)
