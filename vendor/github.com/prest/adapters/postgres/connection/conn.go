@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	"database/sql"
-
 	"github.com/jmoiron/sqlx"
 	"github.com/prest/config"
 	// Used pg drive on sqlx
@@ -13,14 +11,15 @@ import (
 )
 
 var (
-	err error
-	pool *ConnectionPool
+	err          error
+	pool         *ConnectionPool
 	currDatabase string
 )
 
+// ConnectionPool struct
 type ConnectionPool struct {
-	Mtx	*sync.Mutex
-	DB	map[string]*sqlx.DB
+	Mtx *sync.Mutex
+	DB  map[string]*sqlx.DB
 }
 
 // GetURI postgres connection URI
@@ -50,13 +49,12 @@ func GetURI(DBName string) string {
 		dbURI += " sslrootcert=" + config.PrestConf.SSLRootCert
 	}
 
-
 	return dbURI
 }
 
 // Get get postgres connection
 func Get() (*sqlx.DB, error) {
-	var DB	*sqlx.DB
+	var DB *sqlx.DB
 
 	DB = getDatabaseFromPool(GetDatabase())
 	if DB != nil {
@@ -70,24 +68,25 @@ func Get() (*sqlx.DB, error) {
 	DB.SetMaxIdleConns(config.PrestConf.PGMaxIdleConn)
 	DB.SetMaxOpenConns(config.PrestConf.PGMAxOpenConn)
 
-	addDatabaseToPool(GetDatabase(), DB)
+	AddDatabaseToPool(GetDatabase(), DB)
 
 	return DB, nil
 }
 
+// GetPool of connection
 func GetPool() *ConnectionPool {
 	if pool == nil {
-		pool = &ConnectionPool {
-			Mtx:	&sync.Mutex{},
-			DB:		make(map[string]*sqlx.DB),
+		pool = &ConnectionPool{
+			Mtx: &sync.Mutex{},
+			DB:  make(map[string]*sqlx.DB),
 		}
 	}
 	return pool
 }
 
 func getDatabaseFromPool(name string) *sqlx.DB {
-	var DB	*sqlx.DB
-	var p	*ConnectionPool
+	var DB *sqlx.DB
+	var p *ConnectionPool
 
 	p = GetPool()
 
@@ -98,8 +97,9 @@ func getDatabaseFromPool(name string) *sqlx.DB {
 	return DB
 }
 
-func addDatabaseToPool(name string, DB *sqlx.DB) {
-	var p	*ConnectionPool
+// AddDatabaseToPool add connection to pool
+func AddDatabaseToPool(name string, DB *sqlx.DB) {
+	var p *ConnectionPool
 
 	p = GetPool()
 
@@ -118,15 +118,6 @@ func MustGet() *sqlx.DB {
 		panic(fmt.Sprintf("Unable to connect to database: %v\n", err))
 	}
 	return DB
-}
-
-// SetNativeDB enable to override sqlx native db
-func SetNativeDB(native *sql.DB) {
-	var DB *sqlx.DB
-
-	DB = getDatabaseFromPool(GetDatabase())
-	DB.DB = native
-	addDatabaseToPool("__native", DB)
 }
 
 // SetDatabase set current database in use

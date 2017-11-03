@@ -22,6 +22,7 @@ const (
 	FormattedOut       outType = 0
 	LineOut            outType = 1
 	DefaultMaxLineSize int     = 2000
+	DefaultTimeFormat  string  = "2006/01/02 15:04:05"
 )
 
 var (
@@ -32,6 +33,10 @@ var (
 	// exceeds that indicated by MaxLineSize the system cuts
 	// the string and adds "..." at the end.
 	MaxLineSize = DefaultMaxLineSize
+
+	// TimeFormat defines which pattern will be applied for
+	// display time in the logs.
+	TimeFormat = DefaultTimeFormat
 
 	// Colors contain color array
 	Colors = []string{
@@ -135,7 +140,7 @@ func pln(m msgType, o outType, msg ...interface{}) {
 
 	output = fmt.Sprintf("%s%s [%s] %s%s\033[0;00m",
 		Colors[m],
-		now().UTC().Format("2006/01/02 15:04:05"),
+		now().UTC().Format(TimeFormat),
 		Prefixes[m],
 		debugInfo,
 		output)

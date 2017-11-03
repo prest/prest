@@ -95,7 +95,7 @@
   branch = "master"
   name = "github.com/nuveo/log"
   packages = ["."]
-  revision = "873af7c589d915c3cc29ae06519fd71316064d59"
+  revision = "42d162ff2473d793eb7d30191e2f8e7a893b8768"
 
 [[projects]]
   name = "github.com/pelletier/go-toml"
@@ -107,19 +107,19 @@
   branch = "master"
   name = "github.com/prest/adapters"
   packages = [".","internal/scanner","postgres","postgres/connection"]
-  revision = "c30d4055926a9bd54b974ffe6ad34ff284f6e38f"
+  revision = "636e63258251266657c0f67c43f46df5b132d2a2"
 
 [[projects]]
   branch = "master"
   name = "github.com/prest/cmd"
   packages = ["."]
-  revision = "5e4eebebd658363939d5b2b928b78bb4c6aa17e4"
+  revision = "6ab32d823d178e550c65372a37bd4f6b12e100fe"
 
 [[projects]]
   branch = "master"
   name = "github.com/prest/config"
   packages = [".","router"]
-  revision = "9665a525a8df084bd754b9167e6d9ea5c9b80861"
+  revision = "2389a79e0ce49dcf89e91103ec72344116470a59"
 
 [[projects]]
   branch = "master"
@@ -197,13 +197,13 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "661970f62f5897bc0cd5fdca7e087ba8a98a8fa1"
+  revision = "46eaec7899b1dd945c25db17c78ba3f0c58a6613"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
   packages = ["internal/gen","internal/triegen","internal/ucd","transform","unicode/cldr","unicode/norm"]
-  revision = "6eab0e8f74e86c598ec3b6fad4888e0c11482d48"
+  revision = "88f656faf3f37f690df1a32515b479415e1a6769"
 
 [[projects]]
   name = "gopkg.in/mattes/migrate.v1"
