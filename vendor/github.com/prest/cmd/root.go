@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 
 	"github.com/gorilla/mux"
@@ -21,7 +23,7 @@ var RootCmd = &cobra.Command{
 	Short: "Serve a RESTful API from any PostgreSQL database",
 	Long:  `Serve a RESTful API from any PostgreSQL database, start HTTP server`,
 	Run: func(cmd *cobra.Command, args []string) {
-		app()
+		startServer()
 	},
 }
 
@@ -47,7 +49,8 @@ func Execute() {
 	}
 }
 
-func app() {
+// MakeHandler reagister all routes
+func MakeHandler() http.Handler {
 	n := middlewares.GetApp()
 	r := router.Get()
 	r.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
@@ -65,5 +68,13 @@ func app() {
 		negroni.Wrap(crudRoutes),
 	))
 	n.UseHandler(r)
-	n.Run(fmt.Sprintf(":%v", config.PrestConf.HTTPPort))
+	return n
+}
+
+func startServer() {
+	http.Handle(config.PrestConf.ContextPath, MakeHandler())
+	l := log.New(os.Stdout, "[prest] ", 0)
+	addr := fmt.Sprintf(":%d", config.PrestConf.HTTPPort)
+	l.Printf("listening on %s and serving on %s", addr, config.PrestConf.ContextPath)
+	l.Fatal(http.ListenAndServe(addr, nil))
 }

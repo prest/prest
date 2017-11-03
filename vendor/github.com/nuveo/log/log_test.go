@@ -175,3 +175,29 @@ func TestMaxLineSize(t *testing.T) {
 		t.Fatalf("Error, printed %q, expected %q", string(out), expectedValue)
 	}
 }
+
+func TestTimeFormat(t *testing.T) {
+	now = func() time.Time { return time.Unix(1498405744, 0) }
+	DebugMode = false
+
+	out, err := getOutput(Printf, "testing a log message")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	expectedValue := []byte("\x1b[37m2017/06/25 15:49:04 [msg]...")
+	if !bytes.Equal(out, expectedValue) {
+		t.Fatalf("Error, printed %q, expected %q", string(out), expectedValue)
+	}
+
+	TimeFormat = time.RFC3339
+	out, err = getOutput(Printf, "testing a log message")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	expectedValue = []byte("\x1b[37m2017-06-25T15:49:04Z [msg...")
+	if !bytes.Equal(out, expectedValue) {
+		t.Fatalf("Error, printed %q, expected %q", string(out), expectedValue)
+	}
+}
