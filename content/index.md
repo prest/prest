@@ -48,6 +48,7 @@ docker run -e PREST_HTTP_PORT=3000 \
 
 ### Tags
 
-- 0.2 (stable)
-- 0.1 (stable)
+- [0.3](https://github.com/prest/prest/releases/tag/v0.3.0) (latest stable release)
+- 0.2
+- 0.1
 - lastest (developer)

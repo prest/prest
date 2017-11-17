@@ -15,6 +15,7 @@ package main
 import (
 	"net/http"
 
+	"github.com/prest/adapters/postgres"
 	"github.com/prest/cmd"
 	"github.com/prest/config"
 	"github.com/prest/config/router"
@@ -22,10 +23,12 @@ import (
 )
 
 func main() {
-	// Get pREST app
 	config.Load()
+
 	// Load Postgres Adapter
 	postgres.Load()
+
+	// Get pREST app
 	middlewares.GetApp()
 
 	// Get pPREST router
@@ -54,6 +57,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/prest/adapters/postgres"
 	"github.com/prest/cmd"
 	"github.com/prest/config"
 	"github.com/prest/config/router"
@@ -62,6 +66,7 @@ import (
 
 func main() {
 	config.Load()
+
 	// Load Postgres Adapter
 	postgres.Load()
 
