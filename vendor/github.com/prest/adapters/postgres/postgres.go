@@ -18,6 +18,7 @@ import (
 	"github.com/prest/adapters"
 	"github.com/prest/adapters/internal/scanner"
 	"github.com/prest/adapters/postgres/connection"
+	"github.com/prest/adapters/postgres/formatters"
 	"github.com/prest/config"
 	"github.com/prest/statements"
 )
@@ -206,7 +207,7 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 				whereKey = append(whereKey, fmt.Sprintf(`%s %s (%s)`, key, op, strings.Join(keyParams, ",")))
 			case "ANY", "SOME", "ALL":
 				whereKey = append(whereKey, fmt.Sprintf(`%s = %s ($%d)`, key, op, pid))
-				whereValues = append(whereValues, FormatArray(strings.Split(value, ",")))
+				whereValues = append(whereValues, formatters.FormatArray(strings.Split(value, ",")))
 				pid++
 			case "IS NULL", "IS NOT NULL", "IS TRUE", "IS NOT TRUE", "IS FALSE", "IS NOT FALSE":
 				whereKey = append(whereKey, fmt.Sprintf(`%s %s`, key, op))
@@ -257,7 +258,7 @@ func (adapter *Postgres) SetByRequest(r *http.Request, initialPlaceholderID int)
 
 		switch value.(type) {
 		case []interface{}:
-			values = append(values, FormatArray(value))
+			values = append(values, formatters.FormatArray(value))
 		default:
 			values = append(values, value)
 		}
@@ -291,7 +292,7 @@ func (adapter *Postgres) ParseInsertRequest(r *http.Request) (colsName string, c
 
 		switch value.(type) {
 		case []interface{}:
-			values = append(values, FormatArray(value))
+			values = append(values, formatters.FormatArray(value))
 		default:
 			values = append(values, value)
 		}
@@ -539,52 +540,6 @@ func (adapter *Postgres) PaginateIfPossible(r *http.Request) (paginatedQuery str
 	}
 	paginatedQuery = fmt.Sprintf("LIMIT %d OFFSET(%d - 1) * %d", pageSize, pageNumber, pageSize)
 	return
-}
-
-// FormatArray format slice to a postgres array format
-// today support a slice of string, int and fmt.Stringer
-func FormatArray(value interface{}) string {
-	var aux string
-	var check = func(aux string, value interface{}) (ret string) {
-		if aux != "" {
-			aux += ","
-		}
-		ret = aux + FormatArray(value)
-		return
-	}
-	switch value.(type) {
-	case []fmt.Stringer:
-		for _, v := range value.([]fmt.Stringer) {
-			aux = check(aux, v)
-		}
-		return "{" + aux + "}"
-	case []interface{}:
-		for _, v := range value.([]interface{}) {
-			aux = check(aux, v)
-		}
-		return "{" + aux + "}"
-	case []string:
-		for _, v := range value.([]string) {
-			aux = check(aux, v)
-		}
-		return "{" + aux + "}"
-	case []int:
-		for _, v := range value.([]int) {
-			aux = check(aux, v)
-		}
-		return "{" + aux + "}"
-	case string:
-		aux := value.(string)
-		aux = strings.Replace(aux, `\`, `\\`, -1)
-		aux = strings.Replace(aux, `"`, `\"`, -1)
-		return `"` + aux + `"`
-	case int:
-		return strconv.Itoa(value.(int))
-	case fmt.Stringer:
-		v := value.(fmt.Stringer)
-		return FormatArray(v.String())
-	}
-	return ""
 }
 
 // Insert execute insert sql into a table

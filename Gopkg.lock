@@ -40,8 +40,8 @@
 [[projects]]
   name = "github.com/gorilla/mux"
   packages = ["."]
-  revision = "24fca303ac6da784b9e8269f724ddeb0b2eea5e7"
-  version = "v1.5.0"
+  revision = "7f08801859139f86dfafd1c296e2cba9a80d292e"
+  version = "v1.6.0"
 
 [[projects]]
   branch = "master"
@@ -65,7 +65,7 @@
   branch = "master"
   name = "github.com/lib/pq"
   packages = [".","oid"]
-  revision = "b609790bd85edf8e9ab7e0f8912750a786177bcf"
+  revision = "8c6ee72f3e6bcb1542298dd5f76cb74af9742cec"
 
 [[projects]]
   name = "github.com/magiconair/properties"
@@ -95,7 +95,7 @@
   branch = "master"
   name = "github.com/nuveo/log"
   packages = ["."]
-  revision = "42d162ff2473d793eb7d30191e2f8e7a893b8768"
+  revision = "a2d1fb3bfb04a15d725585b27fcb03a1de5b41f2"
 
 [[projects]]
   name = "github.com/pelletier/go-toml"
@@ -106,8 +106,8 @@
 [[projects]]
   branch = "master"
   name = "github.com/prest/adapters"
-  packages = [".","internal/scanner","postgres","postgres/connection"]
-  revision = "636e63258251266657c0f67c43f46df5b132d2a2"
+  packages = [".","internal/scanner","postgres","postgres/connection","postgres/formatters"]
+  revision = "6cea51fd4c6f7d9bbc9540b4eea6964a5aea65f9"
 
 [[projects]]
   branch = "master"
@@ -152,10 +152,10 @@
   revision = "4ed30c63cfff9ab9b4096e4c0904cccee806e381"
 
 [[projects]]
-  branch = "master"
   name = "github.com/spf13/afero"
   packages = [".","mem"]
-  revision = "5660eeed305fe5f69c8fc6cf899132a459a97064"
+  revision = "8d919cbe7e2627e417f3e45c3c0e489a5b7e2536"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/spf13/cast"
@@ -190,14 +190,14 @@
 [[projects]]
   name = "github.com/urfave/negroni"
   packages = ["."]
-  revision = "fde5e16d32adc7ad637e9cd9ad21d4ebc6192535"
-  version = "v0.2.0"
+  revision = "5dbbc83f748fc3ad38585842b0aedab546d0ea1e"
+  version = "v0.3.0"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "46eaec7899b1dd945c25db17c78ba3f0c58a6613"
+  revision = "82aafbf43bf885069dc71b7e7c2f9d7a614d47da"
 
 [[projects]]
   branch = "master"
@@ -215,7 +215,7 @@
   branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "eb3733d160e74a9c7e442f435eb3bea458e1d19f"
+  revision = "287cf08546ab5e7e37d55a84f7ed3fd1db036de5"
 
 [solve-meta]
   analyzer-name = "dep"

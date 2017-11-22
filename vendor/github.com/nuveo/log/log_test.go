@@ -201,3 +201,27 @@ func TestTimeFormat(t *testing.T) {
 		t.Fatalf("Error, printed %q, expected %q", string(out), expectedValue)
 	}
 }
+
+func fackAdapter(m MsgType, o OutType, config map[string]interface{}, msg ...interface{}) {
+	fmt.Println(msg...)
+}
+
+func TestSetAdapterConfig(t *testing.T) {
+	AddAdapter("fack", AdapterPod{
+		Adapter: fackAdapter,
+		Config:  nil,
+	})
+
+	SetAdapterConfig("fake", map[string]interface{}{"test": "value"})
+
+	config := adapters["fake"].Config
+	if config["test"] != "value" {
+		t.Fatalf("Error, expecte \"value\", got %v", config["test"])
+	}
+
+	RemoveAapter("fake")
+
+	if _, ok := adapters["fake"]; ok {
+		t.Fatal("Error expected false")
+	}
+}

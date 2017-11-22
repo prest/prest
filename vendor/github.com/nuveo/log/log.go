@@ -7,23 +7,36 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"time"
 )
 
-type msgType uint8
-type outType uint8
+type (
+	MsgType uint8
+	OutType uint8
+)
 
 const (
-	MessageLog         msgType = 0
-	Message2Log        msgType = 1
-	WarningLog         msgType = 2
-	DebugLog           msgType = 3
-	ErrorLog           msgType = 4
-	FormattedOut       outType = 0
-	LineOut            outType = 1
+	MessageLog         MsgType = 0
+	Message2Log        MsgType = 1
+	WarningLog         MsgType = 2
+	DebugLog           MsgType = 3
+	ErrorLog           MsgType = 4
+	FormattedOut       OutType = 0
+	LineOut            OutType = 1
 	DefaultMaxLineSize int     = 2000
 	DefaultTimeFormat  string  = "2006/01/02 15:04:05"
 )
+
+// AdapterFunc is the type for the function adapter
+// any function that has this signature can be used as an adapter
+type AdapterFunc func(m MsgType, o OutType, config map[string]interface{}, msg ...interface{})
+
+// AdapterPod contains the metadata of an adapter
+type AdapterPod struct {
+	Adapter AdapterFunc
+	Config  map[string]interface{}
+}
 
 var (
 	// DebugMode Enable debug mode
@@ -56,8 +69,50 @@ var (
 		ErrorLog:    "error",
 	}
 
-	now = time.Now
+	now      = time.Now
+	adapters = make(map[string]AdapterPod)
+	lock     = sync.RWMutex{}
 )
+
+func init() {
+	if len(adapters) == 0 {
+		AddAdapter("stdout", AdapterPod{
+			Adapter: pln,
+			Config:  nil,
+		})
+	}
+}
+
+// AddAdapter allows to add an adapter and parameters
+func AddAdapter(name string, adapter AdapterPod) {
+	lock.Lock()
+	adapters[name] = adapter
+	lock.Unlock()
+}
+
+// RemoveAapter remove the adapter from list
+func RemoveAapter(name string) {
+	lock.Lock()
+	delete(adapters, name)
+	lock.Unlock()
+}
+
+// SetAdapterConfig allows set new adapter parameters
+func SetAdapterConfig(name string, config map[string]interface{}) {
+	lock.Lock()
+	a := adapters[name]
+	a.Config = config
+	adapters[name] = a
+	lock.Unlock()
+}
+
+func runAdapters(m MsgType, o OutType, msg ...interface{}) {
+	lock.RLock()
+	defer lock.RUnlock()
+	for _, a := range adapters {
+		a.Adapter(m, o, a.Config, msg...)
+	}
+}
 
 // HTTPError write lot to stdout and return json error on http.ResponseWriter with http error code.
 func HTTPError(w http.ResponseWriter, code int) {
@@ -72,53 +127,53 @@ func HTTPError(w http.ResponseWriter, code int) {
 
 // Fatal show message with line break at the end and exit to OS.
 func Fatal(msg ...interface{}) {
-	pln(ErrorLog, LineOut, msg...)
+	runAdapters(ErrorLog, LineOut, msg...)
 	os.Exit(-1)
 }
 
 // Errorln message with line break at the end.
 func Errorln(msg ...interface{}) {
-	pln(ErrorLog, LineOut, msg...)
+	runAdapters(ErrorLog, LineOut, msg...)
 }
 
 // Errorf shows formatted error message on stdout without line break at the end.
 func Errorf(msg ...interface{}) {
-	pln(ErrorLog, FormattedOut, msg...)
+	runAdapters(ErrorLog, FormattedOut, msg...)
 }
 
 // Warningln shows warning message on stdout with line break at the end.
 func Warningln(msg ...interface{}) {
-	pln(WarningLog, LineOut, msg...)
+	runAdapters(WarningLog, LineOut, msg...)
 }
 
 // Warningf shows formatted warning message on stdout without line break at the end.
 func Warningf(msg ...interface{}) {
-	pln(WarningLog, FormattedOut, msg...)
+	runAdapters(WarningLog, FormattedOut, msg...)
 }
 
 // Println shows message on stdout with line break at the end.
 func Println(msg ...interface{}) {
-	pln(MessageLog, LineOut, msg...)
+	runAdapters(MessageLog, LineOut, msg...)
 }
 
 // Printf shows formatted message on stdout without line break at the end.
 func Printf(msg ...interface{}) {
-	pln(MessageLog, FormattedOut, msg...)
+	runAdapters(MessageLog, FormattedOut, msg...)
 }
 
 // Debugln shows debug message on stdout with line break at the end.
 // If debug mode is not active no message is displayed
 func Debugln(msg ...interface{}) {
-	pln(DebugLog, LineOut, msg...)
+	runAdapters(DebugLog, LineOut, msg...)
 }
 
 // Debugf shows debug message on stdout without line break at the end.
 // If debug mode is not active no message is displayed
 func Debugf(msg ...interface{}) {
-	pln(DebugLog, FormattedOut, msg...)
+	runAdapters(DebugLog, FormattedOut, msg...)
 }
 
-func pln(m msgType, o outType, msg ...interface{}) {
+func pln(m MsgType, o OutType, config map[string]interface{}, msg ...interface{}) {
 	if m == DebugLog && !DebugMode {
 		return
 	}
@@ -126,7 +181,7 @@ func pln(m msgType, o outType, msg ...interface{}) {
 	var debugInfo, lineBreak, output string
 
 	if DebugMode {
-		_, fn, line, _ := runtime.Caller(2)
+		_, fn, line, _ := runtime.Caller(5)
 		fn = filepath.Base(fn)
 		debugInfo = fmt.Sprintf("%s:%d ", fn, line)
 	}

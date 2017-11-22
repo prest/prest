@@ -46,6 +46,28 @@ func (h *hijackableResponse) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return nil, nil, nil
 }
 
+func TestResponseWriterBeforeWrite(t *testing.T) {
+	rec := httptest.NewRecorder()
+	rw := NewResponseWriter(rec)
+
+	expect(t, rw.Status(), 0)
+	expect(t, rw.Written(), false)
+}
+
+func TestResponseWriterBeforeFuncHasAccessToStatus(t *testing.T) {
+	var status int
+
+	rec := httptest.NewRecorder()
+	rw := NewResponseWriter(rec)
+
+	rw.Before(func(w ResponseWriter) {
+		status = w.Status()
+	})
+	rw.WriteHeader(http.StatusCreated)
+
+	expect(t, status, http.StatusCreated)
+}
+
 func TestResponseWriterWritingString(t *testing.T) {
 	rec := httptest.NewRecorder()
 	rw := NewResponseWriter(rec)
@@ -141,10 +163,25 @@ func TestResponseWriterCloseNotify(t *testing.T) {
 	expect(t, closed, true)
 }
 
+func TestResponseWriterNonCloseNotify(t *testing.T) {
+	rw := NewResponseWriter(httptest.NewRecorder())
+	_, ok := rw.(http.CloseNotifier)
+	expect(t, ok, false)
+}
+
 func TestResponseWriterFlusher(t *testing.T) {
 	rec := httptest.NewRecorder()
 	rw := NewResponseWriter(rec)
 
 	_, ok := rw.(http.Flusher)
 	expect(t, ok, true)
+}
+
+func TestResponseWriter_Flush_marksWritten(t *testing.T) {
+	rec := httptest.NewRecorder()
+	rw := NewResponseWriter(rec)
+
+	rw.Flush()
+	expect(t, rw.Status(), http.StatusOK)
+	expect(t, rw.Written(), true)
 }
