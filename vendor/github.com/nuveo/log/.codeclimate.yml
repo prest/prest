@@ -1,0 +1,13 @@
+version: "2"
+plugins:
+  golint:
+    enabled: true
+  gofmt:
+    enabled: true
+  govet:
+    enabled: true
+  fixme:
+    enabled: true
+exclude_patterns:
+  - ".vendor"
+  - "vendor"

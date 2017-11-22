@@ -1,4 +1,5 @@
-# log
+# nuveo/log
+[![Build Status](https://travis-ci.org/nuveo/log.svg?branch=master)](https://travis-ci.org/nuveo/log)
 A simple to use log system, minimalist but with features for debugging and differentiation of messages
 
 
