@@ -59,13 +59,13 @@
   branch = "master"
   name = "github.com/jmoiron/sqlx"
   packages = [".","reflectx"]
-  revision = "3379e5993990b1f927fc8db926485e6f6becf2d2"
+  revision = "99f3ad6d85ae53d0fecf788ab62d0e9734b3c117"
 
 [[projects]]
   branch = "master"
   name = "github.com/lib/pq"
   packages = [".","oid"]
-  revision = "8c6ee72f3e6bcb1542298dd5f76cb74af9742cec"
+  revision = "83612a56d3dd153a94a629cd64925371c9adad78"
 
 [[projects]]
   name = "github.com/magiconair/properties"
@@ -95,7 +95,7 @@
   branch = "master"
   name = "github.com/nuveo/log"
   packages = ["."]
-  revision = "a2d1fb3bfb04a15d725585b27fcb03a1de5b41f2"
+  revision = "526558130f8bfa97328e11116b246eff7563274a"
 
 [[projects]]
   name = "github.com/pelletier/go-toml"
@@ -107,7 +107,7 @@
   branch = "master"
   name = "github.com/prest/adapters"
   packages = [".","internal/scanner","postgres","postgres/connection","postgres/formatters"]
-  revision = "6cea51fd4c6f7d9bbc9540b4eea6964a5aea65f9"
+  revision = "a6b089042d8bccc3d8971d6bdcbda91c94f46c09"
 
 [[projects]]
   branch = "master"
@@ -197,13 +197,13 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "82aafbf43bf885069dc71b7e7c2f9d7a614d47da"
+  revision = "8b4580aae2a0dd0c231a45d3ccb8434ff533b840"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
   packages = ["internal/gen","internal/triegen","internal/ucd","transform","unicode/cldr","unicode/norm"]
-  revision = "88f656faf3f37f690df1a32515b479415e1a6769"
+  revision = "57961680700a5336d15015c8c50686ca5ba362a4"
 
 [[projects]]
   name = "gopkg.in/mattes/migrate.v1"

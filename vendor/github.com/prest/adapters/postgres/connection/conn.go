@@ -29,11 +29,12 @@ func GetURI(DBName string) string {
 	if DBName == "" {
 		DBName = config.PrestConf.PGDatabase
 	}
-	dbURI = fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=disable connect_timeout=%d",
+	dbURI = fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=%v connect_timeout=%d",
 		config.PrestConf.PGUser,
 		DBName,
 		config.PrestConf.PGHost,
 		config.PrestConf.PGPort,
+		config.PrestConf.SSLMode,
 		config.PrestConf.PGConnTimeout)
 
 	if config.PrestConf.PGPass != "" {
