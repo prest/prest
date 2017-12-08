@@ -119,7 +119,7 @@
   branch = "master"
   name = "github.com/prest/config"
   packages = [".","router"]
-  revision = "2389a79e0ce49dcf89e91103ec72344116470a59"
+  revision = "b5d873eb45f9d6868668576dd54caf25ad8cf5aa"
 
 [[projects]]
   branch = "master"
@@ -197,13 +197,13 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "8b4580aae2a0dd0c231a45d3ccb8434ff533b840"
+  revision = "a0f4589a76f1f83070cb9e5613809e1d07b97c13"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
   packages = ["internal/gen","internal/triegen","internal/ucd","transform","unicode/cldr","unicode/norm"]
-  revision = "57961680700a5336d15015c8c50686ca5ba362a4"
+  revision = "be25de41fadfae372d6470bda81ca6beb55ef551"
 
 [[projects]]
   name = "gopkg.in/mattes/migrate.v1"

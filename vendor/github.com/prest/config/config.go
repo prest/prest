@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -56,9 +57,12 @@ type Prest struct {
 // PrestConf config variable
 var PrestConf *Prest
 
+var configFile string
+
 func viperCfg() {
-	filePath := getDefaultPrestConf(os.Getenv("PREST_CONF"))
-	dir, file := filepath.Split(filePath)
+	configFile = getDefaultPrestConf(os.Getenv("PREST_CONF"))
+
+	dir, file := filepath.Split(configFile)
 	file = strings.TrimSuffix(file, filepath.Ext(file))
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvPrefix("PREST")
@@ -97,11 +101,21 @@ func getDefaultPrestConf(prestConf string) string {
 
 // Parse pREST config
 func Parse(cfg *Prest) (err error) {
+
+	if configFile != "" {
+		log.Printf("Using %s config file.\n", configFile)
+	}
 	err = viper.ReadInConfig()
 	if err != nil {
 		switch err.(type) {
 		case viper.ConfigFileNotFoundError:
-			log.Warningln("Running without config file.")
+
+			if configFile != "" {
+				log.Fatal(fmt.Sprintf("File %s not found. Aborting.\n", configFile))
+			}
+
+			log.Warningln("Config file not found. Running without config file.")
+
 		default:
 			return
 		}
