@@ -1,7 +1,8 @@
-FROM golang:1.9-alpine
-
-RUN mkdir -p /go/src/github.com/prest/prest
-COPY  ./ /go/src/github.com/prest/prest
+FROM golang:1.9-alpine as build-stage
 WORKDIR /go/src/github.com/prest/prest
-RUN go install
-CMD ["prest"]
+COPY  ./ /go/src/github.com/prest/prest
+RUN go build -ldflags "-s -w"
+
+FROM alpine:3.6
+COPY --from=build-stage /go/src/github.com/prest/prest/prest /
+CMD "/prest"
