@@ -90,13 +90,23 @@ func TestParse(t *testing.T) {
 }
 
 func TestGetDefaultPrestConf(t *testing.T) {
-	prestConf := ""
-	if conf := getDefaultPrestConf(prestConf); conf != "./prest.toml" {
-		t.Errorf("expected ./prest.toml, but got: %q", conf)
+	testCases := []struct {
+		name        string
+		defaultFile string
+		prestConf   string
+		result      string
+	}{
+		{"empty config", "./prest.toml", "", ""},
+		{"custom config", "./prest.toml", "../prest.toml", "../prest.toml"},
+		{"default config", "./testdata/prest.toml", "", "./testdata/prest.toml"},
 	}
-
-	prestConf = "../prest.toml"
-	if conf := getDefaultPrestConf(prestConf); conf != "../prest.toml" {
-		t.Errorf("expected ../prest.toml, but got: %q", conf)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			defaultFile = tc.defaultFile
+			cfg := getDefaultPrestConf(tc.prestConf)
+			if cfg != tc.result {
+				t.Errorf("expected %v, but got %v", tc.result, cfg)
+			}
+		})
 	}
 }
