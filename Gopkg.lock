@@ -59,7 +59,7 @@
   branch = "master"
   name = "github.com/jmoiron/sqlx"
   packages = [".","reflectx"]
-  revision = "99f3ad6d85ae53d0fecf788ab62d0e9734b3c117"
+  revision = "de8647470aafe4854c976707c431dbe1eb2822c6"
 
 [[projects]]
   branch = "master"
@@ -119,7 +119,7 @@
   branch = "master"
   name = "github.com/prest/config"
   packages = [".","router"]
-  revision = "b5d873eb45f9d6868668576dd54caf25ad8cf5aa"
+  revision = "f8b5c7ff71deceaba4cd285127c693532ec05d85"
 
 [[projects]]
   branch = "master"
@@ -131,13 +131,13 @@
   branch = "master"
   name = "github.com/prest/helpers"
   packages = ["."]
-  revision = "6515e517e8582c0d0ec2aa75ac43672413dc0701"
+  revision = "9e61e2d5c22e4378b29f16bac8c32f94dc86fb1d"
 
 [[projects]]
   branch = "master"
   name = "github.com/prest/middlewares"
   packages = ["."]
-  revision = "6d97a19c35aa59eb6ba9b645f3ebbd9cb425fdb3"
+  revision = "2bb7a41a27221dbffcc93182a0428b7673559da4"
 
 [[projects]]
   branch = "master"
@@ -197,13 +197,13 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "a0f4589a76f1f83070cb9e5613809e1d07b97c13"
+  revision = "1d2aa6dbdea45adaaebb9905d0666e4537563829"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
   packages = ["internal/gen","internal/triegen","internal/ucd","transform","unicode/cldr","unicode/norm"]
-  revision = "be25de41fadfae372d6470bda81ca6beb55ef551"
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
 
 [[projects]]
   name = "gopkg.in/mattes/migrate.v1"

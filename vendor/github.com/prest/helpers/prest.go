@@ -1,16 +1,21 @@
 package helpers
 
-import "fmt"
-
-const (
-	// Major and minor version.
-	PrestVersionNumber = 0.1
-
-	// Increment this for bug releases
-	PrestPatchVersion = 7
+import (
+	"fmt"
 )
 
-var CommitHash string
+const (
+	// PrestVersionNumber Major and minor version.
+	PrestVersionNumber = 0.3
+
+	// PrestPatchVersion Increment this for bug releases
+	PrestPatchVersion = 0
+)
+
+var (
+	// CommitHash for version
+	CommitHash string
+)
 
 // PrestReleaseVersion is same as pREST Version.
 func PrestReleaseVersion() string {
