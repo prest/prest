@@ -19,7 +19,7 @@ var upCmd = &cobra.Command{
 		verifyMigrationsPath(path)
 		timerStart = time.Now()
 		pipe := migrate.NewPipe()
-		go migrate.Up(pipe, url, path)
+		go migrate.Up(pipe, urlConn, path)
 		ok := writePipe(pipe)
 		printTimer()
 		if !ok {

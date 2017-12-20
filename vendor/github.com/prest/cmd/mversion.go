@@ -17,7 +17,7 @@ var mversionCmd = &cobra.Command{
 	Long:  `Show the current migration version`,
 	Run: func(cmd *cobra.Command, args []string) {
 		verifyMigrationsPath(path)
-		version, err := migrate.Version(url, path)
+		version, err := migrate.Version(urlConn, path)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(-1)

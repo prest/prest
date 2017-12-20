@@ -27,7 +27,7 @@ var nextCmd = &cobra.Command{
 		}
 		timerStart = time.Now()
 		pipe := migrate.NewPipe()
-		go migrate.Migrate(pipe, url, path, relativeNInt)
+		go migrate.Migrate(pipe, urlConn, path, relativeNInt)
 		ok := writePipe(pipe)
 		printTimer()
 		if !ok {

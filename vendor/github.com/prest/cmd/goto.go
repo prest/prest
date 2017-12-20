@@ -26,7 +26,7 @@ var gotoCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		currentVersion, err := migrate.Version(url, path)
+		currentVersion, err := migrate.Version(urlConn, path)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(-1)
@@ -36,7 +36,7 @@ var gotoCmd = &cobra.Command{
 
 		timerStart = time.Now()
 		pipe := migrate.NewPipe()
-		go migrate.Migrate(pipe, url, path, relativeNInt)
+		go migrate.Migrate(pipe, urlConn, path, relativeNInt)
 		ok := writePipe(pipe)
 		printTimer()
 		if !ok {

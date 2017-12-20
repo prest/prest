@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -14,8 +16,10 @@ import (
 	"gopkg.in/mattes/migrate.v1/migrate/direction"
 )
 
-var url string
-var path string
+var (
+	urlConn string
+	path    string
+)
 
 // migrateCmd represents the migrate command
 var migrateCmd = &cobra.Command{
@@ -25,7 +29,16 @@ var migrateCmd = &cobra.Command{
 }
 
 func driverURL() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s", config.PrestConf.PGUser, config.PrestConf.PGPass, config.PrestConf.PGHost, config.PrestConf.PGPort, config.PrestConf.PGDatabase, config.PrestConf.SSLMode)
+	// the replace is to maintain compatibility with Go 1.7 https://github.com/golang/go/issues/4013
+	// TODO: use url.PathEscape() when stop supporting Go 1.7
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
+		strings.Replace(url.QueryEscape(config.PrestConf.PGUser), "+", "%20", -1),
+		strings.Replace(url.QueryEscape(config.PrestConf.PGPass), "+", "%20", -1),
+		strings.Replace(url.QueryEscape(config.PrestConf.PGHost), "+", "%20", -1),
+		config.PrestConf.PGPort,
+		strings.Replace(url.QueryEscape(config.PrestConf.PGDatabase), "+", "%20", -1),
+		url.QueryEscape(config.PrestConf.SSLMode))
+
 }
 
 func writePipe(pipe chan interface{}) (ok bool) {
