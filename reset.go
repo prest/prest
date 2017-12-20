@@ -19,7 +19,7 @@ var resetCmd = &cobra.Command{
 		verifyMigrationsPath(path)
 		timerStart = time.Now()
 		pipe := migrate.NewPipe()
-		go migrate.Reset(pipe, url, path)
+		go migrate.Reset(pipe, urlConn, path)
 		ok := writePipe(pipe)
 		printTimer()
 		if !ok {

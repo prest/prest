@@ -22,7 +22,7 @@ var createCmd = &cobra.Command{
 			os.Exit(-1)
 		}
 		name := args[0]
-		migrationFile, err := migrate.Create(url, path, name)
+		migrationFile, err := migrate.Create(urlConn, path, name)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

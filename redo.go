@@ -19,7 +19,7 @@ var redoCmd = &cobra.Command{
 		verifyMigrationsPath(path)
 		timerStart = time.Now()
 		pipe := migrate.NewPipe()
-		go migrate.Redo(pipe, url, path)
+		go migrate.Redo(pipe, urlConn, path)
 		ok := writePipe(pipe)
 		printTimer()
 		if !ok {
