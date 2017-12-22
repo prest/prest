@@ -52,6 +52,9 @@ type Prest struct {
 	Adapter          adapters.Adapter
 	EnableDefaultJWT bool
 	EnableCache      bool
+	HTTPSMode        bool
+	HTTPSCert        string
+	HTTPSKey         string
 }
 
 var (
@@ -87,6 +90,9 @@ func viperCfg() {
 	viper.SetDefault("cors.allowheaders", []string{"*"})
 	viper.SetDefault("cache.enable", true)
 	viper.SetDefault("context", "/")
+	viper.SetDefault("https.mode", false)
+	viper.SetDefault("https.cert", "/etc/certs/cert.crt")
+	viper.SetDefault("https.key", "/etc/certs/cert.key")
 
 	user, err := user.Current()
 	if err != nil {
@@ -148,6 +154,9 @@ func Parse(cfg *Prest) (err error) {
 	cfg.EnableDefaultJWT = viper.GetBool("jwt.default")
 	cfg.EnableCache = viper.GetBool("cache.enable")
 	cfg.ContextPath = viper.GetString("context")
+	cfg.HTTPSMode = viper.GetBool("https.mode")
+	cfg.HTTPSCert = viper.GetString("https.cert")
+	cfg.HTTPSKey = viper.GetString("https.key")
 
 	var t []TablesConf
 	err = viper.UnmarshalKey("access.tables", &t)
