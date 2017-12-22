@@ -77,8 +77,8 @@ func startServer() {
 	addr := fmt.Sprintf(":%d", config.PrestConf.HTTPPort)
 	l.Printf("listening on %s and serving on %s", addr, config.PrestConf.ContextPath)
 	if config.PrestConf.HTTPSMode {
-	l.Fatal(http.ListenAndServeTLS(addr, config.PrestConf.HTTPSCert, config.PrestConf.HTTPSKey, nil))
+		l.Fatal(http.ListenAndServeTLS(addr, config.PrestConf.HTTPSCert, config.PrestConf.HTTPSKey, nil))
 	} else {
-	l.Fatal(http.ListenAndServe(addr, nil))
+		l.Fatal(http.ListenAndServe(addr, nil))
 	}
 }
