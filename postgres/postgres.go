@@ -150,71 +150,75 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 	pid := initialPlaceholderID
 	for key, val := range r.URL.Query() {
 		if !strings.HasPrefix(key, "_") {
-			value = val[0]
-			if val[0] != "" {
-				op = removeOperatorRegex.FindString(val[0])
-				op = strings.Replace(op, ".", "", -1)
-				if op == "" {
-					op = "$eq"
+			for k, v := range val {
+				if v != "" {
+					op = removeOperatorRegex.FindString(v)
+					op = strings.Replace(op, ".", "", -1)
+					if op == "" {
+						op = "$eq"
+					}
+					value = removeOperatorRegex.ReplaceAllString(v, "")
+					op, err = GetQueryOperator(op)
+					if err != nil {
+						return
+					}
 				}
-				value = removeOperatorRegex.ReplaceAllString(val[0], "")
-				op, err = GetQueryOperator(op)
-				if err != nil {
+
+				keyInfo := strings.Split(key, ":")
+
+				if len(keyInfo) > 1 {
+					switch keyInfo[1] {
+					case "jsonb":
+						jsonField := strings.Split(keyInfo[0], "->>")
+						if chkInvalidIdentifier(jsonField[0], jsonField[1]) {
+							err = fmt.Errorf("invalid identifier: %+v", jsonField)
+							return
+						}
+						fields := strings.Split(jsonField[0], ".")
+						jsonField[0] = fmt.Sprintf(`"%s"`, strings.Join(fields, `"."`))
+						whereKey = append(whereKey, fmt.Sprintf(`%s->>'%s' %s $%d`, jsonField[0], jsonField[1], op, pid))
+						values = append(values, value)
+					default:
+						if chkInvalidIdentifier(keyInfo[0]) {
+							err = fmt.Errorf("invalid identifier: %s", keyInfo[0])
+							return
+						}
+					}
+					pid++
+					continue
+				}
+
+				if chkInvalidIdentifier(key) {
+					err = fmt.Errorf("invalid identifier: %s", key)
 					return
 				}
-			}
 
-			keyInfo := strings.Split(key, ":")
-
-			if len(keyInfo) > 1 {
-				switch keyInfo[1] {
-				case "jsonb":
-					jsonField := strings.Split(keyInfo[0], "->>")
-					if chkInvalidIdentifier(jsonField[0], jsonField[1]) {
-						err = fmt.Errorf("invalid identifier: %+v", jsonField)
-						return
-					}
-					fields := strings.Split(jsonField[0], ".")
-					jsonField[0] = fmt.Sprintf(`"%s"`, strings.Join(fields, `"."`))
-					whereKey = append(whereKey, fmt.Sprintf(`%s->>'%s' %s $%d`, jsonField[0], jsonField[1], op, pid))
-					values = append(values, value)
-				default:
-					if chkInvalidIdentifier(keyInfo[0]) {
-						err = fmt.Errorf("invalid identifier: %s", keyInfo[0])
-						return
-					}
+				if k == 0 {
+					fields := strings.Split(key, ".")
+					key = fmt.Sprintf(`"%s"`, strings.Join(fields, `"."`))
 				}
-				pid++
-				continue
-			}
 
-			if chkInvalidIdentifier(key) {
-				err = fmt.Errorf("invalid identifier: %s", key)
-				return
-			}
-			fields := strings.Split(key, ".")
-			key = fmt.Sprintf(`"%s"`, strings.Join(fields, `"."`))
-
-			switch op {
-			case "IN", "NOT IN":
-				v := strings.Split(value, ",")
-				keyParams := make([]string, len(v))
-				for i := 0; i < len(v); i++ {
-					whereValues = append(whereValues, v[i])
-					keyParams[i] = fmt.Sprintf(`$%d`, pid+i)
+				switch op {
+				case "IN", "NOT IN":
+					v := strings.Split(value, ",")
+					keyParams := make([]string, len(v))
+					for i := 0; i < len(v); i++ {
+						whereValues = append(whereValues, v[i])
+						keyParams[i] = fmt.Sprintf(`$%d`, pid+i)
+					}
+					pid += len(v)
+					whereKey = append(whereKey, fmt.Sprintf(`%s %s (%s)`, key, op, strings.Join(keyParams, ",")))
+				case "ANY", "SOME", "ALL":
+					whereKey = append(whereKey, fmt.Sprintf(`%s = %s ($%d)`, key, op, pid))
+					whereValues = append(whereValues, formatters.FormatArray(strings.Split(value, ",")))
+					pid++
+				case "IS NULL", "IS NOT NULL", "IS TRUE", "IS NOT TRUE", "IS FALSE", "IS NOT FALSE":
+					whereKey = append(whereKey, fmt.Sprintf(`%s %s`, key, op))
+				default: // "=", "!=", ">", ">=", "<", "<="
+					whereKey = append(whereKey, fmt.Sprintf(`%s %s $%d`, key, op, pid))
+					whereValues = append(whereValues, value)
+					pid++
 				}
-				pid += len(v)
-				whereKey = append(whereKey, fmt.Sprintf(`%s %s (%s)`, key, op, strings.Join(keyParams, ",")))
-			case "ANY", "SOME", "ALL":
-				whereKey = append(whereKey, fmt.Sprintf(`%s = %s ($%d)`, key, op, pid))
-				whereValues = append(whereValues, formatters.FormatArray(strings.Split(value, ",")))
-				pid++
-			case "IS NULL", "IS NOT NULL", "IS TRUE", "IS NOT TRUE", "IS FALSE", "IS NOT FALSE":
-				whereKey = append(whereKey, fmt.Sprintf(`%s %s`, key, op))
-			default: // "=", "!=", ">", ">=", "<", "<="
-				whereKey = append(whereKey, fmt.Sprintf(`%s %s $%d`, key, op, pid))
-				whereValues = append(whereValues, value)
-				pid++
 			}
 		}
 	}

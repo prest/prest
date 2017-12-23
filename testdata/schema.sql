@@ -17,6 +17,7 @@ CREATE TABLE testjson(name text, data jsonb);
 CREATE TABLE testarray(id serial, data character varying(250)[]);
 CREATE TABLE test_empty_table(id serial, data character varying(250)[]);
 CREATE TABLE test_group_by_table(id serial, name text, age integer, salary int);
+CREATE TABLE test_multiple_fields(created_at timestamp);
 
 -- Inserts
 INSERT INTO test (name) VALUES ('prest tester');
@@ -38,6 +39,8 @@ INSERT INTO test_group_by_table(name, age, salary) VALUES ('joao', 20, 1250);
 INSERT INTO test_group_by_table(name, age, salary) VALUES ('maria', 19, 3999);
 INSERT INTO test_group_by_table(name, age, salary) VALUES ('gopher', 20, 100);
 INSERT INTO test_group_by_table(name, age, salary) VALUES ('guitarra humana', 19, 3998);
+
+INSERT INTO test_multiple_fields(created_at) VALUES ('1997-12-17 07:37:16-08');
 
 -- Views
 CREATE TABLE table_to_view(id serial, name text, celphone text);
