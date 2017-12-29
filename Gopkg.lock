@@ -107,19 +107,19 @@
   branch = "master"
   name = "github.com/prest/adapters"
   packages = [".","internal/scanner","postgres","postgres/connection","postgres/formatters"]
-  revision = "a6b089042d8bccc3d8971d6bdcbda91c94f46c09"
+  revision = "3da2c6e983d6f49665266d51617fb38f0ba72ab6"
 
 [[projects]]
   branch = "master"
   name = "github.com/prest/cmd"
   packages = ["."]
-  revision = "04c51f2c516007600c7d2e934385c3074b7960e3"
+  revision = "38910f4f0ac28cc293eb09b2b2a5e7d163bd5114"
 
 [[projects]]
   branch = "master"
   name = "github.com/prest/config"
   packages = [".","router"]
-  revision = "f8b5c7ff71deceaba4cd285127c693532ec05d85"
+  revision = "1a9f774888c317b36bdd4b81edd5eb6bd7d9d03c"
 
 [[projects]]
   branch = "master"
@@ -154,8 +154,8 @@
 [[projects]]
   name = "github.com/spf13/afero"
   packages = [".","mem"]
-  revision = "8d919cbe7e2627e417f3e45c3c0e489a5b7e2536"
-  version = "v1.0.0"
+  revision = "ec3a3111d1e1bdff38a61e09d5a5f5e974905611"
+  version = "v1.0.1"
 
 [[projects]]
   name = "github.com/spf13/cast"
@@ -197,13 +197,13 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "236baca6791e3758b28d82d8e444806c7e5448a3"
+  revision = "83801418e1b59fb1880e363299581ee543af32ca"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
   packages = ["internal/gen","internal/triegen","internal/ucd","transform","unicode/cldr","unicode/norm"]
-  revision = "eb22672bea55af56d225d4e35405f4d2e9f062a0"
+  revision = "e19ae1496984b1c655b8044a65c0300a3c878dd3"
 
 [[projects]]
   name = "gopkg.in/mattes/migrate.v1"
