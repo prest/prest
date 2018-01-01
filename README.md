@@ -17,4 +17,4 @@ There is PostgREST written in Haskell, but keeping Haskell software in productio
 
 ## Documentation
 
-https://postgres.rest/ ([source](https://github.com/prest/prest.github.io)]
+https://postgres.rest/ ([source](https://github.com/prest/prest.github.io))
