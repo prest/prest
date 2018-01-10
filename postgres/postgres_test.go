@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/prest/adapters"
-	"github.com/prest/adapters/postgres/connection"
+	"github.com/prest/adapters/postgres/internal/connection"
 
 	"bytes"
 

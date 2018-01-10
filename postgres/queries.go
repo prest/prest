@@ -13,7 +13,7 @@ import (
 	"github.com/nuveo/log"
 	"github.com/prest/adapters"
 	"github.com/prest/adapters/internal/scanner"
-	"github.com/prest/adapters/postgres/connection"
+	"github.com/prest/adapters/postgres/internal/connection"
 	"github.com/prest/config"
 	"github.com/prest/template"
 )
