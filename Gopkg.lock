@@ -9,7 +9,10 @@
 
 [[projects]]
   name = "github.com/clbanning/mxj"
-  packages = [".","j2x"]
+  packages = [
+    ".",
+    "j2x"
+  ]
   revision = "1cda74d18ebbb04f525b355309c16d594e1f8f77"
   version = "v1.6.1"
 
@@ -46,7 +49,17 @@
 [[projects]]
   branch = "master"
   name = "github.com/hashicorp/hcl"
-  packages = [".","hcl/ast","hcl/parser","hcl/scanner","hcl/strconv","hcl/token","json/parser","json/scanner","json/token"]
+  packages = [
+    ".",
+    "hcl/ast",
+    "hcl/parser",
+    "hcl/scanner",
+    "hcl/strconv",
+    "hcl/token",
+    "json/parser",
+    "json/scanner",
+    "json/token"
+  ]
   revision = "23c074d0eceb2b8a5bfdbb271ab780cde70f05a8"
 
 [[projects]]
@@ -58,13 +71,19 @@
 [[projects]]
   branch = "master"
   name = "github.com/jmoiron/sqlx"
-  packages = [".","reflectx"]
+  packages = [
+    ".",
+    "reflectx"
+  ]
   revision = "de8647470aafe4854c976707c431dbe1eb2822c6"
 
 [[projects]]
   branch = "master"
   name = "github.com/lib/pq"
-  packages = [".","oid"]
+  packages = [
+    ".",
+    "oid"
+  ]
   revision = "83612a56d3dd153a94a629cd64925371c9adad78"
 
 [[projects]]
@@ -89,7 +108,7 @@
   branch = "master"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
-  revision = "06020f85339e21b2478f756a78e295255ffa4d6a"
+  revision = "b4575eea38cca1123ec2dc90c26529b5c5acfcff"
 
 [[projects]]
   branch = "master"
@@ -106,7 +125,13 @@
 [[projects]]
   branch = "master"
   name = "github.com/prest/adapters"
-  packages = [".","internal/scanner","postgres","postgres/formatters","postgres/internal/connection"]
+  packages = [
+    ".",
+    "internal/scanner",
+    "postgres",
+    "postgres/formatters",
+    "postgres/internal/connection"
+  ]
   revision = "3b80ee46d5fde86247ddb8cc09570713f40e5d16"
 
 [[projects]]
@@ -118,7 +143,10 @@
 [[projects]]
   branch = "master"
   name = "github.com/prest/config"
-  packages = [".","router"]
+  packages = [
+    ".",
+    "router"
+  ]
   revision = "1a9f774888c317b36bdd4b81edd5eb6bd7d9d03c"
 
 [[projects]]
@@ -153,9 +181,12 @@
 
 [[projects]]
   name = "github.com/spf13/afero"
-  packages = [".","mem"]
-  revision = "ec3a3111d1e1bdff38a61e09d5a5f5e974905611"
-  version = "v1.0.1"
+  packages = [
+    ".",
+    "mem"
+  ]
+  revision = "bb8f1927f2a9d3ab41c9340aa034f6b803f4359c"
+  version = "v1.0.2"
 
 [[projects]]
   name = "github.com/spf13/cast"
@@ -197,17 +228,31 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "810d7000345868fc619eb81f46307107118f4ae1"
+  revision = "fff93fa7cd278d84afc205751523809c464168ab"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
-  packages = ["internal/gen","internal/triegen","internal/ucd","transform","unicode/cldr","unicode/norm"]
+  packages = [
+    "internal/gen",
+    "internal/triegen",
+    "internal/ucd",
+    "transform",
+    "unicode/cldr",
+    "unicode/norm"
+  ]
   revision = "e19ae1496984b1c655b8044a65c0300a3c878dd3"
 
 [[projects]]
   name = "gopkg.in/mattes/migrate.v1"
-  packages = ["driver","driver/postgres","file","migrate","migrate/direction","pipe"]
+  packages = [
+    "driver",
+    "driver/postgres",
+    "file",
+    "migrate",
+    "migrate/direction",
+    "pipe"
+  ]
   revision = "afc973c4e5a6b746217c2d3950fcd110ed1ba349"
   version = "v1.3.2"
 

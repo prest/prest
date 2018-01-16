@@ -133,6 +133,36 @@ type Statfs_t struct {
 	Pad_cgo_0 [4]byte
 }
 
+type StatxTimestamp struct {
+	Sec         int64
+	Nsec        uint32
+	X__reserved int32
+}
+
+type Statx_t struct {
+	Mask            uint32
+	Blksize         uint32
+	Attributes      uint64
+	Nlink           uint32
+	Uid             uint32
+	Gid             uint32
+	Mode            uint16
+	_               [1]uint16
+	Ino             uint64
+	Size            uint64
+	Blocks          uint64
+	Attributes_mask uint64
+	Atime           StatxTimestamp
+	Btime           StatxTimestamp
+	Ctime           StatxTimestamp
+	Mtime           StatxTimestamp
+	Rdev_major      uint32
+	Rdev_minor      uint32
+	Dev_major       uint32
+	Dev_minor       uint32
+	_               [14]uint64
+}
+
 type Dirent struct {
 	Ino       uint64
 	Off       int64
@@ -632,9 +662,15 @@ type EpollEvent struct {
 }
 
 const (
-	AT_FDCWD            = -0x64
-	AT_NO_AUTOMOUNT     = 0x800
-	AT_REMOVEDIR        = 0x200
+	AT_EMPTY_PATH   = 0x1000
+	AT_FDCWD        = -0x64
+	AT_NO_AUTOMOUNT = 0x800
+	AT_REMOVEDIR    = 0x200
+
+	AT_STATX_SYNC_AS_STAT = 0x0
+	AT_STATX_FORCE_SYNC   = 0x2000
+	AT_STATX_DONT_SYNC    = 0x4000
+
 	AT_SYMLINK_FOLLOW   = 0x400
 	AT_SYMLINK_NOFOLLOW = 0x100
 )

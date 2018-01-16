@@ -61,6 +61,10 @@ func main() {
 	convertUtsnameRegex := regexp.MustCompile(`((Sys|Node|Domain)name|Release|Version|Machine)(\s+)\[(\d+)\]u?int8`)
 	b = convertUtsnameRegex.ReplaceAll(b, []byte("$1$3[$4]byte"))
 
+	// Remove spare fields (e.g. in Statx_t)
+	spareFieldsRegex := regexp.MustCompile(`X__spare\S*`)
+	b = spareFieldsRegex.ReplaceAll(b, []byte("_"))
+
 	// We refuse to export private fields on s390x
 	if goarch == "s390x" && goos == "linux" {
 		// Remove cgo padding fields
