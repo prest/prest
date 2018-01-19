@@ -72,7 +72,7 @@ func main() {
 		b = removeFieldsRegex.ReplaceAll(b, []byte("_"))
 
 		// Remove padding, hidden, or unused fields
-		removeFieldsRegex = regexp.MustCompile(`X_\S+`)
+		removeFieldsRegex = regexp.MustCompile(`\bX_\S+`)
 		b = removeFieldsRegex.ReplaceAll(b, []byte("_"))
 	}
 
