@@ -17,7 +17,7 @@ func Get() (*sqlx.DB, error) {
 
 // GetPool of connection
 func GetPool() *connection.ConnectionPool {
-	return GetPool()
+	return connection.GetPool()
 }
 
 // AddDatabaseToPool add connection to pool
