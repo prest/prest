@@ -138,7 +138,7 @@
   branch = "master"
   name = "github.com/prest/cmd"
   packages = ["."]
-  revision = "38910f4f0ac28cc293eb09b2b2a5e7d163bd5114"
+  revision = "fed004c42e4c1e2380cc8319541fc523b346ff67"
 
 [[projects]]
   branch = "master"
@@ -147,7 +147,7 @@
     ".",
     "router"
   ]
-  revision = "1a9f774888c317b36bdd4b81edd5eb6bd7d9d03c"
+  revision = "2f8d6d72ae3c197a9a7671438a02ad0fc023673b"
 
 [[projects]]
   branch = "master"
@@ -228,7 +228,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "2c42eef0765b9837fbdab12011af7830f55f88f0"
+  revision = "af50095a40f9041b3b38960738837185c26e9419"
 
 [[projects]]
   branch = "master"
