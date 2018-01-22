@@ -74,7 +74,7 @@ func MakeHandler() http.Handler {
 func startServer() {
 	http.Handle(config.PrestConf.ContextPath, MakeHandler())
 	l := log.New(os.Stdout, "[prest] ", 0)
-	addr := fmt.Sprintf(":%d", config.PrestConf.HTTPPort)
+	addr := fmt.Sprintf("%s:%d", config.PrestConf.HTTPHost, config.PrestConf.HTTPPort)
 	l.Printf("listening on %s and serving on %s", addr, config.PrestConf.ContextPath)
 	if config.PrestConf.HTTPSMode {
 		l.Fatal(http.ListenAndServeTLS(addr, config.PrestConf.HTTPSCert, config.PrestConf.HTTPSKey, nil))
