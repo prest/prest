@@ -139,7 +139,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	query := fmt.Sprintf(`%s "%s"."%s"."%s"`, selectStr, database, schema, table)
+	query := config.PrestConf.Adapter.SelectSQL(selectStr, database, schema, table)
 
 	countQuery, err := config.PrestConf.Adapter.CountByRequest(r)
 	if err != nil {
@@ -148,7 +148,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if countQuery != "" {
-		query = fmt.Sprintf(`%s "%s"."%s"."%s"`, countQuery, database, schema, table)
+		query = config.PrestConf.Adapter.SelectSQL(countQuery, database, schema, table)
 	}
 
 	joinValues, err := config.PrestConf.Adapter.JoinByRequest(r)
@@ -230,7 +230,7 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sql := fmt.Sprintf(statements.InsertQuery, database, schema, table, names, placeholders)
+	sql := config.PrestConf.Adapter.InsertSQL(database, schema, table, names, placeholders)
 
 	sc := config.PrestConf.Adapter.Insert(sql, values...)
 	if sc.Err() != nil {
@@ -256,7 +256,7 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sql := fmt.Sprintf(statements.DeleteQuery, database, schema, table)
+	sql := config.PrestConf.Adapter.DeleteSQL(database, schema, table)
 	if where != "" {
 		sql = fmt.Sprint(sql, " WHERE ", where)
 	}
@@ -293,7 +293,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	sql := fmt.Sprintf(statements.UpdateQuery, database, schema, table, setSyntax)
+	sql := config.PrestConf.Adapter.UpdateSQL(database, schema, table, setSyntax)
 
 	if where != "" {
 		sql = fmt.Sprint(
