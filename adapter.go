@@ -30,4 +30,8 @@ type Adapter interface {
 	Update(SQL string, params ...interface{}) (sc Scanner)
 	DistinctClause(r *http.Request) (distinctQuery string, err error)
 	SetDatabase(name string)
+	SelectSQL(selectStr string, database string, schema string, table string) string
+	InsertSQL(database string, schema string, table string, names string, placeholders string) string
+	DeleteSQL(database string, schema string, table string) string
+	UpdateSQL(database string, schema string, table string, setSyntax string) string
 }
