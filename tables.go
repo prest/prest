@@ -278,16 +278,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 
 	config.PrestConf.Adapter.SetDatabase(database)
 
-	where, whereValues, err := config.PrestConf.Adapter.WhereByRequest(r, 1)
-	if err != nil {
-		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	pid := len(whereValues) + 1 // placeholder id
-
-	setSyntax, values, err := config.PrestConf.Adapter.SetByRequest(r, pid)
+	setSyntax, values, err := config.PrestConf.Adapter.SetByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform UPDATE: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -295,12 +286,21 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	}
 	sql := config.PrestConf.Adapter.UpdateSQL(database, schema, table, setSyntax)
 
+	pid := len(values) + 1 // placeholder id
+
+	where, whereValues, err := config.PrestConf.Adapter.WhereByRequest(r, pid)
+	if err != nil {
+		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	if where != "" {
 		sql = fmt.Sprint(
 			sql,
 			" WHERE ",
 			where)
-		values = append(whereValues, values...)
+		values = append(values, whereValues...)
 	}
 
 	sc := config.PrestConf.Adapter.Update(sql, values...)
