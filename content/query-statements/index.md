@@ -113,18 +113,22 @@ http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD1=xyz
 
 ## JOIN
 
-Using query string to JOIN tables, example:
-
 ```
-/DATABASE/SCHEMA/TABLE?_join=inner:users:friends.userid:$eq:users.id
+/DATABASE/SCHEMA/Table?_join=Type:Table2:Table.field:Operator:Table2.field
 ```
 Parameters:
 
-1. Join type
-1. Table
-1. Table field 1
-1. Operator (=, <, >, <=, >=)
-1. Table field 2
+1. Type (INNER, LEFT, RIGHT, OUTER)
+1. Table2
+1. Table.field
+1. Operator ($eq, $lt, $gt, $lte, $gte)
+1. Table2.field
+
+Using query string to JOIN tables, example:
+
+```
+/DATABASE/SCHEMA/friends?_join=inner:users:friends.userid:$eq:users.id
+```
 
 ## Query Operators
 
