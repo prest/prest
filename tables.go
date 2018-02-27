@@ -7,7 +7,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/prest/config"
-	"github.com/prest/statements"
 )
 
 // GetTables list all (or filter) tables
@@ -18,6 +17,7 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	requestWhere = config.PrestConf.Adapter.TableWhere(requestWhere)
 
 	order, err := config.PrestConf.Adapter.OrderByRequest(r)
 	if err != nil {
@@ -25,14 +25,9 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	order = config.PrestConf.Adapter.TableOrderBy(order)
 
-	if order == "" {
-		order = statements.TablesOrderBy
-	}
-
-	sqlTables := fmt.Sprint(
-		statements.TablesSelect,
-		statements.TablesWhere)
+	sqlTables := config.PrestConf.Adapter.TableClause()
 
 	distinct, err := config.PrestConf.Adapter.DistinctClause(r)
 	if err != nil {
@@ -43,11 +38,8 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 		sqlTables = strings.Replace(sqlTables, "SELECT", distinct, 1)
 	}
 
-	if requestWhere != "" {
-		sqlTables = fmt.Sprintf("%s AND %s", sqlTables, requestWhere)
-	}
+	sqlTables = fmt.Sprint(sqlTables, requestWhere, order)
 
-	sqlTables = fmt.Sprint(sqlTables, order)
 	sc := config.PrestConf.Adapter.Query(sqlTables, values...)
 	if sc.Err() != nil {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
@@ -70,14 +62,9 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	requestWhere = config.PrestConf.Adapter.SchemaTablesWhere(requestWhere)
 
-	sqlSchemaTables := fmt.Sprint(
-		statements.SchemaTablesSelect,
-		statements.SchemaTablesWhere)
-
-	if requestWhere != "" {
-		sqlSchemaTables = fmt.Sprint(sqlSchemaTables, " AND ", requestWhere)
-	}
+	sqlSchemaTables := config.PrestConf.Adapter.SchemaTablesClause()
 
 	order, err := config.PrestConf.Adapter.OrderByRequest(r)
 	if err != nil {
@@ -85,11 +72,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if order != "" {
-		sqlSchemaTables = fmt.Sprint(sqlSchemaTables, order)
-	} else {
-		sqlSchemaTables = fmt.Sprint(sqlSchemaTables, statements.SchemaTablesOrderBy)
-	}
+	order = config.PrestConf.Adapter.SchemaTablesOrderBy(order)
 
 	page, err := config.PrestConf.Adapter.PaginateIfPossible(r)
 	if err != nil {
@@ -98,7 +81,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sqlSchemaTables = fmt.Sprint(sqlSchemaTables, " ", page)
+	sqlSchemaTables = fmt.Sprint(sqlSchemaTables, requestWhere, order, " ", page)
 
 	valuesAux := make([]interface{}, 0)
 	valuesAux = append(valuesAux, database)
