@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/prest/config"
-	"github.com/prest/statements"
 )
 
 // GetDatabases list all (or filter) databases
@@ -16,13 +15,10 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	requestWhere = config.PrestConf.Adapter.DatabaseWhere(requestWhere)
 
 	query, hasCount := config.PrestConf.Adapter.DatabaseClause(r)
-	sqlDatabases := fmt.Sprint(query, statements.DatabasesWhere)
-
-	if requestWhere != "" {
-		sqlDatabases = fmt.Sprint(sqlDatabases, " AND ", requestWhere)
-	}
+	sqlDatabases := fmt.Sprint(query, requestWhere)
 
 	distinct, err := config.PrestConf.Adapter.DistinctClause(r)
 	if err != nil {
@@ -34,17 +30,13 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 	}
 
 	order, err := config.PrestConf.Adapter.OrderByRequest(r)
-
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	order = config.PrestConf.Adapter.DatabaseOrderBy(order, hasCount)
 
-	if order != "" {
-		sqlDatabases = fmt.Sprint(sqlDatabases, order)
-	} else if !hasCount {
-		sqlDatabases = fmt.Sprint(sqlDatabases, fmt.Sprintf(statements.DatabasesOrderBy, statements.FieldDatabaseName))
-	}
+	sqlDatabases = fmt.Sprint(sqlDatabases, order)
 
 	page, err := config.PrestConf.Adapter.PaginateIfPossible(r)
 	if err != nil {

@@ -154,7 +154,7 @@
   branch = "master"
   name = "github.com/prest/controllers"
   packages = ["."]
-  revision = "721f80153a5db7f7ffaf88a46c17dc91bbc54cfd"
+  revision = "03ddc995e3ef557f1014b1c876c6aed9cf68327e"
 
 [[projects]]
   branch = "master"
