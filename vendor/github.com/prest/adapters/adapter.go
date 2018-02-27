@@ -30,4 +30,17 @@ type Adapter interface {
 	Update(SQL string, params ...interface{}) (sc Scanner)
 	DistinctClause(r *http.Request) (distinctQuery string, err error)
 	SetDatabase(name string)
+	SelectSQL(selectStr string, database string, schema string, table string) string
+	InsertSQL(database string, schema string, table string, names string, placeholders string) string
+	DeleteSQL(database string, schema string, table string) string
+	UpdateSQL(database string, schema string, table string, setSyntax string) string
+	DatabaseWhere(requestWhere string) (whereSyntax string)
+	DatabaseOrderBy(order string, hasCount bool) (orderBy string)
+	SchemaOrderBy(order string, hasCount bool) (orderBy string)
+	TableClause() (query string)
+	TableWhere(requestWhere string) (whereSyntax string)
+	TableOrderBy(order string) (orderBy string)
+	SchemaTablesClause() (query string)
+	SchemaTablesWhere(requestWhere string) (whereSyntax string)
+	SchemaTablesOrderBy(order string) (orderBy string)
 }

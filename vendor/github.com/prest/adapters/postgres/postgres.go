@@ -19,8 +19,8 @@ import (
 	"github.com/prest/adapters/internal/scanner"
 	"github.com/prest/adapters/postgres/formatters"
 	"github.com/prest/adapters/postgres/internal/connection"
+	"github.com/prest/adapters/postgres/statements"
 	"github.com/prest/config"
-	"github.com/prest/statements"
 )
 
 //Postgres adapter postgresql
@@ -901,4 +901,103 @@ func NormalizeGroupFunction(paramValue string) (groupFuncSQL string, err error) 
 // SetDatabase set the current database name in use
 func (adapter *Postgres) SetDatabase(name string) {
 	connection.SetDatabase(name)
+}
+
+// SelectSQL generate select sql
+func (adapter *Postgres) SelectSQL(selectStr string, database string, schema string, table string) string {
+	return fmt.Sprintf(`%s "%s"."%s"."%s"`, selectStr, database, schema, table)
+}
+
+// InsertSQL generate insert sql
+func (adapter *Postgres) InsertSQL(database string, schema string, table string, names string, placeholders string) string {
+	return fmt.Sprintf(statements.InsertQuery, database, schema, table, names, placeholders)
+}
+
+// DeleteSQL generate delete sql
+func (adapter *Postgres) DeleteSQL(database string, schema string, table string) string {
+	return fmt.Sprintf(statements.DeleteQuery, database, schema, table)
+}
+
+// UpdateSQL generate update sql
+func (adapter *Postgres) UpdateSQL(database string, schema string, table string, setSyntax string) string {
+	return fmt.Sprintf(statements.UpdateQuery, database, schema, table, setSyntax)
+}
+
+// DatabaseWhere generate database where syntax
+func (adapter *Postgres) DatabaseWhere(requestWhere string) (whereSyntax string) {
+	whereSyntax = statements.DatabasesWhere
+	if requestWhere != "" {
+		whereSyntax = fmt.Sprint(whereSyntax, " AND ", requestWhere)
+	}
+	return
+}
+
+// DatabaseOrderBy generate database order by
+func (adapter *Postgres) DatabaseOrderBy(order string, hasCount bool) (orderBy string) {
+	if order != "" {
+		orderBy = order
+	} else if !hasCount {
+		orderBy = fmt.Sprintf(statements.DatabasesOrderBy, statements.FieldDatabaseName)
+	}
+	return
+}
+
+// SchemaOrderBy generate schema order by
+func (adapter *Postgres) SchemaOrderBy(order string, hasCount bool) (orderBy string) {
+	if order != "" {
+		orderBy = order
+	} else if !hasCount {
+		orderBy = fmt.Sprintf(statements.SchemasOrderBy, statements.FieldSchemaName)
+	}
+	return
+}
+
+// TableClause generate table clause
+func (adapter *Postgres) TableClause() (query string) {
+	query = statements.TablesSelect
+	return
+}
+
+// TableWhere generate table where syntax
+func (adapter *Postgres) TableWhere(requestWhere string) (whereSyntax string) {
+	whereSyntax = statements.TablesWhere
+	if requestWhere != "" {
+		whereSyntax = fmt.Sprint(whereSyntax, " AND ", requestWhere)
+	}
+	return
+}
+
+// TableOrderBy generate table order by
+func (adapter *Postgres) TableOrderBy(order string) (orderBy string) {
+	if order != "" {
+		orderBy = order
+	} else {
+		orderBy = statements.TablesOrderBy
+	}
+	return
+}
+
+// SchemaTablesClause generate schema tables clause
+func (adapter *Postgres) SchemaTablesClause() (query string) {
+	query = statements.SchemaTablesSelect
+	return
+}
+
+// SchemaTablesWhere generate schema tables where syntax
+func (adapter *Postgres) SchemaTablesWhere(requestWhere string) (whereSyntax string) {
+	whereSyntax = statements.SchemaTablesWhere
+	if requestWhere != "" {
+		whereSyntax = fmt.Sprint(whereSyntax, " AND ", requestWhere)
+	}
+	return
+}
+
+// SchemaTablesOrderBy generate schema tables order by
+func (adapter *Postgres) SchemaTablesOrderBy(order string) (orderBy string) {
+	if order != "" {
+		orderBy = order
+	} else {
+		orderBy = statements.SchemaTablesOrderBy
+	}
+	return
 }
