@@ -2,36 +2,41 @@ baseurl = "https://postgres.rest/"
 languageCode = "en-us"
 metadataformat = "yaml"
 title = "pREST"
-theme = "hugo-alabaster-theme"
+theme = "hugo-theme-learn"
 
 disqusShortname = ""
 googleAnalytics = "UA-105743002-1"
 
 [params]
-	name = "pREST"
-	description = "A fully RESTful API from any existing PostgreSQL database."
+name = "pREST"
+description = "A fully RESTful API from any existing PostgreSQL database."
+github_user = "prest"
+github_repo = "prest"
+github_banner = true
+custom_css = []
+custom_js = []
+highlightjs = "css/highlight.css"
+favicon = "favicon.ico"
+editURL = "https://github.com/prest/prest.github.io/tree/gh-pages/content"
+showVisitedLinks = true
+logo = "logo.png"
 
-	github_user   = "prest"
-	github_repo   = "prest"
-	github_banner = true
-
-	custom_css = []
-	custom_js  = []
-
-	highlightjs = "css/highlight.css"
-	favicon = "favicon.ico"
+[outputs]
+home = [ "HTML", "RSS", "JSON"]
 
 [params.sidebar]
-    logo = "logo.png"
-
-
-	github_button  = true
-	travis_button  = true
-	codecov_button = true
-	gratipay = ""
-
-	show_relations = true
+github_button  = true
+travis_button  = true
+codecov_button = true
+gratipay = ""
+show_relations = true
 
 [params.footer]
-	copyright = "[Digitalcraftsman](https://github.com/digitalcraftsman)"
-	show_powered_by = true
+copyright = "[Digitalcraftsman](https://github.com/digitalcraftsman)"
+show_powered_by = true
+
+[Languages]
+[Languages.en]
+title = "Documentation for pREST"
+weight = 1
+languageName = "English"
