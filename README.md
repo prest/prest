@@ -24,13 +24,8 @@ hugo server -D
 
 ## Deploy
 
-- On gh-pages brach, generate static files with Hugo command.
+On gh-pages branch, run command:
+*Auto commit and push to master*
 ```
-hugo
+./deploy.sh
 ```
-- Change to the master branch and you'll see the `public` folder modifications after `git status`. Move all this content to the root, replacing existing static files.
-```
-cp -r public/* .
-rm -rf public/
-```
-- Commit it and push it to master. That's all.
