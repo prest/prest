@@ -29,6 +29,7 @@ Query Operators:
 | $nottrue | Matches if field is not true.|
 | $false | Matches if field is false.|
 | $notfalse | Matches if field is not false.|
+| $like | Matches always cover the entire string.|
 
 
 ### Filter (WHERE) with JSONb field
