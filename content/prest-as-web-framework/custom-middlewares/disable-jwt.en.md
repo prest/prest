@@ -30,11 +30,13 @@ import (
 
 const authPrefix = "/auth"
 
+// Body data structure used to receive request
 type Body struct {
 	Username string
 	Password string
 }
 
+// Auth data structure used to return authentication token
 type Auth struct {
 	Token string
 }
@@ -72,8 +74,8 @@ func main() {
 	cmd.Execute()
 }
 
+// AuthHandler user authentication Handler
 func AuthHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("test")
 	body := Body{}
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -92,6 +94,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(ret)
 }
 
+// tokenGenerate return token JWT (simulating authentication)
 func tokenGenerate(Username string) (signedToken string, err error) {
 	// Create the Claims
 	claims := &jwt.StandardClaims{
