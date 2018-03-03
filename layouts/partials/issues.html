@@ -1,0 +1,16 @@
+{{ $issuesPREST := getJSON "https://api.github.com/repos/prest/prest/issues?state=open&sort=id" }}
+<ul>
+  {{ range $issuesPREST }}
+  <li>
+    <a href="{{.html_url}}" target="_bank">{{.title}} #{{.number}}</a><br />
+    {{ range .labels }}
+    <span style="background-color: #{{.color}}; color: #000000">{{.name}}</span>
+    {{else}}
+    <i>not selected label</i>
+    {{end}}
+    <br />
+    by <a href="{{.user.html_url}}" title="Open issues created by {{.user.login}}" target="_bank">{{.user.login}}</a>
+  </li>
+  {{end}}
+  <li><a href="https://github.com/prest/prest/issues" target="_blank">view more</a></li>
+</u>
