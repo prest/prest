@@ -8,32 +8,37 @@ weight: 1
 
 ## Installation
 
-### binary
+### Binary
 
-Download the latest version [here](https://github.com/prest/prest/releases/latest).
+For any OS you can download the latest version [here](https://github.com/prest/prest/releases/latest).
 
-### homebrew
+### go get
+
+```sh
+go get -u github.com/prest/prest
+```
+
+### MacOS
+
+If none of the above suits you, there's still an option of installing using [Homebrew](https://brew.sh/)
 
 ```sh
 brew install prest
 ```
 
-### go get
+## With docker
+
+We only will need to download the pREST image from Docker Hub with:
+
 ```sh
-go get -u github.com/prest/prest
+docker pull prest/prest
 ```
 
 ## Running
 
-Initally can use some environment variables by example:
+### With the binary or homebrew or go get
 
-- PREST\_HTTP_PORT (default 3000)
-- PREST\_PG_HOST (default 127.0.0.1)
-- PREST\_PG_USER
-- PREST\_PG_PASS
-- PREST\_PG_DATABASE
-- PREST\_PG_PORT (default 5432)
-- PREST\_JWT_KEY
+You can pass the necessary variables to the binary as follows:
 
 ```sh
 PREST_PG_USER=postgres \
@@ -43,13 +48,21 @@ PREST_HTTP_PORT=3010 \
 prest # Binary installed
 ```
 
-In case needs use it via Docker: https://hub.docker.com/r/prest/prest/
+### With docker
+
+Considering you already did the pull in the previous step:
 
 ```sh
-docker pull prest/prest
 docker run -e PREST_HTTP_PORT=3000 \
 	-e PREST_PG_HOST=127.0.0.1 \
 	-e PREST_PG_USER=postgres \
 	-e PREST_PG_PASS=pass \
 	prest/prest
 ```
+or if use Docker Compose (there's an [example in the repository](https://github.com/prest/prest/blob/master/docker-compose.yml))
+
+```sh
+docker-compose up
+```
+
+For more details on how to configure and other environment variables got to [Configurations](/configurations)

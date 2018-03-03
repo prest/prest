@@ -1,7 +1,7 @@
 ---
 title: "Configurations"
 date: 2017-08-30T19:05:46-03:00
-weight: 11
+weight: 3
 menu: main
 ---
 
