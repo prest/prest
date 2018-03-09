@@ -15,7 +15,7 @@ restrict = true  # can access only the tables listed below
 
 `restrict = false`: (default) the prest will serve in publish mode. You can write/read/delete everydata without configure permissions.
 
-`restruct = true`: you need configure the permissions of all tables.
+`restrict = true`: you need configure the permissions of all tables.
 
 ### Table permissions
 
