@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"testing"
 
 	"github.com/prest/adapters"
 	"github.com/prest/adapters/internal/scanner"
@@ -21,12 +22,22 @@ type Item struct {
 // Mock adapter
 type Mock struct {
 	mtx   *sync.RWMutex
+	t     *testing.T
 	Items []Item
+}
+
+// New mock
+func New(t *testing.T) (m *Mock) {
+	m = &Mock{
+		mtx: &sync.RWMutex{},
+		t:   t,
+	}
+	return
 }
 
 func (m *Mock) validate() {
 	if len(m.Items) == 0 {
-		panic("do not have any operations to perform")
+		m.t.Fatal("do not have any operations to perform")
 	}
 }
 
@@ -242,9 +253,6 @@ func (m *Mock) SchemaTablesOrderBy(order string) (orderBy string) {
 
 // AddItem on mock object
 func (m *Mock) AddItem(body []byte, err error, hasPermission, isCount bool) {
-	if m.mtx == nil {
-		m.mtx = &sync.RWMutex{}
-	}
 	i := Item{
 		Body:          body,
 		Error:         err,
