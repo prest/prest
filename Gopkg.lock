@@ -19,8 +19,8 @@
 [[projects]]
   name = "github.com/dgrijalva/jwt-go"
   packages = ["."]
-  revision = "dbeaa9332f19a944acb5736b4456cfcc02140e29"
-  version = "v3.1.0"
+  revision = "06ea1031745cb8b3dab3f6a236daf2b0aa468b7e"
+  version = "v3.2.0"
 
 [[projects]]
   name = "github.com/fatih/color"
@@ -75,7 +75,7 @@
     ".",
     "reflectx"
   ]
-  revision = "05cef0741ade10ca668982355b3f3f0bcf0ff0a8"
+  revision = "cf35089a197953c69420c8d0cecda90809764b1d"
 
 [[projects]]
   branch = "master"
@@ -133,13 +133,13 @@
     "postgres/internal/connection",
     "postgres/statements"
   ]
-  revision = "ae19cf3e2d43e012d3af16d230d8d036c2155356"
+  revision = "95e63359d8beb827437df196da070396d2e6c07d"
 
 [[projects]]
   branch = "master"
   name = "github.com/prest/cmd"
   packages = ["."]
-  revision = "fed004c42e4c1e2380cc8319541fc523b346ff67"
+  revision = "806e64a75ce43c61029c793dc41a2e9f72263112"
 
 [[projects]]
   branch = "master"
@@ -229,7 +229,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "f6cff0780e542efa0c8e864dc8fa522808f6a598"
+  revision = "c28acc882ebcbfbe8ce9f0f14b9ac26ee138dd51"
 
 [[projects]]
   name = "golang.org/x/text"
