@@ -104,7 +104,7 @@ func (m *Mock) PaginateIfPossible(r *http.Request) (paginatedQuery string, err e
 
 // Query mock
 func (m *Mock) Query(SQL string, params ...interface{}) (sc adapters.Scanner) {
-	m.perform()
+	sc = m.perform()
 	return
 }
 
@@ -145,7 +145,7 @@ func (m *Mock) GroupByClause(r *http.Request) (groupBySQL string) {
 
 // QueryCount mock
 func (m *Mock) QueryCount(SQL string, params ...interface{}) (sc adapters.Scanner) {
-	m.perform()
+	sc = m.perform()
 	return
 }
 
