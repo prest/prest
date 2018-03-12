@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net/http"
 	"net/url"
+	"sync"
 
 	"github.com/prest/adapters"
 	"github.com/prest/adapters/internal/scanner"
@@ -19,6 +20,7 @@ type Item struct {
 
 // Mock adapter
 type Mock struct {
+	mtx   *sync.RWMutex
 	Items []Item
 }
 
@@ -30,19 +32,24 @@ func (m *Mock) validate() {
 
 func (m *Mock) perform() (sc adapters.Scanner) {
 	m.validate()
+	m.mtx.Lock()
 	item := m.Items[0]
 	sc = &scanner.PrestScanner{
 		Error: item.Error,
 		Buff:  bytes.NewBuffer(item.Body),
 	}
 	m.Items = m.Items[1:]
+	m.mtx.Unlock()
 	return
 }
 
 // TablePermissions mock
-func (m *Mock) TablePermissions(table string, op string) bool {
+func (m *Mock) TablePermissions(table string, op string) (ok bool) {
 	m.validate()
-	return m.Items[0].HasPermission
+	m.mtx.Lock()
+	ok = m.Items[0].HasPermission
+	m.mtx.Unlock()
+	return
 }
 
 // GetScript mock
@@ -68,7 +75,9 @@ func (m *Mock) WhereByRequest(r *http.Request, initialPlaceholderID int) (whereS
 // DatabaseClause mock
 func (m *Mock) DatabaseClause(req *http.Request) (query string, hasCount bool) {
 	m.validate()
+	m.mtx.Lock()
 	hasCount = m.Items[0].IsCount
+	m.mtx.Unlock()
 	return
 }
 
@@ -91,7 +100,9 @@ func (m *Mock) Query(SQL string, params ...interface{}) (sc adapters.Scanner) {
 // SchemaClause mock
 func (m *Mock) SchemaClause(req *http.Request) (query string, hasCount bool) {
 	m.validate()
+	m.mtx.Lock()
 	hasCount = m.Items[0].IsCount
+	m.mtx.Unlock()
 	return
 }
 
@@ -227,4 +238,20 @@ func (m *Mock) SchemaTablesWhere(requestWhere string) (whereSyntax string) {
 // SchemaTablesOrderBy mock
 func (m *Mock) SchemaTablesOrderBy(order string) (orderBy string) {
 	return
+}
+
+// AddItem on mock object
+func (m *Mock) AddItem(body []byte, err error, hasPermission, isCount bool) {
+	if m.mtx == nil {
+		m.mtx = &sync.RWMutex{}
+	}
+	i := Item{
+		Body:          body,
+		Error:         err,
+		HasPermission: hasPermission,
+		IsCount:       isCount,
+	}
+	m.mtx.Lock()
+	m.Items = append(m.Items, i)
+	m.mtx.Unlock()
 }
