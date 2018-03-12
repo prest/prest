@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -29,14 +28,12 @@ var migrateCmd = &cobra.Command{
 }
 
 func driverURL() string {
-	// the replace is to maintain compatibility with Go 1.7 https://github.com/golang/go/issues/4013
-	// TODO: use url.PathEscape() when stop supporting Go 1.7
 	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		strings.Replace(url.QueryEscape(config.PrestConf.PGUser), "+", "%20", -1),
-		strings.Replace(url.QueryEscape(config.PrestConf.PGPass), "+", "%20", -1),
-		strings.Replace(url.QueryEscape(config.PrestConf.PGHost), "+", "%20", -1),
+		url.PathEscape(config.PrestConf.PGUser),
+		url.PathEscape(config.PrestConf.PGPass),
+		url.PathEscape(config.PrestConf.PGHost),
 		config.PrestConf.PGPort,
-		strings.Replace(url.QueryEscape(config.PrestConf.PGDatabase), "+", "%20", -1),
+		url.PathEscape(config.PrestConf.PGDatabase),
 		url.QueryEscape(config.PrestConf.SSLMode))
 
 }
