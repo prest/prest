@@ -16,6 +16,7 @@ Via environment variables or via toml file.
 - PREST\_PG_DATABASE
 - PREST\_PG_PORT (default 5432)
 - PREST\_JWT_KEY
+- PREST\_JWT_ALGO
 
 
 ## TOML
@@ -31,6 +32,7 @@ port = 6000
 
 [jwt]
 key = "secret"
+algo = "HS256"
 
 [pg]
 host = "127.0.0.1"
@@ -48,11 +50,22 @@ sslrootcert = "./PATH"
 
 ## Authorization
 
-- JWT middleware is enable by default. To disable JWT need to run pREST in debug mode.
+- JWT middleware is enabled by default. To disable JWT need to run pREST in debug mode.
 
 ```sh
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
 ```
+
+- The `HS256` algorithm is used by default.
+
+The JWT algorithm can be specified by using either the environment variable `PREST_JWT_ALGO` or the `algo` parameter in the section `[jwt]` of the `prest.toml` configuration file. 
+
+The supported signing algorithms are:
+
+* The [HMAC signing method](https://en.wikipedia.org/wiki/HMAC): `HS256`,`HS384`,`HS512`
+* The [RSA signing method](https://en.wikipedia.org/wiki/RSA_(cryptosystem)): `RS256`,`RS384`,`RS512`
+* The [ECDSA signing method](https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm): `ES256`,`ES384`,`ES512`
+
 
 ### SSL
 
