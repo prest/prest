@@ -87,6 +87,36 @@ func TestParse(t *testing.T) {
 	if cfg.HTTPPort != 4000 {
 		t.Errorf("expected port: 4000, got: %d", cfg.HTTPPort)
 	}
+
+	os.Setenv("PREST_JWT_KEY", "s3cr3t")
+	viperCfg()
+	cfg = &Prest{}
+	err = Parse(cfg)
+
+	if err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+
+	if cfg.JWTKey != "s3cr3t" {
+		t.Errorf("expected jwt key: s3cr3t, got: %s", cfg.JWTKey)
+	}
+
+	if cfg.JWTAlgo != "HS256" {
+		t.Errorf("expected (default) jwt algo: HS256, got: %s", cfg.JWTAlgo)
+	}
+
+	os.Setenv("PREST_JWT_ALGO", "HS512")
+	viperCfg()
+	cfg = &Prest{}
+	err = Parse(cfg)
+
+	if err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+
+	if cfg.JWTAlgo != "HS512" {
+		t.Errorf("expected jwt algo: HS512, got: %s", cfg.JWTAlgo)
+	}
 }
 
 func TestGetDefaultPrestConf(t *testing.T) {
