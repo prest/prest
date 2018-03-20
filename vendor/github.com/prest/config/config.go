@@ -43,6 +43,7 @@ type Prest struct {
 	PGMAxOpenConn    int
 	PGConnTimeout    int
 	JWTKey           string
+	JWTAlgo          string
 	MigrationsPath   string
 	QueriesPath      string
 	AccessConf       AccessConf
@@ -88,6 +89,7 @@ func viperCfg() {
 	viper.SetDefault("pg.conntimeout", 10)
 	viper.SetDefault("debug", false)
 	viper.SetDefault("jwt.default", true)
+	viper.SetDefault("jwt.algo", "HS256")
 	viper.SetDefault("cors.allowheaders", []string{"*"})
 	viper.SetDefault("cache.enable", true)
 	viper.SetDefault("context", "/")
@@ -147,6 +149,7 @@ func Parse(cfg *Prest) (err error) {
 	cfg.PGMAxOpenConn = viper.GetInt("pg.maxopenconn")
 	cfg.PGConnTimeout = viper.GetInt("pg.conntimeout")
 	cfg.JWTKey = viper.GetString("jwt.key")
+	cfg.JWTAlgo = viper.GetString("jwt.algo")
 	cfg.MigrationsPath = viper.GetString("migrations")
 	cfg.AccessConf.Restrict = viper.GetBool("access.restrict")
 	cfg.QueriesPath = viper.GetString("queries.location")

@@ -53,6 +53,7 @@
     ".",
     "hcl/ast",
     "hcl/parser",
+    "hcl/printer",
     "hcl/scanner",
     "hcl/strconv",
     "hcl/token",
@@ -84,7 +85,7 @@
     ".",
     "oid"
   ]
-  revision = "88edab0803230a3898347e77b474f8c1820a1f20"
+  revision = "b2004221932bd6b13167ef654c81cffac36f7537"
 
 [[projects]]
   name = "github.com/magiconair/properties"
@@ -148,7 +149,7 @@
     ".",
     "router"
   ]
-  revision = "2f8d6d72ae3c197a9a7671438a02ad0fc023673b"
+  revision = "7073425ef6f1d0f84f2d9ebbd8f12de946718e35"
 
 [[projects]]
   branch = "master"
@@ -166,7 +167,7 @@
   branch = "master"
   name = "github.com/prest/middlewares"
   packages = ["."]
-  revision = "2bb7a41a27221dbffcc93182a0428b7673559da4"
+  revision = "7080d6f0e4defe18801b9dfb78fe659a0e482424"
 
 [[projects]]
   branch = "master"
@@ -216,8 +217,8 @@
 [[projects]]
   name = "github.com/spf13/viper"
   packages = ["."]
-  revision = "25b30aa063fc18e48662b86996252eabdcf2f0c7"
-  version = "v1.0.0"
+  revision = "b5e8006cbee93ec955a89ab31e0e3ce3204f3736"
+  version = "v1.0.2"
 
 [[projects]]
   name = "github.com/urfave/negroni"
@@ -229,7 +230,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "c28acc882ebcbfbe8ce9f0f14b9ac26ee138dd51"
+  revision = "7ceb54c8418b8f9cdf0177b511d5cbb06e9fae39"
 
 [[projects]]
   name = "golang.org/x/text"

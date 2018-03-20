@@ -24,7 +24,7 @@ func initApp() {
 		MiddlewareStack = append(MiddlewareStack, BaseStack...)
 	}
 	if !config.PrestConf.Debug && config.PrestConf.EnableDefaultJWT {
-		MiddlewareStack = append(MiddlewareStack, JwtMiddleware(config.PrestConf.JWTKey))
+		MiddlewareStack = append(MiddlewareStack, JwtMiddleware(config.PrestConf.JWTKey, config.PrestConf.JWTAlgo))
 	}
 	if config.PrestConf.CORSAllowOrigin != nil {
 		MiddlewareStack = append(MiddlewareStack, Cors(config.PrestConf.CORSAllowOrigin, config.PrestConf.CORSAllowHeaders))

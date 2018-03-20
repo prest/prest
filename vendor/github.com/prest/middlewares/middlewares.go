@@ -51,12 +51,12 @@ func AccessControl() negroni.Handler {
 }
 
 // JwtMiddleware check if actual request have JWT
-func JwtMiddleware(key string) negroni.Handler {
+func JwtMiddleware(key string, algo string) negroni.Handler {
 	jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
 		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
 			return []byte(key), nil
 		},
-		SigningMethod: jwt.SigningMethodHS256,
+		SigningMethod: jwt.GetSigningMethod(algo),
 	})
 	return negroni.HandlerFunc(jwtMiddleware.HandlerWithNext)
 }
