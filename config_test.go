@@ -189,6 +189,81 @@ func TestEnableDefaultJWT(t *testing.T) {
 	}
 }
 
+func TestJWTIsRequired(t *testing.T) {
+	app = nil
+	os.Setenv("PREST_JWT_DEFAULT", "true")
+	os.Setenv("PREST_DEBUG", "false")
+	config.Load()
+	nd := appTestWithJwt()
+	serverd := httptest.NewServer(nd)
+	defer serverd.Close()
+
+	respd, err := http.Get(serverd.URL)
+	if err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+	if respd.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected status code 401, but got %d", respd.StatusCode)
+	}
+}
+
+func TestJWTSignatureOk(t *testing.T) {
+	app = nil
+	MiddlewareStack = nil
+	bearer := "Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImpvaG4uZG9lQHNvbWV3aGVyZS5jb20iLCJleHAiOjE1MjUzMzk2MTYsImlhdCI6MTUxNzU2MzYxNiwiaXNzIjoicHJpdmF0ZSIsImp0aSI6ImNlZmE3NGZlLTg5NGMtZmY2My1kODE2LTQ2MjBiOGNkOTJlZSIsIm9yZyI6InByaXZhdGUiLCJzdWIiOiJqb2huLmRvZSJ9.zGP1Xths2bK2r9FN0Gv1SzyoisO0dhRwvqrPvunGxUyU5TbkfdnTcQRJNYZzJfGILeQ9r3tbuakWm-NIoDlbbA"
+	os.Setenv("PREST_JWT_DEFAULT", "true")
+	os.Setenv("PREST_DEBUG", "false")
+	os.Setenv( "PREST_JWT_KEY", "s3cr3t" )
+	os.Setenv( "PREST_JWT_ALGO", "HS512" )
+	config.Load()
+	nd := appTestWithJwt()
+	serverd := httptest.NewServer(nd)
+	defer serverd.Close()
+
+	req, err := http.NewRequest("GET", serverd.URL, nil)
+	if err != nil {
+		t.Fatal("expected run without errors but was", err)
+	}
+	req.Header.Add("authorization", bearer)
+
+	client := http.Client{}
+	respd, err := client.Do(req)
+	if err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+	if respd.StatusCode != http.StatusOK {
+		t.Errorf("expected status code 200, but got %d", respd.StatusCode)
+	}
+}
+
+func TestJWTSignatureKo(t *testing.T) {
+	app = nil
+	bearer := "Bearer: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImpvaG4uZG9lQHNvbWV3aGVyZS5jb20iLCJleHAiOjE1MjUzMzk2MTYsImlhdCI6MTUxNzU2MzYxNiwiaXNzIjoicHJpdmF0ZSIsImp0aSI6ImNlZmE3NGZlLTg5NGMtZmY2My1kODE2LTQ2MjBiOGNkOTJlZSIsIm9yZyI6InByaXZhdGUiLCJzdWIiOiJqb2huLmRvZSJ9.zGP1Xths2bK2r9FN0Gv1SzyoisO0dhRwvqrPvunGxUyU5TbkfdnTcQRJNYZzJfGILeQ9r3tbuakWm-NIoDlbbA"
+	os.Setenv("PREST_JWT_DEFAULT", "true")
+	os.Setenv("PREST_DEBUG", "false")
+	os.Setenv( "PREST_JWT_KEY", "s3cr3t" )
+	os.Setenv( "PREST_JWT_ALGO", "HS256" )
+	config.Load()
+	nd := appTestWithJwt()
+	serverd := httptest.NewServer(nd)
+	defer serverd.Close()
+
+	req, err := http.NewRequest("GET", serverd.URL, nil)
+	if err != nil {
+		t.Fatal("expected run without errors but was", err)
+	}
+	req.Header.Add("authorization", bearer)
+
+	client := http.Client{}
+	respd, err := client.Do(req)
+	if err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+	if respd.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected status code 401, but got %d", respd.StatusCode)
+	}
+}
+
 func appTest() *negroni.Negroni {
 	n := GetApp()
 	r := router.Get()
@@ -197,6 +272,18 @@ func appTest() *negroni.Negroni {
 			w.WriteHeader(http.StatusNotImplemented)
 		})
 	}
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("test app"))
+	}).Methods("GET")
+
+	n.UseHandler(r)
+	return n
+}
+
+func appTestWithJwt() *negroni.Negroni {
+	n := GetApp()
+	r := mux.NewRouter()
+
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("test app"))
 	}).Methods("GET")
