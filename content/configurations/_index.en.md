@@ -50,7 +50,7 @@ sslrootcert = "./PATH"
 
 ## Authorization
 
-- JWT middleware is enabled by default. To disable JWT need to se defalt to false.
+- JWT middleware is enabled by default. To disable JWT need to set default to false.
 
 ```toml
 [jwt]
