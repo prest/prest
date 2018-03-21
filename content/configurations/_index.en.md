@@ -50,7 +50,12 @@ sslrootcert = "./PATH"
 
 ## Authorization
 
-- JWT middleware is enabled by default. To disable JWT need to run pREST in debug mode.
+- JWT middleware is enabled by default. To disable JWT need to set default to false.
+
+```toml
+[jwt]
+default = false
+```
 
 ```sh
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
