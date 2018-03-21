@@ -49,7 +49,8 @@ func TestMock_perform(t *testing.T) {
 			},
 			true,
 			&scanner.PrestScanner{
-				Buff: bytes.NewBuffer([]byte(`[{"test":"test"}]`)),
+				Buff:    bytes.NewBuffer([]byte(`[{"test":"test"}]`)),
+				IsQuery: true,
 			},
 		},
 		{
@@ -347,7 +348,8 @@ func TestMock_Query(t *testing.T) {
 				Body: []byte(`[{"test":"test"}]`),
 			},
 			&scanner.PrestScanner{
-				Buff: bytes.NewBuffer([]byte(`[{"test":"test"}]`)),
+				Buff:    bytes.NewBuffer([]byte(`[{"test":"test"}]`)),
+				IsQuery: true,
 			},
 		},
 		{
@@ -356,8 +358,9 @@ func TestMock_Query(t *testing.T) {
 				Error: errors.New("test error"),
 			},
 			&scanner.PrestScanner{
-				Error: errors.New("test error"),
-				Buff:  &bytes.Buffer{},
+				Error:   errors.New("test error"),
+				Buff:    &bytes.Buffer{},
+				IsQuery: true,
 			},
 		},
 	}
