@@ -37,17 +37,20 @@ func TestMock_validate(t *testing.T) {
 
 func TestMock_perform(t *testing.T) {
 	tests := []struct {
-		name   string
-		item   Item
-		wantSc adapters.Scanner
+		name    string
+		item    Item
+		isQuery bool
+		wantSc  adapters.Scanner
 	}{
 		{
 			"perform body",
 			Item{
 				Body: []byte(`[{"test":"test"}]`),
 			},
+			true,
 			&scanner.PrestScanner{
-				Buff: bytes.NewBuffer([]byte(`[{"test":"test"}]`)),
+				Buff:    bytes.NewBuffer([]byte(`[{"test":"test"}]`)),
+				IsQuery: true,
 			},
 		},
 		{
@@ -55,6 +58,7 @@ func TestMock_perform(t *testing.T) {
 			Item{
 				Error: errors.New("test error"),
 			},
+			false,
 			&scanner.PrestScanner{
 				Error: errors.New("test error"),
 				Buff:  &bytes.Buffer{},
@@ -68,7 +72,7 @@ func TestMock_perform(t *testing.T) {
 				t:   t,
 			}
 			m.AddItem(tt.item.Body, tt.item.Error, tt.item.HasPermission, tt.item.IsCount)
-			if gotSc := m.perform(); !reflect.DeepEqual(gotSc, tt.wantSc) {
+			if gotSc := m.perform(tt.isQuery); !reflect.DeepEqual(gotSc, tt.wantSc) {
 				t.Errorf("Mock.perform() = %v, want %v", gotSc, tt.wantSc)
 			}
 		})
@@ -344,7 +348,8 @@ func TestMock_Query(t *testing.T) {
 				Body: []byte(`[{"test":"test"}]`),
 			},
 			&scanner.PrestScanner{
-				Buff: bytes.NewBuffer([]byte(`[{"test":"test"}]`)),
+				Buff:    bytes.NewBuffer([]byte(`[{"test":"test"}]`)),
+				IsQuery: true,
 			},
 		},
 		{
@@ -353,8 +358,9 @@ func TestMock_Query(t *testing.T) {
 				Error: errors.New("test error"),
 			},
 			&scanner.PrestScanner{
-				Error: errors.New("test error"),
-				Buff:  &bytes.Buffer{},
+				Error:   errors.New("test error"),
+				Buff:    &bytes.Buffer{},
+				IsQuery: true,
 			},
 		},
 	}

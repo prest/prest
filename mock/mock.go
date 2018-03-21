@@ -41,13 +41,14 @@ func (m *Mock) validate() {
 	}
 }
 
-func (m *Mock) perform() (sc adapters.Scanner) {
+func (m *Mock) perform(query bool) (sc adapters.Scanner) {
 	m.validate()
 	m.mtx.Lock()
 	item := m.Items[0]
 	sc = &scanner.PrestScanner{
-		Error: item.Error,
-		Buff:  bytes.NewBuffer(item.Body),
+		Error:   item.Error,
+		Buff:    bytes.NewBuffer(item.Body),
+		IsQuery: query,
 	}
 	m.Items = m.Items[1:]
 	m.mtx.Unlock()
@@ -104,7 +105,7 @@ func (m *Mock) PaginateIfPossible(r *http.Request) (paginatedQuery string, err e
 
 // Query mock
 func (m *Mock) Query(SQL string, params ...interface{}) (sc adapters.Scanner) {
-	sc = m.perform()
+	sc = m.perform(true)
 	return
 }
 
@@ -145,7 +146,7 @@ func (m *Mock) GroupByClause(r *http.Request) (groupBySQL string) {
 
 // QueryCount mock
 func (m *Mock) QueryCount(SQL string, params ...interface{}) (sc adapters.Scanner) {
-	sc = m.perform()
+	sc = m.perform(false)
 	return
 }
 
@@ -156,13 +157,13 @@ func (m *Mock) ParseInsertRequest(r *http.Request) (colsName string, colsValue s
 
 // Insert mock
 func (m *Mock) Insert(SQL string, params ...interface{}) (sc adapters.Scanner) {
-	sc = m.perform()
+	sc = m.perform(false)
 	return
 }
 
 // Delete mock
 func (m *Mock) Delete(SQL string, params ...interface{}) (sc adapters.Scanner) {
-	sc = m.perform()
+	sc = m.perform(false)
 	return
 }
 
@@ -173,7 +174,7 @@ func (m *Mock) SetByRequest(r *http.Request, initialPlaceholderID int) (setSynta
 
 // Update mock
 func (m *Mock) Update(SQL string, params ...interface{}) (sc adapters.Scanner) {
-	sc = m.perform()
+	sc = m.perform(false)
 	return
 }
 
