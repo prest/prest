@@ -509,9 +509,12 @@ func TestScan_crlf(t *testing.T) {
 func TestError(t *testing.T) {
 	testError(t, "\x80", "1:1", "illegal UTF-8 encoding", token.ILLEGAL)
 	testError(t, "\xff", "1:1", "illegal UTF-8 encoding", token.ILLEGAL)
+	testError(t, "\uE123", "1:1", "unicode code point U+E123 reserved for internal use", token.ILLEGAL)
 
 	testError(t, "ab\x80", "1:3", "illegal UTF-8 encoding", token.IDENT)
 	testError(t, "abc\xff", "1:4", "illegal UTF-8 encoding", token.IDENT)
+	testError(t, "ab\x00", "1:3", "unexpected null character (0x00)", token.IDENT)
+	testError(t, "ab\x00\n", "1:3", "unexpected null character (0x00)", token.IDENT)
 
 	testError(t, `"ab`+"\x80", "1:4", "illegal UTF-8 encoding", token.STRING)
 	testError(t, `"abc`+"\xff", "1:5", "illegal UTF-8 encoding", token.STRING)
@@ -588,4 +591,23 @@ func countNewlines(s string) int {
 		}
 	}
 	return n
+}
+
+func TestScanHeredocRegexpCompile(t *testing.T) {
+	cases := []string{
+		"0\xe1\n<<ȸ\nhello\nworld\nȸ",
+	}
+
+	for _, c := range cases {
+		s := New([]byte(c))
+		fmt.Printf("START %q\n", c)
+
+		for {
+			tok := s.Scan()
+			if tok.Type == token.EOF {
+				break
+			}
+			t.Logf("s.Scan() = %s", tok)
+		}
+	}
 }

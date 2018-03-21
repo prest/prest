@@ -467,6 +467,60 @@ func TestFstatat(t *testing.T) {
 	}
 }
 
+func TestFchmodat(t *testing.T) {
+	defer chtmpdir(t)()
+
+	touch(t, "file1")
+	err := os.Symlink("file1", "symlink1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mode := os.FileMode(0444)
+	err = unix.Fchmodat(unix.AT_FDCWD, "symlink1", uint32(mode), 0)
+	if err != nil {
+		t.Fatalf("Fchmodat: unexpected error: %v", err)
+	}
+
+	fi, err := os.Stat("file1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if fi.Mode() != mode {
+		t.Errorf("Fchmodat: failed to change file mode: expected %v, got %v", mode, fi.Mode())
+	}
+
+	mode = os.FileMode(0644)
+	didChmodSymlink := true
+	err = unix.Fchmodat(unix.AT_FDCWD, "symlink1", uint32(mode), unix.AT_SYMLINK_NOFOLLOW)
+	if err != nil {
+		if (runtime.GOOS == "linux" || runtime.GOOS == "solaris") && err == unix.EOPNOTSUPP {
+			// Linux and Illumos don't support flags != 0
+			didChmodSymlink = false
+		} else {
+			t.Fatalf("Fchmodat: unexpected error: %v", err)
+		}
+	}
+
+	if !didChmodSymlink {
+		// Didn't change mode of the symlink. On Linux, the permissions
+		// of a symbolic link are always 0777 according to symlink(7)
+		mode = os.FileMode(0777)
+	}
+
+	var st unix.Stat_t
+	err = unix.Lstat("symlink1", &st)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := os.FileMode(st.Mode & 0777)
+	if got != mode {
+		t.Errorf("Fchmodat: failed to change symlink mode: expected %v, got %v", mode, got)
+	}
+}
+
 // mktmpfifo creates a temporary FIFO and provides a cleanup function.
 func mktmpfifo(t *testing.T) (*os.File, func()) {
 	err := unix.Mkfifo("fifo", 0666)
