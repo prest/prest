@@ -68,7 +68,7 @@ func TestInvalidGetScript(t *testing.T) {
 	}
 }
 
-func TestParseScript(t *testing.T) {
+func TestParseScriptInvalid(t *testing.T) {
 	queryURL := url.Values{}
 	queryURL.Set("field1", "abc")
 
@@ -91,15 +91,27 @@ func TestParseScript(t *testing.T) {
 	// Add new values
 	queryURL.Del("field1")
 	queryURL.Set("notable", "123")
+}
 
-	t.Log("Try Parse Script with noexistent script")
-	sql, _, err = config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "gt_all.read.sql"), queryURL)
-	if err == nil {
-		t.Errorf("expected error, but got: %v", err)
+func TestParseScript(t *testing.T) {
+	queryURL := url.Values{}
+	queryURL.Add("field1", "abc")
+	queryURL.Add("field1", "test")
+
+	user, err := user.Current()
+	if err != nil {
+		log.Fatal(err)
+	}
+	scriptPath := fmt.Sprint(user.HomeDir, "/queries/fulltable/%s")
+
+	t.Log("Parse script with get_all_slice file")
+	sql, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "get_all_slice.read.sql"), queryURL)
+	if err != nil {
+		t.Errorf("expected no error, but got: %v", err)
 	}
 
-	if sql != "" {
-		t.Errorf("expected empty string, got: %s", sql)
+	if sql != "SELECT * FROM test7 WHERE name IN ('abc', 'test')" {
+		t.Errorf("SQL unexpected, got: %s", sql)
 	}
 }
 
