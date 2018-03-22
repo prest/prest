@@ -56,7 +56,7 @@ func TestRegistryAllFuncs(t *testing.T) {
 	if !ok {
 		t.Error("func defaultOrValue is not registred")
 	}
-	_, ok = fmap["in"]
+	_, ok = fmap["inFormat"]
 	if !ok {
 		t.Error("func in is not registred")
 	}
