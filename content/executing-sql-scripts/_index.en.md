@@ -92,3 +92,9 @@ WHERE name = "{{.field1}}"
 ```sql
 SELECT * FROM table WHERE name = '{{defaultOrValue "field1" "gopher"}}';
 ```
+
+- *inFormat* if value of param is an slice this function format to an IN SQL clause.
+
+```sql
+SELECT * FROM table WHERE name IN {{inFormat "field1"}};
+```
