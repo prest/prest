@@ -35,7 +35,11 @@ func (fr *FuncRegistry) defaultOrValue(key, defaultValue string) (value interfac
 }
 
 func (fr *FuncRegistry) inFormat(key string) (query string) {
-	items := fr.TemplateData[key].([]string)
+	items, ok := fr.TemplateData[key].([]string)
+	if !ok {
+		query = fmt.Sprintf("('%v')", fr.TemplateData[key])
+		return
+	}
 	query = fmt.Sprintf("('%s')", strings.Join(items, "', '"))
 	return
 }

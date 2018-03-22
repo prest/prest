@@ -40,6 +40,12 @@ func TestInFormat(t *testing.T) {
 	if query != "('test1', 'test2')" {
 		t.Errorf("expected ('test1', 'test2'), but got %s", query)
 	}
+	data["test"] = "test1"
+	funcs = &FuncRegistry{TemplateData: data}
+	query = funcs.inFormat("test")
+	if query != "('test1')" {
+		t.Errorf("expected ('test1'), but got %s", query)
+	}
 }
 
 func TestRegistryAllFuncs(t *testing.T) {
