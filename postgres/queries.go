@@ -47,11 +47,13 @@ func (adapter *Postgres) GetScript(verb, folder, scriptName string) (script stri
 // ParseScript use values sent by users and add on script
 func (adapter *Postgres) ParseScript(scriptPath string, queryURL url.Values) (sqlQuery string, values []interface{}, err error) {
 	_, tplName := path.Split(scriptPath)
-	q := make(map[string]string)
-	pid := 1
-	for key := range queryURL {
-		q[key] = queryURL.Get(key)
-		pid++
+	q := make(map[string]interface{})
+	for key, value := range queryURL {
+		if len(value) == 1 {
+			q[key] = value[0]
+			continue
+		}
+		q[key] = value
 	}
 
 	funcs := &template.FuncRegistry{TemplateData: q}
