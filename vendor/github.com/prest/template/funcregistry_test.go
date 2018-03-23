@@ -5,7 +5,7 @@ import (
 )
 
 func TestIsSet(t *testing.T) {
-	data := make(map[string]string)
+	data := make(map[string]interface{})
 	data["test"] = "testValue"
 	funcs := &FuncRegistry{TemplateData: data}
 	ok := funcs.isSet("test")
@@ -19,7 +19,7 @@ func TestIsSet(t *testing.T) {
 }
 
 func TestDefaultOrValue(t *testing.T) {
-	data := make(map[string]string)
+	data := make(map[string]interface{})
 	data["test"] = "testValue"
 	funcs := &FuncRegistry{TemplateData: data}
 	value := funcs.defaultOrValue("test", "testDefault")
@@ -32,8 +32,24 @@ func TestDefaultOrValue(t *testing.T) {
 	}
 }
 
+func TestInFormat(t *testing.T) {
+	data := make(map[string]interface{})
+	data["test"] = []string{"test1", "test2"}
+	funcs := &FuncRegistry{TemplateData: data}
+	query := funcs.inFormat("test")
+	if query != "('test1', 'test2')" {
+		t.Errorf("expected ('test1', 'test2'), but got %s", query)
+	}
+	data["test"] = "test1"
+	funcs = &FuncRegistry{TemplateData: data}
+	query = funcs.inFormat("test")
+	if query != "('test1')" {
+		t.Errorf("expected ('test1'), but got %s", query)
+	}
+}
+
 func TestRegistryAllFuncs(t *testing.T) {
-	data := make(map[string]string)
+	data := make(map[string]interface{})
 	data["test"] = "testValue"
 	funcs := &FuncRegistry{TemplateData: data}
 
@@ -45,5 +61,9 @@ func TestRegistryAllFuncs(t *testing.T) {
 	_, ok = fmap["defaultOrValue"]
 	if !ok {
 		t.Error("func defaultOrValue is not registred")
+	}
+	_, ok = fmap["inFormat"]
+	if !ok {
+		t.Error("func in is not registred")
 	}
 }

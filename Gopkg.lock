@@ -134,7 +134,7 @@
     "postgres/internal/connection",
     "postgres/statements"
   ]
-  revision = "6b84c04950c120fc54cee9d4e21ee2338e419dc7"
+  revision = "9eedc2021a012dbc78b487327cd71b6ee77300cb"
 
 [[projects]]
   branch = "master"
@@ -179,7 +179,7 @@
   branch = "master"
   name = "github.com/prest/template"
   packages = ["."]
-  revision = "4ed30c63cfff9ab9b4096e4c0904cccee806e381"
+  revision = "ce51108d4a87e50896935f87fa70501d17fdba9a"
 
 [[projects]]
   name = "github.com/spf13/afero"
@@ -230,7 +230,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "c488ab1dd8481ef762f96a79a9577c27825be697"
+  revision = "91ee8cde435411ca3f1cd365e8f20131aed4d0a1"
 
 [[projects]]
   name = "golang.org/x/text"
