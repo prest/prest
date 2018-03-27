@@ -523,6 +523,7 @@ func TestJoinByRequest(t *testing.T) {
 		testEmptyResult bool
 	}{
 		{"Join by request", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name", []string{"INNER JOIN", `"test2" ON `, `"test2"."name" = "test"."name"`}, false},
+		{"Join by request with schema", "/prest/public/test?_join=inner:public.test2:test2.name:$eq:test.name", []string{"INNER JOIN", `"public"."test2" ON `, `"test2"."name" = "test"."name"`}, false},
 		{"Join empty params", "/prest/public/test?_join", []string{}, true},
 		{"Join missing param", "/prest/public/test?_join=inner:test2:test2.name:$eq", []string{}, true},
 		{"Join invalid operator", "/prest/public/test?_join=inner:test2:test2.name:notexist:test.name", []string{}, true},
