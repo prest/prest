@@ -365,6 +365,9 @@ func (adapter *Postgres) JoinByRequest(r *http.Request) (values []string, err er
 		return
 	}
 	errJoin := errors.New("invalid join clause")
+	if joinWith := strings.Split(joinArgs[1], "."); len(joinWith) == 2 {
+		joinArgs[1] = fmt.Sprintf(`%s"."%s`, joinWith[0], joinWith[1])
+	}
 	spl := strings.Split(joinArgs[2], ".")
 	if len(spl) != 2 {
 		err = errJoin

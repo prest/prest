@@ -13,8 +13,8 @@
     ".",
     "j2x"
   ]
-  revision = "1cda74d18ebbb04f525b355309c16d594e1f8f77"
-  version = "v1.6.1"
+  revision = "593ae43fc2c7195ec08a76e786509d145a8f6be7"
+  version = "v1.7"
 
 [[projects]]
   name = "github.com/dgrijalva/jwt-go"
@@ -85,7 +85,7 @@
     ".",
     "oid"
   ]
-  revision = "b2004221932bd6b13167ef654c81cffac36f7537"
+  revision = "d34b9ff171c21ad295489235aec8b6626023cd04"
 
 [[projects]]
   name = "github.com/magiconair/properties"
@@ -134,7 +134,7 @@
     "postgres/internal/connection",
     "postgres/statements"
   ]
-  revision = "9eedc2021a012dbc78b487327cd71b6ee77300cb"
+  revision = "f23bd285856d779ce3f16d11f0c38d5114e94ade"
 
 [[projects]]
   branch = "master"
@@ -187,8 +187,8 @@
     ".",
     "mem"
   ]
-  revision = "bb8f1927f2a9d3ab41c9340aa034f6b803f4359c"
-  version = "v1.0.2"
+  revision = "63644898a8da0bc22138abf860edaf5277b6102e"
+  version = "v1.1.0"
 
 [[projects]]
   name = "github.com/spf13/cast"
@@ -199,8 +199,8 @@
 [[projects]]
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "7b2c5ac9fc04fc5efafb60700713d4fa609b777b"
-  version = "v0.0.1"
+  revision = "a1f051bc3eba734da4772d60e2d677f47cf93ef4"
+  version = "v0.0.2"
 
 [[projects]]
   branch = "master"
@@ -230,7 +230,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "91ee8cde435411ca3f1cd365e8f20131aed4d0a1"
+  revision = "378d26f46672a356c46195c28f61bdb4c0a781dd"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -261,8 +261,8 @@
 [[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
-  version = "v2.1.1"
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
 
 [solve-meta]
   analyzer-name = "dep"
