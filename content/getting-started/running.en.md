@@ -1,46 +1,15 @@
 ---
 date: 2016-04-23T15:21:22+02:00
 title: Running
+chapter: true
 type: homepage
-menu:
-  getting-started:
-    parent: "getting-started"
-weight: 3
+menu: main
+weight: 2
 ---
 
-Even though there were four ways to install pREST there's mostly two ways to run it.
+# Running
 
-1. [With the binary or homebrew or go get](/getting-started/running/#with-the-binary-or-homebrew-or-go-get)
-1. [With Docker or Docker Compose](/getting-started/running/#with-docker)
+Now that you installed pREST, you have a choice. Either run it with a pre-existing database or with a new one:
 
-
-### With the binary or homebrew or go get
-
-If you install pREST by downloading the binary or using Homebrew or using go get, you must pass the necessary variables binary as follows:
-
-```sh
-PREST_PG_USER=postgres \
-PREST_PG_DATABASE=prest \
-PREST_PG_PORT=5432 \
-PREST_HTTP_PORT=3010 \
-prest # Binary installed
-```
-
-### With docker
-
-Considering you already did the pull in the previous step:
-
-```sh
-docker run -e PREST_HTTP_PORT=3000 \
-	-e PREST_PG_HOST=127.0.0.1 \
-	-e PREST_PG_USER=postgres \
-	-e PREST_PG_PASS=pass \
-	prest/prest
-```
-or if use Docker Compose (there's an [example in the repository](https://github.com/prest/prest/blob/master/docker-compose.yml))
-
-```sh
-docker-compose up
-```
-
-For more details on how to configure and other environment variables got to [Configurations](/configurations)
+- [With a new database](/getting-started/new-database)
+- [Already have a database](/getting-started/already-have-db)
