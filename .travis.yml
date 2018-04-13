@@ -1,0 +1,28 @@
+language: go
+
+go:
+  - "1.10"
+
+sudo: false
+
+git:
+  depth: 10
+
+branches:
+  only:
+    - gh-pages
+
+install:
+  - go get -u -v github.com/gohugoio/hugo
+
+script:
+  - hugo
+
+deploy:
+  provider: pages
+  skip_cleanup: true
+  github_token: ${GITHUB_TOKEN}
+  local-dir: public
+  target-branch: master
+  on:
+    branch: gh-pages
