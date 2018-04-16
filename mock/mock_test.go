@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/prest/adapters"
-	"github.com/prest/adapters/internal/scanner"
+	"github.com/prest/adapters/scanner"
 )
 
 func TestMock_validate(t *testing.T) {

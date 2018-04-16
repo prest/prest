@@ -16,10 +16,10 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/nuveo/log"
 	"github.com/prest/adapters"
-	"github.com/prest/adapters/internal/scanner"
 	"github.com/prest/adapters/postgres/formatters"
 	"github.com/prest/adapters/postgres/internal/connection"
 	"github.com/prest/adapters/postgres/statements"
+	"github.com/prest/adapters/scanner"
 	"github.com/prest/config"
 )
 
