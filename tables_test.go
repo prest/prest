@@ -100,7 +100,7 @@ func TestSelectFromTables(t *testing.T) {
 		{"execute select in a table with select *", "/prest/public/test5?_select=*", "GET", http.StatusOK, ""},
 		{"execute select in a table with select * and distinct", "/prest/public/test5?_select=*&_distinct=true", "GET", http.StatusOK, ""},
 
-		{"execute select in a table with group by clause", "/prest/public/test_group_by_table?_select=age,sum:salary&_groupby=age", "GET", http.StatusOK, "[{\"age\":20,\"sum\":1350}, \n {\"age\":19,\"sum\":7997}]"},
+		{"execute select in a table with group by clause", "/prest/public/test_group_by_table?_select=age,sum:salary&_groupby=age", "GET", http.StatusOK, ""},
 		{"execute select in a table with group by and having clause", "/prest/public/test_group_by_table?_select=age,sum:salary&_groupby=age->>having:sum:salary:$gt:3000", "GET", http.StatusOK, "[{\"age\":19,\"sum\":7997}]"},
 
 		{"execute select in a view without custom where clause", "/prest/public/view_test", "GET", http.StatusOK, ""},
@@ -177,6 +177,46 @@ func TestInsertInTables(t *testing.T) {
 	for _, tc := range testCases {
 		t.Log(tc.description)
 		doRequest(t, server.URL+tc.url, tc.request, "POST", tc.status, "InsertInTables")
+	}
+}
+
+func TestBatchInsertInTables(t *testing.T) {
+
+	m := make([]map[string]interface{}, 0)
+	m = append(m, map[string]interface{}{"name": "bprest"})
+	m = append(m, map[string]interface{}{"name": "aprest"})
+
+	mJSON := make([]map[string]interface{}, 0)
+	mJSON = append(mJSON, map[string]interface{}{"name": "cprest", "data": `{"term": "name", "subterm": ["names", "of", "subterms"], "obj": {"emp": "nuveo"}}`})
+	mJSON = append(mJSON, map[string]interface{}{"name": "dprest", "data": `{"term": "name", "subterms": ["names", "of", "subterms"], "obj": {"emp": "nuveo"}}`})
+
+	mARRAY := make([]map[string]interface{}, 0)
+	mARRAY = append(mARRAY, map[string]interface{}{"data": []string{"1", "2"}})
+	mARRAY = append(mARRAY, map[string]interface{}{"data": []string{"1", "2", "3"}})
+
+	router := mux.NewRouter()
+	router.HandleFunc("/batch/{database}/{schema}/{table}", BatchInsertInTables).Methods("POST")
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	var testCases = []struct {
+		description string
+		url         string
+		request     []map[string]interface{}
+		status      int
+	}{
+		{"execute insert in a table with array field", "/batch/prest/public/testarray", mARRAY, http.StatusOK},
+		{"execute insert in a table with jsonb field", "/batch/prest/public/testjson", mJSON, http.StatusOK},
+		{"execute insert in a table without custom where clause", "/batch/prest/public/test", m, http.StatusOK},
+		{"execute insert in a table with invalid database", "/batch/0prest/public/test", m, http.StatusBadRequest},
+		{"execute insert in a table with invalid schema", "/batch/prest/0public/test", m, http.StatusBadRequest},
+		{"execute insert in a table with invalid table", "/batch/prest/public/0test", m, http.StatusBadRequest},
+		{"execute insert in a table with invalid body", "/batch/prest/public/test", nil, http.StatusBadRequest},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		doRequest(t, server.URL+tc.url, tc.request, "POST", tc.status, "BatchInsertInTables")
 	}
 }
 

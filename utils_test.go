@@ -146,7 +146,7 @@ func doValidPatchRequest(t *testing.T, url string, r map[string]interface{}, whe
 	}
 }
 
-func doRequest(t *testing.T, url string, r map[string]interface{}, method string, expectedStatus int, where string, expectedBody ...string) {
+func doRequest(t *testing.T, url string, r interface{}, method string, expectedStatus int, where string, expectedBody ...string) {
 	fmt.Println("Test:", where)
 	var byt []byte
 	var err error

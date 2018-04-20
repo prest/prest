@@ -223,6 +223,31 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	w.Write(sc.Bytes())
 }
 
+// BatchInsertInTables perform insert in specific table from a batch request
+func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	database := vars["database"]
+	schema := vars["schema"]
+	table := vars["table"]
+
+	config.PrestConf.Adapter.SetDatabase(database)
+
+	names, placeholders, values, err := config.PrestConf.Adapter.ParseBatchInsertRequest(r)
+	if err != nil {
+		err = fmt.Errorf("could not perform BatchInsertInTables: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	sql := config.PrestConf.Adapter.BatchInsertSQL(database, schema, table, names, placeholders[0])
+	sc := config.PrestConf.Adapter.BatchInsert(sql, values)
+	if sc.Err() != nil {
+		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
+		return
+	}
+	w.Write(sc.Bytes())
+}
+
 // DeleteFromTable perform delete sql
 func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
