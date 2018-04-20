@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -1100,4 +1101,123 @@ func TestDisableCache(t *testing.T) {
 		t.Error("has query in cache")
 	}
 	os.Setenv("PREST_CACHE_ENABLE", "true")
+}
+
+func TestParseBatchInsertRequest(t *testing.T) {
+	config.Load()
+	Load()
+	m := make(map[string]interface{})
+	m["name"] = "prest"
+	m["pumpkin"] = "prest"
+	records := make([]map[string]interface{}, 0)
+	records = append(records, m)
+
+	var testCases = []struct {
+		description      string
+		body             []map[string]interface{}
+		expectedColNames []string
+		expectedValues   [][]interface{}
+		err              error
+	}{
+		{"first test",
+			records,
+			[]string{`"name"`, `"pumpkin"`},
+			[][]interface{}{{"prest", "prest"}},
+			nil},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		body, err := json.Marshal(tc.body)
+		if err != nil {
+			t.Errorf("expected no errors in http request, got %v", err)
+		}
+		req, err := http.NewRequest("POST", "/", bytes.NewReader(body))
+		if err != nil {
+			t.Errorf("expected no errors in http request, got %v", err)
+		}
+
+		colsNames, _, values, err := config.PrestConf.Adapter.ParseBatchInsertRequest(req)
+		if err != tc.err {
+			t.Errorf("expected errors %v in where by request, got %v", tc.err, err)
+		}
+
+		for _, name := range tc.expectedColNames {
+			if !strings.Contains(colsNames[0], name) {
+				t.Errorf("expected %#v in %#v, but wasn't!", tc.expectedColNames, colsNames)
+			}
+		}
+
+		if !reflect.DeepEqual(tc.expectedValues, values) {
+			t.Errorf("expected %v in %v", tc.expectedValues, values)
+		}
+	}
+}
+
+func TestBatchInsertSQL(t *testing.T) {
+	config.Load()
+	Load()
+	var testCases = []struct {
+		description  string
+		database     string
+		schema       string
+		table        string
+		names        []string
+		placeholders string
+		SQL          []string
+	}{
+		{
+			"first test",
+			"prest",
+			"public",
+			"test1",
+			[]string{`"id", "name"`, `"name", "id"`},
+			"$1, $2",
+			[]string{`INSERT INTO "prest"."public"."test1"("id", "name") VALUES($1, $2)`, `INSERT INTO "prest"."public"."test1"("name", "id") VALUES($1, $2)`},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			sql := config.PrestConf.Adapter.BatchInsertSQL(tc.database, tc.schema, tc.table, tc.names, tc.placeholders)
+			if !reflect.DeepEqual(tc.SQL, sql) {
+				t.Errorf("expected %#v in %#v, but wasn't!", tc.SQL, sql)
+			}
+		})
+	}
+}
+
+func TestBatchInsert(t *testing.T) {
+	config.Load()
+	Load()
+	var testCases = []struct {
+		description string
+		sql         []string
+		records     [][]interface{}
+	}{
+		{
+			"Insert data into a table with one field",
+			[]string{`INSERT INTO prest.public.test4(name) VALUES($1)`, `INSERT INTO prest.public.test4(name) VALUES($1)`},
+			[][]interface{}{{"1prest-test-batch-insert"}, {"1batch-prest-test-insert"}},
+		}, {
+			"Insert data into a table with more than one field",
+			[]string{`INSERT INTO prest.public.test5(name, celphone) VALUES($1, $2)`, `INSERT INTO prest.public.test5(name, celphone) VALUES($1, $2)`},
+			[][]interface{}{{"2prest-test-batch-insert", "88888888"}, {"2batch-prest-test-insert", "98888888"}},
+		}, {
+			"Insert data into a table with more than one field and with quotes case sensitive",
+			[]string{`INSERT INTO "prest"."public"."Reply"("name") VALUES($1)`, `INSERT INTO "prest"."public"."Reply"("name") VALUES($1)`},
+			[][]interface{}{{"3prest-test-batch-insert"}, {"3batch-prest-test-insert"}},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		sc := config.PrestConf.Adapter.BatchInsert(tc.sql, tc.records)
+		if sc.Err() != nil {
+			t.Errorf("expected no errors, but got %s", sc.Err())
+		}
+		if len(sc.Bytes()) < 2 {
+			t.Errorf("expected valid response body, but got %s", string(sc.Bytes()))
+		}
+	}
 }

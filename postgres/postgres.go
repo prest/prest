@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -273,13 +274,67 @@ func (adapter *Postgres) SetByRequest(r *http.Request, initialPlaceholderID int)
 	return
 }
 
+func closer(body io.Closer) {
+	err := body.Close()
+	if err != nil {
+		log.Errorln(err)
+	}
+}
+
+// ParseBatchInsertRequest create insert SQL to batch request
+func (adapter *Postgres) ParseBatchInsertRequest(r *http.Request) (colsName []string, colsValue []string, values [][]interface{}, err error) {
+	recordSet := make([]map[string]interface{}, 0)
+	if err = json.NewDecoder(r.Body).Decode(&recordSet); err != nil {
+		return
+	}
+	defer closer(r.Body)
+
+	if len(recordSet) == 0 {
+		err = ErrBodyEmpty
+		return
+	}
+
+	for _, record := range recordSet {
+		fields := make([]string, 0)
+		recordValues := []interface{}{}
+		for field, value := range record {
+			if chkInvalidIdentifier(field) {
+				err = errors.New("Insert: Invalid identifier")
+				return
+			}
+			fields = append(fields, fmt.Sprintf(`"%s"`, field))
+
+			switch value.(type) {
+			case []interface{}:
+				recordValues = append(recordValues, formatters.FormatArray(value))
+			default:
+				recordValues = append(recordValues, value)
+			}
+		}
+		values = append(values, recordValues)
+		colsName = append(colsName, strings.Join(fields, ", "))
+		colsValue = append(colsValue, createPlaceholders(len(recordValues)))
+	}
+	return
+}
+
+func createPlaceholders(lenValues int) (ret string) {
+	for i := 1; i <= lenValues; i++ {
+		if ret != "" {
+			ret += ","
+		}
+		ret += fmt.Sprintf("$%d", i)
+	}
+	return
+}
+
 // ParseInsertRequest create insert SQL
 func (adapter *Postgres) ParseInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error) {
 	body := make(map[string]interface{})
 	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return
 	}
-	defer r.Body.Close()
+	defer closer(r.Body)
 
 	if len(body) == 0 {
 		err = ErrBodyEmpty
@@ -303,12 +358,7 @@ func (adapter *Postgres) ParseInsertRequest(r *http.Request) (colsName string, c
 	}
 
 	colsName = strings.Join(fields, ", ")
-	for i := 1; i < len(values)+1; i++ {
-		if colsValue != "" {
-			colsValue += ","
-		}
-		colsValue += fmt.Sprintf("$%d", i)
-	}
+	colsValue = createPlaceholders(len(values))
 	return
 }
 
@@ -546,6 +596,70 @@ func (adapter *Postgres) PaginateIfPossible(r *http.Request) (paginatedQuery str
 		}
 	}
 	paginatedQuery = fmt.Sprintf("LIMIT %d OFFSET(%d - 1) * %d", pageSize, pageNumber, pageSize)
+	return
+}
+
+// BatchInsert execute insert sql into a table
+func (adapter *Postgres) BatchInsert(SQL []string, records [][]interface{}) (sc adapters.Scanner) {
+	db, err := connection.Get()
+	if err != nil {
+		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+	tableName := insertTableNameQuotesRegex.FindStringSubmatch(SQL[0])
+	if len(tableName) < 2 {
+		tableName = insertTableNameRegex.FindStringSubmatch(SQL[0])
+		if len(tableName) < 2 {
+			err = errors.New("unable to find table name")
+			sc = &scanner.PrestScanner{Error: err}
+			return
+		}
+	}
+	jsonData := []byte(`[`)
+	tx, err := db.Begin()
+	for i := 0; i < len(records); i++ {
+		log.Debugln(SQL, " parameters: ", records)
+		SQL[i] = fmt.Sprintf(`%s RETURNING row_to_json("%s")`, SQL[i], tableName[2])
+		if err != nil {
+			sc = &scanner.PrestScanner{Error: err}
+			return
+		}
+		var stmt *sql.Stmt
+		stmt, err = tx.Prepare(SQL[i])
+		if err != nil {
+			sc = &scanner.PrestScanner{Error: err}
+			errt := tx.Rollback()
+			if errt != nil {
+				log.Errorln(errt)
+			}
+			return
+		}
+
+		var aux []byte
+		err = stmt.QueryRow(records[i]...).Scan(&aux)
+		if err != nil {
+			sc = &scanner.PrestScanner{Error: err}
+			errt := tx.Rollback()
+			if errt != nil {
+				log.Errorln(errt)
+			}
+			return
+		}
+		if len(jsonData) > 1 {
+			jsonData = append(jsonData, ',')
+		}
+		jsonData = append(jsonData, aux...)
+	}
+	err = tx.Commit()
+	if err != nil {
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+	jsonData = append(jsonData, ']')
+	sc = &scanner.PrestScanner{
+		Buff: bytes.NewBuffer(jsonData),
+	}
 	return
 }
 
@@ -914,6 +1028,14 @@ func (adapter *Postgres) SelectSQL(selectStr string, database string, schema str
 // InsertSQL generate insert sql
 func (adapter *Postgres) InsertSQL(database string, schema string, table string, names string, placeholders string) string {
 	return fmt.Sprintf(statements.InsertQuery, database, schema, table, names, placeholders)
+}
+
+// BatchInsertSQL generate insert sql
+func (adapter *Postgres) BatchInsertSQL(database string, schema string, table string, names []string, placeholders string) (SQL []string) {
+	for _, name := range names {
+		SQL = append(SQL, fmt.Sprintf(statements.InsertQuery, database, schema, table, name, placeholders))
+	}
+	return
 }
 
 // DeleteSQL generate delete sql
