@@ -16,3 +16,4 @@ These are just a few companies and projects that are using (trusting) pREST.
 | Nuveo | [nuveo.ai](https://nuveo.ai/) |
 | Filmow | [filmow.com](https://filmow.com/) |
 | Levpay | [levpay.com](https://levpay.com/) |
+| uMov.me | [umov.me](https://www.umov.me/) |
