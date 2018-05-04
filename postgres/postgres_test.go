@@ -1189,6 +1189,8 @@ func TestBatchInsertValues(t *testing.T) {
 }
 
 func TestPostgres_BatchInsertCopy(t *testing.T) {
+	config.Load()
+	Load()
 	type args struct {
 		dbname string
 		schema string
@@ -1203,6 +1205,17 @@ func TestPostgres_BatchInsertCopy(t *testing.T) {
 	}{
 		{
 			"batch copy",
+			args{
+				"prest",
+				"public",
+				"Reply",
+				[]string{`"name"`},
+				[]interface{}{"copy"},
+			},
+			false,
+		},
+		{
+			"batch copy without quotes",
 			args{
 				"prest",
 				"public",

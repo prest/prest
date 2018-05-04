@@ -649,6 +649,16 @@ func (adapter *Postgres) BatchInsertCopy(dbname, schema, table string, keys []st
 			return
 		}
 	}()
+	for i := range keys {
+		if strings.HasPrefix(keys[i], `"`) {
+			keys[i], err = strconv.Unquote(keys[i])
+			if err != nil {
+				log.Println(err)
+				sc = &scanner.PrestScanner{Error: err}
+				return
+			}
+		}
+	}
 	stmt, err := tx.Prepare(pq.CopyInSchema(schema, table, keys...))
 	if err != nil {
 		log.Println(err)
