@@ -618,7 +618,6 @@ func (adapter *Postgres) PaginateIfPossible(r *http.Request) (paginatedQuery str
 
 // BatchInsertCopy execute batch insert sql into a table unsing copy
 func (adapter *Postgres) BatchInsertCopy(dbname, schema, table string, keys []string, values ...interface{}) (sc adapters.Scanner) {
-	fmt.Println(">>>>>>>>>>", values)
 	db, err := connection.Get()
 	if err != nil {
 		log.Println(err)
