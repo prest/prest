@@ -302,12 +302,9 @@ func (adapter *Postgres) ParseBatchInsertRequest(r *http.Request) (colsName stri
 }
 
 func (adapter *Postgres) operationValues(recordSet []map[string]interface{}, recordKeys []string) (values []interface{}, placeholders string, err error) {
-	initPH := 1
 	for i, record := range recordSet {
+		initPH := len(values) + 1
 		for _, key := range recordKeys {
-			if len(values) > 0 {
-				initPH = len(values) + 1
-			}
 			key, err = strconv.Unquote(key)
 			if err != nil {
 				return
@@ -665,11 +662,17 @@ func (adapter *Postgres) BatchInsertCopy(dbname, schema, table string, keys []st
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	_, err = stmt.Exec(values...)
-	if err != nil {
-		log.Println(err)
-		sc = &scanner.PrestScanner{Error: err}
-		return
+	initOffSet := 0
+	limitOffset := len(keys)
+	for limitOffset <= len(values) {
+		_, err = stmt.Exec(values[initOffSet:limitOffset]...)
+		if err != nil {
+			log.Println(err)
+			sc = &scanner.PrestScanner{Error: err}
+			return
+		}
+		initOffSet = limitOffset
+		limitOffset += len(keys)
 	}
 	_, err = stmt.Exec()
 	if err != nil {
