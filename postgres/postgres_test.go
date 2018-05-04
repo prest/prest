@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,11 +12,8 @@ import (
 
 	"github.com/prest/adapters"
 	"github.com/prest/adapters/postgres/internal/connection"
-
-	"bytes"
-
+	"github.com/prest/adapters/postgres/statements"
 	"github.com/prest/config"
-	"github.com/prest/statements"
 )
 
 func init() {
@@ -1115,15 +1113,17 @@ func TestParseBatchInsertRequest(t *testing.T) {
 	var testCases = []struct {
 		description      string
 		body             []map[string]interface{}
-		expectedColNames []string
-		expectedValues   [][]interface{}
+		expectedColNames string
+		expectedValues   []interface{}
 		err              error
 	}{
-		{"first test",
+		{
+			"first test",
 			records,
-			[]string{`"name"`, `"pumpkin"`},
-			[][]interface{}{{"prest", "prest"}},
-			nil},
+			`"name","pumpkin"`,
+			[]interface{}{"prest", "prest"},
+			nil,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -1142,10 +1142,8 @@ func TestParseBatchInsertRequest(t *testing.T) {
 			t.Errorf("expected errors %v in where by request, got %v", tc.err, err)
 		}
 
-		for _, name := range tc.expectedColNames {
-			if !strings.Contains(colsNames[0], name) {
-				t.Errorf("expected %#v in %#v, but wasn't!", tc.expectedColNames, colsNames)
-			}
+		if tc.expectedColNames != colsNames {
+			t.Errorf("expected %#v in %#v, but wasn't!", tc.expectedColNames, colsNames)
 		}
 
 		if !reflect.DeepEqual(tc.expectedValues, values) {
@@ -1154,70 +1152,84 @@ func TestParseBatchInsertRequest(t *testing.T) {
 	}
 }
 
-func TestBatchInsertSQL(t *testing.T) {
-	config.Load()
-	Load()
-	var testCases = []struct {
-		description  string
-		database     string
-		schema       string
-		table        string
-		names        []string
-		placeholders string
-		SQL          []string
-	}{
-		{
-			"first test",
-			"prest",
-			"public",
-			"test1",
-			[]string{`"id", "name"`, `"name", "id"`},
-			"$1, $2",
-			[]string{`INSERT INTO "prest"."public"."test1"("id", "name") VALUES($1, $2)`, `INSERT INTO "prest"."public"."test1"("name", "id") VALUES($1, $2)`},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.description, func(t *testing.T) {
-			sql := config.PrestConf.Adapter.BatchInsertSQL(tc.database, tc.schema, tc.table, tc.names, tc.placeholders)
-			if !reflect.DeepEqual(tc.SQL, sql) {
-				t.Errorf("expected %#v in %#v, but wasn't!", tc.SQL, sql)
-			}
-		})
-	}
-}
-
-func TestBatchInsert(t *testing.T) {
+func TestBatchInsertValues(t *testing.T) {
 	config.Load()
 	Load()
 	var testCases = []struct {
 		description string
-		sql         []string
-		records     [][]interface{}
+		sql         string
+		records     []interface{}
 	}{
 		{
 			"Insert data into a table with one field",
-			[]string{`INSERT INTO prest.public.test4(name) VALUES($1)`, `INSERT INTO prest.public.test4(name) VALUES($1)`},
-			[][]interface{}{{"1prest-test-batch-insert"}, {"1batch-prest-test-insert"}},
+			`INSERT INTO prest.public.test4(name) VALUES($1),($2)`,
+			[]interface{}{"1prest-test-batch-insert", "1batch-prest-test-insert"},
 		}, {
 			"Insert data into a table with more than one field",
-			[]string{`INSERT INTO prest.public.test5(name, celphone) VALUES($1, $2)`, `INSERT INTO prest.public.test5(name, celphone) VALUES($1, $2)`},
-			[][]interface{}{{"2prest-test-batch-insert", "88888888"}, {"2batch-prest-test-insert", "98888888"}},
+			`INSERT INTO prest.public.test5(name, celphone) VALUES($1, $2),($3, $4)`,
+			[]interface{}{"2prest-test-batch-insert", "88888888", "2batch-prest-test-insert", "98888888"},
 		}, {
 			"Insert data into a table with more than one field and with quotes case sensitive",
-			[]string{`INSERT INTO "prest"."public"."Reply"("name") VALUES($1)`, `INSERT INTO "prest"."public"."Reply"("name") VALUES($1)`},
-			[][]interface{}{{"3prest-test-batch-insert"}, {"3batch-prest-test-insert"}},
+			`INSERT INTO "prest"."public"."Reply"("name") VALUES($1),($2)`,
+			[]interface{}{"3prest-test-batch-insert", "3batch-prest-test-insert"},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.BatchInsert(tc.sql, tc.records)
+		sc := config.PrestConf.Adapter.BatchInsertValues(tc.sql, tc.records...)
 		if sc.Err() != nil {
 			t.Errorf("expected no errors, but got %s", sc.Err())
 		}
+
 		if len(sc.Bytes()) < 2 {
 			t.Errorf("expected valid response body, but got %s", string(sc.Bytes()))
 		}
+	}
+}
+
+func TestPostgres_BatchInsertCopy(t *testing.T) {
+	type args struct {
+		dbname string
+		schema string
+		table  string
+		keys   []string
+		values []interface{}
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			"batch copy",
+			args{
+				"prest",
+				"public",
+				"Reply",
+				[]string{"name"},
+				[]interface{}{"copy"},
+			},
+			false,
+		},
+		{
+			"batch copy with err",
+			args{
+				"prest",
+				"public",
+				"Reply",
+				[]string{"na"},
+				[]interface{}{"copy"},
+			},
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotSc := config.PrestConf.Adapter.BatchInsertCopy(tt.args.dbname, tt.args.schema, tt.args.table, tt.args.keys, tt.args.values...)
+			if (gotSc.Err() != nil) != tt.wantErr {
+				t.Errorf("Postgres.BatchInsertCopy() = %v, want %v", gotSc.Err(), tt.wantErr)
+			}
+		})
 	}
 }

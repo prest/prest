@@ -216,6 +216,48 @@ func TestMock_Insert(t *testing.T) {
 	}
 }
 
+func TestMock_BatchInsertValues(t *testing.T) {
+	tests := []struct {
+		name   string
+		item   Item
+		wantSc adapters.Scanner
+	}{
+		{
+			"batch insert body",
+			Item{
+				Body: []byte(`[{"test":"test"}]`),
+			},
+			&scanner.PrestScanner{
+				Buff:    bytes.NewBuffer([]byte(`[{"test":"test"}]`)),
+				IsQuery: true,
+			},
+		},
+		{
+			"batch insert err",
+			Item{
+				Error: errors.New("test error"),
+			},
+			&scanner.PrestScanner{
+				Error:   errors.New("test error"),
+				Buff:    &bytes.Buffer{},
+				IsQuery: true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &Mock{
+				mtx: &sync.RWMutex{},
+				t:   t,
+			}
+			m.AddItem(tt.item.Body, tt.item.Error, tt.item.HasPermission, tt.item.IsCount)
+			if gotSc := m.BatchInsertValues(""); !reflect.DeepEqual(gotSc, tt.wantSc) {
+				t.Errorf("Mock.BatchInsert() = %v, want %v", gotSc, tt.wantSc)
+			}
+		})
+	}
+}
+
 func TestMock_Delete(t *testing.T) {
 	tests := []struct {
 		name   string

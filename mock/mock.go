@@ -252,6 +252,23 @@ func (m *Mock) SchemaTablesOrderBy(order string) (orderBy string) {
 	return
 }
 
+// ParseBatchInsertRequest mocl
+func (m *Mock) ParseBatchInsertRequest(r *http.Request) (colsName string, placeholders string, values []interface{}, err error) {
+	return
+}
+
+// BatchInsertValues mock
+func (m *Mock) BatchInsertValues(SQL string, params ...interface{}) (sc adapters.Scanner) {
+	sc = m.perform(true)
+	return
+}
+
+// BatchInsertCopy mock
+func (m *Mock) BatchInsertCopy(dbname, schema, table string, keys []string, values ...interface{}) (sc adapters.Scanner) {
+	sc = m.perform(false)
+	return
+}
+
 // AddItem on mock object
 func (m *Mock) AddItem(body []byte, err error, hasPermission, isCount bool) {
 	i := Item{

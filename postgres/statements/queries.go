@@ -110,7 +110,7 @@ SELECT
 FROM`
 
 	// InsertQuery query
-	InsertQuery = `INSERT INTO "%s"."%s"."%s"(%s) VALUES(%s)`
+	InsertQuery = `INSERT INTO "%s"."%s"."%s"(%s) VALUES%s`
 
 	// DeleteQuery query
 	DeleteQuery = `DELETE FROM "%s"."%s"."%s"`

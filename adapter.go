@@ -7,8 +7,8 @@ import (
 
 //Adapter interface
 type Adapter interface {
-	BatchInsert(SQL []string, params [][]interface{}) (sc Scanner)
-	BatchInsertSQL(database string, schema string, table string, names []string, placeholders string) (SQL []string)
+	BatchInsertValues(SQL string, params ...interface{}) (sc Scanner)
+	BatchInsertCopy(dbname, schema, table string, keys []string, params ...interface{}) (sc Scanner)
 	CountByRequest(req *http.Request) (countQuery string, err error)
 	DatabaseClause(req *http.Request) (query string, hasCount bool)
 	DatabaseOrderBy(order string, hasCount bool) (orderBy string)
@@ -25,7 +25,7 @@ type Adapter interface {
 	JoinByRequest(r *http.Request) (values []string, err error)
 	OrderByRequest(r *http.Request) (values string, err error)
 	PaginateIfPossible(r *http.Request) (paginatedQuery string, err error)
-	ParseBatchInsertRequest(r *http.Request) (colsName []string, colsValue []string, values [][]interface{}, err error)
+	ParseBatchInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error)
 	ParseInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error)
 	ParseScript(scriptPath string, queryURL url.Values) (sqlQuery string, values []interface{}, err error)
 	Query(SQL string, params ...interface{}) (sc Scanner)
