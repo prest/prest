@@ -1,6 +1,9 @@
 package controllers
 
 import (
+	"bytes"
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -204,19 +207,48 @@ func TestBatchInsertInTables(t *testing.T) {
 		url         string
 		request     []map[string]interface{}
 		status      int
+		isCopy      bool
 	}{
-		{"execute insert in a table with array field", "/batch/prest/public/testarray", mARRAY, http.StatusOK},
-		{"execute insert in a table with jsonb field", "/batch/prest/public/testjson", mJSON, http.StatusOK},
-		{"execute insert in a table without custom where clause", "/batch/prest/public/test", m, http.StatusOK},
-		{"execute insert in a table with invalid database", "/batch/0prest/public/test", m, http.StatusBadRequest},
-		{"execute insert in a table with invalid schema", "/batch/prest/0public/test", m, http.StatusBadRequest},
-		{"execute insert in a table with invalid table", "/batch/prest/public/0test", m, http.StatusBadRequest},
-		{"execute insert in a table with invalid body", "/batch/prest/public/test", nil, http.StatusBadRequest},
+		{"execute insert in a table with array field", "/batch/prest/public/testarray", mARRAY, http.StatusCreated, false},
+		{"execute insert in a table with jsonb field", "/batch/prest/public/testjson", mJSON, http.StatusCreated, false},
+		{"execute insert in a table without custom where clause", "/batch/prest/public/test", m, http.StatusCreated, false},
+		{"execute insert in a table with invalid database", "/batch/0prest/public/test", m, http.StatusBadRequest, false},
+		{"execute insert in a table with invalid schema", "/batch/prest/0public/test", m, http.StatusBadRequest, false},
+		{"execute insert in a table with invalid table", "/batch/prest/public/0test", m, http.StatusBadRequest, false},
+		{"execute insert in a table with invalid body", "/batch/prest/public/test", nil, http.StatusBadRequest, false},
+		{"execute insert in a table with array field with copy", "/batch/prest/public/testarray", mARRAY, http.StatusCreated, true},
+		{"execute insert in a table with jsonb field with copy", "/batch/prest/public/testjson", mJSON, http.StatusCreated, true},
 	}
 
 	for _, tc := range testCases {
-		t.Log(tc.description)
-		doRequest(t, server.URL+tc.url, tc.request, "POST", tc.status, "BatchInsertInTables")
+		t.Run(tc.description, func(t *testing.T) {
+			byt, err := json.Marshal(tc.request)
+			if err != nil {
+				t.Error("error on json marshal", err)
+			}
+			req, err := http.NewRequest(http.MethodPost, server.URL+tc.url, bytes.NewReader(byt))
+			if err != nil {
+				t.Error("error on New Request", err)
+			}
+			if tc.isCopy {
+				req.Header.Set("Prest-Batch-Method", "copy")
+			}
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				t.Error("error on Do Request", err)
+			}
+			if resp.StatusCode != tc.status {
+				t.Errorf("expected %d, got: %d", tc.status, resp.StatusCode)
+			}
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				t.Error("error on ioutil ReadAll", err)
+			}
+			if tc.isCopy && len(body) != 0 {
+				t.Errorf("len body is %d", len(body))
+			}
+		})
 	}
 }
 
@@ -252,7 +284,7 @@ func TestUpdateFromTable(t *testing.T) {
 	server := httptest.NewServer(router)
 	defer server.Close()
 
-	m := make(map[string]interface{}, 0)
+	m := make(map[string]interface{})
 	m["name"] = "prest"
 
 	var testCases = []struct {

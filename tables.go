@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/prest/adapters"
 	"github.com/prest/config"
 )
 
@@ -238,13 +239,19 @@ func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	sql := config.PrestConf.Adapter.BatchInsertSQL(database, schema, table, names, placeholders[0])
-	sc := config.PrestConf.Adapter.BatchInsert(sql, values)
-	if sc.Err() != nil {
-		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
+	var sc adapters.Scanner
+	method := r.Header.Get("Prest-Batch-Method")
+	if strings.ToLower(method) != "copy" {
+		sql := config.PrestConf.Adapter.InsertSQL(database, schema, table, names, placeholders)
+		sc = config.PrestConf.Adapter.BatchInsertValues(sql, values...)
+	} else {
+		sc = config.PrestConf.Adapter.BatchInsertCopy(database, schema, table, strings.Split(names, ","), values...)
+	}
+	if err = sc.Err(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	w.WriteHeader(http.StatusCreated)
 	w.Write(sc.Bytes())
 }
 
