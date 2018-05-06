@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/prest/adapters"
 	"github.com/prest/config"
 )
 
@@ -220,6 +221,37 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
 	}
+	w.Write(sc.Bytes())
+}
+
+// BatchInsertInTables perform insert in specific table from a batch request
+func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	database := vars["database"]
+	schema := vars["schema"]
+	table := vars["table"]
+
+	config.PrestConf.Adapter.SetDatabase(database)
+
+	names, placeholders, values, err := config.PrestConf.Adapter.ParseBatchInsertRequest(r)
+	if err != nil {
+		err = fmt.Errorf("could not perform BatchInsertInTables: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	var sc adapters.Scanner
+	method := r.Header.Get("Prest-Batch-Method")
+	if strings.ToLower(method) != "copy" {
+		sql := config.PrestConf.Adapter.InsertSQL(database, schema, table, names, placeholders)
+		sc = config.PrestConf.Adapter.BatchInsertValues(sql, values...)
+	} else {
+		sc = config.PrestConf.Adapter.BatchInsertCopy(database, schema, table, strings.Split(names, ","), values...)
+	}
+	if err = sc.Err(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
 	w.Write(sc.Bytes())
 }
 

@@ -48,3 +48,17 @@ func TestMapGob(t *testing.T) {
 	}
 	fmt.Printf("m: %v\n", m)
 }
+
+func TestGobSymmetric(t *testing.T) {
+	mv := Map(gobData)
+	fmt.Printf("mv: %v\n", mv)
+	g, err := mv.Gob()
+	if err != nil {
+		t.Fatal("m.Gob err:", err.Error())
+	}
+	m, err := NewMapGob(g)
+	if err != nil {
+		t.Fatal("NewMapGob err:", err.Error())
+	}
+	fmt.Printf("m : %v\n", m)
+}

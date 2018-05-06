@@ -13,8 +13,8 @@
     ".",
     "j2x"
   ]
-  revision = "593ae43fc2c7195ec08a76e786509d145a8f6be7"
-  version = "v1.7"
+  revision = "1f00e0bf9bacd7ea9c93d27594d1d1f5a41bac36"
+  version = "v1.8"
 
 [[projects]]
   name = "github.com/dgrijalva/jwt-go"
@@ -61,7 +61,7 @@
     "json/scanner",
     "json/token"
   ]
-  revision = "f40e974e75af4e271d97ce0fc917af5898ae7bda"
+  revision = "ef8a98b0bbce4a65b5aa4c368430a80ddc533168"
 
 [[projects]]
   name = "github.com/inconshreveable/mousetrap"
@@ -76,7 +76,7 @@
     ".",
     "reflectx"
   ]
-  revision = "cf35089a197953c69420c8d0cecda90809764b1d"
+  revision = "2aeb6a910c2b94f2d5eb53d9895d80e27264ec41"
 
 [[projects]]
   branch = "master"
@@ -115,7 +115,7 @@
   branch = "master"
   name = "github.com/nuveo/log"
   packages = ["."]
-  revision = "526558130f8bfa97328e11116b246eff7563274a"
+  revision = "76e420ff47453a820de5de42b74a86d65acd5ff9"
 
 [[projects]]
   name = "github.com/pelletier/go-toml"
@@ -128,19 +128,19 @@
   name = "github.com/prest/adapters"
   packages = [
     ".",
-    "internal/scanner",
     "postgres",
     "postgres/formatters",
     "postgres/internal/connection",
-    "postgres/statements"
+    "postgres/statements",
+    "scanner"
   ]
-  revision = "f23bd285856d779ce3f16d11f0c38d5114e94ade"
+  revision = "9a33ed1bff4b645a58cf0a5ec5e4f559df1626d9"
 
 [[projects]]
   branch = "master"
   name = "github.com/prest/cmd"
   packages = ["."]
-  revision = "806e64a75ce43c61029c793dc41a2e9f72263112"
+  revision = "396261dc73738fbedbde9e00f29b676aaa2379b9"
 
 [[projects]]
   branch = "master"
@@ -155,7 +155,7 @@
   branch = "master"
   name = "github.com/prest/controllers"
   packages = ["."]
-  revision = "03ddc995e3ef557f1014b1c876c6aed9cf68327e"
+  revision = "7244bc3090d575148bfb685ba3ae82917d339cfe"
 
 [[projects]]
   branch = "master"
@@ -211,8 +211,8 @@
 [[projects]]
   name = "github.com/spf13/pflag"
   packages = ["."]
-  revision = "e57e3eeb33f795204c1ca35f56c44f83227c6e66"
-  version = "v1.0.0"
+  revision = "583c0c0531f06d5278b7d917446061adc344b5cd"
+  version = "v1.0.1"
 
 [[projects]]
   name = "github.com/spf13/viper"
@@ -230,7 +230,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "378d26f46672a356c46195c28f61bdb4c0a781dd"
+  revision = "6f686a352de66814cdd080d970febae7767857a3"
 
 [[projects]]
   name = "golang.org/x/text"

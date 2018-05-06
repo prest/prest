@@ -42,6 +42,9 @@ var (
 	// DebugMode Enable debug mode
 	DebugMode bool
 
+	// EnableANSIColors enables ANSI colors, default true
+	EnableANSIColors = true
+
 	// MaxLineSize limits the size of the line, if the size
 	// exceeds that indicated by MaxLineSize the system cuts
 	// the string and adds "..." at the end.
@@ -193,12 +196,20 @@ func pln(m MsgType, o OutType, config map[string]interface{}, msg ...interface{}
 		lineBreak = "\n"
 	}
 
-	output = fmt.Sprintf("%s%s [%s] %s%s\033[0;00m",
-		Colors[m],
-		now().UTC().Format(TimeFormat),
-		Prefixes[m],
-		debugInfo,
-		output)
+	if EnableANSIColors {
+		output = fmt.Sprintf("%s%s [%s] %s%s\033[0;00m",
+			Colors[m],
+			now().UTC().Format(TimeFormat),
+			Prefixes[m],
+			debugInfo,
+			output)
+	} else {
+		output = fmt.Sprintf("%s [%s] %s%s",
+			now().UTC().Format(TimeFormat),
+			Prefixes[m],
+			debugInfo,
+			output)
+	}
 
 	if len(output) > MaxLineSize {
 		output = output[:MaxLineSize] + "..."
