@@ -115,23 +115,6 @@ type Stat_t struct {
 	Pad5    [14]int32
 }
 
-type Statfs_t struct {
-	Type    int32
-	Bsize   int32
-	Frsize  int32
-	_       [4]byte
-	Blocks  uint64
-	Bfree   uint64
-	Files   uint64
-	Ffree   uint64
-	Bavail  uint64
-	Fsid    Fsid
-	Namelen int32
-	Flags   int32
-	Spare   [5]int32
-	_       [4]byte
-}
-
 type StatxTimestamp struct {
 	Sec  int64
 	Nsec uint32
@@ -1238,3 +1221,32 @@ type HDDriveID struct {
 	Words206_254   [49]uint16
 	Integrity_word uint16
 }
+
+type Statfs_t struct {
+	Type    int32
+	Bsize   int32
+	Frsize  int32
+	_       [4]byte
+	Blocks  uint64
+	Bfree   uint64
+	Files   uint64
+	Ffree   uint64
+	Bavail  uint64
+	Fsid    Fsid
+	Namelen int32
+	Flags   int32
+	Spare   [5]int32
+	_       [4]byte
+}
+
+const (
+	ST_MANDLOCK    = 0x40
+	ST_NOATIME     = 0x400
+	ST_NODEV       = 0x4
+	ST_NODIRATIME  = 0x800
+	ST_NOEXEC      = 0x8
+	ST_NOSUID      = 0x2
+	ST_RDONLY      = 0x1
+	ST_RELATIME    = 0x1000
+	ST_SYNCHRONOUS = 0x10
+)

@@ -11,6 +11,7 @@ services:
             # - PREST_PG_PASS=prest
             - PREST_PG_DATABASE=prest
             - PREST_PG_PORT=5432
+            - PREST_JWT_DEFAULT=false # remove if need jwt
         depends_on:
             - postgres
         ports:
