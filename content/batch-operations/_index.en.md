@@ -23,6 +23,6 @@ JSON DATA:
 ]
 ```
 
-The default insert method is using multiple tuple values like `insert into table values ("value", 123), ("other", 456)`. Returned json are inserted rows.
+The default insert method is using multiple tuple values like `insert into table values ("value", 123), ("other", 456)`. Returns inserted rows.
 
-You can change this behaviour using the header `Prest-Batch-Method` and put value `copy`. It's useful for large insertions, but the returned json is empty.
+You can change this behaviour using the header `Prest-Batch-Method` with value `copy`. It's useful for large insertions, but the return is empty.
