@@ -729,7 +729,9 @@ func (adapter *Postgres) BatchInsertValues(SQL string, values ...interface{}) (s
 		if !bytes.Equal(jsonData, []byte("[")) {
 			obj := fmt.Sprintf("%s,%s", jsonData, data)
 			jsonData = []byte(obj)
+			continue
 		}
+		jsonData = append(jsonData, data...)
 	}
 	jsonData = append(jsonData, byte(']'))
 	sc = &scanner.PrestScanner{
