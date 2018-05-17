@@ -168,9 +168,9 @@ func TestInsertInTables(t *testing.T) {
 		request     map[string]interface{}
 		status      int
 	}{
-		{"execute insert in a table with array field", "/prest/public/testarray", mARRAY, http.StatusOK},
-		{"execute insert in a table with jsonb field", "/prest/public/testjson", mJSON, http.StatusOK},
-		{"execute insert in a table without custom where clause", "/prest/public/test", m, http.StatusOK},
+		{"execute insert in a table with array field", "/prest/public/testarray", mARRAY, http.StatusCreated},
+		{"execute insert in a table with jsonb field", "/prest/public/testjson", mJSON, http.StatusCreated},
+		{"execute insert in a table without custom where clause", "/prest/public/test", m, http.StatusCreated},
 		{"execute insert in a table with invalid database", "/0prest/public/test", m, http.StatusBadRequest},
 		{"execute insert in a table with invalid schema", "/prest/0public/test", m, http.StatusBadRequest},
 		{"execute insert in a table with invalid table", "/prest/public/0test", m, http.StatusBadRequest},
