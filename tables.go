@@ -221,6 +221,7 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
 	}
+	w.WriteHeader(http.StatusCreated)
 	w.Write(sc.Bytes())
 }
 
