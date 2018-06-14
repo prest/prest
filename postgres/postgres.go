@@ -79,6 +79,14 @@ func (s *Stmt) Prepare(db *sqlx.DB, SQL string) (statement *sql.Stmt, err error)
 // Load postgres
 func Load() {
 	config.PrestConf.Adapter = &Postgres{}
+	db, err := connection.Get()
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = db.Ping()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func init() {

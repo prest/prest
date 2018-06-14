@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/nuveo/log"
 	"github.com/prest/adapters"
 	"github.com/prest/adapters/postgres/internal/connection"
 	"github.com/prest/adapters/postgres/statements"
@@ -19,6 +21,28 @@ import (
 func init() {
 	config.Load()
 	Load()
+}
+
+func TestLoad(t *testing.T) {
+	// Only run the failing part when a specific env variable is set
+	if os.Getenv("BE_CRASHER") == "1" {
+		Load()
+		os.Setenv("PREST_PG_DATABASE", "prest")
+		return
+	}
+	os.Setenv("PREST_PG_DATABASE", "loadtest")
+	// Start the actual test in a different subprocess
+	cmd := exec.Command(os.Args[0], "-test.run=TestLoad")
+	cmd.Env = append(os.Environ(), "BE_CRASHER=1")
+	output, err := cmd.CombinedOutput()
+	e, ok := err.(*exec.ExitError)
+	if !ok || e.Success() {
+		t.Fatalf("Process ran with err %v, want exit status 255", err)
+	}
+	log.Printf("%s\n %v\n", string(output), e.Error())
+	if !cmd.ProcessState.Success() {
+		os.Exit(0)
+	}
 }
 
 func TestParseInsertRequest(t *testing.T) {

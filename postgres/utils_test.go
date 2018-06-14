@@ -8,7 +8,7 @@ import (
 
 func createMockScripts(base string) {
 	log.Println("Create scripts on", base)
-	err := os.Mkdir(fmt.Sprint(base, "/fulltable"), 0777)
+	err := os.MkdirAll(fmt.Sprint(base, "/fulltable"), 0777)
 	if err != nil {
 		log.Println(err)
 	}
