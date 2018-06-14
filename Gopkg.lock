@@ -115,7 +115,7 @@
   branch = "master"
   name = "github.com/nuveo/log"
   packages = ["."]
-  revision = "76e420ff47453a820de5de42b74a86d65acd5ff9"
+  revision = "f88607104ac8c39832bc6c1a30b7f2c4fc5d495c"
 
 [[projects]]
   name = "github.com/pelletier/go-toml"
@@ -134,7 +134,7 @@
     "postgres/statements",
     "scanner"
   ]
-  revision = "87c3ca6faa443a0b5e1ba6eededf0dc3d7ef43f3"
+  revision = "c877df1b543fcd13e1e669ad188ad3cb9b26c63b"
 
 [[projects]]
   branch = "master"
@@ -187,8 +187,8 @@
     ".",
     "mem"
   ]
-  revision = "63644898a8da0bc22138abf860edaf5277b6102e"
-  version = "v1.1.0"
+  revision = "787d034dfe70e44075ccc060d346146ef53270ad"
+  version = "v1.1.1"
 
 [[projects]]
   name = "github.com/spf13/cast"
@@ -230,7 +230,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "9527bec2660bd847c050fda93a0f0c6dee0800bb"
+  revision = "8883426083c04a2627e6e59d84d5f6fb63d16c91"
 
 [[projects]]
   name = "golang.org/x/text"

@@ -199,13 +199,13 @@ func pln(m MsgType, o OutType, config map[string]interface{}, msg ...interface{}
 	if EnableANSIColors {
 		output = fmt.Sprintf("%s%s [%s] %s%s\033[0;00m",
 			Colors[m],
-			now().UTC().Format(TimeFormat),
+			now().Format(TimeFormat),
 			Prefixes[m],
 			debugInfo,
 			output)
 	} else {
 		output = fmt.Sprintf("%s [%s] %s%s",
-			now().UTC().Format(TimeFormat),
+			now().Format(TimeFormat),
 			Prefixes[m],
 			debugInfo,
 			output)
