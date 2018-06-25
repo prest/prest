@@ -183,15 +183,6 @@ func Load() {
 		panic(err)
 	}
 
-	if !PrestConf.AccessConf.Restrict {
-		log.Warningln("You are running pREST in public mode.")
-	}
-
-	if PrestConf.Debug {
-		log.DebugMode = PrestConf.Debug
-		log.Warningln("You are running pREST in debug mode.")
-	}
-
 	if _, err = os.Stat(PrestConf.QueriesPath); os.IsNotExist(err) {
 		if err = os.MkdirAll(PrestConf.QueriesPath, 0700); os.IsNotExist(err) {
 			log.Errorf("Queries directory %s is not created", PrestConf.QueriesPath)

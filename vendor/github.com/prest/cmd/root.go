@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/gorilla/mux"
+	nlog "github.com/nuveo/log"
 	"github.com/prest/config"
 	"github.com/prest/config/router"
 	"github.com/prest/controllers"
@@ -75,6 +76,15 @@ func MakeHandler() http.Handler {
 func startServer() {
 	http.Handle(config.PrestConf.ContextPath, MakeHandler())
 	l := log.New(os.Stdout, "[prest] ", 0)
+
+	if !config.PrestConf.AccessConf.Restrict {
+		nlog.Warningln("You are running pREST in public mode.")
+	}
+
+	if config.PrestConf.Debug {
+		nlog.DebugMode = config.PrestConf.Debug
+		nlog.Warningln("You are running pREST in debug mode.")
+	}
 	addr := fmt.Sprintf("%s:%d", config.PrestConf.HTTPHost, config.PrestConf.HTTPPort)
 	l.Printf("listening on %s and serving on %s", addr, config.PrestConf.ContextPath)
 	if config.PrestConf.HTTPSMode {

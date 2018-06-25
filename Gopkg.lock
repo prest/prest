@@ -76,7 +76,7 @@
     ".",
     "reflectx"
   ]
-  revision = "2aeb6a910c2b94f2d5eb53d9895d80e27264ec41"
+  revision = "0dae4fefe7c0e190f7b5a78dac28a1c82cc8d849"
 
 [[projects]]
   branch = "master"
@@ -140,7 +140,7 @@
   branch = "master"
   name = "github.com/prest/cmd"
   packages = ["."]
-  revision = "396261dc73738fbedbde9e00f29b676aaa2379b9"
+  revision = "dd2292cadd1db700df0c051238da2731ec37eb94"
 
 [[projects]]
   branch = "master"
@@ -149,7 +149,7 @@
     ".",
     "router"
   ]
-  revision = "7073425ef6f1d0f84f2d9ebbd8f12de946718e35"
+  revision = "2defca481708df3e20511162b3dd338a662b7775"
 
 [[projects]]
   branch = "master"
@@ -230,7 +230,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "8883426083c04a2627e6e59d84d5f6fb63d16c91"
+  revision = "63fc586f45fe72d95d5240a5d5eb95e6503907d3"
 
 [[projects]]
   name = "golang.org/x/text"
