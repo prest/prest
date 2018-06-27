@@ -9,14 +9,14 @@ import (
 
 	"github.com/prest/adapters"
 	"github.com/prest/adapters/scanner"
+	"github.com/prest/config"
 )
 
 // Item mock
 type Item struct {
-	Body          []byte
-	Error         error
-	HasPermission bool
-	IsCount       bool
+	Body    []byte
+	Error   error
+	IsCount bool
 }
 
 // Mock adapter
@@ -57,11 +57,22 @@ func (m *Mock) perform(query bool) (sc adapters.Scanner) {
 
 // TablePermissions mock
 func (m *Mock) TablePermissions(table string, op string) (ok bool) {
-	m.validate()
-	m.mtx.Lock()
-	ok = m.Items[0].HasPermission
-	m.mtx.Unlock()
-	return
+	restrict := config.PrestConf.AccessConf.Restrict
+	if !restrict {
+		return true
+	}
+
+	tables := config.PrestConf.AccessConf.Tables
+	for _, t := range tables {
+		if t.Name == table {
+			for _, p := range t.Permissions {
+				if p == op {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 // GetScript mock
@@ -270,12 +281,11 @@ func (m *Mock) BatchInsertCopy(dbname, schema, table string, keys []string, valu
 }
 
 // AddItem on mock object
-func (m *Mock) AddItem(body []byte, err error, hasPermission, isCount bool) {
+func (m *Mock) AddItem(body []byte, err error, isCount bool) {
 	i := Item{
-		Body:          body,
-		Error:         err,
-		HasPermission: hasPermission,
-		IsCount:       isCount,
+		Body:    body,
+		Error:   err,
+		IsCount: isCount,
 	}
 	m.mtx.Lock()
 	m.Items = append(m.Items, i)

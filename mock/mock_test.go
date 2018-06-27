@@ -9,6 +9,7 @@ import (
 
 	"github.com/prest/adapters"
 	"github.com/prest/adapters/scanner"
+	"github.com/prest/config"
 )
 
 func TestMock_validate(t *testing.T) {
@@ -71,7 +72,7 @@ func TestMock_perform(t *testing.T) {
 				mtx: &sync.RWMutex{},
 				t:   t,
 			}
-			m.AddItem(tt.item.Body, tt.item.Error, tt.item.HasPermission, tt.item.IsCount)
+			m.AddItem(tt.item.Body, tt.item.Error, tt.item.IsCount)
 			if gotSc := m.perform(tt.isQuery); !reflect.DeepEqual(gotSc, tt.wantSc) {
 				t.Errorf("Mock.perform() = %v, want %v", gotSc, tt.wantSc)
 			}
@@ -80,22 +81,32 @@ func TestMock_perform(t *testing.T) {
 }
 
 func TestMock_TablePermissions(t *testing.T) {
+	config.Load()
+	config.PrestConf.AccessConf.Tables = append(config.PrestConf.AccessConf.Tables,
+		config.TablesConf{
+			Name:        "testpermission",
+			Permissions: []string{"read", "write"},
+			Fields:      []string{"*"},
+		})
 	tests := []struct {
-		name   string
-		item   Item
-		wantOk bool
+		name     string
+		table    string
+		op       string
+		restrict bool
+		wantOk   bool
 	}{
-		{"has permission", Item{HasPermission: true}, true},
-		{"do not have permission", Item{HasPermission: false}, false},
+		{"no restrict", "", "", false, true},
+		{"has permission", "testpermission", "read", true, true},
+		{"do not have permission", "testpermission", "delete", true, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			config.PrestConf.AccessConf.Restrict = tt.restrict
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
 			}
-			m.AddItem(tt.item.Body, tt.item.Error, tt.item.HasPermission, tt.item.IsCount)
-			if gotOk := m.TablePermissions("", ""); gotOk != tt.wantOk {
+			if gotOk := m.TablePermissions(tt.table, tt.op); gotOk != tt.wantOk {
 				t.Errorf("Mock.TablePermissions() = %v, want %v", gotOk, tt.wantOk)
 			}
 		})
@@ -117,7 +128,7 @@ func TestMock_DatabaseClause(t *testing.T) {
 				mtx: &sync.RWMutex{},
 				t:   t,
 			}
-			m.AddItem(tt.item.Body, tt.item.Error, tt.item.HasPermission, tt.item.IsCount)
+			m.AddItem(tt.item.Body, tt.item.Error, tt.item.IsCount)
 			if _, gotOk := m.DatabaseClause(nil); gotOk != tt.wantOk {
 				t.Errorf("Mock.TablePermissions() = %v, want %v", gotOk, tt.wantOk)
 			}
@@ -140,7 +151,7 @@ func TestMock_SchemaClause(t *testing.T) {
 				mtx: &sync.RWMutex{},
 				t:   t,
 			}
-			m.AddItem(tt.item.Body, tt.item.Error, tt.item.HasPermission, tt.item.IsCount)
+			m.AddItem(tt.item.Body, tt.item.Error, tt.item.IsCount)
 			if _, gotOk := m.SchemaClause(nil); gotOk != tt.wantOk {
 				t.Errorf("Mock.TablePermissions() = %v, want %v", gotOk, tt.wantOk)
 			}
@@ -150,17 +161,16 @@ func TestMock_SchemaClause(t *testing.T) {
 
 func TestMock_AddItem(t *testing.T) {
 	type args struct {
-		body          []byte
-		err           error
-		hasPermission bool
-		isCount       bool
+		body    []byte
+		err     error
+		isCount bool
 	}
 	tests := []struct {
 		name string
 		args args
 		len  int
 	}{
-		{"add item", args{[]byte(`[]`), nil, true, false}, 1},
+		{"add item", args{body: []byte(`[]`), err: nil, isCount: false}, 1},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -168,7 +178,7 @@ func TestMock_AddItem(t *testing.T) {
 				mtx: &sync.RWMutex{},
 				t:   t,
 			}
-			m.AddItem(tt.args.body, tt.args.err, tt.args.hasPermission, tt.args.isCount)
+			m.AddItem(tt.args.body, tt.args.err, tt.args.isCount)
 			if len(m.Items) != tt.len {
 				t.Errorf("expected %v, but got: %v", tt.len, len(m.Items))
 			}
@@ -208,7 +218,7 @@ func TestMock_Insert(t *testing.T) {
 				mtx: &sync.RWMutex{},
 				t:   t,
 			}
-			m.AddItem(tt.item.Body, tt.item.Error, tt.item.HasPermission, tt.item.IsCount)
+			m.AddItem(tt.item.Body, tt.item.Error, tt.item.IsCount)
 			if gotSc := m.Insert(""); !reflect.DeepEqual(gotSc, tt.wantSc) {
 				t.Errorf("Mock.Insert() = %v, want %v", gotSc, tt.wantSc)
 			}
@@ -250,7 +260,7 @@ func TestMock_BatchInsertValues(t *testing.T) {
 				mtx: &sync.RWMutex{},
 				t:   t,
 			}
-			m.AddItem(tt.item.Body, tt.item.Error, tt.item.HasPermission, tt.item.IsCount)
+			m.AddItem(tt.item.Body, tt.item.Error, tt.item.IsCount)
 			if gotSc := m.BatchInsertValues(""); !reflect.DeepEqual(gotSc, tt.wantSc) {
 				t.Errorf("Mock.BatchInsert() = %v, want %v", gotSc, tt.wantSc)
 			}
@@ -290,7 +300,7 @@ func TestMock_Delete(t *testing.T) {
 				mtx: &sync.RWMutex{},
 				t:   t,
 			}
-			m.AddItem(tt.item.Body, tt.item.Error, tt.item.HasPermission, tt.item.IsCount)
+			m.AddItem(tt.item.Body, tt.item.Error, tt.item.IsCount)
 			if gotSc := m.Delete(""); !reflect.DeepEqual(gotSc, tt.wantSc) {
 				t.Errorf("Mock.Delete() = %v, want %v", gotSc, tt.wantSc)
 			}
@@ -330,7 +340,7 @@ func TestMock_Update(t *testing.T) {
 				mtx: &sync.RWMutex{},
 				t:   t,
 			}
-			m.AddItem(tt.item.Body, tt.item.Error, tt.item.HasPermission, tt.item.IsCount)
+			m.AddItem(tt.item.Body, tt.item.Error, tt.item.IsCount)
 			if gotSc := m.Update(""); !reflect.DeepEqual(gotSc, tt.wantSc) {
 				t.Errorf("Mock.Update() = %v, want %v", gotSc, tt.wantSc)
 			}
@@ -370,7 +380,7 @@ func TestMock_QueryCount(t *testing.T) {
 				mtx: &sync.RWMutex{},
 				t:   t,
 			}
-			m.AddItem(tt.item.Body, tt.item.Error, tt.item.HasPermission, tt.item.IsCount)
+			m.AddItem(tt.item.Body, tt.item.Error, tt.item.IsCount)
 			if gotSc := m.QueryCount(""); !reflect.DeepEqual(gotSc, tt.wantSc) {
 				t.Errorf("Mock.QueryCount() = %v, want %v", gotSc, tt.wantSc)
 			}
@@ -412,7 +422,7 @@ func TestMock_Query(t *testing.T) {
 				mtx: &sync.RWMutex{},
 				t:   t,
 			}
-			m.AddItem(tt.item.Body, tt.item.Error, tt.item.HasPermission, tt.item.IsCount)
+			m.AddItem(tt.item.Body, tt.item.Error, tt.item.IsCount)
 			if gotSc := m.Query(""); !reflect.DeepEqual(gotSc, tt.wantSc) {
 				t.Errorf("Mock.Query() = %v, want %v", gotSc, tt.wantSc)
 			}
