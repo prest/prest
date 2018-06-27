@@ -3,7 +3,7 @@ dist: trusty
 sudo: required
 
 addons:
-  postgresql: "9.6"
+  postgresql: "10"
 
 language: go
 
@@ -28,10 +28,15 @@ before_script:
 
 script:
     - sh testdata/migrations_test.sh
-    - sh test.sh
+    - go test -race ./...
 
-after_success:
-    - bash <(curl -s https://codecov.io/bash)
+deploy:
+    - provider: script
+    skip_cleanup: true
+    script: curl -sL https://git.io/goreleaser | bash
+    on:
+        tags: true
+        condition: $TRAVIS_OS_NAME = linux
 
 notifications:
     webhooks:
