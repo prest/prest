@@ -161,7 +161,7 @@
   branch = "master"
   name = "github.com/prest/helpers"
   packages = ["."]
-  revision = "9e61e2d5c22e4378b29f16bac8c32f94dc86fb1d"
+  revision = "07dcf603c9a1dd84cd20c0425e5354a329c4c624"
 
 [[projects]]
   branch = "master"
@@ -230,7 +230,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "63fc586f45fe72d95d5240a5d5eb95e6503907d3"
+  revision = "c4afb3effaa53fd9a06ca61262dc7ce8df4c081b"
 
 [[projects]]
   name = "golang.org/x/text"
