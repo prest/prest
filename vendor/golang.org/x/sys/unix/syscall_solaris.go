@@ -314,7 +314,11 @@ func UtimesNanoAt(dirfd int, path string, ts []Timespec, flags int) error {
 
 // FcntlInt performs a fcntl syscall on fd with the provided command and argument.
 func FcntlInt(fd uintptr, cmd, arg int) (int, error) {
-	valptr, _, err := sysvicall6(uintptr(unsafe.Pointer(&procfcntl)), 3, uintptr(fd), uintptr(cmd), uintptr(arg), 0, 0, 0)
+	valptr, _, errno := sysvicall6(uintptr(unsafe.Pointer(&procfcntl)), 3, uintptr(fd), uintptr(cmd), uintptr(arg), 0, 0, 0)
+	var err error
+	if errno != 0 {
+		err = errno
+	}
 	return int(valptr), err
 }
 

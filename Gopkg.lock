@@ -134,7 +134,7 @@
     "postgres/statements",
     "scanner"
   ]
-  revision = "c877df1b543fcd13e1e669ad188ad3cb9b26c63b"
+  revision = "0181674d63ee74a957e89585dd053d61dfd74638"
 
 [[projects]]
   branch = "master"
@@ -230,7 +230,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "c4afb3effaa53fd9a06ca61262dc7ce8df4c081b"
+  revision = "7138fd3d9dc8335c567ca206f4333fb75eb05d56"
 
 [[projects]]
   name = "golang.org/x/text"
