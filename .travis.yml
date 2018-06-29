@@ -5,6 +5,9 @@ sudo: required
 addons:
   postgresql: "9.6"
 
+services:
+  - docker
+
 language: go
 
 os:
@@ -26,7 +29,7 @@ install:
     - echo 'skip because vendored'
 
 before_script:
-
+    - docker login -u="$DOCKER_LOGIN" -p="$DOCKER_PASSWORD"
     - sh testdata/schema.sh
 
 script:
