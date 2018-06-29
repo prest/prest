@@ -1,7 +1,7 @@
 builds:
   - binary: prest
     main: main.go
-    ldflags: -X github.com/prest/helpers/helpers.PrestVersionNumber={{.Version}} -X github.com/prest/helpers/helpers.CommitHash={{.Commit}}
+    ldflags: -X github.com/prest/prest/vendor/github.com/prest/helpers.PrestVersionNumber={{.Version}} -X github.com/prest/prest/vendor/github.com/prest/helpers.CommitHash={{.Commit}}
     goos:
       - windows
       - darwin
