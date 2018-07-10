@@ -140,7 +140,7 @@
   branch = "master"
   name = "github.com/prest/cmd"
   packages = ["."]
-  revision = "dd2292cadd1db700df0c051238da2731ec37eb94"
+  revision = "d1de3d3fa1daa43db512e5d1f4b27c503df2a26e"
 
 [[projects]]
   branch = "master"
@@ -267,6 +267,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "04ac9a57c7e06f17e43cd4135417264d208d4c7f526c1526ede92cec78f3ee37"
+  inputs-digest = "c8cf461e787fdb1e7c3e02fd30dd93373057dc0575a01862a9050101df82eef0"
   solver-name = "gps-cdcl"
   solver-version = 1

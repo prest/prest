@@ -31,10 +31,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/prest/adapters"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/prest/cmd"
 
 [[constraint]]
