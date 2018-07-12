@@ -27,8 +27,8 @@ type AccessConf struct {
 
 // Prest basic config
 type Prest struct {
-	HTTPHost         string  // HTTPHost Declare which http address the PREST used
-	HTTPPort         int     // HTTPPort Declare which http port the PREST used
+	HTTPHost         string // HTTPHost Declare which http address the PREST used
+	HTTPPort         int    // HTTPPort Declare which http port the PREST used
 	PGHost           string
 	PGPort           int
 	PGUser           string
@@ -119,9 +119,6 @@ func getDefaultPrestConf(prestConf string) (cfg string) {
 
 // Parse pREST config
 func Parse(cfg *Prest) (err error) {
-	if configFile != "" {
-		log.Printf("Using %s config file.\n", configFile)
-	}
 	err = viper.ReadInConfig()
 	if err != nil {
 		switch err.(type) {
@@ -129,7 +126,6 @@ func Parse(cfg *Prest) (err error) {
 			if configFile != "" {
 				log.Fatal(fmt.Sprintf("File %s not found. Aborting.\n", configFile))
 			}
-			log.Warningln("Config file not found. Running without config file.")
 		default:
 			return
 		}
