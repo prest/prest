@@ -28,11 +28,28 @@ permissions = ["read", "write", "delete"]
 fields = ["id", "name"]
 ```
 
+Multiple configurations for the same table:
+
+```
+[access]
+restrict = true  # can access only the tables listed below
+
+    [[access.tables]]
+    name = "test"
+    permissions = ["read"]
+    fields = ["id", "name"]
+
+    [[access.tables]]
+    name = "test"
+    permissions = ["write"]
+    fields = ["name"]
+```
+
 |attribute|description|
 |---|---|
 |table|Table name|
 |permissions|Table permissions. Options: `read`, `write` and `delete`|
-|fields|Fields permitted for select|
+|fields|Fields permitted for operations|
 
 
 Configuration example: [prest.toml](https://github.com/prest/prest/blob/master/testdata/prest.toml)
