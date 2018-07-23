@@ -2,9 +2,11 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/nuveo/log"
@@ -34,6 +36,7 @@ type Prest struct {
 	PGUser           string
 	PGPass           string
 	PGDatabase       string
+	PGURL            string
 	ContextPath      string
 	SSLMode          string
 	SSLCert          string
@@ -132,6 +135,7 @@ func Parse(cfg *Prest) (err error) {
 	}
 	cfg.HTTPHost = viper.GetString("http.host")
 	cfg.HTTPPort = viper.GetInt("http.port")
+	cfg.PGURL = viper.GetString("pg.url")
 	cfg.PGHost = viper.GetString("pg.host")
 	cfg.PGPort = viper.GetInt("pg.port")
 	cfg.PGUser = viper.GetString("pg.user")
@@ -141,6 +145,35 @@ func Parse(cfg *Prest) (err error) {
 	cfg.SSLCert = viper.GetString("ssl.cert")
 	cfg.SSLKey = viper.GetString("ssl.key")
 	cfg.SSLRootCert = viper.GetString("ssl.rootcert")
+	if os.Getenv("DATABASE_URL") != "" {
+		// cloud factor support: https://devcenter.heroku.com/changelog-items/438
+		cfg.PGURL = os.Getenv("DATABASE_URL")
+	}
+	if cfg.PGURL != "" {
+		// Parser PG URL, get database connection via string URL
+		u, errPerse := url.Parse(cfg.PGURL)
+		if errPerse != nil {
+			err = errPerse
+			return
+		}
+		cfg.PGHost = u.Hostname()
+		if u.Port() != "" {
+			pgPort, err := strconv.Atoi(u.Port())
+			if err != nil {
+				return err
+			}
+			cfg.PGPort = pgPort
+		}
+		cfg.PGUser = u.User.Username()
+		pgPass, pgPassExist := u.User.Password()
+		if pgPassExist {
+			cfg.PGPass = pgPass
+		}
+		cfg.PGDatabase = strings.Replace(u.Path, "/", "", -1)
+		if u.Query().Get("sslmode") != "" {
+			cfg.SSLMode = u.Query().Get("sslmode")
+		}
+	}
 	cfg.PGMaxIdleConn = viper.GetInt("pg.maxidleconn")
 	cfg.PGMAxOpenConn = viper.GetInt("pg.maxopenconn")
 	cfg.PGConnTimeout = viper.GetInt("pg.conntimeout")
@@ -158,15 +191,12 @@ func Parse(cfg *Prest) (err error) {
 	cfg.HTTPSMode = viper.GetBool("https.mode")
 	cfg.HTTPSCert = viper.GetString("https.cert")
 	cfg.HTTPSKey = viper.GetString("https.key")
-
 	var t []TablesConf
 	err = viper.UnmarshalKey("access.tables", &t)
 	if err != nil {
-		return err
+		return
 	}
-
 	cfg.AccessConf.Tables = t
-
 	return
 }
 
