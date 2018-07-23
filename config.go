@@ -102,7 +102,8 @@ func viperCfg() {
 
 	user, err := user.Current()
 	if err != nil {
-		log.Println("{viperCfg}", err)
+		log.Errorln(err)
+		return
 	}
 
 	viper.SetDefault("queries.location", filepath.Join(user.HomeDir, "queries"))
@@ -158,9 +159,10 @@ func Parse(cfg *Prest) (err error) {
 		}
 		cfg.PGHost = u.Hostname()
 		if u.Port() != "" {
-			pgPort, err := strconv.Atoi(u.Port())
+			pgPort, PortErr := strconv.Atoi(u.Port())
 			if err != nil {
-				return err
+				err = PortErr
+				return
 			}
 			cfg.PGPort = pgPort
 		}
