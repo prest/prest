@@ -149,7 +149,7 @@
     ".",
     "router"
   ]
-  revision = "2defca481708df3e20511162b3dd338a662b7775"
+  revision = "e384ae04e4775df06ede895cba1e5617632416f5"
 
 [[projects]]
   branch = "master"

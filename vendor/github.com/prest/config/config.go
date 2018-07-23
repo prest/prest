@@ -2,9 +2,11 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/nuveo/log"
@@ -27,13 +29,14 @@ type AccessConf struct {
 
 // Prest basic config
 type Prest struct {
-	HTTPHost         string  // HTTPHost Declare which http address the PREST used
-	HTTPPort         int     // HTTPPort Declare which http port the PREST used
+	HTTPHost         string // HTTPHost Declare which http address the PREST used
+	HTTPPort         int    // HTTPPort Declare which http port the PREST used
 	PGHost           string
 	PGPort           int
 	PGUser           string
 	PGPass           string
 	PGDatabase       string
+	PGURL            string
 	ContextPath      string
 	SSLMode          string
 	SSLCert          string
@@ -99,7 +102,8 @@ func viperCfg() {
 
 	user, err := user.Current()
 	if err != nil {
-		log.Println("{viperCfg}", err)
+		log.Errorln(err)
+		return
 	}
 
 	viper.SetDefault("queries.location", filepath.Join(user.HomeDir, "queries"))
@@ -119,9 +123,6 @@ func getDefaultPrestConf(prestConf string) (cfg string) {
 
 // Parse pREST config
 func Parse(cfg *Prest) (err error) {
-	if configFile != "" {
-		log.Printf("Using %s config file.\n", configFile)
-	}
 	err = viper.ReadInConfig()
 	if err != nil {
 		switch err.(type) {
@@ -129,13 +130,13 @@ func Parse(cfg *Prest) (err error) {
 			if configFile != "" {
 				log.Fatal(fmt.Sprintf("File %s not found. Aborting.\n", configFile))
 			}
-			log.Warningln("Config file not found. Running without config file.")
 		default:
 			return
 		}
 	}
 	cfg.HTTPHost = viper.GetString("http.host")
 	cfg.HTTPPort = viper.GetInt("http.port")
+	cfg.PGURL = viper.GetString("pg.url")
 	cfg.PGHost = viper.GetString("pg.host")
 	cfg.PGPort = viper.GetInt("pg.port")
 	cfg.PGUser = viper.GetString("pg.user")
@@ -145,6 +146,36 @@ func Parse(cfg *Prest) (err error) {
 	cfg.SSLCert = viper.GetString("ssl.cert")
 	cfg.SSLKey = viper.GetString("ssl.key")
 	cfg.SSLRootCert = viper.GetString("ssl.rootcert")
+	if os.Getenv("DATABASE_URL") != "" {
+		// cloud factor support: https://devcenter.heroku.com/changelog-items/438
+		cfg.PGURL = os.Getenv("DATABASE_URL")
+	}
+	if cfg.PGURL != "" {
+		// Parser PG URL, get database connection via string URL
+		u, errPerse := url.Parse(cfg.PGURL)
+		if errPerse != nil {
+			err = errPerse
+			return
+		}
+		cfg.PGHost = u.Hostname()
+		if u.Port() != "" {
+			pgPort, PortErr := strconv.Atoi(u.Port())
+			if err != nil {
+				err = PortErr
+				return
+			}
+			cfg.PGPort = pgPort
+		}
+		cfg.PGUser = u.User.Username()
+		pgPass, pgPassExist := u.User.Password()
+		if pgPassExist {
+			cfg.PGPass = pgPass
+		}
+		cfg.PGDatabase = strings.Replace(u.Path, "/", "", -1)
+		if u.Query().Get("sslmode") != "" {
+			cfg.SSLMode = u.Query().Get("sslmode")
+		}
+	}
 	cfg.PGMaxIdleConn = viper.GetInt("pg.maxidleconn")
 	cfg.PGMAxOpenConn = viper.GetInt("pg.maxopenconn")
 	cfg.PGConnTimeout = viper.GetInt("pg.conntimeout")
@@ -162,15 +193,12 @@ func Parse(cfg *Prest) (err error) {
 	cfg.HTTPSMode = viper.GetBool("https.mode")
 	cfg.HTTPSCert = viper.GetString("https.cert")
 	cfg.HTTPSKey = viper.GetString("https.key")
-
 	var t []TablesConf
 	err = viper.UnmarshalKey("access.tables", &t)
 	if err != nil {
-		return err
+		return
 	}
-
 	cfg.AccessConf.Tables = t
-
 	return
 }
 
