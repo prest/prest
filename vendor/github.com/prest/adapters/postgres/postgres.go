@@ -932,40 +932,68 @@ func (adapter *Postgres) TablePermissions(table string, op string) bool {
 	return false
 }
 
-// FieldsPermissions get fields permissions based in prest configuration
-func (adapter *Postgres) FieldsPermissions(r *http.Request, table string, op string) (fields []string, err error) {
-	restrict := config.PrestConf.AccessConf.Restrict
-	cols := columnsByRequest(r)
-	queries := r.URL.Query()
-	if queries.Get("_groupby") != "" {
-		cols, err = normalizeAll(cols)
-		if err != nil {
-			return
-		}
-	}
-	if !restrict {
-		fields = cols
-		return
-	}
-
+func fieldsByPermission(table, op string) (fields []string) {
 	tables := config.PrestConf.AccessConf.Tables
 	for _, t := range tables {
 		if t.Name == table {
-			for _, col := range cols {
-				// return all permitted fields if have "*" in SELECT
-				if op == "read" && col == "*" {
+			for _, perm := range t.Permissions {
+				if perm == op {
 					fields = t.Fields
-					return
-				}
-				pField := checkField(col, t.Fields)
-				if pField != "" {
-					fields = append(fields, pField)
 				}
 			}
-			return
 		}
 	}
-	return nil, errors.New("0 tables configured")
+	return
+}
+
+func containsAsterisk(arr []string) bool {
+	for _, e := range arr {
+		if e == "*" {
+			return true
+		}
+	}
+	return false
+}
+
+func intersection(set, other []string) (intersection []string) {
+	for _, field := range set {
+		pField := checkField(field, other)
+		if pField != "" {
+			intersection = append(intersection, pField)
+		}
+	}
+	return
+}
+
+// FieldsPermissions get fields permissions based in prest configuration
+func (adapter *Postgres) FieldsPermissions(r *http.Request, table string, op string) (fields []string, err error) {
+	restrict := config.PrestConf.AccessConf.Restrict
+	if !restrict || op == "delete" {
+		fields = []string{"*"}
+		return
+	}
+	cols, err := columnsByRequest(r)
+	if err != nil {
+		err = fmt.Errorf("error on parse columns from request: %s", err)
+		return
+	}
+	allowedFields := fieldsByPermission(table, op)
+	if len(allowedFields) == 0 {
+		err = errors.New("there's no configured field for this table")
+		return
+	}
+	if containsAsterisk(allowedFields) {
+		fields = []string{"*"}
+		if len(cols) > 0 {
+			fields = cols
+		}
+		return
+	}
+	fields = intersection(cols, allowedFields)
+	if len(cols) == 0 {
+		fields = allowedFields
+	}
+	return
 }
 
 func checkField(col string, fields []string) (p string) {
@@ -1006,23 +1034,22 @@ func normalizeColumn(col string) (gf string, err error) {
 }
 
 // columnsByRequest extract columns and return as array of strings
-func columnsByRequest(r *http.Request) []string {
-	u, _ := r.URL.Parse(r.URL.String())
-	columnsArr := u.Query()["_select"]
-	var columns []string
-
+func columnsByRequest(r *http.Request) (columns []string, err error) {
+	queries := r.URL.Query()
+	columnsArr := queries["_select"]
 	for _, j := range columnsArr {
 		cArgs := strings.Split(j, ",")
 		for _, columnName := range cArgs {
-			if len(columnName) > 0 {
-				columns = append(columns, columnName)
-			}
+			columns = append(columns, columnName)
 		}
 	}
-	if len(columns) == 0 {
-		return []string{"*"}
+	if queries.Get("_groupby") != "" {
+		columns, err = normalizeAll(columns)
+		if err != nil {
+			return
+		}
 	}
-	return columns
+	return
 }
 
 // DistinctClause get params in request to add distinct clause

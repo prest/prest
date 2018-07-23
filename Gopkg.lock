@@ -134,7 +134,7 @@
     "postgres/statements",
     "scanner"
   ]
-  revision = "0181674d63ee74a957e89585dd053d61dfd74638"
+  revision = "85747088618efc80a3e47d7814f39a4c856a77b5"
 
 [[projects]]
   branch = "master"
