@@ -15,6 +15,7 @@ Via environment variables or via toml file.
 - PREST\_PG_PASS
 - PREST\_PG_DATABASE
 - PREST\_PG_PORT (default 5432)
+- PREST\_PG_URL or DATABASE\_URL (cloud factor, **when declaring this variable all the previous connection fields are overwritten**)
 - PREST\_JWT_KEY
 - PREST\_JWT_ALGO
 
@@ -40,6 +41,8 @@ user = "postgres"
 pass = "mypass"
 port = 5432
 database = "prest"
+## or used cloud factor
+# URL = "postgresql://user:pass@localhost/mydatabase/?sslmode=disable"
 
 [ssl]
 mode = "disable"
@@ -63,7 +66,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3O
 
 - The `HS256` algorithm is used by default.
 
-The JWT algorithm can be specified by using either the environment variable `PREST_JWT_ALGO` or the `algo` parameter in the section `[jwt]` of the `prest.toml` configuration file. 
+The JWT algorithm can be specified by using either the environment variable `PREST_JWT_ALGO` or the `algo` parameter in the section `[jwt]` of the `prest.toml` configuration file.
 
 The supported signing algorithms are:
 
