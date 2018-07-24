@@ -164,6 +164,7 @@ func TestWhereByRequest(t *testing.T) {
 		{"Where by request with jsonb field", "/prest/public/test_jsonb_bug?name=$eq.goku&data->>description:jsonb=$eq.testing", []string{`"name" = $`, `"data"->>'description' = $`, " AND "}, []string{"goku", "testing"}, nil},
 		{"Where by request with dot values", "/prest/public/test5?name=$eq.prest.txt tester", []string{`"name" = $`}, []string{"prest.txt tester"}, nil},
 		{"Where by request with like", "/prest/public/test5?name=$like.%25val%25&phonenumber=123456", []string{`"name" LIKE $`, `"phonenumber" = $`, " AND "}, []string{"%val%", "123456"}, nil},
+		{"Where by request with ilike", "/prest/public/test5?name=$ilike.%25vAl%25&phonenumber=123456", []string{`"name" ILIKE $`, `"phonenumber" = $`, " AND "}, []string{"%vAl%", "123456"}, nil},
 		{"Where by request with multiple colunm values", "/prest/public/table?created_at='$gte.1997-11-03'&created_at='$lte.1997-12-05'", []string{`"created_at" >= $`, ` AND `, `"created_at" <= $`}, []string{`'1997-11-03'`, `'1997-12-05'`}, nil},
 	}
 
@@ -733,6 +734,7 @@ func TestGetQueryOperator(t *testing.T) {
 		{"$false", "IS FALSE"},
 		{"$notfalse", "IS NOT FALSE"},
 		{"$like", "LIKE"},
+		{"$ilike", "ILIKE"},
 	}
 
 	for _, tc := range testCases {
