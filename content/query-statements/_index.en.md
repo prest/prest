@@ -30,6 +30,7 @@ Query Operators:
 | $false | Matches if field is false.|
 | $notfalse | Matches if field is not false.|
 | $like | Matches always cover the entire string.|
+| $ilike | Matches *case-insensitive* always cover the entire string.|
 
 
 ### Filter (WHERE) with JSONb field
