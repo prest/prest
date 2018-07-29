@@ -453,27 +453,27 @@ func cast(s string, r bool) interface{} {
 		if !castNanInf {
 			switch strings.ToLower(s) {
 			case "nan", "inf", "-inf":
-				return interface{}(s)
+				return s
 			}
 		}
 
 		// handle numeric strings ahead of boolean
 		if f, err := strconv.ParseFloat(s, 64); err == nil {
-			return interface{}(f)
+			return f
 		}
 		// ParseBool treats "1"==true & "0"==false, we've already scanned those
 		// values as float64. See if value has 't' or 'f' as initial screen to
 		// minimize calls to ParseBool; also, see if len(s) < 6.
-		if len(s) < 6 {
+		if len(s) > 0 && len(s) < 6 {
 			switch s[:1] {
 			case "t", "T", "f", "F":
 				if b, err := strconv.ParseBool(s); err == nil {
-					return interface{}(b)
+					return b
 				}
 			}
 		}
 	}
-	return interface{}(s)
+	return s
 }
 
 // ------------------ END: NewMapXml & NewMapXmlReader -------------------------
@@ -815,10 +815,12 @@ func mapToXmlIndent(doIndent bool, s *string, key string, value interface{}, pp 
 	// per issue #48, 18apr18 - try and coerce maps to map[string]interface{}
 	// Don't need for mapToXmlSeqIndent, since maps there are decoded by NewMapXmlSeq().
 	if reflect.ValueOf(value).Kind() == reflect.Map {
-		if _, ok := value.(map[string]interface{}); !ok {
+		switch value.(type) {
+		case map[string]interface{}:
+		default:
 			val := make(map[string]interface{})
-			keys := reflect.ValueOf(value).MapKeys()
 			vv := reflect.ValueOf(value)
+			keys := vv.MapKeys()
 			for _, k := range keys {
 				val[fmt.Sprint(k)] = vv.MapIndex(k).Interface()
 			}

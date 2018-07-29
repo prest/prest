@@ -23,7 +23,7 @@ matrix:
   - go: tip
 
 env:
-   - PREST_PG_USER=postgres PREST_PG_DATABASE=prest PREST_PG_PORT=5432 PREST_CONF=$TRAVIS_BUILD_DIR/testdata/prest.toml
+   - GO111MODULE=on PREST_PG_USER=postgres PREST_PG_DATABASE=prest PREST_PG_PORT=5432 PREST_CONF=$TRAVIS_BUILD_DIR/testdata/prest.toml
 
 install:
     - echo 'skip because vendored'

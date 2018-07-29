@@ -1,0 +1,97 @@
+# github.com/auth0/go-jwt-middleware v0.0.0-20170425171159-5493cabe49f7
+github.com/auth0/go-jwt-middleware
+# github.com/clbanning/mxj v1.8.1
+github.com/clbanning/mxj/j2x
+github.com/clbanning/mxj
+# github.com/dgrijalva/jwt-go v3.2.0+incompatible
+github.com/dgrijalva/jwt-go
+# github.com/fatih/color v1.7.0
+github.com/fatih/color
+# github.com/fsnotify/fsnotify v1.4.7
+github.com/fsnotify/fsnotify
+# github.com/gorilla/context v1.1.1
+github.com/gorilla/context
+# github.com/gorilla/mux v1.6.2
+github.com/gorilla/mux
+# github.com/hashicorp/hcl v0.0.0-20180404174102-ef8a98b0bbce
+github.com/hashicorp/hcl
+github.com/hashicorp/hcl/hcl/printer
+github.com/hashicorp/hcl/hcl/ast
+github.com/hashicorp/hcl/hcl/parser
+github.com/hashicorp/hcl/hcl/token
+github.com/hashicorp/hcl/json/parser
+github.com/hashicorp/hcl/hcl/scanner
+github.com/hashicorp/hcl/hcl/strconv
+github.com/hashicorp/hcl/json/scanner
+github.com/hashicorp/hcl/json/token
+# github.com/inconshreveable/mousetrap v1.0.0
+github.com/inconshreveable/mousetrap
+# github.com/jmoiron/sqlx v0.0.0-20180614180643-0dae4fefe7c0
+github.com/jmoiron/sqlx
+github.com/jmoiron/sqlx/reflectx
+# github.com/lib/pq v0.0.0-20180523175426-90697d60dd84
+github.com/lib/pq
+github.com/lib/pq/oid
+# github.com/magiconair/properties v1.8.0
+github.com/magiconair/properties
+# github.com/mattn/go-colorable v0.0.9
+github.com/mattn/go-colorable
+# github.com/mattn/go-isatty v0.0.3
+github.com/mattn/go-isatty
+# github.com/mitchellh/mapstructure v0.0.0-20180715050151-f15292f7a699
+github.com/mitchellh/mapstructure
+# github.com/nuveo/log v0.0.0-20180612162145-f88607104ac8
+github.com/nuveo/log
+# github.com/pelletier/go-toml v1.2.0
+github.com/pelletier/go-toml
+# github.com/prest/adapters v0.0.0-20180724204604-24a9991f32bb
+github.com/prest/adapters/postgres
+github.com/prest/adapters
+github.com/prest/adapters/postgres/formatters
+github.com/prest/adapters/postgres/internal/connection
+github.com/prest/adapters/postgres/statements
+github.com/prest/adapters/scanner
+# github.com/prest/cmd v0.0.0-20180710121315-d1de3d3fa1da
+github.com/prest/cmd
+# github.com/prest/config v0.0.0-20180723020127-e384ae04e477
+github.com/prest/config
+github.com/prest/config/router
+# github.com/prest/controllers v0.0.0-20180517174315-361ea7731377
+github.com/prest/controllers
+# github.com/prest/helpers v0.0.0-20180627002842-07dcf603c9a1
+github.com/prest/helpers
+# github.com/prest/middlewares v0.0.0-20180320134728-7080d6f0e4de
+github.com/prest/middlewares
+# github.com/prest/statements v0.0.0-20170809141047-0a7bec557aa6
+github.com/prest/statements
+# github.com/prest/template v0.0.0-20180322195613-ce51108d4a87
+github.com/prest/template
+# github.com/spf13/afero v1.1.1
+github.com/spf13/afero
+github.com/spf13/afero/mem
+# github.com/spf13/cast v1.2.0
+github.com/spf13/cast
+# github.com/spf13/cobra v0.0.3
+github.com/spf13/cobra
+# github.com/spf13/jwalterweatherman v0.0.0-20180109140146-7c0cea34c8ec
+github.com/spf13/jwalterweatherman
+# github.com/spf13/pflag v1.0.1
+github.com/spf13/pflag
+# github.com/spf13/viper v1.0.2
+github.com/spf13/viper
+# github.com/urfave/negroni v0.3.0
+github.com/urfave/negroni
+# golang.org/x/sys v0.0.0-20180727230415-bd9dbc187b6e
+golang.org/x/sys/unix
+# golang.org/x/text v0.3.0
+golang.org/x/text/transform
+golang.org/x/text/unicode/norm
+# gopkg.in/mattes/migrate.v1 v1.3.2
+gopkg.in/mattes/migrate.v1/driver/postgres
+gopkg.in/mattes/migrate.v1/file
+gopkg.in/mattes/migrate.v1/migrate
+gopkg.in/mattes/migrate.v1/migrate/direction
+gopkg.in/mattes/migrate.v1/driver
+gopkg.in/mattes/migrate.v1/pipe
+# gopkg.in/yaml.v2 v2.2.1
+gopkg.in/yaml.v2
