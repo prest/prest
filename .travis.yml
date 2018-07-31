@@ -1,40 +1,29 @@
 dist: trusty
-
 sudo: required
-
 addons:
   postgresql: "9.6"
-
 services:
   - docker
-
 language: go
-
 os:
-    - linux
-
+  - linux
 go:
-  - 1.9
-  - "1.10"
-  - tip
-
+  - "1.10.x"
+  - "1.9.x"
+  - master
 matrix:
   allow_failures:
-  - go: tip
-
+    - go: master
+  fast_finish: true
 env:
-   - PREST_PG_USER=postgres PREST_PG_DATABASE=prest PREST_PG_PORT=5432 PREST_CONF=$TRAVIS_BUILD_DIR/testdata/prest.toml
-
-install:
-    - echo 'skip because vendored'
-
+  - PREST_PG_USER=postgres PREST_PG_DATABASE=prest PREST_PG_PORT=5432 PREST_CONF=$TRAVIS_BUILD_DIR/testdata/prest.toml
+install: true
 before_script:
-    - docker login -u="$DOCKER_LOGIN" -p="$DOCKER_PASSWORD"
-    - sh testdata/schema.sh
-
+  - docker login -u="$DOCKER_LOGIN" -p="$DOCKER_PASSWORD"
+  - sh testdata/schema.sh
 script:
-    - sh testdata/migrations_test.sh
-    - go test -race ./...
+  - sh testdata/migrations_test.sh
+  - env GO111MODULE=on go test -race ./...
 
 deploy:
 - provider: script

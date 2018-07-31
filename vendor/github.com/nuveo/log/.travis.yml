@@ -1,0 +1,28 @@
+dist: trusty
+
+sudo: required
+
+language: go
+
+os:
+    - linux
+
+env:
+    global:
+    - CC_TEST_REPORTER_ID=cc9bb88b8d638ba4367dc260796c22a4e9b5a7646cf1584626284b1e15d6aad8
+    - GIT_COMMITTED_AT=$(if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then git log -1 --pretty=format:%ct; else git log -1 --skip 1 --pretty=format:%ct; fi)
+
+
+go:
+    - "1.10.1"
+
+before_script:
+    - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 >./cc-test-reporter
+    - chmod +x ./cc-test-reporter
+
+script:
+    - go test ./...
+    - "./cover.sh"
+    - if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT; fi
+
+
