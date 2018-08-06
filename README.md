@@ -1,4 +1,4 @@
-# pREST
+# <img align="right" src="https://postgres.rest/logo.png" alt="RESTful API" title="RESTful API"> pREST
 [![Build Status](https://travis-ci.org/prest/prest.svg?branch=master)](https://travis-ci.org/prest/prest)
 [![GoDoc](https://godoc.org/github.com/prest/prest?status.png)](https://godoc.org/github.com/prest/prest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/prest/prest)](https://goreportcard.com/report/github.com/prest/prest)
