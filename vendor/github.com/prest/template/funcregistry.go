@@ -1,8 +1,8 @@
 package template
 
 import (
-	"net/url"
 	"fmt"
+	"net/url"
 	"strings"
 	"text/template"
 )
@@ -18,7 +18,7 @@ func (fr *FuncRegistry) RegistryAllFuncs() (funcs template.FuncMap) {
 		"isSet":          fr.isSet,
 		"defaultOrValue": fr.defaultOrValue,
 		"inFormat":       fr.inFormat,
-		"unEscape": fr.unEscape,
+		"unEscape":       fr.unEscape,
 	}
 	return
 }
