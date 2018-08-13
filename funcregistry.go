@@ -2,6 +2,7 @@ package template
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 	"text/template"
 )
@@ -17,6 +18,7 @@ func (fr *FuncRegistry) RegistryAllFuncs() (funcs template.FuncMap) {
 		"isSet":          fr.isSet,
 		"defaultOrValue": fr.defaultOrValue,
 		"inFormat":       fr.inFormat,
+		"unEscape":       fr.unEscape,
 	}
 	return
 }
@@ -41,5 +43,10 @@ func (fr *FuncRegistry) inFormat(key string) (query string) {
 		return
 	}
 	query = fmt.Sprintf("('%s')", strings.Join(items, "', '"))
+	return
+}
+
+func (fr *FuncRegistry) unEscape(key string) (value string) {
+	value, _ = url.QueryUnescape(key)
 	return
 }
