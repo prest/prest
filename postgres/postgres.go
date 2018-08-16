@@ -551,7 +551,7 @@ func (adapter *Postgres) Query(SQL string, params ...interface{}) (sc adapters.S
 		return
 	}
 	SQL = fmt.Sprintf("SELECT json_agg(s) FROM (%s) s", SQL)
-	log.Debugln(SQL, " parameters: ", params)
+	log.Debugln("generated SQL:", SQL, " parameters: ", params)
 	p, err := Prepare(db, SQL)
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
@@ -577,7 +577,7 @@ func (adapter *Postgres) QueryCount(SQL string, params ...interface{}) (sc adapt
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	log.Debugln(SQL, " parameters: ", params)
+	log.Debugln("generated SQL:", SQL, " parameters: ", params)
 	p, err := Prepare(db, SQL)
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
@@ -795,7 +795,7 @@ func (adapter *Postgres) Delete(SQL string, params ...interface{}) (sc adapters.
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	log.Debugln(SQL, " parameters: ", params)
+	log.Debugln("generated SQL:", SQL, " parameters: ", params)
 	stmt, err := Prepare(db, SQL)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
@@ -839,7 +839,7 @@ func (adapter *Postgres) Update(SQL string, params ...interface{}) (sc adapters.
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	log.Debugln(SQL, " parameters: ", params)
+	log.Debugln("generated SQL:", SQL, " parameters: ", params)
 	var result sql.Result
 	var rowsAffected int64
 	result, err = stmt.Exec(params...)
