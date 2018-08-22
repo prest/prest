@@ -231,6 +231,37 @@ func TestInvalidWhereByRequest(t *testing.T) {
 	}
 }
 
+func TestReturningByRequest(t *testing.T) {
+	var testCases = []struct {
+		description string
+		url         string
+		expectedSQL []string
+		err         error
+	}{
+		{"Returning by request with nothing", "/prest/public/test_group_by_table", []string{""}, nil},
+		{"Returning by request with _returning=*", "/prest/public/test_group_by_table?_returning=*", []string{"RETURNING *"}, nil},
+		{"Returning by request with _returning=field", "/prest/public/test_group_by_table?_returning=age", []string{"RETURNING age"}, nil},
+		{"Returning by request with multiple _returning=field", "/prest/public/test_group_by_table?_returning=age&_returning=salary", []string{"RETURNING age,salary"}, nil},
+	}
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		req, err := http.NewRequest("GET", tc.url, nil)
+		if err != nil {
+			t.Errorf("expected no errors in http request, got %v", err)
+		}
+		returning, err := config.PrestConf.Adapter.ReturningByRequest(req)
+		t.Log("returning:", returning)
+		if err != nil {
+			t.Errorf("expected no errors in returning by request, got %v", err)
+		}
+		for _, sql := range tc.expectedSQL {
+			if !strings.Contains(returning, sql) {
+				t.Errorf("expected %s in %s, but not was!", sql, returning)
+			}
+		}
+	}
+}
+
 func TestGroupByClause(t *testing.T) {
 	var testCases = []struct {
 		description string

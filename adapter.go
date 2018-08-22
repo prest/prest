@@ -30,6 +30,7 @@ type Adapter interface {
 	ParseScript(scriptPath string, queryURL url.Values) (sqlQuery string, values []interface{}, err error)
 	Query(SQL string, params ...interface{}) (sc Scanner)
 	QueryCount(SQL string, params ...interface{}) (sc Scanner)
+	ReturningByRequest(r *http.Request) (returningSyntax string, err error)
 	SchemaClause(req *http.Request) (query string, hasCount bool)
 	SchemaOrderBy(order string, hasCount bool) (orderBy string)
 	SchemaTablesClause() (query string)

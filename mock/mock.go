@@ -98,6 +98,11 @@ func (m *Mock) WhereByRequest(r *http.Request, initialPlaceholderID int) (whereS
 	return
 }
 
+// ReturningByRequest mock
+func (m *Mock) ReturningByRequest(r *http.Request) (ReturningSyntax string, err error) {
+	return
+}
+
 // DatabaseClause mock
 func (m *Mock) DatabaseClause(req *http.Request) (query string, hasCount bool) {
 	m.t.Helper()
