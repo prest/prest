@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	homedir "github.com/mitchellh/go-homedir"
 	"github.com/nuveo/log"
 	"github.com/prest/adapters"
 	"github.com/spf13/viper"
@@ -99,14 +99,12 @@ func viperCfg() {
 	viper.SetDefault("https.mode", false)
 	viper.SetDefault("https.cert", "/etc/certs/cert.crt")
 	viper.SetDefault("https.key", "/etc/certs/cert.key")
-
-	user, err := user.Current()
+	hDir, err := homedir.Dir()
 	if err != nil {
-		log.Errorln(err)
-		return
-	}
+		log.Fatal(err)
 
-	viper.SetDefault("queries.location", filepath.Join(user.HomeDir, "queries"))
+	}
+	viper.SetDefault("queries.location", filepath.Join(hDir, "queries"))
 }
 
 func getDefaultPrestConf(prestConf string) (cfg string) {
