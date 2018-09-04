@@ -46,7 +46,7 @@ restrict = true  # can access only the tables listed below
     [[access.tables]]
     name = "test5"
     permissions = ["read", "write", "delete"]
-    fields = ["id", "name", "celphone"]
+    fields = ["*"]
 
     [[access.tables]]
     name = "test_readonly_access"
