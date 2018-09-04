@@ -8,6 +8,7 @@ language: go
 os:
   - linux
 go:
+  - "1.11.x"
   - "1.10.x"
   - "1.9.x"
   - master
@@ -32,7 +33,7 @@ deploy:
   on:
     tags: true
     condition: $TRAVIS_OS_NAME = linux
-    go: "1.10.x"
+    go: "1.11.x"
 
 notifications:
     webhooks:

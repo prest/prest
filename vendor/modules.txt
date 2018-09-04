@@ -13,7 +13,7 @@ github.com/fsnotify/fsnotify
 github.com/gorilla/context
 # github.com/gorilla/mux v1.6.2
 github.com/gorilla/mux
-# github.com/hashicorp/hcl v0.0.0-20180404174102-ef8a98b0bbce
+# github.com/hashicorp/hcl v1.0.0
 github.com/hashicorp/hcl
 github.com/hashicorp/hcl/hcl/printer
 github.com/hashicorp/hcl/hcl/ast
@@ -29,22 +29,24 @@ github.com/inconshreveable/mousetrap
 # github.com/jmoiron/sqlx v0.0.0-20180614180643-0dae4fefe7c0
 github.com/jmoiron/sqlx
 github.com/jmoiron/sqlx/reflectx
-# github.com/lib/pq v0.0.0-20180523175426-90697d60dd84
+# github.com/lib/pq v1.0.0
 github.com/lib/pq
 github.com/lib/pq/oid
 # github.com/magiconair/properties v1.8.0
 github.com/magiconair/properties
 # github.com/mattn/go-colorable v0.0.9
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.3
+# github.com/mattn/go-isatty v0.0.4
 github.com/mattn/go-isatty
-# github.com/mitchellh/mapstructure v0.0.0-20180715050151-f15292f7a699
+# github.com/mitchellh/go-homedir v1.0.0
+github.com/mitchellh/go-homedir
+# github.com/mitchellh/mapstructure v1.0.0
 github.com/mitchellh/mapstructure
 # github.com/nuveo/log v0.0.0-20180612162145-f88607104ac8
 github.com/nuveo/log
 # github.com/pelletier/go-toml v1.2.0
 github.com/pelletier/go-toml
-# github.com/prest/adapters v0.0.0-20180724204604-24a9991f32bb
+# github.com/prest/adapters v0.0.0-20180822123645-94d74c9aeb62
 github.com/prest/adapters/postgres
 github.com/prest/adapters
 github.com/prest/adapters/postgres/formatters
@@ -53,10 +55,10 @@ github.com/prest/adapters/postgres/statements
 github.com/prest/adapters/scanner
 # github.com/prest/cmd v0.0.0-20180710121315-d1de3d3fa1da
 github.com/prest/cmd
-# github.com/prest/config v0.0.0-20180723020127-e384ae04e477
+# github.com/prest/config v0.0.0-20180822131905-619b86188d0a
 github.com/prest/config
 github.com/prest/config/router
-# github.com/prest/controllers v0.0.0-20180517174315-361ea7731377
+# github.com/prest/controllers v0.0.0-20180904124317-b69fb390b8f4
 github.com/prest/controllers
 # github.com/prest/helpers v0.0.0-20180627002842-07dcf603c9a1
 github.com/prest/helpers
@@ -73,15 +75,15 @@ github.com/spf13/afero/mem
 github.com/spf13/cast
 # github.com/spf13/cobra v0.0.3
 github.com/spf13/cobra
-# github.com/spf13/jwalterweatherman v0.0.0-20180109140146-7c0cea34c8ec
+# github.com/spf13/jwalterweatherman v0.0.0-20180814060501-14d3d4c51834
 github.com/spf13/jwalterweatherman
 # github.com/spf13/pflag v1.0.2
 github.com/spf13/pflag
 # github.com/spf13/viper v1.1.0
 github.com/spf13/viper
-# github.com/urfave/negroni v0.3.0
+# github.com/urfave/negroni v1.0.0
 github.com/urfave/negroni
-# golang.org/x/sys v0.0.0-20180810173357-98c5dad5d1a0
+# golang.org/x/sys v0.0.0-20180903190138-2b024373dcd9
 golang.org/x/sys/unix
 # golang.org/x/text v0.3.0
 golang.org/x/text/transform

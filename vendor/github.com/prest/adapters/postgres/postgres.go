@@ -249,6 +249,20 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 	return
 }
 
+// ReturningByRequest create interface for queries + returning
+func (adapter *Postgres) ReturningByRequest(r *http.Request) (returningSyntax string, err error) {
+	queries := r.URL.Query()["_returning"]
+	if len(queries) > 0 {
+		for i, q := range queries {
+			if i > 0 && i < len(queries) {
+				returningSyntax += ", "
+			}
+			returningSyntax += q
+		}
+	}
+	return
+}
+
 // SetByRequest create a set clause for SQL
 func (adapter *Postgres) SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, values []interface{}, err error) {
 	body := make(map[string]interface{})
@@ -551,7 +565,7 @@ func (adapter *Postgres) Query(SQL string, params ...interface{}) (sc adapters.S
 		return
 	}
 	SQL = fmt.Sprintf("SELECT json_agg(s) FROM (%s) s", SQL)
-	log.Debugln(SQL, " parameters: ", params)
+	log.Debugln("generated SQL:", SQL, " parameters: ", params)
 	p, err := Prepare(db, SQL)
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
@@ -577,7 +591,7 @@ func (adapter *Postgres) QueryCount(SQL string, params ...interface{}) (sc adapt
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	log.Debugln(SQL, " parameters: ", params)
+	log.Debugln("generated SQL:", SQL, " parameters: ", params)
 	p, err := Prepare(db, SQL)
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
@@ -795,11 +809,43 @@ func (adapter *Postgres) Delete(SQL string, params ...interface{}) (sc adapters.
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	log.Debugln(SQL, " parameters: ", params)
+	log.Debugln("generated SQL:", SQL, " parameters: ", params)
 	stmt, err := Prepare(db, SQL)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
 		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+	if strings.Contains(SQL, "RETURNING") {
+		rows, _ := stmt.Query(params...)
+		cols, _ := rows.Columns()
+		var data []map[string]interface{}
+		for rows.Next() {
+			columns := make([]interface{}, len(cols))
+			columnPointers := make([]interface{}, len(cols))
+			for i := range columns {
+				columnPointers[i] = &columns[i]
+			}
+			if err := rows.Scan(columnPointers...); err != nil {
+				log.Fatal(err)
+			}
+			m := make(map[string]interface{})
+			for i, colName := range cols {
+				val := columnPointers[i].(*interface{})
+				switch (*val).(type) {
+				case []uint8:
+					m[colName] = string((*val).([]byte))
+				default:
+					m[colName] = *val
+				}
+			}
+			data = append(data, m)
+		}
+		jsonData, _ := json.Marshal(data)
+		sc = &scanner.PrestScanner{
+			Error: err,
+			Buff:  bytes.NewBuffer(jsonData),
+		}
 		return
 	}
 	var result sql.Result
@@ -839,7 +885,39 @@ func (adapter *Postgres) Update(SQL string, params ...interface{}) (sc adapters.
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	log.Debugln(SQL, " parameters: ", params)
+	log.Debugln("generated SQL:", SQL, " parameters: ", params)
+	if strings.Contains(SQL, "RETURNING") {
+		rows, _ := stmt.Query(params...)
+		cols, _ := rows.Columns()
+		var data []map[string]interface{}
+		for rows.Next() {
+			columns := make([]interface{}, len(cols))
+			columnPointers := make([]interface{}, len(cols))
+			for i := range columns {
+				columnPointers[i] = &columns[i]
+			}
+			if err := rows.Scan(columnPointers...); err != nil {
+				log.Fatal(err)
+			}
+			m := make(map[string]interface{})
+			for i, colName := range cols {
+				val := columnPointers[i].(*interface{})
+				switch (*val).(type) {
+				case []uint8:
+					m[colName] = string((*val).([]byte))
+				default:
+					m[colName] = *val
+				}
+			}
+			data = append(data, m)
+		}
+		jsonData, _ := json.Marshal(data)
+		sc = &scanner.PrestScanner{
+			Error: err,
+			Buff:  bytes.NewBuffer(jsonData),
+		}
+		return
+	}
 	var result sql.Result
 	var rowsAffected int64
 	result, err = stmt.Exec(params...)
@@ -969,14 +1047,18 @@ func intersection(set, other []string) (intersection []string) {
 
 // FieldsPermissions get fields permissions based in prest configuration
 func (adapter *Postgres) FieldsPermissions(r *http.Request, table string, op string) (fields []string, err error) {
-	restrict := config.PrestConf.AccessConf.Restrict
-	if !restrict || op == "delete" {
-		fields = []string{"*"}
-		return
-	}
 	cols, err := columnsByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("error on parse columns from request: %s", err)
+		return
+	}
+	restrict := config.PrestConf.AccessConf.Restrict
+	if !restrict || op == "delete" {
+		if len(cols) > 0 {
+			fields = cols
+			return
+		}
+		fields = []string{"*"}
 		return
 	}
 	allowedFields := fieldsByPermission(table, op)

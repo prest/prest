@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+
+	"github.com/nuveo/log"
 )
 
 var (
@@ -41,6 +43,7 @@ type PrestScanner struct {
 // Scan put prest response into a struct or map
 func (p *PrestScanner) Scan(i interface{}) (l int, err error) {
 	var ref reflect.Value
+	log.Debugln("database return:", string(p.Buff.Bytes()))
 	if ref, err = validateType(i); err != nil {
 		return
 	}
