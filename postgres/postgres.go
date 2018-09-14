@@ -54,7 +54,7 @@ type Stmt struct {
 }
 
 // Prepare statement
-func (s *Stmt) Prepare(db *sqlx.DB, SQL string) (statement *sql.Stmt, err error) {
+func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt, err error) {
 	if config.PrestConf.EnableCache {
 		var exists bool
 		s.Mtx.Lock()
@@ -64,7 +64,13 @@ func (s *Stmt) Prepare(db *sqlx.DB, SQL string) (statement *sql.Stmt, err error)
 			return
 		}
 	}
-	statement, err = db.Prepare(SQL)
+
+	if tx != nil {
+		statement, err = tx.Prepare(SQL)
+	} else {
+		statement, err = db.Prepare(SQL)
+	}
+
 	if err != nil {
 		return
 	}
@@ -115,9 +121,26 @@ func ClearStmt() {
 	}
 }
 
+// GetTransaction get transaction
+func (adapter *Postgres) GetTransaction() (tx *sql.Tx, err error) {
+	db, err := connection.Get()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	tx, err = db.Begin()
+	return
+}
+
 // Prepare statement func
 func Prepare(db *sqlx.DB, SQL string) (stmt *sql.Stmt, err error) {
-	stmt, err = GetStmt().Prepare(db, SQL)
+	stmt, err = GetStmt().Prepare(db, nil, SQL)
+	return
+}
+
+// PrepareTx statement func
+func PrepareTx(tx *sql.Tx, SQL string) (stmt *sql.Stmt, err error) {
+	stmt, err = GetStmt().Prepare(nil, tx, SQL)
 	return
 }
 
@@ -720,7 +743,7 @@ func (adapter *Postgres) BatchInsertValues(SQL string, values ...interface{}) (s
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	stmt, err := adapter.fullInsert(db, SQL)
+	stmt, err := adapter.fullInsert(db, nil, SQL)
 	if err != nil {
 		log.Println(err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -763,7 +786,7 @@ func (adapter *Postgres) BatchInsertValues(SQL string, values ...interface{}) (s
 	return
 }
 
-func (adapter *Postgres) fullInsert(db *sqlx.DB, SQL string) (stmt *sql.Stmt, err error) {
+func (adapter *Postgres) fullInsert(db *sqlx.DB, tx *sql.Tx, SQL string) (stmt *sql.Stmt, err error) {
 	tableName := insertTableNameQuotesRegex.FindStringSubmatch(SQL)
 	if len(tableName) < 2 {
 		tableName = insertTableNameRegex.FindStringSubmatch(SQL)
@@ -773,7 +796,11 @@ func (adapter *Postgres) fullInsert(db *sqlx.DB, SQL string) (stmt *sql.Stmt, er
 		}
 	}
 	SQL = fmt.Sprintf(`%s RETURNING row_to_json("%s")`, SQL, tableName[2])
-	stmt, err = Prepare(db, SQL)
+	if tx != nil {
+		stmt, err = PrepareTx(tx, SQL)
+	} else {
+		stmt, err = Prepare(db, SQL)
+	}
 	return
 }
 
@@ -785,7 +812,18 @@ func (adapter *Postgres) Insert(SQL string, params ...interface{}) (sc adapters.
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	stmt, err := adapter.fullInsert(db, SQL)
+	sc = adapter.insert(db, nil, SQL, params...)
+	return
+}
+
+// InsertWithTransaction execute insert sql into a table
+func (adapter *Postgres) InsertWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	sc = adapter.insert(nil, tx, SQL, params...)
+	return
+}
+
+func (adapter *Postgres) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	stmt, err := adapter.fullInsert(db, tx, SQL)
 	if err != nil {
 		log.Println(err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -809,8 +847,25 @@ func (adapter *Postgres) Delete(SQL string, params ...interface{}) (sc adapters.
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
+	sc = adapter.delete(db, nil, SQL, params...)
+	return
+}
+
+// DeleteWithTransaction execute delete sql into a table
+func (adapter *Postgres) DeleteWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	sc = adapter.delete(nil, tx, SQL, params...)
+	return
+}
+
+func (adapter *Postgres) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	log.Debugln("generated SQL:", SQL, " parameters: ", params)
-	stmt, err := Prepare(db, SQL)
+	var stmt *sql.Stmt
+	var err error
+	if tx != nil {
+		stmt, err = PrepareTx(tx, SQL)
+	} else {
+		stmt, err = Prepare(db, SQL)
+	}
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -879,7 +934,24 @@ func (adapter *Postgres) Update(SQL string, params ...interface{}) (sc adapters.
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	stmt, err := Prepare(db, SQL)
+	sc = adapter.update(db, nil, SQL, params...)
+	return
+}
+
+// UpdateWithTransaction execute update sql into a table
+func (adapter *Postgres) UpdateWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	sc = adapter.update(nil, tx, SQL, params...)
+	return
+}
+
+func (adapter *Postgres) update(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	var stmt *sql.Stmt
+	var err error
+	if tx != nil {
+		stmt, err = PrepareTx(tx, SQL)
+	} else {
+		stmt, err = Prepare(db, SQL)
+	}
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
 		sc = &scanner.PrestScanner{Error: err}

@@ -2,6 +2,7 @@ package mock
 
 import (
 	"bytes"
+	"database/sql"
 	"net/http"
 	"net/url"
 	"sync"
@@ -185,8 +186,22 @@ func (m *Mock) Insert(SQL string, params ...interface{}) (sc adapters.Scanner) {
 	return
 }
 
+// InsertWithTransaction mock
+func (m *Mock) InsertWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	m.t.Helper()
+	sc = m.perform(false)
+	return
+}
+
 // Delete mock
 func (m *Mock) Delete(SQL string, params ...interface{}) (sc adapters.Scanner) {
+	m.t.Helper()
+	sc = m.perform(false)
+	return
+}
+
+// DeleteWithTransaction mock
+func (m *Mock) DeleteWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	m.t.Helper()
 	sc = m.perform(false)
 	return
@@ -199,6 +214,13 @@ func (m *Mock) SetByRequest(r *http.Request, initialPlaceholderID int) (setSynta
 
 // Update mock
 func (m *Mock) Update(SQL string, params ...interface{}) (sc adapters.Scanner) {
+	m.t.Helper()
+	sc = m.perform(false)
+	return
+}
+
+// UpdateWithTransaction mock
+func (m *Mock) UpdateWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	m.t.Helper()
 	sc = m.perform(false)
 	return
