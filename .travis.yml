@@ -10,19 +10,10 @@ git:
 
 branches:
   only:
-    - gh-pages
+    - master
 
 install:
   - go get -u -v github.com/gohugoio/hugo
 
 script:
   - hugo
-
-deploy:
-  provider: pages
-  skip_cleanup: true
-  github_token: ${GITHUB_TOKEN}
-  local-dir: public
-  target-branch: master
-  on:
-    branch: gh-pages
