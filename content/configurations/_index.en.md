@@ -9,12 +9,13 @@ Via environment variables or via toml file.
 
 ### Environment vars
 
-- PREST\_HTTP_PORT (default 3000)
-- PREST\_PG_HOST (default 127.0.0.1)
+- PREST\_HTTP_HOST (*default 0.0.0.0*)
+- PREST\_HTTP_PORT or PORT (PORT is cloud factor, **when declaring this variable overwritten PREST\_HTTP_PORT**, *default 3000*)
+- PREST\_PG_HOST (*default 127.0.0.1*)
 - PREST\_PG_USER
 - PREST\_PG_PASS
 - PREST\_PG_DATABASE
-- PREST\_PG_PORT (default 5432)
+- PREST\_PG_PORT (*default 5432*)
 - PREST\_PG_URL or DATABASE\_URL (cloud factor, **when declaring this variable all the previous connection fields are overwritten**)
 - PREST\_JWT_KEY
 - PREST\_JWT_ALGO
