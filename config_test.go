@@ -180,3 +180,40 @@ func TestDatabaseURL(t *testing.T) {
 		t.Errorf("expected database port: 5432, got: %d", cfg.PGPort)
 	}
 }
+
+func TestHTTPPort(t *testing.T) {
+	os.Setenv("PREST_CONF", "")
+	os.Setenv("PORT", "8080")
+	viperCfg()
+	cfg := &Prest{}
+	err := Parse(cfg)
+	if err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+	if cfg.HTTPPort != 8080 {
+		t.Errorf("expected http port: 8080, got: %d", cfg.HTTPPort)
+	}
+
+	// set env PREST_HTTP_PORT and PORT
+	os.Setenv("PREST_HTTP_PORT", "3000")
+	cfg = &Prest{}
+	err = Parse(cfg)
+	if err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+
+	if cfg.HTTPPort != 8080 {
+		t.Errorf("expected http port: 8080, got: %d", cfg.HTTPPort)
+	}
+
+	// unset env PORT and set PREST_HTTP_PORT
+	os.Unsetenv("PORT")
+	cfg = &Prest{}
+	err = Parse(cfg)
+	if err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+	if cfg.HTTPPort != 3000 {
+		t.Errorf("expected http port: 3000, got: %d", cfg.HTTPPort)
+	}
+}
