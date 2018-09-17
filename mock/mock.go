@@ -124,6 +124,11 @@ func (m *Mock) PaginateIfPossible(r *http.Request) (paginatedQuery string, err e
 	return
 }
 
+// GetTransaction mock
+func (m *Mock) GetTransaction() (tx *sql.Tx, err error) {
+	return
+}
+
 // Query mock
 func (m *Mock) Query(SQL string, params ...interface{}) (sc adapters.Scanner) {
 	m.t.Helper()
