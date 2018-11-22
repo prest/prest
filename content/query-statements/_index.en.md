@@ -150,8 +150,9 @@ Using query string to JOIN tables, example:
 To use *DISTINCT* clause with SELECT, follow this syntax `_distinct=true`.
 
 Examples:
+
 ```
-    GET /DATABASE/SCHEMA/TABLE/?_distinct=true
+GET /DATABASE/SCHEMA/TABLE/?_distinct=true
 ```
 
 ## ORDER BY
@@ -161,15 +162,24 @@ Using *ORDER BY* in queries you must pass in *GET* request the attribute `_order
 Examples:
 
 ### ASC
-    GET /DATABASE/SCHEMA/TABLE/?_order=fieldname
+
+```
+GET /DATABASE/SCHEMA/TABLE/?_order=fieldname
+```
 
 ### DESC
-    GET /DATABASE/SCHEMA/TABLE/?_order=-fieldname
+
+```
+GET /DATABASE/SCHEMA/TABLE/?_order=-fieldname
+```
 
 ### Multiple Orders
-    GET /DATABASE/SCHEMA/TABLE/?_order=fieldname01,-fieldname02,fieldname03
 
-    ## GROUP BY
+```
+GET /DATABASE/SCHEMA/TABLE/?_order=fieldname01,-fieldname02,fieldname03
+```
+
+## GROUP BY
 
 We support this Group Functions:
 
@@ -184,16 +194,27 @@ We support this Group Functions:
 | VARIANCE | variance:field |
 
 ### Examples:
-	GET /DATABASE/SCHEMA/TABLE/?_select=fieldname00,fieldname01&_groupby=fieldname01
+
+```
+GET /DATABASE/SCHEMA/TABLE/?_select=fieldname00,fieldname01&_groupby=fieldname01
+```
 
 #### Using Group Functions
-	GET /DATABASE/SCHEMA/TABLE/?_select=fieldname00,sum:fieldname01&_groupby=fieldname01
+
+```
+GET /DATABASE/SCHEMA/TABLE/?_select=fieldname00,sum:fieldname01&_groupby=fieldname01
+```
 
 #### Having support
+
 To use Having clause with **Group By**, follow this syntax:
 
-	_groupby=fieldname->>having:GROUPFUNC:FIELDNAME:CONDITION:VALUE-CONDITION
+```
+GET /DATABASE/SCHEMA/TABLE/?_groupby=fieldname->>having:GROUPFUNC:FIELDNAME:CONDITION:VALUE-CONDITION
+```
 
 Example:
 
-	GET /DATABASE/SCHEMA/TABLE/?_select=fieldname00,sum:fieldname01&_groupby=fieldname01->>having:sum:fieldname01:$gt:500
+```
+GET /DATABASE/SCHEMA/TABLE/?_select=fieldname00,sum:fieldname01&_groupby=fieldname01->>having:sum:fieldname01:$gt:500
+```
