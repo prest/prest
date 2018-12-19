@@ -172,8 +172,8 @@ func TestInsertInTables(t *testing.T) {
 		{"execute insert in a table with jsonb field", "/prest/public/testjson", mJSON, http.StatusCreated},
 		{"execute insert in a table without custom where clause", "/prest/public/test", m, http.StatusCreated},
 		{"execute insert in a table with invalid database", "/0prest/public/test", m, http.StatusBadRequest},
-		{"execute insert in a table with invalid schema", "/prest/0public/test", m, http.StatusBadRequest},
-		{"execute insert in a table with invalid table", "/prest/public/0test", m, http.StatusBadRequest},
+		{"execute insert in a table with invalid schema", "/prest/0public/test", m, http.StatusNotFound},
+		{"execute insert in a table with invalid table", "/prest/public/0test", m, http.StatusNotFound},
 		{"execute insert in a table with invalid body", "/prest/public/test", nil, http.StatusBadRequest},
 	}
 
@@ -213,8 +213,8 @@ func TestBatchInsertInTables(t *testing.T) {
 		{"execute insert in a table with jsonb field", "/batch/prest/public/testjson", mJSON, http.StatusCreated, false},
 		{"execute insert in a table without custom where clause", "/batch/prest/public/test", m, http.StatusCreated, false},
 		{"execute insert in a table with invalid database", "/batch/0prest/public/test", m, http.StatusBadRequest, false},
-		{"execute insert in a table with invalid schema", "/batch/prest/0public/test", m, http.StatusBadRequest, false},
-		{"execute insert in a table with invalid table", "/batch/prest/public/0test", m, http.StatusBadRequest, false},
+		{"execute insert in a table with invalid schema", "/batch/prest/0public/test", m, http.StatusNotFound, false},
+		{"execute insert in a table with invalid table", "/batch/prest/public/0test", m, http.StatusNotFound, false},
 		{"execute insert in a table with invalid body", "/batch/prest/public/test", nil, http.StatusBadRequest, false},
 		{"execute insert in a table with array field with copy", "/batch/prest/public/testarray", mARRAY, http.StatusCreated, true},
 		{"execute insert in a table with jsonb field with copy", "/batch/prest/public/testjson", mJSON, http.StatusCreated, true},
@@ -267,8 +267,8 @@ func TestDeleteFromTable(t *testing.T) {
 		{"execute delete in a table without custom where clause", "/prest/public/test", nil, http.StatusOK},
 		{"excute delete in a table with where clause", "/prest/public/test?name=$eq.nuveo", nil, http.StatusOK},
 		{"execute delete in a table with invalid database", "/0prest/public/test", nil, http.StatusBadRequest},
-		{"execute delete in a table with invalid schema", "/prest/0public/test", nil, http.StatusBadRequest},
-		{"execute delete in a table with invalid table", "/prest/public/0test", nil, http.StatusBadRequest},
+		{"execute delete in a table with invalid schema", "/prest/0public/test", nil, http.StatusNotFound},
+		{"execute delete in a table with invalid table", "/prest/public/0test", nil, http.StatusNotFound},
 		{"execute delete in a table with invalid where clause", "/prest/public/test?0name=$eq.nuveo", nil, http.StatusBadRequest},
 	}
 
@@ -298,8 +298,8 @@ func TestUpdateFromTable(t *testing.T) {
 		{"execute update in a table with where clause and returning all fields", "/prest/public/test?id=1&_returning=*", m, http.StatusOK},
 		{"execute update in a table with where clause and returning name field", "/prest/public/test?id=2&_returning=name", m, http.StatusOK},
 		{"execute update in a table with invalid database", "/0prest/public/test", m, http.StatusBadRequest},
-		{"execute update in a table with invalid schema", "/prest/0public/test", m, http.StatusBadRequest},
-		{"execute update in a table with invalid table", "/prest/public/0test", m, http.StatusBadRequest},
+		{"execute update in a table with invalid schema", "/prest/0public/test", m, http.StatusNotFound},
+		{"execute update in a table with invalid table", "/prest/public/0test", m, http.StatusNotFound},
 		{"execute update in a table with invalid where clause", "/prest/public/test?0name=$eq.nuveo", m, http.StatusBadRequest},
 		{"execute update in a table with invalid body", "/prest/public/test?name=$eq.nuveo", nil, http.StatusBadRequest},
 	}
