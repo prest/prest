@@ -30,7 +30,8 @@ Optionally the pREST can be configured by TOML file.
 migrations = "./migrations"
 
 [http]
-port = 6000
+port = 6000 
+# Port 6000 is blocked on windows. You must change to 8080 or any unblocked port
 
 [jwt]
 key = "secret"
