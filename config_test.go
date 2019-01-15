@@ -210,7 +210,7 @@ func TestJWTIsRequired(t *testing.T) {
 func TestJWTSignatureOk(t *testing.T) {
 	app = nil
 	MiddlewareStack = nil
-	bearer := "Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImpvaG4uZG9lQHNvbWV3aGVyZS5jb20iLCJleHAiOjE1NDI2NzIwMDAsImlhdCI6MTUxNzU2MzYxNiwiaXNzIjoicHJpdmF0ZSIsImp0aSI6ImNlZmE3NGZlLTg5NGMtZmY2My1kODE2LTQ2MjBiOGNkOTJlZSIsIm9yZyI6InByaXZhdGUiLCJzdWIiOiJqb2huLmRvZSJ9.sPzXKw88K7ViYyC1HYHMG-J5HT2SDhNcTJwa-Al21lqEgkN_v8QKAraUfjX51dxGZjMLJ-nCjIK4lxCW_xCTbw"
+	bearer := "Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImpvaG4uZG9lQHNvbWV3aGVyZS5jb20iLCJpYXQiOjE1MTc1NjM2MTYsImlzcyI6InByaXZhdGUiLCJqdGkiOiJjZWZhNzRmZS04OTRjLWZmNjMtZDgxNi00NjIwYjhjZDkyZWUiLCJvcmciOiJwcml2YXRlIiwic3ViIjoiam9obi5kb2UifQ.JDlZbR68nV1akE8Jx67_6tz4gRq8_QFvuWCJVcLH_ZUp-PCX0wT3-LDcynoEdB4XU76HB0z3H1RjBWzR4sHiuA"
 	os.Setenv("PREST_JWT_DEFAULT", "true")
 	os.Setenv("PREST_DEBUG", "false")
 	os.Setenv("PREST_JWT_KEY", "s3cr3t")
