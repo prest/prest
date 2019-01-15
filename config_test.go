@@ -210,11 +210,11 @@ func TestJWTIsRequired(t *testing.T) {
 func TestJWTSignatureOk(t *testing.T) {
 	app = nil
 	MiddlewareStack = nil
-	bearer := "Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImpvaG4uZG9lQHNvbWV3aGVyZS5jb20iLCJleHAiOjE1MjUzMzk2MTYsImlhdCI6MTUxNzU2MzYxNiwiaXNzIjoicHJpdmF0ZSIsImp0aSI6ImNlZmE3NGZlLTg5NGMtZmY2My1kODE2LTQ2MjBiOGNkOTJlZSIsIm9yZyI6InByaXZhdGUiLCJzdWIiOiJqb2huLmRvZSJ9.zGP1Xths2bK2r9FN0Gv1SzyoisO0dhRwvqrPvunGxUyU5TbkfdnTcQRJNYZzJfGILeQ9r3tbuakWm-NIoDlbbA"
+	bearer := "Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImpvaG4uZG9lQHNvbWV3aGVyZS5jb20iLCJpYXQiOjE1MTc1NjM2MTYsImlzcyI6InByaXZhdGUiLCJqdGkiOiJjZWZhNzRmZS04OTRjLWZmNjMtZDgxNi00NjIwYjhjZDkyZWUiLCJvcmciOiJwcml2YXRlIiwic3ViIjoiam9obi5kb2UifQ.zLWkEd4hP4XdCD_DlRy6mgPeKwEl1dcdtx5A_jHSfmc87EsrGgNSdi8eBTzCgSU0jgV6ssTgQwzY6x4egze2xA"
 	os.Setenv("PREST_JWT_DEFAULT", "true")
 	os.Setenv("PREST_DEBUG", "false")
-	os.Setenv( "PREST_JWT_KEY", "s3cr3t" )
-	os.Setenv( "PREST_JWT_ALGO", "HS512" )
+	os.Setenv("PREST_JWT_KEY", "s3cr3t")
+	os.Setenv("PREST_JWT_ALGO", "HS512")
 	config.Load()
 	nd := appTestWithJwt()
 	serverd := httptest.NewServer(nd)
@@ -241,8 +241,8 @@ func TestJWTSignatureKo(t *testing.T) {
 	bearer := "Bearer: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImpvaG4uZG9lQHNvbWV3aGVyZS5jb20iLCJleHAiOjE1MjUzMzk2MTYsImlhdCI6MTUxNzU2MzYxNiwiaXNzIjoicHJpdmF0ZSIsImp0aSI6ImNlZmE3NGZlLTg5NGMtZmY2My1kODE2LTQ2MjBiOGNkOTJlZSIsIm9yZyI6InByaXZhdGUiLCJzdWIiOiJqb2huLmRvZSJ9.zGP1Xths2bK2r9FN0Gv1SzyoisO0dhRwvqrPvunGxUyU5TbkfdnTcQRJNYZzJfGILeQ9r3tbuakWm-NIoDlbbA"
 	os.Setenv("PREST_JWT_DEFAULT", "true")
 	os.Setenv("PREST_DEBUG", "false")
-	os.Setenv( "PREST_JWT_KEY", "s3cr3t" )
-	os.Setenv( "PREST_JWT_ALGO", "HS256" )
+	os.Setenv("PREST_JWT_KEY", "s3cr3t")
+	os.Setenv("PREST_JWT_ALGO", "HS256")
 	config.Load()
 	nd := appTestWithJwt()
 	serverd := httptest.NewServer(nd)
