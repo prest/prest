@@ -134,7 +134,7 @@ func AnyXmlIndent(v interface{}, prefix, indent string, tags ...string) ([]byte,
 
 	if v == nil {
 		if useGoXmlEmptyElemSyntax {
-			return []byte(prefix + "<" + rt + ">\n" + prefix + "</" + rt + ">"), nil
+			return []byte(prefix + "<" + rt + "></" + rt + ">"), nil
 		}
 		return []byte(prefix + "<" + rt + "/>"), nil
 	}

@@ -98,6 +98,7 @@ leafvalues := mv.LeafValues()</pre>
 A new `Map` with whatever keys are desired can be created from the current `Map` and then encoded in XML
 or JSON. (Note: keys can use dot-notation.)
 <pre>newMap, err := mv.NewMap("oldKey_1:newKey_1", "oldKey_2:newKey_2", ..., "oldKey_N:newKey_N")
+newMap, err := mv.NewMap("oldKey1", "oldKey3", "oldKey5") // a subset of 'mv'; see "examples/partial.go"
 newXml, err := newMap.Xml()   // for example
 newJson, err := newMap.Json() // ditto</pre>
 
