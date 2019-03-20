@@ -1,6 +1,6 @@
 # github.com/auth0/go-jwt-middleware v0.0.0-20170425171159-5493cabe49f7
 github.com/auth0/go-jwt-middleware
-# github.com/clbanning/mxj v1.8.1
+# github.com/clbanning/mxj v1.8.4
 github.com/clbanning/mxj/j2x
 github.com/clbanning/mxj
 # github.com/dgrijalva/jwt-go v3.2.0+incompatible
@@ -9,9 +9,7 @@ github.com/dgrijalva/jwt-go
 github.com/fatih/color
 # github.com/fsnotify/fsnotify v1.4.7
 github.com/fsnotify/fsnotify
-# github.com/gorilla/context v1.1.1
-github.com/gorilla/context
-# github.com/gorilla/mux v1.6.2
+# github.com/gorilla/mux v1.7.0
 github.com/gorilla/mux
 # github.com/hashicorp/hcl v1.0.0
 github.com/hashicorp/hcl
@@ -26,7 +24,7 @@ github.com/hashicorp/hcl/json/scanner
 github.com/hashicorp/hcl/json/token
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
-# github.com/jmoiron/sqlx v0.0.0-20180614180643-0dae4fefe7c0
+# github.com/jmoiron/sqlx v1.2.0
 github.com/jmoiron/sqlx
 github.com/jmoiron/sqlx/reflectx
 # github.com/lib/pq v1.0.0
@@ -34,56 +32,55 @@ github.com/lib/pq
 github.com/lib/pq/oid
 # github.com/magiconair/properties v1.8.0
 github.com/magiconair/properties
-# github.com/mattn/go-colorable v0.0.9
+# github.com/mattn/go-colorable v0.1.1
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.4
+# github.com/mattn/go-isatty v0.0.7
 github.com/mattn/go-isatty
-# github.com/mitchellh/go-homedir v1.0.0
+# github.com/mitchellh/go-homedir v1.1.0
 github.com/mitchellh/go-homedir
-# github.com/mitchellh/mapstructure v1.0.0
+# github.com/mitchellh/mapstructure v1.1.2
 github.com/mitchellh/mapstructure
 # github.com/nuveo/log v0.0.0-20180612162145-f88607104ac8
 github.com/nuveo/log
 # github.com/pelletier/go-toml v1.2.0
 github.com/pelletier/go-toml
-# github.com/prest/adapters v0.0.0-20180822123645-94d74c9aeb62
+# github.com/prest/adapters v0.0.0-20180917165123-f657f414e582
 github.com/prest/adapters/postgres
 github.com/prest/adapters
 github.com/prest/adapters/postgres/formatters
 github.com/prest/adapters/postgres/internal/connection
 github.com/prest/adapters/postgres/statements
 github.com/prest/adapters/scanner
-# github.com/prest/cmd v0.0.0-20180710121315-d1de3d3fa1da
+# github.com/prest/cmd v0.0.0-20190320205342-75b2d0c5d4a2
 github.com/prest/cmd
-# github.com/prest/config v0.0.0-20180822131905-619b86188d0a
+# github.com/prest/config v0.0.0-20180915211836-080ab42e282b
 github.com/prest/config
 github.com/prest/config/router
-# github.com/prest/controllers v0.0.0-20180904124317-b69fb390b8f4
+# github.com/prest/controllers v0.0.0-20181219133343-f5a8ae792806
 github.com/prest/controllers
 # github.com/prest/helpers v0.0.0-20180627002842-07dcf603c9a1
 github.com/prest/helpers
-# github.com/prest/middlewares v0.0.0-20180320134728-7080d6f0e4de
+# github.com/prest/middlewares v0.0.0-20190115115114-a5c1719fca36
 github.com/prest/middlewares
-# github.com/prest/statements v0.0.0-20170809141047-0a7bec557aa6
-github.com/prest/statements
+github.com/prest/middlewares/statements
 # github.com/prest/template v0.0.0-20180813172605-d3da479a18c2
 github.com/prest/template
-# github.com/spf13/afero v1.1.1
+# github.com/spf13/afero v1.1.2
 github.com/spf13/afero
 github.com/spf13/afero/mem
-# github.com/spf13/cast v1.2.0
+# github.com/spf13/cast v1.3.0
 github.com/spf13/cast
 # github.com/spf13/cobra v0.0.3
 github.com/spf13/cobra
-# github.com/spf13/jwalterweatherman v0.0.0-20180814060501-14d3d4c51834
+# github.com/spf13/jwalterweatherman v1.0.0
 github.com/spf13/jwalterweatherman
-# github.com/spf13/pflag v1.0.2
+# github.com/spf13/pflag v1.0.3
 github.com/spf13/pflag
-# github.com/spf13/viper v1.1.0
+# github.com/spf13/viper v1.3.2
 github.com/spf13/viper
 # github.com/urfave/negroni v1.0.0
 github.com/urfave/negroni
-# golang.org/x/sys v0.0.0-20180903190138-2b024373dcd9
+# golang.org/x/sys v0.0.0-20190222072716-a9d3bda3a223
 golang.org/x/sys/unix
 # golang.org/x/text v0.3.0
 golang.org/x/text/transform
@@ -95,5 +92,5 @@ gopkg.in/mattes/migrate.v1/migrate
 gopkg.in/mattes/migrate.v1/migrate/direction
 gopkg.in/mattes/migrate.v1/driver
 gopkg.in/mattes/migrate.v1/pipe
-# gopkg.in/yaml.v2 v2.2.1
+# gopkg.in/yaml.v2 v2.2.2
 gopkg.in/yaml.v2

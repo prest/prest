@@ -191,8 +191,14 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sc := runQuery(sqlSelect, values...)
-	if sc.Err() != nil {
-		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
+	if err = sc.Err(); err != nil {
+		errorMessage := sc.Err().Error()
+		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
+			fmt.Println(errorMessage)
+			http.Error(w, errorMessage, http.StatusNotFound)
+			return
+		}
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	w.Write(sc.Bytes())
@@ -217,8 +223,14 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	sql := config.PrestConf.Adapter.InsertSQL(database, schema, table, names, placeholders)
 
 	sc := config.PrestConf.Adapter.Insert(sql, values...)
-	if sc.Err() != nil {
-		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
+	if err = sc.Err(); err != nil {
+		errorMessage := sc.Err().Error()
+		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
+			fmt.Println(errorMessage)
+			http.Error(w, errorMessage, http.StatusNotFound)
+			return
+		}
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -249,7 +261,13 @@ func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 		sc = config.PrestConf.Adapter.BatchInsertCopy(database, schema, table, strings.Split(names, ","), values...)
 	}
 	if err = sc.Err(); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := sc.Err().Error()
+		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
+			fmt.Println(errorMessage)
+			http.Error(w, errorMessage, http.StatusNotFound)
+			return
+		}
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -292,8 +310,14 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sc := config.PrestConf.Adapter.Delete(sql, values...)
-	if sc.Err() != nil {
-		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
+	if err = sc.Err(); err != nil {
+		errorMessage := sc.Err().Error()
+		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
+			fmt.Println(errorMessage)
+			http.Error(w, errorMessage, http.StatusNotFound)
+			return
+		}
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	w.Write(sc.Bytes())
@@ -348,8 +372,14 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sc := config.PrestConf.Adapter.Update(sql, values...)
-	if sc.Err() != nil {
-		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
+	if err = sc.Err(); err != nil {
+		errorMessage := sc.Err().Error()
+		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
+			fmt.Println(errorMessage)
+			http.Error(w, errorMessage, http.StatusNotFound)
+			return
+		}
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	w.Write(sc.Bytes())

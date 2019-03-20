@@ -1,5 +1,5 @@
 // mxj - A collection of map[string]interface{} and associated XML and JSON utilities.
-// Copyright 2012-2015 Charles Banning. All rights reserved.
+// Copyright 2012-2015, 2018 Charles Banning. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file
 
@@ -84,6 +84,7 @@ SUMMARY
    A new Map with whatever keys are desired can be created from the current Map and then encoded in XML
    or JSON. (Note: keys can use dot-notation. 'oldKey' can also use wildcards and indexed arrays.)
       newMap, err := mv.NewMap("oldKey_1:newKey_1", "oldKey_2:newKey_2", ..., "oldKey_N:newKey_N")
+      newMap, err := mv.NewMap("oldKey1", "oldKey3", "oldKey5") // a subset of 'mv'; see "examples/partial.go"
       newXml, err := newMap.Xml()   // for example
       newJson, err := newMap.Json() // ditto
 

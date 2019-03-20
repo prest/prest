@@ -8,9 +8,9 @@ language: go
 os:
   - linux
 go:
+  - "1.12.x"
   - "1.11.x"
   - "1.10.x"
-  - "1.9.x"
   - master
 matrix:
   allow_failures:
@@ -27,15 +27,15 @@ script:
   - env GO111MODULE=on go test -race ./...
 
 deploy:
-- provider: script
-  skip_cleanup: true
-  script: curl -sL https://git.io/goreleaser | bash
-  on:
-    tags: true
-    condition: $TRAVIS_OS_NAME = linux
-    go: "1.11.x"
+  - provider: script
+    skip_cleanup: true
+    script: curl -sL https://git.io/goreleaser | bash
+    on:
+      tags: true
+      condition: $TRAVIS_OS_NAME = linux
+      go: "1.12.x"
 
 notifications:
-    webhooks:
-        urls:
-            - https://webhooks.gitter.im/e/b7314cbdd840e64940fb
+  webhooks:
+    urls:
+      - https://webhooks.gitter.im/e/b7314cbdd840e64940fb

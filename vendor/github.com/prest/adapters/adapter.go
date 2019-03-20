@@ -1,12 +1,14 @@
 package adapters
 
 import (
+	"database/sql"
 	"net/http"
 	"net/url"
 )
 
 //Adapter interface
 type Adapter interface {
+	GetTransaction() (tx *sql.Tx, err error)
 	BatchInsertValues(SQL string, params ...interface{}) (sc Scanner)
 	BatchInsertCopy(dbname, schema, table string, keys []string, params ...interface{}) (sc Scanner)
 	CountByRequest(req *http.Request) (countQuery string, err error)
@@ -14,6 +16,7 @@ type Adapter interface {
 	DatabaseOrderBy(order string, hasCount bool) (orderBy string)
 	DatabaseWhere(requestWhere string) (whereSyntax string)
 	Delete(SQL string, params ...interface{}) (sc Scanner)
+	DeleteWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc Scanner)
 	DeleteSQL(database string, schema string, table string) string
 	DistinctClause(r *http.Request) (distinctQuery string, err error)
 	ExecuteScripts(method, sql string, values []interface{}) (sc Scanner)
@@ -21,6 +24,7 @@ type Adapter interface {
 	GetScript(verb, folder, scriptName string) (script string, err error)
 	GroupByClause(r *http.Request) (groupBySQL string)
 	Insert(SQL string, params ...interface{}) (sc Scanner)
+	InsertWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc Scanner)
 	InsertSQL(database string, schema string, table string, names string, placeholders string) string
 	JoinByRequest(r *http.Request) (values []string, err error)
 	OrderByRequest(r *http.Request) (values string, err error)
@@ -45,6 +49,7 @@ type Adapter interface {
 	TablePermissions(table string, op string) bool
 	TableWhere(requestWhere string) (whereSyntax string)
 	Update(SQL string, params ...interface{}) (sc Scanner)
+	UpdateWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc Scanner)
 	UpdateSQL(database string, schema string, table string, setSyntax string) string
 	WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []interface{}, err error)
 }

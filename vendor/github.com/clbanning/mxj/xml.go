@@ -279,6 +279,23 @@ func HandleXMPPStreamTag(b ...bool) {
 	}
 }
 
+// 21jan18 - decode all values as map["#text":value] (issue #56)
+var decodeSimpleValuesAsMap bool
+
+// DecodeSimpleValuesAsMap forces all values to be decoded as map["#text":<value>].
+// If called with no argument, the decoding is toggled on/off.
+//
+// By default the NewMapXml functions decode simple values without attributes as
+// map[<tag>:<value>]. This function causes simple values without attributes to be
+// decoded the same as simple values with attributes - map[<tag>:map["#text":<value>]].
+func DecodeSimpleValuesAsMap(b ...bool) {
+	if len(b) == 0 {
+		decodeSimpleValuesAsMap = !decodeSimpleValuesAsMap
+	} else if len(b) == 1 {
+		decodeSimpleValuesAsMap = b[0]
+	}
+}
+
 // xmlToMapParser (2015.11.12) - load a 'clean' XML doc into a map[string]interface{} directly.
 // A refactoring of xmlToTreeParser(), markDuplicate() and treeToMap() - here, all-in-one.
 // We've removed the intermediate *node tree with the allocation and subsequent rescanning.
@@ -419,7 +436,7 @@ func xmlToMapParser(skey string, a []xml.Attr, p *xml.Decoder, r bool) (map[stri
 			// clean up possible noise
 			tt := strings.Trim(string(t.(xml.CharData)), "\t\r\b\n ")
 			if len(tt) > 0 {
-				if len(na) > 0 {
+				if len(na) > 0 || decodeSimpleValuesAsMap {
 					na["#text"] = cast(tt, r)
 				} else if skey != "" {
 					n[skey] = cast(tt, r)
@@ -891,6 +908,18 @@ func mapToXmlIndent(doIndent bool, s *string, key string, value interface{}, pp 
 
 		// simple element? Note: '#text" is an invalid XML tag.
 		if v, ok := vv["#text"]; ok && n+1 == lenvv {
+			switch v.(type) {
+			case string:
+				if xmlEscapeChars {
+					v = escapeChars(v.(string))
+				} else {
+					v = v.(string)
+				}
+			case []byte:
+				if xmlEscapeChars {
+					v = escapeChars(string(v.([]byte)))
+				}
+			}
 			*s += ">" + fmt.Sprintf("%v", v)
 			endTag = true
 			elen = 1

@@ -34,7 +34,7 @@ func SetArraySize(size int) int {
 }
 
 // Return all values in Map, 'mv', associated with a 'key'. If len(returned_values) == 0, then no match.
-// On error, the returned array is 'nil'. NOTE: 'key' can be wildcard, "*".
+// On error, the returned slice is 'nil'. NOTE: 'key' can be wildcard, "*".
 //   'subkeys' (optional) are "key:val[:type]" strings representing attributes or elements in a list.
 //             - By default 'val' is of type string. "key:val:bool" and "key:val:float" to coerce them.
 //             - For attributes prefix the label with a hyphen, '-', e.g., "-seq:3".
@@ -58,6 +58,21 @@ func (mv Map) ValuesForKey(key string, subkeys ...string) ([]interface{}, error)
 	var cnt int
 	hasKey(m, key, &ret, &cnt, subKeyMap)
 	return ret[:cnt], nil
+}
+
+var KeyNotExistError = errors.New("Key does not exist")
+
+// ValueForKey is a wrapper on ValuesForKey.  It returns the first member of []interface{}, if any.
+// If there is no value, "nil, nil" is returned.
+func (mv Map) ValueForKey(key string, subkeys ...string) (interface{}, error) {
+	vals, err := mv.ValuesForKey(key, subkeys...)
+	if err != nil {
+		return nil, err
+	}
+	if len(vals) == 0 {
+		return nil, KeyNotExistError
+	}
+	return vals[0], nil
 }
 
 // hasKey - if the map 'key' exists append it to array
@@ -615,14 +630,17 @@ func hasKeyPath(crumbs string, iv interface{}, key string, basket map[string]boo
 	}
 }
 
-// Returns the first found value for the path.
+var PathNotExistError = errors.New("Path does not exist")
+
+// ValueForPath wrap ValuesFor Path and returns the first value returned.
+// If no value is found it returns 'nil' and PathNotExistError.
 func (mv Map) ValueForPath(path string) (interface{}, error) {
 	vals, err := mv.ValuesForPath(path)
 	if err != nil {
 		return nil, err
 	}
 	if len(vals) == 0 {
-		return nil, errors.New("ValueForPath: path not found")
+		return nil, PathNotExistError
 	}
 	return vals[0], nil
 }
