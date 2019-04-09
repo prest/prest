@@ -1,6 +1,7 @@
 package template
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -48,6 +49,21 @@ func TestInFormat(t *testing.T) {
 	}
 }
 
+func TestSplit(t *testing.T) {
+	data := make(map[string]interface{})
+	list3itens := "test1,test2,test3"
+	data["list3itens"] = list3itens
+	funcs := &FuncRegistry{TemplateData: data}
+	query := funcs.split(list3itens, ",")
+	s := strings.Split(list3itens, ",")
+	if len(query) != 3 {
+		t.Errorf("expected (3), but got %d", len(query))
+	}
+	if len(query) != len(s) {
+		t.Errorf("expected (%d), but got %d", len(query), len(s))
+	}
+}
+
 func TestRegistryAllFuncs(t *testing.T) {
 	data := make(map[string]interface{})
 	data["test"] = "testValue"
@@ -56,14 +72,18 @@ func TestRegistryAllFuncs(t *testing.T) {
 	fmap := funcs.RegistryAllFuncs()
 	_, ok := fmap["isSet"]
 	if !ok {
-		t.Error("func isSet is not registred")
+		t.Error("func `isSet` is not registred")
 	}
 	_, ok = fmap["defaultOrValue"]
 	if !ok {
-		t.Error("func defaultOrValue is not registred")
+		t.Error("func `defaultOrValue` is not registred")
 	}
 	_, ok = fmap["inFormat"]
 	if !ok {
-		t.Error("func in is not registred")
+		t.Error("func `in` is not registred")
+	}
+	_, ok = fmap["split"]
+	if !ok {
+		t.Error("func `split` is not registred")
 	}
 }

@@ -19,6 +19,7 @@ func (fr *FuncRegistry) RegistryAllFuncs() (funcs template.FuncMap) {
 		"defaultOrValue": fr.defaultOrValue,
 		"inFormat":       fr.inFormat,
 		"unEscape":       fr.unEscape,
+		"split":          fr.split,
 	}
 	return
 }
@@ -48,5 +49,10 @@ func (fr *FuncRegistry) inFormat(key string) (query string) {
 
 func (fr *FuncRegistry) unEscape(key string) (value string) {
 	value, _ = url.QueryUnescape(key)
+	return
+}
+
+func (fr *FuncRegistry) split(orig, sep string) (values []string) {
+	values = strings.Split(orig, sep)
 	return
 }
