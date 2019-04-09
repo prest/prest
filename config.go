@@ -144,44 +144,17 @@ func Parse(cfg *Prest) (err error) {
 	cfg.SSLCert = viper.GetString("ssl.cert")
 	cfg.SSLKey = viper.GetString("ssl.key")
 	cfg.SSLRootCert = viper.GetString("ssl.rootcert")
-	if os.Getenv("PORT") != "" {
-		// cloud factor support: https://help.heroku.com/PPBPA231/how-do-i-use-the-port-environment-variable-in-container-based-apps
-		HTTPPort, HttpPortErr := strconv.Atoi(os.Getenv("PORT"))
-		if err != nil {
-			err = HttpPortErr
-			return
-		}
-		cfg.HTTPPort = HTTPPort
+	err = portFromEnv(cfg)
+	if err != nil {
+		return
 	}
 	if os.Getenv("DATABASE_URL") != "" {
 		// cloud factor support: https://devcenter.heroku.com/changelog-items/438
 		cfg.PGURL = os.Getenv("DATABASE_URL")
 	}
-	if cfg.PGURL != "" {
-		// Parser PG URL, get database connection via string URL
-		u, errPerse := url.Parse(cfg.PGURL)
-		if errPerse != nil {
-			err = errPerse
-			return
-		}
-		cfg.PGHost = u.Hostname()
-		if u.Port() != "" {
-			pgPort, PortErr := strconv.Atoi(u.Port())
-			if err != nil {
-				err = PortErr
-				return
-			}
-			cfg.PGPort = pgPort
-		}
-		cfg.PGUser = u.User.Username()
-		pgPass, pgPassExist := u.User.Password()
-		if pgPassExist {
-			cfg.PGPass = pgPass
-		}
-		cfg.PGDatabase = strings.Replace(u.Path, "/", "", -1)
-		if u.Query().Get("sslmode") != "" {
-			cfg.SSLMode = u.Query().Get("sslmode")
-		}
+	err = parseDatabaseURL(cfg)
+	if err != nil {
+		return
 	}
 	cfg.PGMaxIdleConn = viper.GetInt("pg.maxidleconn")
 	cfg.PGMAxOpenConn = viper.GetInt("pg.maxopenconn")
@@ -223,4 +196,47 @@ func Load() {
 			log.Errorf("Queries directory %s is not created", PrestConf.QueriesPath)
 		}
 	}
+}
+
+func parseDatabaseURL(cfg *Prest) (err error) {
+	if cfg.PGURL == "" {
+		return
+	}
+	// Parser PG URL, get database connection via string URL
+	u, errPerse := url.Parse(cfg.PGURL)
+	if errPerse != nil {
+		err = errPerse
+		return
+	}
+	cfg.PGHost = u.Hostname()
+	if u.Port() != "" {
+		pgPort, PortErr := strconv.Atoi(u.Port())
+		if PortErr != nil {
+			return PortErr
+		}
+		cfg.PGPort = pgPort
+	}
+	cfg.PGUser = u.User.Username()
+	pgPass, pgPassExist := u.User.Password()
+	if pgPassExist {
+		cfg.PGPass = pgPass
+	}
+	cfg.PGDatabase = strings.Replace(u.Path, "/", "", -1)
+	if u.Query().Get("sslmode") != "" {
+		cfg.SSLMode = u.Query().Get("sslmode")
+	}
+	return
+}
+
+func portFromEnv(cfg *Prest) (err error) {
+	if os.Getenv("PORT") == "" {
+		return
+	}
+	// cloud factor support: https://help.heroku.com/PPBPA231/how-do-i-use-the-port-environment-variable-in-container-based-apps
+	HTTPPort, err := strconv.Atoi(os.Getenv("PORT"))
+	if err != nil {
+		return
+	}
+	cfg.HTTPPort = HTTPPort
+	return
 }
