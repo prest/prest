@@ -77,7 +77,9 @@ DELETE /_QUERIES/bar/some_delete?field1=foo
 
 ### Template functions
 
-- *isSet* return true if param is set.
+
+#### isSet
+Return true if param is set.
 
 ```sql
 SELECT * FROM table
@@ -87,14 +89,25 @@ WHERE name = "{{.field1}}"
 ;
 ```
 
-- *defaultOrValue* return param value or default value.
+#### defaultOrValue
+Return param value or default value.
 
 ```sql
 SELECT * FROM table WHERE name = '{{defaultOrValue "field1" "gopher"}}';
 ```
 
-- *inFormat* if value of param is an slice this function format to an IN SQL clause.
+#### inFormat
+If value of param is an slice this function format to an IN SQL clause.
 
 ```sql
 SELECT * FROM table WHERE name IN {{inFormat "field1"}};
+```
+
+#### split
+Splits a string into substrings separated by a delimiter
+
+```sql
+SELECT * FROM table WHERE
+name IN ({{ range $index,$part := split 'test1,test2,test3' `,` }}{{if gt $index 0 }},{{end}}'{{$part}}'{{ end }});
+
 ```
