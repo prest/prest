@@ -190,6 +190,7 @@ func TestEnableDefaultJWT(t *testing.T) {
 }
 
 func TestJWTIsRequired(t *testing.T) {
+	MiddlewareStack = []negroni.Handler{}
 	app = nil
 	os.Setenv("PREST_JWT_DEFAULT", "true")
 	os.Setenv("PREST_DEBUG", "false")
@@ -293,6 +294,7 @@ func appTestWithJwt() *negroni.Negroni {
 }
 
 func TestCors(t *testing.T) {
+	MiddlewareStack = []negroni.Handler{}
 	os.Setenv("PREST_DEBUG", "true")
 	os.Setenv("PREST_CORS_ALLOWORIGIN", "*")
 	os.Setenv("PREST_CONF", "../testdata/prest.toml")
