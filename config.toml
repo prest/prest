@@ -17,7 +17,7 @@ custom_css = []
 custom_js = []
 highlightjs = "css/highlight.css"
 favicon = "favicon.ico"
-editURL = "https://github.com/prest/prest.github.io/tree/gh-pages/content"
+editURL = "https://github.com/prest/prest.github.io/tree/master/content/"
 showVisitedLinks = true
 logo = "logo.png"
 
@@ -32,7 +32,7 @@ gratipay = ""
 show_relations = true
 
 [params.footer]
-copyright = "[Digitalcraftsman](https://github.com/digitalcraftsman)"
+copyright = "[pREST](https://postgres.rest/)"
 show_powered_by = true
 
 [Languages]
