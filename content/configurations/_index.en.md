@@ -29,6 +29,9 @@ Optionally the pREST can be configured by TOML file.
 ```toml
 migrations = "./migrations"
 
+# debug = true
+# enabling debug mode will disable JWT authorization
+
 [http]
 port = 6000 
 # Port 6000 is blocked on windows. You must change to 8080 or any unblocked port
@@ -55,7 +58,7 @@ sslrootcert = "./PATH"
 
 ## Authorization
 
-- JWT middleware is enabled by default. To disable JWT need to set default to false.
+- JWT middleware is enabled by default. To disable JWT need to set default to false. Enabling debug mode will also disable it.
 
 ```toml
 [jwt]
