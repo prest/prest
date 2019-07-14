@@ -10,6 +10,7 @@ import (
 
 // ExecuteScriptQuery is a function to execute and return result of script query
 func ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]byte, error) {
+	config.PrestConf.Adapter.SetDatabase(config.PrestConf.PGDatabase)
 	sqlPath, err := config.PrestConf.Adapter.GetScript(rq.Method, queriesPath, script)
 	if err != nil {
 		err = fmt.Errorf("could not get script %s/%s, %+v", queriesPath, script, err)
