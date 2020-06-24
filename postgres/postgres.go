@@ -1281,6 +1281,9 @@ func NormalizeGroupFunction(paramValue string) (groupFuncSQL string, err error) 
 			values[1] = fmt.Sprintf(`"%s"`, v)
 		}
 		groupFuncSQL = fmt.Sprintf(`%s(%s)`, groupFunc, values[1])
+		if len(values) == 3 {
+			groupFuncSQL = fmt.Sprintf(`%s AS "%s"`, groupFuncSQL, values[2])
+		}
 		return
 	default:
 		err = fmt.Errorf("this function %s is not a valid group function", groupFunc)

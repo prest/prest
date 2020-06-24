@@ -1030,6 +1030,13 @@ func TestNormalizeGroupFunction(t *testing.T) {
 		{"Normalize MEDIAN Function", "median:age", `MEDIAN("age")`},
 		{"Normalize STDDEV Function", "stddev:age", `STDDEV("age")`},
 		{"Normalize VARIANCE Function", "variance:age", `VARIANCE("age")`},
+		{"Normalize AVG Function renamed", "avg:age:colname", `AVG("age") AS "colname"`},
+		{"Normalize SUM Function renamed", "sum:age:colname", `SUM("age") AS "colname"`},
+		{"Normalize MAX Function renamed", "max:age:colname", `MAX("age") AS "colname"`},
+		{"Normalize MIN Function renamed", "min:age:colname", `MIN("age") AS "colname"`},
+		{"Normalize MEDIAN Function renamed", "median:age:colname", `MEDIAN("age") AS "colname"`},
+		{"Normalize STDDEV Function renamed", "stddev:age:colname", `STDDEV("age") AS "colname"`},
+		{"Normalize VARIANCE Function renamed", "variance:age:colname", `VARIANCE("age") AS "colname"`},
 	}
 
 	for _, tc := range testCases {

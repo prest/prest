@@ -11,9 +11,13 @@ os:
     - linux
 
 go:
-  - 1.9
-  - "1.10"
-  - tip
+  - "1.12.x"
+  - "1.11.x"
+  - "1.10.x"
+  - master
+
+# allow internal package imports in forked repositories
+go_import_path: github.com/prest/adapters
 
 matrix:
   allow_failures:
