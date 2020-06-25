@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/adapters"
-	"github.com/prest/config"
+	"github.com/prest/prest/adapters"
+	"github.com/prest/prest/config"
 )
 
 // GetTables list all (or filter) tables

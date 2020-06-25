@@ -1,14 +1,13 @@
 package controllers
 
 import (
-	"testing"
-
 	"net/http"
 	"net/http/httptest"
+	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/adapters/postgres"
-	"github.com/prest/config"
+	"github.com/prest/prest/adapters/postgres"
+	"github.com/prest/prest/config"
 )
 
 func TestGetDatabases(t *testing.T) {

@@ -3,8 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/prest/helpers"
+	"github.com/prest/prest/helpers"
 	"github.com/spf13/cobra"
+
 	// postgres driver for migrate
 	_ "gopkg.in/mattes/migrate.v1/driver/postgres"
 )

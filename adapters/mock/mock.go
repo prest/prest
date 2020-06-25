@@ -8,9 +8,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/prest/adapters"
-	"github.com/prest/adapters/scanner"
-	"github.com/prest/config"
+	"github.com/prest/prest/adapters"
+	"github.com/prest/prest/adapters/scanner"
+	"github.com/prest/prest/config"
 )
 
 // Item mock

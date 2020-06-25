@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/config"
+	"github.com/prest/prest/config"
 )
 
 // ExecuteScriptQuery is a function to execute and return result of script query

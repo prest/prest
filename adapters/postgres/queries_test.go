@@ -8,7 +8,7 @@ import (
 	"os/user"
 	"testing"
 
-	"github.com/prest/config"
+	"github.com/prest/prest/config"
 )
 
 func TestMain(m *testing.M) {

@@ -5,12 +5,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
-
 	"strings"
 
 	"github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/prest/config"
+	"github.com/prest/prest/config"
 	"github.com/urfave/negroni"
 )
 

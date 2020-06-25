@@ -10,10 +10,10 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/adapters/postgres"
-	"github.com/prest/config"
-	"github.com/prest/config/router"
-	"github.com/prest/controllers"
+	"github.com/prest/prest/adapters/postgres"
+	"github.com/prest/prest/config"
+	"github.com/prest/prest/config/router"
+	"github.com/prest/prest/controllers"
 	"github.com/urfave/negroni"
 )
 

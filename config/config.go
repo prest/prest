@@ -10,7 +10,7 @@ import (
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/nuveo/log"
-	"github.com/prest/adapters"
+	"github.com/prest/prest/adapters"
 	"github.com/spf13/viper"
 )
 

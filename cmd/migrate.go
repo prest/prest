@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/prest/config"
+	"github.com/prest/prest/config"
 	"github.com/spf13/cobra"
+
 	// postgres driver for migrate
 	_ "gopkg.in/mattes/migrate.v1/driver/postgres"
 	"gopkg.in/mattes/migrate.v1/file"

@@ -1,9 +1,8 @@
 package config
 
 import (
-	"testing"
-
 	"os"
+	"testing"
 )
 
 func TestLoad(t *testing.T) {

@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/adapters/postgres"
-	"github.com/prest/config"
+	"github.com/prest/prest/adapters/postgres"
+	"github.com/prest/prest/config"
 )
 
 func init() {
