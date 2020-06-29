@@ -9,6 +9,7 @@ Via environment variables or via toml file.
 
 ### Environment vars
 
+- PREST\_CONF
 - PREST\_HTTP_HOST (*default 0.0.0.0*)
 - PREST\_HTTP_PORT or PORT (PORT is cloud factor, **when declaring this variable overwritten PREST\_HTTP_PORT**, *default 3000*)
 - PREST\_PG_HOST (*default 127.0.0.1*)
