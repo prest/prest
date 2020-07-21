@@ -13,12 +13,12 @@ import (
 
 var (
 	err          error
-	pool         *ConnectionPool
+	pool         *Pool
 	currDatabase string
 )
 
-// ConnectionPool struct
-type ConnectionPool struct {
+// Pool struct
+type Pool struct {
 	Mtx *sync.Mutex
 	DB  map[string]*sqlx.DB
 }
@@ -76,9 +76,9 @@ func Get() (*sqlx.DB, error) {
 }
 
 // GetPool of connection
-func GetPool() *ConnectionPool {
+func GetPool() *Pool {
 	if pool == nil {
-		pool = &ConnectionPool{
+		pool = &Pool{
 			Mtx: &sync.Mutex{},
 			DB:  make(map[string]*sqlx.DB),
 		}
@@ -88,7 +88,7 @@ func GetPool() *ConnectionPool {
 
 func getDatabaseFromPool(name string) *sqlx.DB {
 	var DB *sqlx.DB
-	var p *ConnectionPool
+	var p *Pool
 
 	p = GetPool()
 
@@ -101,7 +101,7 @@ func getDatabaseFromPool(name string) *sqlx.DB {
 
 // AddDatabaseToPool add connection to pool
 func AddDatabaseToPool(name string, DB *sqlx.DB) {
-	var p *ConnectionPool
+	var p *Pool
 
 	p = GetPool()
 

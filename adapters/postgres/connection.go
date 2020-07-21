@@ -16,7 +16,7 @@ func Get() (*sqlx.DB, error) {
 }
 
 // GetPool of connection
-func GetPool() *connection.ConnectionPool {
+func GetPool() *connection.Pool {
 	return connection.GetPool()
 }
 
