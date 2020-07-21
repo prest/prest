@@ -3,9 +3,16 @@ package statements
 import "fmt"
 
 const (
+	// FieldDatabaseName define database name
 	FieldDatabaseName      = "datname"
+
+	// FieldSchemaName define schema name
 	FieldSchemaName        = "schema_name"
+
+	// FieldCountDatabaseName count by database name
 	FieldCountDatabaseName = "COUNT(datname)"
+
+	// FieldCountSchemaName count by schema name
 	FieldCountSchemaName   = "COUNT(schema_name)"
 
 	// Databases list all data bases
@@ -34,6 +41,7 @@ SELECT
 FROM
 	information_schema.schemata`
 
+	// SchemasGroupBy clause
 	SchemasGroupBy = `
 GROUP BY
 	%s`
