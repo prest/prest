@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -13,6 +14,7 @@ import (
 	"github.com/prest/prest/adapters"
 	"github.com/prest/prest/adapters/scanner"
 	"github.com/prest/prest/config"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMock_validate(t *testing.T) {
@@ -429,6 +431,37 @@ func TestMock_Query(t *testing.T) {
 			if gotSc := m.Query(""); !reflect.DeepEqual(gotSc, tt.wantSc) {
 				t.Errorf("Mock.Query() = %v, want %v", gotSc, tt.wantSc)
 			}
+		})
+	}
+}
+
+func TestMock_GetTransaction(t *testing.T) {
+	type fields struct {
+		mtx *sync.RWMutex
+		t   *testing.T
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		wantTx  *sql.Tx
+		wantErr bool
+	}{
+		{
+			name:    "transaction not nil",
+			fields:  fields{},
+			wantErr: false,
+			wantTx:  &sql.Tx{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := New(t)
+			gotTx, err := m.GetTransaction()
+			errMactches := ((err != nil) != tt.wantErr)
+			assert.False(t, errMactches, fmt.Sprintf("Mock.GetTransaction() error = %v, wantErr %v", err, tt.wantErr))
+			assert.NotNil(t, gotTx)
+			// should not panic on commit
+			assert.Nil(t, gotTx.Commit())
 		})
 	}
 }

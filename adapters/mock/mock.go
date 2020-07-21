@@ -3,6 +3,8 @@ package mock
 import (
 	"bytes"
 	"database/sql"
+	"database/sql/driver"
+	"fmt"
 	"net/http"
 	"net/url"
 	"sync"
@@ -24,7 +26,36 @@ type Item struct {
 type Mock struct {
 	mtx   *sync.RWMutex
 	t     *testing.T
+	conns map[string]*mockConn
 	Items []Item
+}
+
+// New mock
+func New(t *testing.T) (m *Mock) {
+	m = &Mock{
+		mtx: &sync.RWMutex{},
+		t:   t,
+	}
+	drivers := sql.Drivers()
+	for _, driver := range drivers {
+		if driver == "mock" {
+			return
+		}
+	}
+	sql.Register("mock", m)
+	return
+}
+
+// Open makes Mock implement driver.Driver
+func (m *Mock) Open(dsn string) (c driver.Conn, err error) {
+	m.t.Helper()
+	m.conns = make(map[string]*mockConn)
+	m.conns["prest"] = &mockConn{}
+	c, ok := m.conns[dsn]
+	if !ok {
+		return c, fmt.Errorf("expected a connection to be available, but it is not")
+	}
+	return
 }
 
 func (m *Mock) validate() {
@@ -117,7 +148,11 @@ func (m *Mock) PaginateIfPossible(r *http.Request) (paginatedQuery string, err e
 
 // GetTransaction mock
 func (m *Mock) GetTransaction() (tx *sql.Tx, err error) {
-	return
+	db, err := sql.Open("mock", "prest")
+	if err != nil {
+		return
+	}
+	return db.Begin()
 }
 
 // Query mock
