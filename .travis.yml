@@ -24,7 +24,7 @@ before_script:
   - sh testdata/schema.sh
 script:
   - sh testdata/migrations_test.sh
-  - env GO111MODULE=on go test -race ./...
+  - env go test -race ./...
 
 deploy:
   - provider: script
