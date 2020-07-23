@@ -22,6 +22,7 @@ install: true
 before_script:
   - docker login -u="$DOCKER_LOGIN" -p="$DOCKER_PASSWORD"
   - sh testdata/schema.sh
+  - go get -v -d ./...
 script:
   - sh testdata/migrations_test.sh
   - env go test -race ./...
