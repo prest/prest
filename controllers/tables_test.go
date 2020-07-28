@@ -90,7 +90,7 @@ func TestSelectFromTables(t *testing.T) {
 		status      int
 		body        string
 	}{
-		{"execute select in a table with array", "/prest/public/testarray", "GET", http.StatusOK, "[{\"id\":100,\"data\":[\"Gohan\",\"Goten\"]}]"},
+		{"execute select in a table with array", "/prest/public/testarray?id=100", "GET", http.StatusOK, "[{\"id\":100,\"data\":[\"Gohan\",\"Goten\"]}]"},
 		{"execute select in a table without custom where clause", "/prest/public/test", "GET", http.StatusOK, ""},
 		{"execute select in a table case sentive", "/prest/public/Reply", "GET", http.StatusOK, "[{\"id\":1,\"name\":\"prest tester\"}]"},
 		{"execute select in a table with count all fields *", "/prest/public/test?_count=*", "GET", http.StatusOK, ""},
@@ -100,7 +100,7 @@ func TestSelectFromTables(t *testing.T) {
 		{"execute select in a table with order clause empty", "/prest/public/test?_order=", "GET", http.StatusOK, ""},
 		{"execute select in a table with custom where clause and pagination", "/prest/public/test?name=$eq.nuveo&_page=1&_page_size=20", "GET", http.StatusOK, ""},
 		{"execute select in a table with select fields", "/prest/public/test5?_select=celphone,name", "GET", http.StatusOK, ""},
-		{"execute select in a table with select *", "/prest/public/test5?_select=*", "GET", http.StatusOK, ""},
+		{"execute select in a table with select *", "/prest/public/test5?_select=*", "GET", http.StatusOK, "[{\"id\":1,\"name\":\"prest tester\",\"celphone\":\"444444\"}]"},
 		{"execute select in a table with select * and distinct", "/prest/public/test5?_select=*&_distinct=true", "GET", http.StatusOK, ""},
 
 		{"execute select in a table with group by clause", "/prest/public/test_group_by_table?_select=age,sum:salary&_groupby=age", "GET", http.StatusOK, ""},
