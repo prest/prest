@@ -29,13 +29,16 @@ var migrateCmd = &cobra.Command{
 }
 
 func driverURL() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s&sslcert=%s&sslkey=%s&sslrootcert=%s",
 		url.PathEscape(config.PrestConf.PGUser),
 		url.PathEscape(config.PrestConf.PGPass),
 		url.PathEscape(config.PrestConf.PGHost),
 		config.PrestConf.PGPort,
 		url.PathEscape(config.PrestConf.PGDatabase),
-		url.QueryEscape(config.PrestConf.SSLMode))
+		url.QueryEscape(config.PrestConf.SSLMode),
+		url.QueryEscape(config.PrestConf.SSLCert),
+		url.QueryEscape(config.PrestConf.SSLKey),
+		url.QueryEscape(config.PrestConf.SSLRootCert))
 
 }
 
