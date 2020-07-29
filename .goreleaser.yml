@@ -1,6 +1,6 @@
 builds:
-  - binary: prest
-    main: main.go
+  - binary: prestd
+    main: ./cmd/prestd/main.go
     ldflags: -X github.com/prest/prest/helpers.PrestVersionNumber={{.Version}} -X github.com/prest/prest/helpers.CommitHash={{.Commit}}
     goos:
       - windows
