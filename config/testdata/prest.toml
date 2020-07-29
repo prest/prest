@@ -9,14 +9,10 @@ port = 6000
 [pg]
 user = "postgres"
 database = "prest"
+# url = "postgresql://user:pass@localhost/mydatabase/?sslmode=disable"
 
 [access]
 restrict = true  # can access only the tables listed below
-
-    [[access.tables]]
-    name = "Reply"
-    permissions = ["read", "write", "delete"]
-    fields = ["id", "name"]
 
     [[access.tables]]
     name = "test"
@@ -46,7 +42,7 @@ restrict = true  # can access only the tables listed below
     [[access.tables]]
     name = "test5"
     permissions = ["read", "write", "delete"]
-    fields = ["*"]
+    fields = ["id", "name", "celphone"]
 
     [[access.tables]]
     name = "test_readonly_access"

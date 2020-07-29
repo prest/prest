@@ -1,0 +1,9 @@
+[jwt]
+default = false
+
+[pg]
+host = "127.0.0.1"
+user = "prest"
+pass = "prest"
+port = 5432
+database = "prest"

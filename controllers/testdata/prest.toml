@@ -14,12 +14,12 @@ database = "prest"
 restrict = true  # can access only the tables listed below
 
     [[access.tables]]
-    name = "Reply"
+    name = "test"
     permissions = ["read", "write", "delete"]
     fields = ["id", "name"]
 
     [[access.tables]]
-    name = "test"
+    name = "Reply"
     permissions = ["read", "write", "delete"]
     fields = ["id", "name"]
 
