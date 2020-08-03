@@ -22,6 +22,7 @@ env:
   - PREST_PG_USER=postgres PREST_PG_DATABASE=prest PREST_PG_PORT=5432 PREST_CONF=$TRAVIS_BUILD_DIR/testdata/prest.toml
 before_install:
   - go get -v -d ./...
+  - go get -v github.com/inconshreveable/mousetrap
 install:
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
