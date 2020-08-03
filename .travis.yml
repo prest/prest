@@ -18,14 +18,18 @@ matrix:
   fast_finish: true
 env:
   - PREST_PG_USER=postgres PREST_PG_DATABASE=prest PREST_PG_PORT=5432 PREST_CONF=$TRAVIS_BUILD_DIR/testdata/prest.toml
-install: true
+before_install:
+  - go get -v -d ./...
+install:
+  - go get golang.org/x/tools/cmd/cover
+  - go get github.com/mattn/goveralls
 before_script:
   - docker login -u="$DOCKER_LOGIN" -p="$DOCKER_PASSWORD"
   - sh testdata/schema.sh
-  - go get -v -d ./...
 script:
   - sh testdata/migrations_test.sh
-  - env go test -race ./...
+  - env go test -race -covermode=atomic -coverprofile=coverage.out ./...
+  - $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
 
 deploy:
   - provider: script

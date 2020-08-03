@@ -10,6 +10,7 @@ _test
 # Architecture specific extensions/prefixes
 *.[568vq]
 [568vq].out
+coverage.out
 
 *.cgo1.go
 *.cgo2.c
