@@ -39,7 +39,6 @@ deploy:
     skip_cleanup: true
     script: curl -sL https://git.io/goreleaser | bash
     on:
-      branch: master
       tags: true
       condition: $TRAVIS_OS_NAME = linux
       go: "1.14.x"
