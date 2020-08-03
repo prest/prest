@@ -27,15 +27,6 @@ type Mock struct {
 	Items []Item
 }
 
-// New mock
-func New(t *testing.T) (m *Mock) {
-	m = &Mock{
-		mtx: &sync.RWMutex{},
-		t:   t,
-	}
-	return
-}
-
 func (m *Mock) validate() {
 	m.t.Helper()
 	if len(m.Items) == 0 {
