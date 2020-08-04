@@ -435,8 +435,8 @@ func TestMock_Query(t *testing.T) {
 
 func TestMockEmptyMethods(t *testing.T) {
 	mock := Mock{
-		mtx: &sync.RWMutex{},
-		t: t,
+		mtx:   &sync.RWMutex{},
+		t:     t,
 		Items: []Item{Item{}},
 	}
 
