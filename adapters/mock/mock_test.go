@@ -518,9 +518,9 @@ func TestMockEmptyMethods(t *testing.T) {
 	}
 
 	// GroupByClause
-	groupBySql := mock.GroupByClause(&http.Request{})
-	if groupBySql != "" {
-		t.Errorf("expected empty return, got: %s", groupBySql)
+	groupBySQL := mock.GroupByClause(&http.Request{})
+	if groupBySQL != "" {
+		t.Errorf("expected empty return, got: %s", groupBySQL)
 	}
 
 	// ParseInsertRequest
