@@ -2,7 +2,10 @@ package mock
 
 import (
 	"bytes"
+	"database/sql"
 	"errors"
+	"net/http"
+	"net/url"
 	"reflect"
 	"sync"
 	"testing"
@@ -427,5 +430,228 @@ func TestMock_Query(t *testing.T) {
 				t.Errorf("Mock.Query() = %v, want %v", gotSc, tt.wantSc)
 			}
 		})
+	}
+}
+
+func TestMockEmptyMethods(t *testing.T) {
+	mock := Mock{
+		mtx: &sync.RWMutex{},
+		t: t,
+		Items: []Item{Item{}},
+	}
+
+	var err error
+
+	// GetScript
+	_, err = mock.GetScript("WRITE", "folder", "select")
+	if err != nil {
+		t.Errorf("expected empty return, got: %s", err)
+	}
+
+	// ParseScript
+	_, _, err = mock.ParseScript("path/to/script", url.Values{"q": []string{"test"}})
+	if err != nil {
+		t.Errorf("expected empty return, got: %s", err)
+	}
+
+	// ExecuteScripts
+	sc := mock.ExecuteScripts("READ", "", nil)
+	if sc != nil {
+		t.Errorf("expected empty return, got: %s", err)
+	}
+
+	// WhereByRequest
+	_, _, err = mock.WhereByRequest(&http.Request{}, 1)
+	if err != nil {
+		t.Errorf("expected empty return, got: %s", err)
+	}
+
+	// ReturningByRequest
+	_, err = mock.ReturningByRequest(&http.Request{})
+	if err != nil {
+		t.Errorf("expected empty return, got: %s", err)
+	}
+
+	// OrderByRequest
+	_, err = mock.OrderByRequest(&http.Request{})
+	if err != nil {
+		t.Errorf("expected empty return, got: %s", err)
+	}
+
+	// PaginateIfPossible
+	_, err = mock.PaginateIfPossible(&http.Request{})
+	if err != nil {
+		t.Errorf("expected empty return, got: %s", err)
+	}
+
+	// GetTransaction
+	_, err = mock.GetTransaction()
+	if err != nil {
+		t.Errorf("expected empty return, got: %s", err)
+	}
+
+	// FieldsPermissions
+	fields, err := mock.FieldsPermissions(&http.Request{}, "test", "select")
+	if err != nil {
+		t.Errorf("expected empty return, got: %s", err)
+	}
+	if len(fields) > 1 {
+		t.Errorf("expected one field, got: %d", len(fields))
+	}
+
+	// SelectFields
+	_, err = mock.SelectFields(fields)
+	if err != nil {
+		t.Errorf("expected empty return, got: %s", err)
+	}
+
+	// CountByRequest
+	_, err = mock.CountByRequest(&http.Request{})
+	if err != nil {
+		t.Errorf("expected empty return, got: %s", err)
+	}
+
+	// JoinByRequest
+	_, err = mock.JoinByRequest(&http.Request{})
+	if err != nil {
+		t.Errorf("expected empty return, got: %s", err)
+	}
+
+	// GroupByClause
+	groupBySql := mock.GroupByClause(&http.Request{})
+	if groupBySql != "" {
+		t.Errorf("expected empty return, got: %s", groupBySql)
+	}
+
+	// ParseInsertRequest
+	_, _, _, err = mock.ParseInsertRequest(&http.Request{})
+	if err != nil {
+		t.Errorf("expected empty return, got: %s", err)
+	}
+
+	// InsertWithTransaction
+	sc = mock.InsertWithTransaction(&sql.Tx{}, "select 1", "test1", "test2")
+	if sc == nil {
+		t.Errorf("expected empty return, got: %x", sc)
+	}
+
+	// DeleteWithTransaction
+	mock.Items = []Item{Item{}}
+	sc = mock.DeleteWithTransaction(&sql.Tx{}, "select 1", "test1", "test2")
+	if sc == nil {
+		t.Errorf("expected empty return, got: %x", sc)
+	}
+
+	// SetByRequest
+	_, _, err = mock.SetByRequest(&http.Request{}, 1)
+	if err != nil {
+		t.Errorf("expected empty return, got: %s", err)
+	}
+
+	// UpdateWithTransaction
+	mock.Items = []Item{Item{}}
+	sc = mock.UpdateWithTransaction(&sql.Tx{}, "select 1", "test1", "test2")
+	if sc == nil {
+		t.Errorf("expected empty return, got: %x", sc)
+	}
+
+	// DistinctClause
+	_, err = mock.DistinctClause(&http.Request{})
+	if err != nil {
+		t.Errorf("expected empty return, got: %s", err)
+	}
+
+	// SetDatabase
+	mock.SetDatabase("prest")
+
+	// SelectSQL
+	s := mock.SelectSQL("select 1", "prest", "public", "test1")
+	if s != "" {
+		t.Errorf("expected empty return, got: %s", s)
+	}
+
+	// InsertSQL
+	s = mock.InsertSQL("prest", "public", "test1", "test0,test2,test3", "")
+	if s != "" {
+		t.Errorf("expected empty return, got: %s", s)
+	}
+
+	// DeleteSQL
+	s = mock.DeleteSQL("prest", "public", "test1")
+	if s != "" {
+		t.Errorf("expected empty return, got: %s", s)
+	}
+
+	// UpdateSQL
+	s = mock.UpdateSQL("prest", "public", "test1", "")
+	if s != "" {
+		t.Errorf("expected empty return, got: %s", s)
+	}
+
+	// DatabaseWhere
+	s = mock.DatabaseWhere("")
+	if s != "" {
+		t.Errorf("expected empty return, got: %s", s)
+	}
+
+	// DatabaseOrderBy
+	s = mock.DatabaseOrderBy("DESC", false)
+	if s != "" {
+		t.Errorf("expected empty return, got: %s", s)
+	}
+
+	// SchemaOrderBy
+	s = mock.SchemaOrderBy("ASC", true)
+	if s != "" {
+		t.Errorf("expected empty return, got: %s", s)
+	}
+
+	// TableClause
+	s = mock.TableClause()
+	if s != "" {
+		t.Errorf("expected empty return, got: %s", s)
+	}
+
+	// TableWhere
+	s = mock.TableWhere("")
+	if s != "" {
+		t.Errorf("expected empty return, got: %s", s)
+	}
+
+	// TableOrderBy
+	s = mock.TableOrderBy("")
+	if s != "" {
+		t.Errorf("expected empty return, got: %s", s)
+	}
+
+	// SchemaTablesClause
+	s = mock.SchemaTablesClause()
+	if s != "" {
+		t.Errorf("expected empty return, got: %s", s)
+	}
+
+	// SchemaTablesWhere
+	s = mock.SchemaTablesWhere("")
+	if s != "" {
+		t.Errorf("expected empty return, got: %s", s)
+	}
+
+	// SchemaTablesOrderBy
+	s = mock.SchemaTablesOrderBy("")
+	if s != "" {
+		t.Errorf("expected empty return, got: %s", s)
+	}
+
+	// ParseBatchInsertRequest
+	_, _, _, err = mock.ParseBatchInsertRequest(&http.Request{})
+	if err != nil {
+		t.Errorf("expected empty return, got: %x", sc)
+	}
+
+	// BatchInsertCopy
+	mock.Items = []Item{Item{}}
+	sc = mock.BatchInsertCopy("prest", "public", "test1", []string{"key1", "key2", "key3"}, "val1", "val2", "val3")
+	if sc == nil {
+		t.Errorf("expected empty return, got: %x", sc)
 	}
 }
