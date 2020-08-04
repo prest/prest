@@ -249,4 +249,23 @@ func Test_parseDatabaseURL(t *testing.T) {
 	if c.SSLMode != "require" {
 		t.Errorf("expected database SSL mode: require, got: %s", c.SSLMode)
 	}
+
+	// errors
+	c = &Prest{PGURL: "postgresql://user:pass@localhost:port/mydatabase/?sslmode=require"}
+	if err := parseDatabaseURL(c); err == nil {
+		t.Error("expected error, got nothing")
+	}
+}
+
+func Test_portFromEnv(t *testing.T) {
+	c := &Prest{}
+
+	os.Setenv("PORT", "PORT")
+
+	err := portFromEnv(c)
+	if err == nil {
+		t.Errorf("expect error, got: %d", c.HTTPPort)
+	}
+
+	os.Unsetenv("PORT")
 }

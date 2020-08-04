@@ -87,3 +87,14 @@ func TestRegistryAllFuncs(t *testing.T) {
 		t.Error("func `split` is not registred")
 	}
 }
+
+func TestUnEscape(t *testing.T) {
+	data := make(map[string]interface{})
+	uri := "test1%20test2%20test3"
+	data["test"] = uri
+	funcs := &FuncRegistry{TemplateData: data}
+	value := funcs.unEscape(uri)
+	if value != "test1 test2 test3" {
+		t.Errorf("expected 'test1 test2 test3', bug got %s", value)
+	}
+}
