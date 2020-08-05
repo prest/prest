@@ -27,7 +27,7 @@ home = [ "HTML", "RSS", "JSON"]
 [params.sidebar]
 github_button  = true
 travis_button  = true
-codecov_button = true
+coveralls_button = true
 gratipay = ""
 show_relations = true
 

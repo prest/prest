@@ -1,7 +1,5 @@
 <a id="logo" href="/">
-  <img
-    src="/{{.Site.Params.logo}}"
-    alt="{{.Site.Params.name}} logo" /><br />
+  <img src="/{{.Site.Params.logo}}" alt="{{.Site.Params.name}} logo" /><br />
   <b>{{.Site.Params.name}}</b>
 </a>
 <p>
@@ -9,25 +7,30 @@
   {{ $path := printf "%s/%s" .Site.Params.github_user .Site.Params.github_repo }}
 
   {{ if .Site.Params.sidebar.github_button -}}
-  <iframe src="https://ghbtns.com/github-btn.html?user={{ .Site.Params.github_user }}&repo={{ .Site.Params.github_repo }}&type=watch&count=true&size=large"
-	  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+  <iframe
+    src="https://ghbtns.com/github-btn.html?user={{ .Site.Params.github_user }}&repo={{ .Site.Params.github_repo }}&type=watch&count=true&size=large"
+    allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
   {{- end }}
 
   {{ if .Site.Params.sidebar.travis_button -}}
   <a href="https://travis-ci.org/{{ $path }}">
-    <img
-      alt="https://secure.travis-ci.org/{{ $path }}.svg?branch=master"
-      src="https://secure.travis-ci.org/{{ $path }}.svg?branch=master"/>
+    <img alt="https://secure.travis-ci.org/{{ $path }}.svg?branch=master"
+      src="https://secure.travis-ci.org/{{ $path }}.svg?branch=master" />
   </a>
   {{- end }}
 
   {{ if .Site.Params.sidebar.codecov_button -}}
   <a href="https://codecov.io/github/{{ $path }}">
-    <img
-      alt="https://codecov.io/github/{{ $path }}/coverage.svg?branch=master"
-      src="https://codecov.io/github/{{ $path }}/coverage.svg?branch=master"/>
+    <img alt="https://codecov.io/github/{{ $path }}/coverage.svg?branch=master"
+      src="https://codecov.io/github/{{ $path }}/coverage.svg?branch=master" />
   </a>
   {{- end }}
+
+  {{ if .Site.Params.sidebar.coveralls_button -}}
+  <a href='https://coveralls.io/github/{{ $path }}?branch=master'><img
+      src='https://coveralls.io/repos/github/{{ $path }}/badge.svg?branch=master' alt='Coverage Status' /></a>
+  {{- end }}
+
 
   {{- end }}
 </p>
