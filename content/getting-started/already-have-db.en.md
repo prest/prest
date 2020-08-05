@@ -35,8 +35,11 @@ docker run -e PREST_HTTP_PORT=3000 \
 	-e PREST_PG_HOST=127.0.0.1 \
 	-e PREST_PG_USER=postgres \
 	-e PREST_PG_PASS=pass \
+	-e PREST_PG_DATABASE=prest \
 	prest/prest
 ```
+if you want to connect to a database running on the host machine you can add `--network host` param.
+
 or if use Docker Compose (there's an [example in the repository](https://github.com/prest/prest/blob/master/docker-compose.yml))
 
 ```sh
