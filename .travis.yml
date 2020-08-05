@@ -24,7 +24,6 @@ before_install:
   - go get -v -d ./...
   - go get -v github.com/inconshreveable/mousetrap
 install:
-  - go get github.com/stretchr/testify
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
 before_script:
