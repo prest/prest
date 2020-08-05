@@ -1,0 +1,10 @@
+{{ $RELEASES := getJSON "https://api.github.com/repos/prest/prest/releases?sort=id" }}
+<ul>
+  {{ range $RELEASES }}
+  <li>
+    <a href="{{.html_url}}" target="_bank">{{.name}} - released this: {{.published_at}}</a><br />
+    <p>{{.body | markdownify }}</p>
+  </li>
+  {{end}}
+  <li><a href="https://github.com/prest/prest/releases" target="_blank">view more</a></li>
+  </u>
