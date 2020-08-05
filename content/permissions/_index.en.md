@@ -47,7 +47,7 @@ restrict = true  # can access only the tables listed below
 
 |attribute|description|
 |---|---|
-|table|Table name|
+|name|Table name|
 |permissions|Table permissions. Options: `read`, `write` and `delete`|
 |fields|Fields permitted for operations|
 
