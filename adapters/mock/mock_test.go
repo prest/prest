@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -14,7 +13,6 @@ import (
 	"github.com/prest/prest/adapters"
 	"github.com/prest/prest/adapters/scanner"
 	"github.com/prest/prest/config"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestMock_validate(t *testing.T) {
@@ -457,11 +455,17 @@ func TestMock_GetTransaction(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			m := New(t)
 			gotTx, err := m.GetTransaction()
-			errMactches := ((err != nil) != tt.wantErr)
-			assert.False(t, errMactches, fmt.Sprintf("Mock.GetTransaction() error = %v, wantErr %v", err, tt.wantErr))
-			assert.NotNil(t, gotTx)
+			errMactches := (err != nil) != tt.wantErr
+			if errMactches {
+				t.Errorf("Mock.GetTransaction() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if gotTx == nil {
+				t.Error("expected not nil, got nil")
+			}
 			// should not panic on commit
-			assert.Nil(t, gotTx.Commit())
+			if err := gotTx.Commit(); err != nil {
+				t.Errorf("expected nil, got %v", err)
+			}
 		})
 	}
 }
