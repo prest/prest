@@ -26,9 +26,13 @@ builds:
       - 6
       - 7
 dockers:
-  binaries: prestd
-  image_templates: "prest/prest:{{ .Tag }}"
-  extra_files: cmd/prestd/prest.toml
+  -
+    binaries:
+      - prestd
+    image_templates:
+      - "prest/prest:{{ .Tag }}"
+    extra_files:
+      - ./cmd/prestd/prest.toml
 release:
   github:
     owner: prest
