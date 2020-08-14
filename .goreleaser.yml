@@ -34,6 +34,8 @@ dockers:
       - prestd
     image_templates:
       - "prest/prest:{{ .Tag }}"
+      - "prest/ptest:v{{ .Major }}"
+      - "prest/prest:latest"
     extra_files:
       - ./cmd/prestd/prest.toml
 release:
