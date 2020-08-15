@@ -32,3 +32,4 @@ data/
 prest-*
 /dist
 prest.toml
+prestd
