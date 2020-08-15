@@ -1,7 +1,7 @@
 builds:
   - binary: prestd
     main: ./cmd/prestd/main.go
-    ldflags: -X github.com/prest/prest/helpers.PrestVersionNumber={{.Version}} -X github.com/prest/prest/helpers.CommitHash={{.Commit}}
+    ldflags: -s -w main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{ .CommitDate }} -X main.builtBy=goreleaser -X github.com/prest/prest/helpers.PrestVersionNumber={{.Version}}
     goos:
       - windows
       - darwin
@@ -40,7 +40,7 @@ dockers:
       - "prest/prest:latest"
     extra_files:
       - ./cmd/prestd/prest.toml
-release:
-  github:
-    owner: prest
-    name: prest
+# release:
+#  github:
+#    owner: prest
+#    name: prest
