@@ -25,6 +25,8 @@ builds:
     ignore:
       - goos: darwin
         goarch: 386
+      - goos: windows
+        goarch: 386
 dockers:
   -
     goos: linux
