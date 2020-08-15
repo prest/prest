@@ -6,8 +6,6 @@ builds:
       - windows
       - darwin
       - linux
-      - freebsd
-      - openbsd
     goarch:
       - 386
       - amd64
