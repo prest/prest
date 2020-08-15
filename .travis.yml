@@ -27,11 +27,10 @@ before_script:
   - docker login -u="$DOCKER_LOGIN" -p="$DOCKER_PASSWORD"
   - sh testdata/schema.sh
 script:
+  - curl -sfL https://git.io/goreleaser | sh -s -- check
   - sh testdata/migrations_test.sh
   - env go test -race -covermode=atomic -coverprofile=coverage.out ./...
   - $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
-  - curl -sfL https://git.io/goreleaser | sh -s -- check
-  - curl -sL https://git.io/goreleaser | bash
 
 deploy:
   - provider: script
