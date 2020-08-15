@@ -64,6 +64,7 @@ type Prest struct {
 	Adapter          adapters.Adapter
 	EnableDefaultJWT bool
 	EnableCache      bool
+	LambdaMode       bool
 	HTTPSMode        bool
 	HTTPSCert        string
 	HTTPSKey         string
@@ -173,6 +174,9 @@ func Parse(cfg *Prest) (err error) {
 	if os.Getenv("DATABASE_URL") != "" {
 		// cloud factor support: https://devcenter.heroku.com/changelog-items/438
 		cfg.PGURL = os.Getenv("DATABASE_URL")
+	}
+	if os.Getenv("LAMBDA_MODE") == "true" {
+		cfg.LambdaMode = true
 	}
 	err = parseDatabaseURL(cfg)
 	if err != nil {
