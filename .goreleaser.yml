@@ -3,7 +3,7 @@ builds:
     main: ./cmd/prestd/main.go
     mod_timestamp: '{{ .CommitTimestamp }}'
     flags:
-      - -trimpath
+      - -trimpath --tags netgo
     ldflags:
       - -s -w -linkmode external -extldflags "-static" -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{ .CommitDate }} -X main.builtBy=goreleaser
     goos:
