@@ -5,7 +5,7 @@ builds:
     env:
       - CGO_ENABLED=0
     flags:
-      - -trimpath --tags netgo
+      - -trimpath
     ldflags:
       - -s -w -linkmode external -extldflags "-static" -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{ .CommitDate }} -X main.builtBy=goreleaser
     goos:
