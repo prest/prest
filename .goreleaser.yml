@@ -1,7 +1,11 @@
 builds:
   - binary: prestd
     main: ./cmd/prestd/main.go
-    ldflags: -s -w main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{ .CommitDate }} -X main.builtBy=goreleaser -X github.com/prest/prest/helpers.PrestVersionNumber={{.Version}}
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{ .CommitDate }} -X main.builtBy=goreleaser
     goos:
       - windows
       - darwin
@@ -16,6 +20,16 @@ builds:
         goarch: 386
       - goos: windows
         goarch: 386
+checksum:
+  name_template: '{{ .ProjectName }}_checksums.txt'
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^test:'
+    - Merge pull request
+    - Merge branch
+    - go mod tidy
 dockers:
   -
     goos: linux
