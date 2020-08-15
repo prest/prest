@@ -2,6 +2,8 @@ builds:
   - binary: prestd
     main: ./cmd/prestd/main.go
     mod_timestamp: '{{ .CommitTimestamp }}'
+    env:
+      - CGO_ENABLED=0
     flags:
       - -trimpath --tags netgo
     ldflags:
