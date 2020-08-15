@@ -28,6 +28,8 @@ builds:
     ignore:
       - goos: darwin
         goarch: 386
+      - goos: netbsd
+        goarch: arm64
 dockers:
   -
     goos: linux
