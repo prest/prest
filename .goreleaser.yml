@@ -5,7 +5,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{ .CommitDate }} -X main.builtBy=goreleaser
+      - -s -w -linkmode external -extldflags "-static" -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{ .CommitDate }} -X main.builtBy=goreleaser
     goos:
       - windows
       - darwin
