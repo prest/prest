@@ -31,13 +31,14 @@ script:
   - env go test -race -covermode=atomic -coverprofile=coverage.out ./...
   - $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
   - curl -sfL https://git.io/goreleaser | sh -s -- check
+  - curl -sL https://git.io/goreleaser | bash
 
 deploy:
   - provider: script
     skip_cleanup: true
     script: curl -sL https://git.io/goreleaser | bash
     on:
-      # tags: true
+      tags: true
       condition: $TRAVIS_OS_NAME = linux
       go: "1.15.x"
 
