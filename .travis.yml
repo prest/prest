@@ -32,7 +32,6 @@ script:
   - sh testdata/migrations_test.sh
   - env go test -race -covermode=atomic -coverprofile=coverage.out ./...
   - $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
-  - docker build . -t prest/prest:latest && docker push prest/prest:latest
 
 deploy:
   - provider: script
@@ -40,6 +39,7 @@ deploy:
     script:
       - docker build . -t prest/prest:v1
       - docker push prest/prest:v1
+      - docker push prest/prest:$TRAVIS_TAG
       - curl -sL https://git.io/goreleaser | bash
     on:
       tags: true
