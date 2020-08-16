@@ -16,6 +16,13 @@ Serve a RESTful API from any PostgreSQL database
 
 There is PostgREST written in Haskell, but keeping Haskell software in production is not an easy job. With this need pREST was born. [Read more](https://github.com/prest/prest/issues/41).
 
+## 1-Click Deploy
+
+### Heroku 
+Deploy to Heroku and instantly get a realtime RESTFul API backed by Heroku Postgres:
+
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/prest/heroku)
+
 ## Documentation
 
 https://postgres.rest/ ([source](https://github.com/prest/prest.github.io))
