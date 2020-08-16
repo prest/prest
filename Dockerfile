@@ -1,10 +1,10 @@
 FROM golang:alpine as builder
 
 COPY . /go/src/github.com/prest/prest
-WORKDIR /go/src/github.com/prest/prest
+WORKDIR /go/src/github.com/prest/prest/cmd/prestd
 ENV GO111MODULE=on
 RUN apk add --no-cache git && \
-        go build ./cmd/prestd/
+        go mod tidy && go build
 
 FROM alpine
 
