@@ -32,18 +32,27 @@ script:
   - sh testdata/migrations_test.sh
   - env go test -race -covermode=atomic -coverprofile=coverage.out ./...
   - $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
-  - docker build && docker push prest/prest:latest
+  - docker build . -t prest/prest:latest && docker push prest/prest:latest
 
 deploy:
   - provider: script
     skip_cleanup: true
     script:
+      - docker build . -t prest/prest:v1
       - docker push prest/prest:v1
-      # - curl -sL https://git.io/goreleaser | bash
+      - curl -sL https://git.io/goreleaser | bash
     on:
       tags: true
       condition: $TRAVIS_OS_NAME = linux
       go: "1.15.x"
+  - provider: script
+    script:
+      - docker build . -t prest/prest:latest
+      - docker push prest/prest:latest
+    on:
+      branch: master
+      go: "1.15.x"
+      condition: $TRAVIS_OS_NAME = linux
 
 notifications:
   webhooks:
