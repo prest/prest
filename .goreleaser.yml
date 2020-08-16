@@ -1,5 +1,5 @@
 env:
-  - CGO_ENABLED=1
+  - CGO_ENABLED=0
 builds:
   - binary: prestd
     main: ./cmd/prestd/main.go
