@@ -36,13 +36,13 @@ script:
 deploy:
   - provider: script
     skip_cleanup: true
-    script: scripts/releaser-tag.sh
+    script: bash scripts/releaser-tag.sh
     on:
       tags: true
       condition: $TRAVIS_OS_NAME = linux
       go: "1.15.x"
   - provider: script
-    script: scripts/releaser-latest.sh
+    script: bash scripts/releaser-latest.sh
     on:
       branch: master
       go: "1.15.x"
