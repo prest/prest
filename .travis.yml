@@ -36,19 +36,13 @@ script:
 deploy:
   - provider: script
     skip_cleanup: true
-    script:
-      - docker build . -t prest/prest:v1
-      - docker push prest/prest:v1
-      - docker tag prest/prest:v1 prest/prest:$TRAVIS_TAG && docker push prest/prest:$TRAVIS_TAG
-      - curl -sL https://git.io/goreleaser | bash
+    script: scripts/releaser-tag.sh
     on:
       tags: true
       condition: $TRAVIS_OS_NAME = linux
       go: "1.15.x"
   - provider: script
-    script:
-      - docker build . -t prest/prest:latest
-      - docker push prest/prest:latest
+    script: scripts/releaser-latest.sh
     on:
       branch: master
       go: "1.15.x"
