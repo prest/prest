@@ -21,7 +21,7 @@ There is PostgREST written in Haskell, but keeping Haskell software in productio
 ### Heroku 
 Deploy to Heroku and instantly get a realtime RESTFul API backed by Heroku Postgres:
 
-[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/prest/heroku)
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/prest/prest-heroku)
 
 ## Documentation
 
