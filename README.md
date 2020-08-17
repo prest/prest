@@ -4,7 +4,6 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/prest/prest)](https://goreportcard.com/report/github.com/prest/prest)
 [![Coverage Status](https://coveralls.io/repos/github/prest/prest/badge.svg?branch=master)](https://coveralls.io/github/prest/prest?branch=master)
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/prest/prest?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Open Source Helpers](https://www.codetriage.com/prest/prest/badges/users.svg)](https://www.codetriage.com/prest/prest)
 
 Serve a RESTful API from any PostgreSQL database
 
