@@ -7,5 +7,7 @@ RUN apk add --no-cache git && \
 
 FROM alpine
 COPY --from=builder /go/src/github.com/prest/prest/cmd/prestd/prestd /app/prestd
+RUN apk add --no-cache curl
 ADD ./cmd/prestd/prest.toml /app/prest.toml
-CMD ["/app/prestd"]
+ADD ./etc/entrypoint.sh /app/entrtpoint.sh
+ENTRYPOINT [ "/app/entrtpoint.sh" ]
