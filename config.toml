@@ -9,7 +9,7 @@ googleAnalytics = "UA-105743002-1"
 
 [params]
 name = "pREST"
-description = "A fully RESTful API from any existing PostgreSQL database."
+description = "instant, realtime, high-performance on any Postgres application, existing or new."
 github_user = "prest"
 github_repo = "prest"
 github_banner = true

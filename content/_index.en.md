@@ -6,13 +6,21 @@ menu: main
 weight: 1
 ---
 
-## What is pREST?
+## pREST RESTFul Engine
 
-pREST is a way to serve a RESTful APIs for any database. Right now we support PostgreSQL and support to others databases such as MySQL are being developed by the community.
+_p_**REST** (**P**_ostgreSQL_ **REST**), simplify and accelerate development, instant, realtime, high-performance on any **Postgres** application, **existing or new**.
+
+> It started with PostgreSQL, but we didn't _stop here_. Our purpose is to support **other databases (relational and non-relational)** - _we understand the size of the challenge, so I invite you to contribute to the evolution of the project_.
+
+[**All releases**](/releases/)
+
+## Mission
+
+At _p_**REST**, we are on a mission to make the process of new business development faster by making data access _fast, secure and scalable_. We want to reach a world where access to large volumes of data is simple without complex software development!
 
 ## Problem
 
-There is PostgREST written in Haskell, but keeping Haskell software in production is not an easy job. With this need pREST was born.
+There is _PostgREST_ written in _Haskell_, but keeping Haskell software in production is not an easy job. With this need _p_**REST** was born.
 
 [Read more](https://github.com/prest/prest/issues/41).
 
@@ -21,29 +29,11 @@ There is PostgREST written in Haskell, but keeping Haskell software in productio
 - PostgreSQL
   - 9.4 or higher
 - MySQL ([development](https://github.com/prest/prest/issues/239))
+- **...** Would you like to help _p_**REST** support another database? [Share your need here!](https://github.com/prest/prest/issues/new?title=database-support).
 
-## Supported Operating system
+## Supported Operating System
 
 - Linux
-  - i386
-  - AMD 64
-  - ARM 5
-  - ARM 6
-  - ARM 7
-  - ARM 64
-  - MIPS
-  - MIPS 64
-  - MIPS LE
-  - MIPS 64 LE
 - macOS
-  - i386
-  - AMD 64
 - Windows
-  - i386
-  - AMD 64
-- BSD ([we need your help](https://github.com/prest/prest/issues/279))
-
-## Versions
-
-- lastest (developer)
-- [0.3.0](https://github.com/prest/prest/releases/tag/v0.3.0) (latest stable release)
+- BSD
