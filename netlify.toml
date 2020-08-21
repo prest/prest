@@ -1,0 +1,14 @@
+[build]
+publish = "docbuild/public"
+command = "sh scripts/documation-build.sh"
+
+[context.production.environment]
+HUGO_VERSION = "0.48"
+HUGO_ENV = "production"
+HUGO_ENABLEGITINFO = "true"
+
+[context.branch-deploy]
+command = "sh scripts/documation-build.sh -b $DEPLOY_PRIME_URL"
+
+[context.next.environment]
+HUGO_ENABLEGITINFO = "true"
