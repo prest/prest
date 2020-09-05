@@ -51,4 +51,4 @@ deploy:
 notifications:
   webhooks:
     urls:
-      - https://webhooks.gitter.im/e/b7314cbdd840e64940fb
+      - https://webhooks.gitter.im/e/edf464ac074390da55f9
