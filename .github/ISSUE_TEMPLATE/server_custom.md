@@ -1,6 +1,6 @@
 ---
 name: 'Server: Custom issue'
-about: API Server
+about: 'API Server'
 labels: 'Software: server'
 ---
 

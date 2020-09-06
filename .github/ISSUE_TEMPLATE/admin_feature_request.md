@@ -1,6 +1,6 @@
 ---
 name: 'Admin: Feature request'
-about: Suggest an idea for this project - Admin
+about: 'Suggest an idea for this project - Admin'
 labels: 'Feature', 'Software: admin'
 ---
 

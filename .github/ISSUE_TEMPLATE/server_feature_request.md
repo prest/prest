@@ -1,6 +1,6 @@
 ---
 name: 'Server: Feature request'
-about: Suggest an idea for this project - API Server
+about: 'Suggest an idea for this project - API Server'
 labels: 'Feature', 'Software: server'
 ---
 

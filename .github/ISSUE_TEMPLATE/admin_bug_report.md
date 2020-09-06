@@ -1,6 +1,6 @@
 ---
 name: 'Admin: Bug report'
-about: Create a report to help us improve - Admin
+about: 'Create a report to help us improve - Admin'
 labels: 'Bug', 'Software: admin'
 ---
 

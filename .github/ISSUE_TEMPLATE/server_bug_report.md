@@ -1,6 +1,6 @@
 ---
 name: 'Server: Bug report'
-about: Create a report to help us improve - API Server
+about: 'Create a report to help us improve - API Server'
 labels: 'Bug', 'Software: server'
 ---
 
