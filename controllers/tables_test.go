@@ -311,3 +311,25 @@ func TestUpdateFromTable(t *testing.T) {
 		doRequest(t, server.URL+tc.url, tc.request, "PATCH", tc.status, "UpdateTable")
 	}
 }
+
+func TestShowTable(t *testing.T) {
+	router := mux.NewRouter()
+	router.HandleFunc("/show/{database}/{schema}/{table}", ShowTable).Methods("GET")
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	var testCases = []struct {
+		description string
+		url         string
+		method      string
+		status      int
+	}{
+		{"execute select in a table test custom information table", "/show/prest/public/test", "GET", http.StatusOK},
+		{"execute select in a table test2 custom information table", "/show/prest/public/test2", "GET", http.StatusOK},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "ShowTable")
+	}
+}
