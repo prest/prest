@@ -20,6 +20,6 @@ Run
     PREST_PG_USER=postgres PREST_PG_DATABASE=prest PREST_PG_PORT=5432 PREST_HTTP_PORT=3010 prest # Binary installed
     ```
 
-pREST also can be used as web framework, to see more details please visit https://postgres.rest/
+pREST also can be used as web framework, to see more details please visit https://docs.postgres.rest/
 */
 package main
