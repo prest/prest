@@ -26,7 +26,7 @@ install:
   - go get github.com/mattn/goveralls
 before_script:
   - docker login -u="$DOCKER_LOGIN" -p="$DOCKER_PASSWORD"
-  - sh testdata/schema.sh
+  - sh testdata/schema.sh 
 script:
   - curl -sfL https://git.io/goreleaser | sh -s -- check
   - sh testdata/migrations_test.sh
