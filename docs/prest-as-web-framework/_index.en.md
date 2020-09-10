@@ -18,11 +18,11 @@ package main
 import (
 	"net/http"
 
-	"github.com/prest/adapters/postgres"
-	"github.com/prest/cmd"
-	"github.com/prest/config"
-	"github.com/prest/config/router"
-	"github.com/prest/middlewares"
+	"github.com/prest/prest/adapters/postgres"
+	"github.com/prest/prest/cmd"
+	"github.com/prest/prest/config"
+	"github.com/prest/prest/config/router"
+	"github.com/prest/prest/middlewares"
 )
 
 func main() {
