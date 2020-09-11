@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -380,6 +381,35 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		http.Error(w, errorMessage, http.StatusBadRequest)
+		return
+	}
+	w.Write(sc.Bytes())
+}
+
+// ShowTable show information from table
+func ShowTable(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	database := vars["database"]
+	schema := vars["schema"]
+	table := vars["table"]
+
+	config.PrestConf.Adapter.SetDatabase(database)
+
+	query := `SELECT table_schema, table_name, ordinal_position as position, column_name,data_type,
+			  	CASE WHEN character_maximum_length is not null
+					THEN character_maximum_length
+					ELSE numeric_precision end as max_length,
+			  	is_nullable,
+			  	is_generated,
+			  	is_updatable,
+			  	column_default as default_value 
+			 FROM information_schema.columns 
+			 WHERE table_name=$1
+			 ORDER BY table_schema, table_name, ordinal_position`
+	sc := config.PrestConf.Adapter.Query(query, table)
+	if sc.Err() != nil {
+		log.Println(fmt.Sprintf(" There error to excute the query. schema %s error %s", schema, sc.Err()))
+		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
 	}
 	w.Write(sc.Bytes())
