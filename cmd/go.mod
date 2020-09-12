@@ -4,7 +4,8 @@ go 1.13
 
 require (
 	github.com/gorilla/mux v1.8.0
-	github.com/gosidekick/migration/v2 v2.3.1
+	github.com/gosidekick/migration/v3 v3.0.0
+	github.com/lib/pq v1.8.0
 	github.com/nuveo/log v0.0.0-20190430190217-44d02db6bdf8
 	github.com/prest/prest/adapters v0.0.0-20200729234819-07cc1b6b492f
 	github.com/prest/prest/config v0.0.0-20200729234819-07cc1b6b492f

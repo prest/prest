@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gosidekick/migration/v2"
+	"github.com/gosidekick/migration/v3"
 	"github.com/spf13/cobra"
 )
 

@@ -6,6 +6,9 @@ import (
 
 	"github.com/prest/prest/config"
 	"github.com/spf13/cobra"
+
+	// pq driver
+	_ "github.com/lib/pq"
 )
 
 var (
