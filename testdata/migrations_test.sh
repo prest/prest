@@ -1,4 +1,3 @@
-go install
 export PREST_MIGRATIONS=./testdata/migrations
 DB_HOST=${PREST_PG_HOST:-localhost}
 DB_USER=${PREST_PG_USER:-postgres}
