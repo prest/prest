@@ -51,7 +51,7 @@ func checkTable(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		_, err = db.Exec("TER TABLE public.schema_migrations DROP COLUMN dirty")
+		_, err = db.Exec("ALTER TABLE public.schema_migrations DROP COLUMN dirty")
 		if err != nil {
 			return err
 		}
