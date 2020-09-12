@@ -11,9 +11,10 @@ import (
 
 // downCmd represents the down command
 var downCmd = &cobra.Command{
-	Use:   "down",
-	Short: "Roll back all migrations",
-	Long:  `Roll back all migrations`,
+	Use:     "down",
+	Short:   "Roll back all migrations",
+	Long:    `Roll back all migrations`,
+	PreRunE: checkTable,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		n, executed, err := migration.Run(context.Background(), path, urlConn, "down")
 		if err != nil {

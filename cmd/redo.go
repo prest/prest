@@ -11,9 +11,10 @@ import (
 
 // redoCmd represents the redo command
 var redoCmd = &cobra.Command{
-	Use:   "redo",
-	Short: "roll back the most recently applied migration, then run it again.",
-	Long:  `roll back the most recently applied migration, then run it again.`,
+	Use:     "redo",
+	Short:   "roll back the most recently applied migration, then run it again.",
+	Long:    `roll back the most recently applied migration, then run it again.`,
+	PreRunE: checkTable,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		n, executed, err := migration.Run(context.Background(), path, urlConn, "down 1")
 		if err != nil {

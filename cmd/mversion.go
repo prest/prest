@@ -11,9 +11,10 @@ import (
 
 // mversionCmd represents the version command
 var mversionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Show the current migration version",
-	Long:  `Show the current migration version`,
+	Use:     "version",
+	Short:   "Show the current migration version",
+	Long:    `Show the current migration version`,
+	PreRunE: checkTable,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		n, executed, err := migration.Run(context.Background(), path, urlConn, "status")
 		if err != nil {

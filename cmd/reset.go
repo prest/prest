@@ -11,9 +11,10 @@ import (
 
 // resetCmd represents the reset command
 var resetCmd = &cobra.Command{
-	Use:   "reset",
-	Short: "Run down and then up command",
-	Long:  `Run down and then up command`,
+	Use:     "reset",
+	Short:   "Run down and then up command",
+	Long:    `Run down and then up command`,
+	PreRunE: checkTable,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		n, executed, err := migration.Run(context.Background(), path, urlConn, "down")
 		if err != nil {

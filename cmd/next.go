@@ -12,9 +12,10 @@ import (
 
 // nextCmd represents the next command
 var nextCmd = &cobra.Command{
-	Use:   "next",
-	Short: "Apply the next n migrations",
-	Long:  `Apply the next n migrations`,
+	Use:     "next",
+	Short:   "Apply the next n migrations",
+	Long:    `Apply the next n migrations`,
+	PreRunE: checkTable,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
 			return fmt.Errorf("invalid arguments %v", args)

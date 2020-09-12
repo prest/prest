@@ -11,9 +11,10 @@ import (
 
 // upCmd represents the up command
 var upCmd = &cobra.Command{
-	Use:   "up",
-	Short: "Apply all available migrations",
-	Long:  `Apply all available migrations`,
+	Use:     "up",
+	Short:   "Apply all available migrations",
+	Long:    `Apply all available migrations`,
+	PreRunE: checkTable,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		n, executed, err := migration.Run(context.Background(), path, urlConn, "up")
 		if err != nil {
