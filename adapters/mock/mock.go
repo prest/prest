@@ -350,6 +350,7 @@ func (m *Mock) BatchInsertCopy(dbname, schema, table string, keys []string, valu
 	return
 }
 
+// ShowTable shows table structure
 func (m *Mock) ShowTable(schema, table string) (sc adapters.Scanner) {
 	return
 }

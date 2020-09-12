@@ -1395,6 +1395,7 @@ func (adapter *Postgres) SchemaTablesOrderBy(order string) (orderBy string) {
 	return
 }
 
+// ShowTable shows table structure
 func (adapter *Postgres) ShowTable(schema, table string) adapters.Scanner {
 	query := `SELECT table_schema, table_name, ordinal_position as position, column_name,data_type,
 			  	CASE WHEN character_maximum_length is not null
