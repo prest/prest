@@ -31,7 +31,7 @@ script:
   - curl -sfL https://git.io/goreleaser | sh -s -- check
   - sh testdata/migrations_test.sh
   - env go test -race -covermode=atomic -coverprofile=coverage.out ./...
-  - test $TRAVIS_PULL_REQUEST = "false" && $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
+  - if [[ ($TRAVIS_PULL_REQUEST == "false") ]]; then $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN; fi
 
 deploy:
   - provider: script
