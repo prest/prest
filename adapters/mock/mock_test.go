@@ -10,9 +10,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/prest/prest/adapters"
-	"github.com/prest/prest/adapters/scanner"
-	"github.com/prest/prest/config"
+	"github.com/palevi67/prest/adapters"
+	"github.com/palevi67/prest/adapters/scanner"
+	"github.com/palevi67/prest/config"
 )
 
 func TestMock_validate(t *testing.T) {

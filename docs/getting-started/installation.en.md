@@ -19,7 +19,7 @@ Here are all the ways you can install pREST, choose one that best fits your need
 
 ### Downloading the binary
 
-For any OS you can download the latest version [here](https://github.com/prest/prest/releases/latest).
+For any OS you can download the latest version [here](https://github.com/palevi67/prest/releases/latest).
 
 ### With Docker
 
@@ -32,7 +32,7 @@ docker pull prest/prest:v1
 ### Using go install
 
 ```sh
-go install github.com/prest/prest/cmd/prestd
+go install github.com/palevi67/prest/cmd/prestd
 ```
 
 ### With Homebrew

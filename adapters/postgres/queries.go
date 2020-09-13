@@ -10,11 +10,11 @@ import (
 	gotemplate "text/template"
 
 	"github.com/nuveo/log"
-	"github.com/prest/prest/adapters"
-	"github.com/prest/prest/adapters/postgres/internal/connection"
-	"github.com/prest/prest/adapters/scanner"
-	"github.com/prest/prest/config"
-	"github.com/prest/prest/template"
+	"github.com/palevi67/prest/adapters"
+	"github.com/palevi67/prest/adapters/postgres/internal/connection"
+	"github.com/palevi67/prest/adapters/scanner"
+	"github.com/palevi67/prest/config"
+	"github.com/palevi67/prest/template"
 )
 
 // GetScript get SQL template file

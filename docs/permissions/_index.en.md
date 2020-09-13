@@ -52,4 +52,4 @@ restrict = true  # can access only the tables listed below
 |fields|Fields permitted for operations|
 
 
-Configuration example: [prest.toml](https://github.com/prest/prest/blob/master/testdata/prest.toml)
+Configuration example: [prest.toml](https://github.com/palevi67/prest/blob/master/testdata/prest.toml)

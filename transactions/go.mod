@@ -1,3 +1,3 @@
-module github.com/prest/prest/transactions
+module github.com/palevi67/prest/transactions
 
 go 1.13

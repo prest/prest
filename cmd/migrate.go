@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/prest/prest/config"
+	"github.com/palevi67/prest/config"
 	"github.com/spf13/cobra"
 
 	// postgres driver for migrate

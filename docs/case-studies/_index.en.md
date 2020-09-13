@@ -5,7 +5,7 @@ weight: 15
 menu: main
 ---
 
-Company and/or project uses pREST? Describe your use case [here](https://github.com/prest/prest/issues/new?title=Case%20Studies:%20).
+Company and/or project uses pREST? Describe your use case [here](https://github.com/palevi67/prest/issues/new?title=Case%20Studies:%20).
 
 These are just a few companies and projects that are using (trusting) pREST.
 

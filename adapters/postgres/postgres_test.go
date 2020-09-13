@@ -12,10 +12,10 @@ import (
 	"testing"
 
 	"github.com/nuveo/log"
-	"github.com/prest/prest/adapters"
-	"github.com/prest/prest/adapters/postgres/internal/connection"
-	"github.com/prest/prest/adapters/postgres/statements"
-	"github.com/prest/prest/config"
+	"github.com/palevi67/prest/adapters"
+	"github.com/palevi67/prest/adapters/postgres/internal/connection"
+	"github.com/palevi67/prest/adapters/postgres/statements"
+	"github.com/palevi67/prest/config"
 )
 
 func init() {

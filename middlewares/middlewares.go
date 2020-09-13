@@ -9,7 +9,7 @@ import (
 
 	"github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/prest/prest/config"
+	"github.com/palevi67/prest/config"
 	"github.com/urfave/negroni"
 )
 

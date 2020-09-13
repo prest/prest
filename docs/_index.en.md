@@ -22,14 +22,14 @@ At _p_**REST**, we are on a mission to make the process of new business developm
 
 There is _PostgREST_ written in _Haskell_, but keeping Haskell software in production is not an easy job. With this need _p_**REST** was born.
 
-[Read more](https://github.com/prest/prest/issues/41).
+[Read more](https://github.com/palevi67/prest/issues/41).
 
 ## Databases supported
 
 - PostgreSQL
   - 9.4 or higher
-- MySQL ([development](https://github.com/prest/prest/issues/239))
-- **...** Would you like to help _p_**REST** support another database? [Share your need here!](https://github.com/prest/prest/issues/new?title=database-support).
+- MySQL ([development](https://github.com/palevi67/prest/issues/239))
+- **...** Would you like to help _p_**REST** support another database? [Share your need here!](https://github.com/palevi67/prest/issues/new?title=database-support).
 
 ## Supported Operating System
 

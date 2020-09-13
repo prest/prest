@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/adapters/postgres"
-	"github.com/prest/prest/config"
-	"github.com/prest/prest/config/router"
-	"github.com/prest/prest/middlewares"
+	"github.com/palevi67/prest/adapters/postgres"
+	"github.com/palevi67/prest/config"
+	"github.com/palevi67/prest/config/router"
+	"github.com/palevi67/prest/middlewares"
 )
 
 func TestMain(m *testing.M) {

@@ -1,3 +1,3 @@
-module github.com/prest/prest/dbtime
+module github.com/palevi67/prest/dbtime
 
 go 1.13

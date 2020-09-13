@@ -1,7 +1,7 @@
 package middlewares
 
 import (
-	"github.com/prest/prest/middlewares/statements"
+	"github.com/palevi67/prest/middlewares/statements"
 	"net/http"
 	"testing"
 )

@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/clbanning/mxj/j2x"
-	"github.com/prest/prest/middlewares/statements"
+	"github.com/palevi67/prest/middlewares/statements"
 )
 
 func getVars(path string) (paths map[string]string) {

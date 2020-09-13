@@ -1,3 +1,3 @@
-module github.com/prest/prest/helpers
+module github.com/palevi67/prest/helpers
 
 go 1.13

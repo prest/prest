@@ -8,7 +8,7 @@ This document explains how to contribute changes to the pREST project.
 
 Please search the issues on the issue tracker with a variety of keywords to ensure your bug is not already reported.
 
-If unique, [open an issue](https://github.com/prest/prest/issues/new) and answer the questions so we can understand and reproduce the problematic behavior.
+If unique, [open an issue](https://github.com/palevi67/prest/issues/new) and answer the questions so we can understand and reproduce the problematic behavior.
 
 To show us that the issue you are having is in pREST itself, please write clear, concise instructions so we can reproduce the behavior (even if it seems obvious). The more detailed and specific you are, the faster we can fix the issue. Check out [How to Report Bugs Effectively](http://www.chiark.greenend.org.uk/~sgtatham/bugs.html).
 
@@ -18,7 +18,7 @@ Please be kind, remember that pREST comes at no cost to you, and you're getting 
 
 The project welcomes submissions but please let everyone know what you're working on if you want to change or add something to the pREST repository.
 
-Before starting to write something new for the pREST project, please [file an issue](https://github.com/prest/prest/issues/new).
+Before starting to write something new for the pREST project, please [file an issue](https://github.com/palevi67/prest/issues/new).
 
 This process gives everyone a chance to validate the design, helps prevent duplication of effort, and ensures that the idea fits inside the goals for the project and tools. It also checks that the design is sound before code is written; the code review tool is not the place for high-level discussions.
 

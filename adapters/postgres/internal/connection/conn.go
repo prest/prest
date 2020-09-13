@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/prest/prest/config"
+	"github.com/palevi67/prest/config"
 
 	// Used pg drive on sqlx
 	_ "github.com/lib/pq"

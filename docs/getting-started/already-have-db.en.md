@@ -40,7 +40,7 @@ docker run -e PREST_HTTP_PORT=3000 \
 ```
 if you want to connect to a database running on the host machine you can add `--network host` param.
 
-or if use Docker Compose (there's an [example in the repository](https://github.com/prest/prest/blob/master/docker-compose-prod.yml))
+or if use Docker Compose (there's an [example in the repository](https://github.com/palevi67/prest/blob/master/docker-compose-prod.yml))
 
 ```sh
 docker-compose up

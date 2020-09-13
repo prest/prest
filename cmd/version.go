@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/prest/prest/helpers"
+	"github.com/palevi67/prest/helpers"
 	"github.com/spf13/cobra"
 
 	// postgres driver for migrate

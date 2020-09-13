@@ -10,10 +10,10 @@ package main
 import (
 	"net/http"
 
-	"github.com/prest/prest/cmd"
-	"github.com/prest/prest/config"
-	"github.com/prest/prest/config/router"
-	"github.com/prest/prest/middlewares"
+	"github.com/palevi67/prest/cmd"
+	"github.com/palevi67/prest/config"
+	"github.com/palevi67/prest/config/router"
+	"github.com/palevi67/prest/middlewares"
 )
 
 func main() {
@@ -49,10 +49,10 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/prest/prest/cmd"
-	"github.com/prest/prest/config"
-	"github.com/prest/prest/config/router"
-	"github.com/prest/prest/middlewares"
+	"github.com/palevi67/prest/cmd"
+	"github.com/palevi67/prest/config"
+	"github.com/palevi67/prest/config/router"
+	"github.com/palevi67/prest/middlewares"
 )
 
 func main() {
@@ -95,10 +95,10 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/prest/prest/cmd"
-	"github.com/prest/prest/config"
-	"github.com/prest/prest/config/router"
-	"github.com/prest/prest/middlewares"
+	"github.com/palevi67/prest/cmd"
+	"github.com/palevi67/prest/config"
+	"github.com/palevi67/prest/config/router"
+	"github.com/palevi67/prest/middlewares"
 	"github.com/urfave/negroni"
 )
 

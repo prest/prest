@@ -79,10 +79,10 @@ github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/9
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/prest/prest/config v0.0.0-20200729234819-07cc1b6b492f h1:e3zzUvc/t3b8Q+eYhIUd1jL6ndGECH8CYwLhDmpUq7g=
-github.com/prest/prest/config v0.0.0-20200729234819-07cc1b6b492f/go.mod h1:gQ6el6Zzd5rD6rC+2xxIZIJDRJch2uRRcWy3apkXVF0=
-github.com/prest/prest/template v0.0.0-20200729234819-07cc1b6b492f h1:DJpPZSERMXOeFoL1v8N7oguX836cM5cqIzTuiyRH0so=
-github.com/prest/prest/template v0.0.0-20200729234819-07cc1b6b492f/go.mod h1:WB8vTV4rqZvYUqy2arCLIndo0HpoGdVNpW8eyuC1NdE=
+github.com/palevi67/prest/config v0.0.0-20200729234819-07cc1b6b492f h1:e3zzUvc/t3b8Q+eYhIUd1jL6ndGECH8CYwLhDmpUq7g=
+github.com/palevi67/prest/config v0.0.0-20200729234819-07cc1b6b492f/go.mod h1:gQ6el6Zzd5rD6rC+2xxIZIJDRJch2uRRcWy3apkXVF0=
+github.com/palevi67/prest/template v0.0.0-20200729234819-07cc1b6b492f h1:DJpPZSERMXOeFoL1v8N7oguX836cM5cqIzTuiyRH0so=
+github.com/palevi67/prest/template v0.0.0-20200729234819-07cc1b6b492f/go.mod h1:WB8vTV4rqZvYUqy2arCLIndo0HpoGdVNpW8eyuC1NdE=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
 github.com/prometheus/client_golang v0.9.3/go.mod h1:/TN21ttK/J9q6uSwhBd54HahCDft0ttaMvbicHlPoso=
 github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910/go.mod h1:MbSGuTsp3dbXC40dX6PRTWyKYBIrTGTE9sqQNg2J8bo=
