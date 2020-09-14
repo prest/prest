@@ -13,24 +13,24 @@ GET /DATABASE/SCHEMA/TABLE?FIELD=$eq.VALUE
 
 Query Operators:
 
-| Name | Description |
-|-------|-------------|
-| $eq | Matches values that are equal to a specified value.|
-| $gt | Matches values that are greater than a specified value.|
-| $gte | Matches values that are greater than or equal to a specified value.|
-| $lt | Matches values that are less than a specified value.|
-| $lte | Matches values that are less than or equal to a specified value.|
-| $ne | Matches all values that are not equal to a specified value.|
-| $in | Matches any of the values specified in an array.|
-| $nin | Matches none of the values specified in an array.|
-| $null | Matches if field is null.|
-| $notnull | Matches if field is not null.|
-| $true | Matches if field is true.|
-| $nottrue | Matches if field is not true.|
-| $false | Matches if field is false.|
-| $notfalse | Matches if field is not false.|
-| $like | Matches always cover the entire string.|
-| $ilike | Matches *case-insensitive* always cover the entire string.|
+| Name      | Description                                                         |
+| --------- | ------------------------------------------------------------------- |
+| $eq       | Matches values that are equal to a specified value.                 |
+| $gt       | Matches values that are greater than a specified value.             |
+| $gte      | Matches values that are greater than or equal to a specified value. |
+| $lt       | Matches values that are less than a specified value.                |
+| $lte      | Matches values that are less than or equal to a specified value.    |
+| $ne       | Matches all values that are not equal to a specified value.         |
+| $in       | Matches any of the values specified in an array.                    |
+| $nin      | Matches none of the values specified in an array.                   |
+| $null     | Matches if field is null.                                           |
+| $notnull  | Matches if field is not null.                                       |
+| $true     | Matches if field is true.                                           |
+| $nottrue  | Matches if field is not true.                                       |
+| $false    | Matches if field is false.                                          |
+| $notfalse | Matches if field is not false.                                      |
+| $like     | Matches always cover the entire string.                             |
+| $ilike    | Matches *case-insensitive* always cover the entire string.          |
 
 
 ### Filter (WHERE) with JSONb field
@@ -50,6 +50,7 @@ http://127.0.0.1:8000/schemas?_count=* (count all schemas)
 http://127.0.0.1:8000/schemas?_renderer=xml (JSON by default)
 http://127.0.0.1:8000/tables (show all tables)
 http://127.0.0.1:8000/tables?_renderer=xml (JSON by default)
+http://127.0.0.1:8000/show/DATABASE/SCHEMA/TABLE (lists table structure - all fields contained in the table)
 http://127.0.0.1:8000/DATABASE/SCHEMA (show all tables, find by schema)
 http://127.0.0.1:8000/DATABASE/SCHEMA?_renderer=xml (JSON by default)
 http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE (show all rows, find by database and table)
@@ -134,16 +135,16 @@ Using query string to JOIN tables, example:
 
 ## Query Operators
 
-| Name | Description |
-|-------|-------------|
-| $eq | Matches values that are equal to a specified value.|
-| $gt | Matches values that are greater than a specified value.|
-| $gte | Matches values that are greater than or equal to a specified value.|
-| $lt | Matches values that are less than a specified value.|
-| $lte | Matches values that are less than or equal to a specified value.|
-| $ne | Matches all values that are not equal to a specified value.|
-| $in | Matches any of the values specified in an array.|
-| $nin | Matches none of the values specified in an array.|
+| Name | Description                                                         |
+| ---- | ------------------------------------------------------------------- |
+| $eq  | Matches values that are equal to a specified value.                 |
+| $gt  | Matches values that are greater than a specified value.             |
+| $gte | Matches values that are greater than or equal to a specified value. |
+| $lt  | Matches values that are less than a specified value.                |
+| $lte | Matches values that are less than or equal to a specified value.    |
+| $ne  | Matches all values that are not equal to a specified value.         |
+| $in  | Matches any of the values specified in an array.                    |
+| $nin | Matches none of the values specified in an array.                   |
 
 ## DISTINCT
 
@@ -183,14 +184,14 @@ GET /DATABASE/SCHEMA/TABLE/?_order=fieldname01,-fieldname02,fieldname03
 
 We support this Group Functions:
 
-| name | Use in request |
-| ------- | ------------- |
-| SUM | sum:field |
-| AVG | avg:field |
-| MAX | max:field |
-| MIN | min:field |
-| MEDIAN | median:field |
-| STDDEV | stddev:field |
+| name     | Use in request |
+| -------- | -------------- |
+| SUM      | sum:field      |
+| AVG      | avg:field      |
+| MAX      | max:field      |
+| MIN      | min:field      |
+| MEDIAN   | median:field   |
+| STDDEV   | stddev:field   |
 | VARIANCE | variance:field |
 
 ### Examples:
