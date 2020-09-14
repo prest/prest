@@ -13,7 +13,6 @@ require (
 	github.com/nuveo/log v0.0.0-20190430190217-44d02db6bdf8 // indirect
 	github.com/palevi67/prest/adapters v0.0.0-20200914084055-4b29b046057c
 	github.com/palevi67/prest/config v0.0.0-20200914084055-4b29b046057c
-	github.com/palevi67/prest/controllers v0.0.0-20200914084055-4b29b046057c
 	github.com/palevi67/prest/template v0.0.0-20200914084055-4b29b046057c // indirect
 	github.com/spf13/viper v1.7.0 // indirect
 	github.com/urfave/negroni v1.0.0
