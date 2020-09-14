@@ -52,4 +52,5 @@ type Adapter interface {
 	UpdateWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc Scanner)
 	UpdateSQL(database string, schema string, table string, setSyntax string) string
 	WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []interface{}, err error)
+	ShowTable(schema, table string) (sc Scanner)
 }

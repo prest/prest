@@ -1,27 +1,30 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
+	"github.com/gosidekick/migration/v3"
 	"github.com/spf13/cobra"
-	// postgres driver for migrate
-	_ "gopkg.in/mattes/migrate.v1/driver/postgres"
-	"gopkg.in/mattes/migrate.v1/migrate"
 )
 
 // mversionCmd represents the version command
 var mversionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Show the current migration version",
-	Long:  `Show the current migration version`,
-	Run: func(cmd *cobra.Command, args []string) {
-		verifyMigrationsPath(path)
-		version, err := migrate.Version(urlConn, path)
+	Use:     "version",
+	Short:   "Show the current migration version",
+	Long:    `Show the current migration version`,
+	PreRunE: checkTable,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		n, executed, err := migration.Run(context.Background(), path, urlConn, "status")
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(-1)
+			return err
 		}
-		fmt.Println(version)
+		fmt.Fprintf(os.Stdout, "check migrations located in %v\n", path)
+		fmt.Fprintf(os.Stdout, "%v needs to be executed\n", n)
+		for _, e := range executed {
+			fmt.Fprintf(os.Stdout, "%v\n", e)
+		}
+		return nil
 	},
 }

@@ -1,29 +1,30 @@
 package cmd
 
 import (
+	"context"
+	"fmt"
 	"os"
-	"time"
 
+	"github.com/gosidekick/migration/v3"
 	"github.com/spf13/cobra"
-	// postgres driver for migrate
-	_ "gopkg.in/mattes/migrate.v1/driver/postgres"
-	"gopkg.in/mattes/migrate.v1/migrate"
 )
 
 // downCmd represents the down command
 var downCmd = &cobra.Command{
-	Use:   "down",
-	Short: "Roll back all migrations",
-	Long:  `Roll back all migrations`,
-	Run: func(cmd *cobra.Command, args []string) {
-		verifyMigrationsPath(path)
-		timerStart = time.Now()
-		pipe := migrate.NewPipe()
-		go migrate.Down(pipe, urlConn, path)
-		ok := writePipe(pipe)
-		printTimer()
-		if !ok {
-			os.Exit(-1)
+	Use:     "down",
+	Short:   "Roll back all migrations",
+	Long:    `Roll back all migrations`,
+	PreRunE: checkTable,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		n, executed, err := migration.Run(context.Background(), path, urlConn, "down")
+		if err != nil {
+			return err
 		}
+		fmt.Fprintf(os.Stdout, "exec migrations located in %v\n", path)
+		fmt.Fprintf(os.Stdout, "executed %v migrations\n", n)
+		for _, e := range executed {
+			fmt.Fprintf(os.Stdout, "%v SUCCESS\n", e)
+		}
+		return nil
 	},
 }

@@ -108,9 +108,6 @@ PREST_DEBUG=true
 # env var for migrations directory
 PREST_MIGRATIONS
 
-# create new migration file in path
-prest migrate --url driver://url --path ./migrations create migration_file_xyz
-
 # apply all available migrations
 prest migrate --url driver://url --path ./migrations up
 
@@ -136,8 +133,4 @@ prest migrate --url driver://url --path ./migrations next -1
 prest migrate --url driver://url --path ./migrations next -2
 prest migrate --url driver://url --path ./migrations next -n
 
-# go to specific migration
-prest migrate --url driver://url --path ./migrations goto 1
-prest migrate --url driver://url --path ./migrations goto 10
-prest migrate --url driver://url --path ./migrations goto v
 ```
