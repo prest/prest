@@ -13,13 +13,8 @@ require (
 	github.com/mattn/go-colorable v0.1.7 // indirect
 	github.com/mattn/go-sqlite3 v1.14.0 // indirect
 	github.com/nuveo/log v0.0.0-20190430190217-44d02db6bdf8 // indirect
-	github.com/palevi67/prest/adapters v0.0.0-20200914103049-8b1cf4024d0a // indirect
 	github.com/palevi67/prest/cmd v0.0.0-20200914103049-8b1cf4024d0a
-	github.com/palevi67/prest/config v0.0.0-20200914103049-8b1cf4024d0a
-	github.com/palevi67/prest/controllers v0.0.0-20200914103049-8b1cf4024d0a // indirect
-	github.com/palevi67/prest/helpers v0.0.0-20200914103049-8b1cf4024d0a // indirect
-	github.com/palevi67/prest/middlewares v0.0.0-20200914103049-8b1cf4024d0a // indirect
-	github.com/palevi67/prest/template v0.0.0-20200914103049-8b1cf4024d0a // indirect
+	github.com/palevi67/prest/config v0.0.0-20200914114133-72cdceb0a80b
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/cobra v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect

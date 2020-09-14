@@ -1,9 +1,15 @@
 [jwt]
 default = false
 
+[http]
+port = 6000 
+
 [pg]
-host = "127.0.0.1"
-user = "prest"
-pass = "prest"
+host = "desarrollo.horus.es"
+user = "pablo.leon"
+pass = "emerson.67"
 port = 5432
-database = "prest"
+database = "milenio-suscriptor-2-26-es"
+
+[queries]
+location = "/Users/pablo/nt/prest/ejemplo/queries"

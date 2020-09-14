@@ -55,6 +55,10 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 	schema := vars["schema"]
 
+	if database == "_DEFAULT" {
+		database = config.PrestConf.PGDatabase
+	}
+
 	config.PrestConf.Adapter.SetDatabase(database)
 
 	requestWhere, values, err := config.PrestConf.Adapter.WhereByRequest(r, 3)
@@ -102,6 +106,10 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 	schema := vars["schema"]
 	table := vars["table"]
+
+	if database == "_DEFAULT" {
+		database = config.PrestConf.PGDatabase
+	}
 
 	config.PrestConf.Adapter.SetDatabase(database)
 
@@ -211,6 +219,10 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
+	if database == "_DEFAULT" {
+		database = config.PrestConf.PGDatabase
+	}
+
 	config.PrestConf.Adapter.SetDatabase(database)
 
 	names, placeholders, values, err := config.PrestConf.Adapter.ParseInsertRequest(r)
@@ -243,6 +255,10 @@ func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 	schema := vars["schema"]
 	table := vars["table"]
+
+	if database == "_DEFAULT" {
+		database = config.PrestConf.PGDatabase
+	}
 
 	config.PrestConf.Adapter.SetDatabase(database)
 
@@ -280,6 +296,10 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 	schema := vars["schema"]
 	table := vars["table"]
+
+	if database == "_DEFAULT" {
+		database = config.PrestConf.PGDatabase
+	}
 
 	config.PrestConf.Adapter.SetDatabase(database)
 
@@ -329,6 +349,10 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 	schema := vars["schema"]
 	table := vars["table"]
+
+	if database == "_DEFAULT" {
+		database = config.PrestConf.PGDatabase
+	}
 
 	config.PrestConf.Adapter.SetDatabase(database)
 
