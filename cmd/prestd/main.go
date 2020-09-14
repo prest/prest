@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/prest/prest/cmd"
-	"github.com/prest/prest/config"
+	"github.com/palevi67/prest/cmd"
+	"github.com/palevi67/prest/config"
 )
 
 func main() {
