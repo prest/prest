@@ -10,12 +10,12 @@ require (
 	github.com/jmoiron/sqlx v1.2.0 // indirect
 	github.com/lib/pq v1.8.0 // indirect
 	github.com/nuveo/log v0.0.0-20190430190217-44d02db6bdf8
-	github.com/palevi67/prest/adapters v0.0.0-20200914083026-0817850a9d57
-	github.com/palevi67/prest/config v0.0.0-20200914083026-0817850a9d57
-	github.com/palevi67/prest/controllers v0.0.0-20200914083026-0817850a9d57
-	github.com/palevi67/prest/helpers v0.0.0-20200914083026-0817850a9d57
-	github.com/palevi67/prest/middlewares v0.0.0-20200914083026-0817850a9d57
-	github.com/palevi67/prest/template v0.0.0-20200914083026-0817850a9d57 // indirect
+	github.com/palevi67/prest/adapters v0.0.0-20200914084055-4b29b046057c
+	github.com/palevi67/prest/config v0.0.0-20200914084055-4b29b046057c
+	github.com/palevi67/prest/controllers v0.0.0-20200914084055-4b29b046057c
+	github.com/palevi67/prest/helpers v0.0.0-20200914084055-4b29b046057c
+	github.com/palevi67/prest/middlewares v0.0.0-20200914084055-4b29b046057c
+	github.com/palevi67/prest/template v0.0.0-20200914084055-4b29b046057c // indirect
 	github.com/spf13/cobra v1.0.0
 	github.com/urfave/negroni v1.0.0
 	gopkg.in/mattes/migrate.v1 v1.3.2
