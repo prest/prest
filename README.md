@@ -4,6 +4,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/prest/prest)](https://goreportcard.com/report/github.com/prest/prest)
 [![Coverage Status](https://coveralls.io/repos/github/prest/prest/badge.svg?branch=master)](https://coveralls.io/github/prest/prest?branch=master)
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/prest/prest?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![SourceLevel](https://app.sourcelevel.io/github/prest/prest.svg)](https://app.sourcelevel.io/github/prest/prest)
 
 _p_**REST** (**P**_ostgreSQL_ **REST**), simplify and accelerate development, instant, realtime, high-performance on any **Postgres** application, **existing or new**
 
@@ -17,7 +18,7 @@ There is PostgREST written in Haskell, but keeping Haskell software in productio
 
 ## 1-Click Deploy
 
-### Heroku 
+### Heroku
 Deploy to Heroku and instantly get a realtime RESTFul API backed by Heroku Postgres:
 
 [![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/prest/prest-heroku)

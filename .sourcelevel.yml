@@ -1,0 +1,22 @@
+---
+engines:
+  golint:
+    enabled: true
+    channel: latest
+  gofmt:
+    enabled: true
+    channel: latest
+  govet:
+    enabled: true
+    channel: latest
+  fixme:
+    enabled: true
+    channel: latest
+  duplication:
+    enabled: true
+    channel: latest
+    config:
+      languages:
+      - go
+exclude_paths:
+- vendor/
