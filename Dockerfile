@@ -9,5 +9,5 @@ FROM registry.hub.docker.com/library/alpine:latest
 COPY --from=builder /go/src/github.com/prest/prest/cmd/prestd/prestd /app/prestd
 RUN apk add --no-cache curl
 COPY ./cmd/prestd/prest.toml /app/prest.toml
-COPY ./etc/entrypoint.sh /app/entrtpoint.sh
-ENTRYPOINT [ "/app/entrtpoint.sh" ]
+COPY ./etc/entrypoint.sh /app/entrypoint.sh
+ENTRYPOINT [ "/app/entrypoint.sh" ]
