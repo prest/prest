@@ -1,7 +1,7 @@
 #!/bin/sh
 
-echo Waiting for port $PREST_PG_HOST:$PREST_PG_PORT to become available...
-while ! nc -z $PREST_PG_HOST $PREST_PG_PORT 2>/dev/null
+echo "Waiting for port $PREST_PG_HOST:$PREST_PG_PORT to become available..."
+while "! nc -z $PREST_PG_HOST $PREST_PG_PORT" 2>/dev/null
 do
     ((elapsed=elapsed+1))
     if [ "$elapsed" -gt 90 ]

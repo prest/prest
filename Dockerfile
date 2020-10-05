@@ -5,7 +5,7 @@ COPY . .
 WORKDIR /workspace/cmd/prestd
 RUN go mod download  \
 && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -o prestd main.go \
-&& apt-get update && apt-get install -yq netcat
+&& apt-get update && apt-get install --no-install-recommends -yq netcat=1.10-41.1
 
 WORKDIR /app
 
