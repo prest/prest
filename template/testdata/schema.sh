@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 DB_HOST=${PREST_PG_HOST:-localhost}
 DB_USER=${PREST_PG_USER:-postgres}
 DB_PORT=${PREST_PG_PORT:-5432}

@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 go install
 export PREST_MIGRATIONS=./testdata/migrations
 DB_HOST=${PREST_PG_HOST:-localhost}
