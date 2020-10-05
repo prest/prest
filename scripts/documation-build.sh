@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 rm -rf docbuild && \
 git clone https://github.com/prest/prest.github.io docbuild && \
 rm -rf docbuild/content && \
