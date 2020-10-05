@@ -1,14 +1,11 @@
-FROM golang:1.15 as builder
+FROM registry.hub.docker.com/library/golang:1.15 as builder
 
 WORKDIR /workspace
 COPY . .
 WORKDIR /workspace/cmd/prestd
-RUN go mod download
-
-# Build
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -o prestd main.go
-
-RUN apt-get update && apt-get install -yq netcat
+RUN go mod download  \
+&& CGO_ENABLED=1 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -o prestd main.go \
+&& apt-get update && apt-get install -yq netcat
 
 WORKDIR /app
 
