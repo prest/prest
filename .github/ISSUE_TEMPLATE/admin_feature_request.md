@@ -1,7 +1,10 @@
 ---
 name: 'Admin: Feature request'
+title: ''
 about: 'Suggest an idea for this project - Admin'
-labels: 'Feature', 'Software: admin'
+labels: 'Feature, Software: admin'
+assignees: ''
+
 ---
 
 <!--
