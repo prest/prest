@@ -2,7 +2,7 @@
 name: 'Admin: Custom issue'
 about: Admin
 title: ''
-labels: 'Bug, Software: admin'
+labels: 'Software: admin'
 assignees: ''
 
 ---
