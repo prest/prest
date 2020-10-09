@@ -23,6 +23,7 @@ func TestGetDatabases(t *testing.T) {
 		{"Get databases without custom where clause", "/databases", "GET", http.StatusOK},
 		{"Get databases with custom where clause", "/databases?datname=$eq.prest", "GET", http.StatusOK},
 		{"Get databases with custom order clause", "/databases?_order=datname", "GET", http.StatusOK},
+		{"Get databases with custom order invalid clause", "/databases?_order=$eq.prest", "GET", http.StatusBadRequest},
 		{"Get databases with custom where clause and pagination", "/databases?datname=$eq.prest&_page=1&_page_size=20", "GET", http.StatusOK},
 		{"Get databases with COUNT clause", "/databases?_count=*", "GET", http.StatusOK},
 		{"Get databases with custom where invalid clause", "/databases?0datname=prest", "GET", http.StatusBadRequest},
