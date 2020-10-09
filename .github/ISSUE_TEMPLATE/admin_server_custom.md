@@ -1,7 +1,10 @@
 ---
 name: 'Admin: Custom issue'
 about: Admin
+title: ''
 labels: 'Software: admin'
+assignees: ''
+
 ---
 
 <!--
