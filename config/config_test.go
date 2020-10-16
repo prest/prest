@@ -280,6 +280,10 @@ func Test_Auth(t *testing.T) {
 		t.Errorf("expected no errors, but got %v", err)
 	}
 
+	if cfg.AuthEnabled != false {
+		t.Errorf("expected auth.enabled to be: false, got: %v", cfg.AuthEnabled)
+	}
+
 	if cfg.AuthTable != "users" {
 		t.Errorf("expected auth.table to be: users, got: %s", cfg.AuthTable)
 	}

@@ -29,6 +29,7 @@ type AccessConf struct {
 
 // Prest basic config
 type Prest struct {
+	AuthEnabled bool
 	AuthTable        string
 	AuthUsername     string
 	AuthPassword     string
@@ -87,6 +88,9 @@ func viperCfg() {
 	viper.AddConfigPath(dir)
 	viper.SetConfigName(file)
 	viper.SetConfigType("toml")
+	viper.SetDefault("auth.enabled", false)
+	viper.SetDefault("auth.username", "email")
+	viper.SetDefault("auth.password", "password")
 	viper.SetDefault("auth.encrypt", "MD5")
 	viper.SetDefault("http.host", "0.0.0.0")
 	viper.SetDefault("http.port", 3000)
@@ -138,6 +142,7 @@ func Parse(cfg *Prest) (err error) {
 			return
 		}
 	}
+	cfg.AuthEnabled = viper.GetBool("auth.enabled")
 	cfg.AuthTable = viper.GetString("auth.table")
 	cfg.AuthUsername = viper.GetString("auth.username")
 	cfg.AuthPassword = viper.GetString("auth.password")
