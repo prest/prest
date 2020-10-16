@@ -269,3 +269,41 @@ func Test_portFromEnv(t *testing.T) {
 
 	os.Unsetenv("PORT")
 }
+
+func Test_Auth(t *testing.T) {
+	os.Setenv("PREST_CONF", "testdata/prest.toml")
+
+	viperCfg()
+	cfg := &Prest{}
+	err := Parse(cfg)
+	if err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+
+	if cfg.AuthTable != "users" {
+		t.Errorf("expected auth.table to be: users, got: %s", cfg.AuthTable)
+	}
+
+	if cfg.AuthUsername != "email" {
+		t.Errorf("expected auth.username to be: email, got: %s", cfg.AuthUsername)
+	}
+
+	if cfg.AuthPassword != "password" {
+		t.Errorf("expected auth.password to be: password, got: %s", cfg.AuthPassword)
+	}
+
+	if cfg.AuthEncrypt != "MD5" {
+		t.Errorf("expected auth.encrypt to be: MD5, got: %s", cfg.AuthEncrypt)
+	}
+
+	metadata := []string{"first_name", "last_name", "last_login"}
+	if len(cfg.AuthMetadata) != len(metadata) {
+		t.Errorf("expected auth.metadata to be: %d, got: %d", len(cfg.AuthMetadata), len(metadata))
+	}
+
+	for i, v := range cfg.AuthMetadata {
+		if v != metadata[i] {
+			t.Errorf("expected auth.metadata field %d to be: %s, got: %s", i, v, metadata[i])
+		}
+	}
+}

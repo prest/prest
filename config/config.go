@@ -29,6 +29,11 @@ type AccessConf struct {
 
 // Prest basic config
 type Prest struct {
+	AuthTable        string
+	AuthUsername     string
+	AuthPassword     string
+	AuthEncrypt      string
+	AuthMetadata     []string
 	HTTPHost         string // HTTPHost Declare which http address the PREST used
 	HTTPPort         int    // HTTPPort Declare which http port the PREST used
 	PGHost           string
@@ -82,6 +87,7 @@ func viperCfg() {
 	viper.AddConfigPath(dir)
 	viper.SetConfigName(file)
 	viper.SetConfigType("toml")
+	viper.SetDefault("auth.encrypt", "MD5")
 	viper.SetDefault("http.host", "0.0.0.0")
 	viper.SetDefault("http.port", 3000)
 	viper.SetDefault("pg.host", "127.0.0.1")
@@ -132,6 +138,11 @@ func Parse(cfg *Prest) (err error) {
 			return
 		}
 	}
+	cfg.AuthTable = viper.GetString("auth.table")
+	cfg.AuthUsername = viper.GetString("auth.username")
+	cfg.AuthPassword = viper.GetString("auth.password")
+	cfg.AuthEncrypt = viper.GetString("auth.encrypt")
+	cfg.AuthMetadata = viper.GetStringSlice("auth.metadata")
 	cfg.HTTPHost = viper.GetString("http.host")
 	cfg.HTTPPort = viper.GetInt("http.port")
 	cfg.PGURL = viper.GetString("pg.url")
