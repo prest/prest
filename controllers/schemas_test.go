@@ -24,6 +24,7 @@ func TestGetSchemas(t *testing.T) {
 		{"Get schemas without custom where clause", "/schemas", "GET", http.StatusOK, "[{\"schema_name\":\"information_schema\"}, \n {\"schema_name\":\"pg_catalog\"}, \n {\"schema_name\":\"pg_temp_1\"}, \n {\"schema_name\":\"pg_toast\"}, \n {\"schema_name\":\"pg_toast_temp_1\"}, \n {\"schema_name\":\"public\"}]"},
 		{"Get schemas with custom where clause", "/schemas?schema_name=$eq.public", "GET", http.StatusOK, "[{\"schema_name\":\"public\"}]"},
 		{"Get schemas with custom order clause", "/schemas?schema_name=$eq.public&_order=schema_name", "GET", http.StatusOK, "[{\"schema_name\":\"public\"}]"},
+		{"Get schemas with custom order invalid clause", "/schemas?schema_name=$eq.public&_order=$eq.schema_name", "GET", http.StatusBadRequest, "Invalid identifier\n"},
 		{"Get schemas with custom where clause and pagination", "/schemas?schema_name=$eq.public&_page=1&_page_size=20", "GET", http.StatusOK, "[{\"schema_name\":\"public\"}]"},
 		{"Get schemas with COUNT clause", "/schemas?_count=*", "GET", http.StatusOK, "[{\"count\":6}]"},
 		{"Get schemas with custom where invalid clause", "/schemas?0schema_name=$eq.public", "GET", http.StatusBadRequest, "invalid identifier: 0schema_name\n"},
