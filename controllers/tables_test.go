@@ -189,17 +189,17 @@ func TestBatchInsertInTables(t *testing.T) {
 	m = append(m, map[string]interface{}{"name": "bprest"}, map[string]interface{}{"name": "aprest"})
 
 	mJSON := make([]map[string]interface{}, 0)
-	mJSON = append(mJSON, 
+	mJSON = append(mJSON,
 		map[string]interface{}{"name": "cprest", "data": `{"term": "name", "subterm": ["names", "of", "subterms"], "obj": {"emp": "nuveo"}}`},
 		map[string]interface{}{"name": "dprest", "data": `{"term": "name", "subterms": ["names", "of", "subterms"], "obj": {"emp": "nuveo"}}`},
 	)
 
 	mARRAY := make([]map[string]interface{}, 0)
-	mARRAY = append(mARRAY, 
+	mARRAY = append(mARRAY,
 		map[string]interface{}{"data": []string{"1", "2"}},
 		map[string]interface{}{"data": []string{"1", "2", "3"}},
 	)
-	mARRAY = append(mARRAY, )
+	mARRAY = append(mARRAY)
 
 	router := mux.NewRouter()
 	router.HandleFunc("/batch/{database}/{schema}/{table}", BatchInsertInTables).Methods("POST")
