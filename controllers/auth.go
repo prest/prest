@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"crypto/md5"
+	"crypto/sha1"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -31,6 +33,11 @@ type RavensRequest struct {
 // AuthClaims JWT
 type AuthClaims struct {
 	jwt.StandardClaims
+}
+
+type User struct {
+	ID         int
+	CustomerID int
 }
 
 // Token for user
@@ -80,15 +87,14 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 }
 
 // basicPasswordCheck
-func basicPasswordCheck(user, password string) (obj interface{}, err error) {
+func basicPasswordCheck(user, password string) (obj User, err error) {
 	/**
 	table name, fields (user and password) and encryption must be defined in
 	the configuration file (toml)
 	by default this endpoint will not be available, it is necessary to activate
 	in the configuration file
 	*/
-	query := `SELECT * FROM users WHERE user=$1 AND password=$2 LIMIT 1`
-	sc := config.Get.DBAdapter.Query(query, user, password)
+	sc := config.PrestConf.Adapter.Query(getSelectQuery(), user, encrypt(password))
 	if sc.Err() != nil {
 		err = sc.Err()
 		return
@@ -99,7 +105,29 @@ func basicPasswordCheck(user, password string) (obj interface{}, err error) {
 	}
 	if n != 1 {
 		err = fmt.Errorf(unf)
-		return
+	}
+
+	return
+}
+
+// getSelectQuery create the query to authenticate the user
+func getSelectQuery() (query string) {
+	query = fmt.Sprintf(`SELECT * FROM %s WHERE %s=$1 AND %s=$2 LIMIT 1`, config.PrestConf.AuthTable, config.PrestConf.AuthUsername, config.PrestConf.AuthPassword)
+
+	return
+}
+
+// encrypt will apply the encryption algorithm to the password
+func encrypt(password string) (encrypted string) {
+	switch config.PrestConf.AuthEncrypt {
+	case "MD5":
+		encrypted = fmt.Sprintf("%x", md5.Sum([]byte(password)))
+		break
+
+	case "SHA1":
+		encrypted = fmt.Sprintf("%x", sha1.Sum([]byte(password)))
+		break
+
 	}
 	return
 }
