@@ -3,6 +3,12 @@
 # [jwt]
 # key = "mysecretkey"
 
+[auth]
+table = "test_users"
+username = "email"
+password = "password"
+metadata = ["first_name", "last_name", "last_login"]
+
 [http]
 port = 6000
 
