@@ -75,6 +75,40 @@ PATCH  /_QUERIES/bar/some_update?field1=foo
 DELETE /_QUERIES/bar/some_delete?field1=foo
 ```
 
+### Template data
+
+You can access the query parameters of the incoming HTTP request using the `.` notation.
+
+For instance, the following request:
+
+```
+GET    /_QUERIES/bar/some_get?field1=foo&field2=bar
+```
+
+makes available the fields `field1` and `field2` in the script:
+
+```
+{{.field1}}
+{{.field2}}
+```
+
+You can also access the query headers of the incoming HTTP requests using the `.header` notation.
+
+For instance, the following request:
+
+```
+GET    /_QUERIES/bar/some_get
+X-UserId: am9obi5kb2VAYW5vbnltb3VzLmNvbQ
+X-Application: prest
+```
+
+makes available the headers `X-UserId` and `X-Application` in the script:
+
+```
+{{index .header "X-UserId"}}
+{{index .header "X-Application"}}
+```
+
 ### Template functions
 
 
