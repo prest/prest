@@ -3,7 +3,6 @@ package postgres
 import (
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"os/user"
 	"testing"
@@ -69,8 +68,8 @@ func TestInvalidGetScript(t *testing.T) {
 }
 
 func TestParseScriptInvalid(t *testing.T) {
-	queryURL := url.Values{}
-	queryURL.Set("field1", "abc")
+	templateData := map[string]interface{}{}
+	templateData["field1"] = "abc"
 
 	user, err := user.Current()
 	if err != nil {
@@ -79,7 +78,7 @@ func TestParseScriptInvalid(t *testing.T) {
 	scriptPath := fmt.Sprint(user.HomeDir, "/queries/fulltable/%s")
 
 	t.Log("Parse script with get_all file")
-	sql, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "get_all.read.sql"), queryURL)
+	sql, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "get_all.read.sql"), templateData)
 	if err != nil {
 		t.Errorf("expected no error, but got: %v", err)
 	}
@@ -87,16 +86,11 @@ func TestParseScriptInvalid(t *testing.T) {
 	if sql != "SELECT * FROM test7 WHERE name = 'abc'" {
 		t.Errorf("SQL unexpected, got: %s", sql)
 	}
-
-	// Add new values
-	queryURL.Del("field1")
-	queryURL.Set("notable", "123")
 }
 
 func TestParseScript(t *testing.T) {
-	queryURL := url.Values{}
-	queryURL.Add("field1", "abc")
-	queryURL.Add("field1", "test")
+	templateData := map[string]interface{}{}
+	templateData["field1"] = []string{"abc", "test"}
 
 	user, err := user.Current()
 	if err != nil {
@@ -105,7 +99,7 @@ func TestParseScript(t *testing.T) {
 	scriptPath := fmt.Sprint(user.HomeDir, "/queries/fulltable/%s")
 
 	t.Log("Parse script with get_all_slice file")
-	sql, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "get_all_slice.read.sql"), queryURL)
+	sql, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "get_all_slice.read.sql"), templateData)
 	if err != nil {
 		t.Errorf("expected no error, but got: %v", err)
 	}
