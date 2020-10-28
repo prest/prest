@@ -17,7 +17,11 @@ func ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]
 		return nil, err
 	}
 
-	sql, values, err := config.PrestConf.Adapter.ParseScript(sqlPath, rq.URL.Query())
+	templateData := make(map[string]interface{})
+	extractHeaders(rq, templateData)
+	extractQueryParameters(rq, templateData)
+
+	sql, values, err := config.PrestConf.Adapter.ParseScript(sqlPath, templateData)
 	if err != nil {
 		err = fmt.Errorf("could not parse script %s/%s, %+v", queriesPath, script, err)
 		return nil, err
@@ -45,4 +49,31 @@ func ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write(result)
+}
+
+// extractHeaders gets from the given request the headers and populate the provided templateData accordingly.
+func extractHeaders(rq *http.Request, templateData map[string]interface{}) {
+	headers := map[string]interface{}{}
+
+	for key, value := range rq.Header {
+		if len(value) == 1 {
+			headers[key] = value[0]
+			continue
+		}
+		headers[key] = value
+	}
+
+	templateData["header"] = headers
+}
+
+// extractQueryParameters gets from the given request the query parameters and populate the provided templateData
+// accordingly.
+func extractQueryParameters(rq *http.Request, templateData map[string]interface{}) {
+	for key, value := range rq.URL.Query() {
+		if len(value) == 1 {
+			templateData[key] = value[0]
+			continue
+		}
+		templateData[key] = value
+	}
 }

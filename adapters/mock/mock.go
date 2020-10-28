@@ -6,7 +6,6 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"net/http"
-	"net/url"
 	"sync"
 	"testing"
 
@@ -29,6 +28,8 @@ type Mock struct {
 	conns map[string]*mockConn
 	Items []Item
 }
+
+var _ adapters.Adapter = (*Mock)(nil) // Verify that Mock implements Adapter.
 
 // New mock
 func New(t *testing.T) (m *Mock) {
@@ -107,7 +108,7 @@ func (m *Mock) GetScript(verb string, folder string, scriptName string) (script 
 }
 
 // ParseScript mock
-func (m *Mock) ParseScript(scriptPath string, queryURL url.Values) (sqlQuery string, values []interface{}, err error) {
+func (m *Mock) ParseScript(scriptPath string, data map[string]interface{}) (sqlQuery string, values []interface{}, err error) {
 	return
 }
 
