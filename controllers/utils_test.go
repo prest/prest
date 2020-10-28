@@ -262,7 +262,7 @@ func writeMockScripts(base string) {
 
 	write("SELECT * FROM test7 WHERE name = '{{defaultOrValue \"field1\" \"gopher\"}}'", "funcs.read.sql")
 	write("SELECT * FROM test7 WHERE name = '{{.field1}}'", "get_all.read.sql")
-	write("SELECT {{index .header \"X-Application\"}}", "get_header.read.sql")
+	write("SELECT '{{index .header \"X-Application\"}}'", "get_header.read.sql")
 	write("INSERT INTO test7 (name, surname) VALUES ('{{.field1}}', '{{.field2}}')", "write_all.write.sql")
 	write("CREATE TABLE {{.field1}};", "create_table.write.sql")
 	write("UPDATE test7 SET name = '{{.field1}}' WHERE surname = '{{.field2}}'", "patch_all.update.sql")
