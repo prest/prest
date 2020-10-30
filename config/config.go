@@ -29,7 +29,7 @@ type AccessConf struct {
 
 // Prest basic config
 type Prest struct {
-	AuthEnabled bool
+	AuthEnabled      bool
 	AuthTable        string
 	AuthUsername     string
 	AuthPassword     string
