@@ -75,6 +75,7 @@ func MakeHandler() http.Handler {
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.UpdateTable).Methods("PUT", "PATCH")
 	r.PathPrefix("/").Handler(negroni.New(
 		middlewares.AccessControl(),
+		middlewares.AuthMiddleware(),
 		negroni.Wrap(crudRoutes),
 	))
 	n.UseHandler(r)

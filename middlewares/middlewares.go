@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 	"github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/prest/prest/config"
+	"github.com/prest/prest/controllers"
 	"github.com/urfave/negroni"
 )
 
@@ -21,6 +23,51 @@ func HandlerSet() negroni.Handler {
 		negroniResp := negroni.NewResponseWriter(recorder)
 		next(negroniResp, r)
 		renderFormat(w, recorder, format)
+	})
+}
+
+// AuthMiddleware handle request token validation
+func AuthMiddleware() negroni.Handler {
+	return negroni.HandlerFunc(func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+		if config.PrestConf.AuthEnabled {
+			// extract authorization token
+			ts := strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1)
+			if ts == "" {
+				err := fmt.Errorf("authorization token is empty")
+				http.Error(rw, err.Error(), http.StatusForbidden)
+				return
+			}
+
+			_, err := jwt.ParseWithClaims(ts, &controllers.AuthClaims{}, func(token *jwt.Token) (interface{}, error) {
+				// verify token sign method
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+				}
+
+				// parse token claims
+				var claims *controllers.AuthClaims
+				if v, ok := token.Claims.(*controllers.AuthClaims); ok {
+					claims = v
+				} else {
+					return nil, fmt.Errorf("token invalid")
+				}
+
+				// pass user_info to the next handler
+				ctx := r.Context()
+				ctx = context.WithValue(ctx, "user_info", claims.UserInfo)
+				r = r.WithContext(ctx)
+
+				return []byte(config.PrestConf.JWTKey), nil
+			})
+
+			if err != nil {
+				http.Error(rw, err.Error(), http.StatusBadRequest)
+				return
+			}
+		}
+
+		// if auth isn't enabled
+		next(rw, r)
 	})
 }
 
