@@ -32,6 +32,7 @@ type RavensRequest struct {
 
 // AuthClaims JWT
 type AuthClaims struct {
+	UserInfo User
 	jwt.StandardClaims
 }
 
@@ -47,6 +48,7 @@ func Token(u User) (t string, err error) {
 	// add expiry time in configuration (in minute format, so we support the maximum need)
 	expireToken := time.Now().Add(time.Hour * 6).Unix()
 	claims := AuthClaims{
+		UserInfo: u,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expireToken,
 			Id:        strconv.Itoa(u.ID),
