@@ -57,6 +57,10 @@ func Execute() {
 func MakeHandler() http.Handler {
 	n := middlewares.GetApp()
 	r := router.Get()
+	// if auth is enabled
+	if config.PrestConf.AuthEnabled {
+		r.HandleFunc("/auth", controllers.Auth).Methods("POST")
+	}
 	r.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
 	r.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
 	r.HandleFunc("/tables", controllers.GetTables).Methods("GET")
