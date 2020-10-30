@@ -2,16 +2,17 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 var authUpCmd = &cobra.Command{
-	Use: "auth",
+	Use:   "auth",
 	Short: "Create auth table",
-	Long: "Create basic table to use on auth endpoint",
+	Long:  "Create basic table to use on auth endpoint",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if config.PrestConf.Adapter == nil {
 			postgres.Load()
@@ -27,15 +28,14 @@ var authUpCmd = &cobra.Command{
 			fmt.Fprintf(os.Stdout, err.Error())
 			return err
 		}
-
 		return nil
 	},
 }
 
 var authDownCmd = &cobra.Command{
-	Use: "auth",
+	Use:   "auth",
 	Short: "Drop auth table",
-	Long: "Drop basic table used on auth endpoint",
+	Long:  "Drop basic table used on auth endpoint",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if config.PrestConf.Adapter == nil {
 			postgres.Load()
@@ -51,7 +51,6 @@ var authDownCmd = &cobra.Command{
 			fmt.Fprintf(os.Stdout, err.Error())
 			return err
 		}
-
 		return nil
 	},
 }
