@@ -36,8 +36,10 @@ type AuthClaims struct {
 }
 
 type User struct {
-	ID         int
-	CustomerID int
+	ID       int    `json:"id"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Metadata string `json:"metadata"`
 }
 
 // Token for user
@@ -49,7 +51,7 @@ func Token(u User) (t string, err error) {
 			ExpiresAt: expireToken,
 			Id:        strconv.Itoa(u.ID),
 			IssuedAt:  time.Now().Unix(),
-			Issuer:    strconv.Itoa(u.CustomerID),
+			Issuer:    strconv.Itoa(u.ID),
 		},
 	}
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
