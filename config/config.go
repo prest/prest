@@ -53,7 +53,7 @@ type Prest struct {
 	PGConnTimeout    int
 	JWTKey           string
 	JWTAlgo          string
-	JWTWhiteList     string `toml:"jwt_whitelist" cfg:"jwt_whitelist"`
+	JWTWhiteList     string
 	MigrationsPath   string
 	QueriesPath      string
 	AccessConf       AccessConf
