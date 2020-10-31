@@ -5,6 +5,20 @@ weight: 12
 menu: main
 ---
 
+### Auth /auth - POST
+
+pREST has support in jwt token generation based on two fields (example user and password), being possible to use an existing table from your database to login configuring some parameters in the configuration file (or environment variable), _by default this feature is_ **disabled**.
+
+#### Basic Authentication
+```sh
+curl -i -X POST http://127.0.0.1:8000/auth -H "Content-Type: application/json" -d '{"username": "<username>", "password": "<password>"}'
+```
+
+#### Basic Authentication
+```sh
+curl -i -X POST http://127.0.0.1:8000/auth --user "<username>:<password>"
+```
+
 ### Filter (WHERE)
 
 ```
