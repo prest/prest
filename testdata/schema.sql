@@ -17,7 +17,7 @@ CREATE TABLE testjson(name text, data jsonb);
 CREATE TABLE testarray(id serial, data character varying(250)[]);
 CREATE TABLE test_empty_table(id serial, data character varying(250)[]);
 CREATE TABLE test_group_by_table(id serial, name text, age integer, salary int);
-CREATE TABLE test_prest_users(id serial, username text, password text);
+CREATE TABLE prest_users(id serial, username text, password text);
 
 -- Inserts
 INSERT INTO test (name) VALUES ('prest tester');
@@ -39,7 +39,7 @@ INSERT INTO test_group_by_table(name, age, salary) VALUES('joao', 20, 1250);
 INSERT INTO test_group_by_table(name, age, salary) VALUES('maria', 19, 3999);
 INSERT INTO test_group_by_table(name, age, salary) VALUES('gopher', 20, 100);
 INSERT INTO test_group_by_table(name, age, salary) VALUES('guitarra humana', 19, 3998);
-INSERT INTO test_prest_users(username, password) VALUES('test@postgres.rest', 'e10adc3949ba59abbe56e057f20f883e');
+INSERT INTO prest_users(username, password) VALUES('test@postgres.rest', 'e10adc3949ba59abbe56e057f20f883e');
 
 -- Views
 CREATE TABLE table_to_view(id serial, name text, celphone text);
