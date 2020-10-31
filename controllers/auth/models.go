@@ -10,8 +10,8 @@ type User struct {
 	Metadata interface{} `json:"metadata"`
 }
 
-// AuthClaims JWT
-type AuthClaims struct {
+// Claims JWT
+type Claims struct {
 	UserInfo User
 	jwt.StandardClaims
 }

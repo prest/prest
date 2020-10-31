@@ -39,15 +39,15 @@ func AuthMiddleware() negroni.Handler {
 				return
 			}
 
-			_, err := jwt.ParseWithClaims(ts, &auth.AuthClaims{}, func(token *jwt.Token) (interface{}, error) {
+			_, err := jwt.ParseWithClaims(ts, &auth.Claims{}, func(token *jwt.Token) (interface{}, error) {
 				// verify token sign method
 				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 				}
 
 				// parse token claims
-				var claims *auth.AuthClaims
-				if v, ok := token.Claims.(*auth.AuthClaims); ok {
+				var claims *auth.Claims
+				if v, ok := token.Claims.(*auth.Claims); ok {
 					claims = v
 				} else {
 					return nil, fmt.Errorf("token invalid")

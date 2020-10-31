@@ -41,7 +41,7 @@ type Login struct {
 func Token(u auth.User) (t string, err error) {
 	// add expiry time in configuration (in minute format, so we support the maximum need)
 	expireToken := time.Now().Add(time.Hour * 6).Unix()
-	claims := auth.AuthClaims{
+	claims := auth.Claims{
 		UserInfo: u,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expireToken,
