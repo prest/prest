@@ -314,8 +314,8 @@ func Test_Auth(t *testing.T) {
 		t.Errorf("expected auth.table to be: users, got: %s", cfg.AuthTable)
 	}
 
-	if cfg.AuthUsername != "email" {
-		t.Errorf("expected auth.username to be: email, got: %s", cfg.AuthUsername)
+	if cfg.AuthUsername != "username" {
+		t.Errorf("expected auth.username to be: username, got: %s", cfg.AuthUsername)
 	}
 
 	if cfg.AuthPassword != "password" {

@@ -23,7 +23,7 @@ var authUpCmd = &cobra.Command{
 			fmt.Fprintf(os.Stdout, err.Error())
 			return err
 		}
-		_, err = db.Exec("CREATE TABLE IF NOT EXISTS public.users (id serial, name text, email text unique, password text, metadata jsonb)")
+		_, err = db.Exec("CREATE TABLE IF NOT EXISTS public.users (id serial, name text, username text unique, password text, metadata jsonb)")
 		if err != nil {
 			fmt.Fprintf(os.Stdout, err.Error())
 			return err

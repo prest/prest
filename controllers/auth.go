@@ -36,13 +36,15 @@ type AuthClaims struct {
 	jwt.StandardClaims
 }
 
+// User logged in user representation
 type User struct {
-	ID       int    `json:"id"`
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Metadata string `json:"metadata"`
+	ID       int         `json:"id"`
+	Name     string      `json:"name"`
+	Username string      `json:"username"`
+	Metadata interface{} `json:"metadata"`
 }
 
+// Login representation of data received in authentication
 type Login struct {
 	Username string `json:"username"`
 	Password string `json:"password"`

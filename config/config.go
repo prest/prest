@@ -91,7 +91,7 @@ func viperCfg() {
 	viper.SetConfigName(file)
 	viper.SetConfigType("toml")
 	viper.SetDefault("auth.enabled", false)
-	viper.SetDefault("auth.username", "email")
+	viper.SetDefault("auth.username", "username")
 	viper.SetDefault("auth.password", "password")
 	viper.SetDefault("auth.encrypt", "MD5")
 	viper.SetDefault("auth.type", "body")
