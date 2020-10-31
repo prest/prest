@@ -43,6 +43,11 @@ type User struct {
 	Metadata string `json:"metadata"`
 }
 
+type Login struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 // Token for user
 func Token(u User) (t string, err error) {
 	// add expiry time in configuration (in minute format, so we support the maximum need)
@@ -64,12 +69,27 @@ const unf = "user not found"
 
 // Auth controller
 func Auth(w http.ResponseWriter, r *http.Request) {
-	user, password, ok := r.BasicAuth()
-	if !ok {
-		http.Error(w, unf, http.StatusBadRequest)
-		return
+	login := Login{}
+	switch config.PrestConf.AuthType {
+	// TODO: form support
+	case "body":
+		// to use body field authentication
+		dec := json.NewDecoder(r.Body)
+		dec.DisallowUnknownFields()
+		dec.Decode(&login)
+		break
+	case "basic":
+		// to use http basic authentication
+		var ok bool
+		login.Username, login.Password, ok = r.BasicAuth()
+		if !ok {
+			http.Error(w, unf, http.StatusBadRequest)
+			return
+		}
+		break
 	}
-	loggedUser, err := basicPasswordCheck(strings.ToLower(user), password)
+
+	loggedUser, err := basicPasswordCheck(strings.ToLower(login.Username), login.Password)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
@@ -117,7 +137,6 @@ func basicPasswordCheck(user, password string) (obj User, err error) {
 // getSelectQuery create the query to authenticate the user
 func getSelectQuery() (query string) {
 	query = fmt.Sprintf(`SELECT * FROM %s WHERE %s=$1 AND %s=$2 LIMIT 1`, config.PrestConf.AuthTable, config.PrestConf.AuthUsername, config.PrestConf.AuthPassword)
-
 	return
 }
 
@@ -127,11 +146,9 @@ func encrypt(password string) (encrypted string) {
 	case "MD5":
 		encrypted = fmt.Sprintf("%x", md5.Sum([]byte(password)))
 		break
-
 	case "SHA1":
 		encrypted = fmt.Sprintf("%x", sha1.Sum([]byte(password)))
 		break
-
 	}
 	return
 }
