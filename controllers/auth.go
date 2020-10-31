@@ -12,6 +12,7 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/prest/prest/config"
+	"github.com/prest/prest/controllers/auth"
 )
 
 // Response representation
@@ -30,20 +31,6 @@ type RavensRequest struct {
 	Content    string   `json:"content"`
 }
 
-// AuthClaims JWT
-type AuthClaims struct {
-	UserInfo User
-	jwt.StandardClaims
-}
-
-// User logged in user representation
-type User struct {
-	ID       int         `json:"id"`
-	Name     string      `json:"name"`
-	Username string      `json:"username"`
-	Metadata interface{} `json:"metadata"`
-}
-
 // Login representation of data received in authentication
 type Login struct {
 	Username string `json:"username"`
@@ -51,10 +38,10 @@ type Login struct {
 }
 
 // Token for user
-func Token(u User) (t string, err error) {
+func Token(u auth.User) (t string, err error) {
 	// add expiry time in configuration (in minute format, so we support the maximum need)
 	expireToken := time.Now().Add(time.Hour * 6).Unix()
-	claims := AuthClaims{
+	claims := auth.AuthClaims{
 		UserInfo: u,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expireToken,
@@ -113,7 +100,7 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 }
 
 // basicPasswordCheck
-func basicPasswordCheck(user, password string) (obj User, err error) {
+func basicPasswordCheck(user, password string) (obj auth.User, err error) {
 	/**
 	table name, fields (user and password) and encryption must be defined in
 	the configuration file (toml)

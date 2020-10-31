@@ -12,7 +12,7 @@ import (
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/prest/prest/config"
-	"github.com/prest/prest/controllers"
+	"github.com/prest/prest/controllers/auth"
 	"github.com/urfave/negroni"
 )
 
@@ -39,15 +39,15 @@ func AuthMiddleware() negroni.Handler {
 				return
 			}
 
-			_, err := jwt.ParseWithClaims(ts, &controllers.AuthClaims{}, func(token *jwt.Token) (interface{}, error) {
+			_, err := jwt.ParseWithClaims(ts, &auth.AuthClaims{}, func(token *jwt.Token) (interface{}, error) {
 				// verify token sign method
 				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 				}
 
 				// parse token claims
-				var claims *controllers.AuthClaims
-				if v, ok := token.Claims.(*controllers.AuthClaims); ok {
+				var claims *auth.AuthClaims
+				if v, ok := token.Claims.(*auth.AuthClaims); ok {
 					claims = v
 				} else {
 					return nil, fmt.Errorf("token invalid")
