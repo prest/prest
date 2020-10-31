@@ -4,8 +4,8 @@
 # key = "mysecretkey"
 
 [auth]
-table = "test_users"
-username = "email"
+table = "prest_users"
+username = "username"
 password = "password"
 metadata = ["first_name", "last_name", "last_login"]
 
