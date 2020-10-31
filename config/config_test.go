@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"os/exec"
 	"testing"
 )
 
@@ -18,6 +19,9 @@ func TestLoad(t *testing.T) {
 	if !PrestConf.AccessConf.Restrict {
 		t.Error("expected true, but got false")
 	}
+
+	os.Setenv("PREST_CONF", "foo/bar/prest.toml")
+	Load()
 
 }
 
@@ -37,6 +41,8 @@ func TestParse(t *testing.T) {
 		t.Errorf("expected database: prest, got: %s", cfg.PGDatabase)
 	}
 
+	os.Unsetenv("PREST_CONF")
+
 	os.Setenv("PREST_CONF", "../prest.toml")
 	os.Setenv("PREST_HTTP_PORT", "4000")
 
@@ -52,6 +58,8 @@ func TestParse(t *testing.T) {
 	if !cfg.EnableDefaultJWT {
 		t.Error("EnableDefaultJWT: expected true but got false")
 	}
+
+	os.Unsetenv("PREST_CONF")
 
 	os.Setenv("PREST_CONF", "")
 	os.Setenv("PREST_JWT_DEFAULT", "false")
@@ -113,6 +121,24 @@ func TestParse(t *testing.T) {
 	}
 
 	os.Unsetenv("PREST_JWT_ALGO")
+
+	// test configs that will panic
+	cmd := exec.Command(os.Args[0], "-test.run=TestPanicAndFatalErrors")
+	cmd.Env = append(os.Environ(), "BE_CRASHER=1")
+	err = cmd.Run()
+	if e, ok := err.(*exec.ExitError); !ok && e.Success() {
+		t.Fatal("process ran without error")
+	}
+}
+
+func TestPanicAndFatalErrors(t *testing.T) {
+	if os.Getenv("BE_CRASHER") == "1" {
+		os.Setenv("PREST_CONF", "/foo/bar/not_found.toml")
+		viperCfg()
+		cfg := &Prest{}
+		_ = Parse(cfg)
+		os.Unsetenv("PREST_CONF")
+	}
 }
 
 func TestGetDefaultPrestConf(t *testing.T) {

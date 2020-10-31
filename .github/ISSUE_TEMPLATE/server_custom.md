@@ -1,7 +1,10 @@
 ---
 name: 'Server: Custom issue'
-about: 'API Server'
+about: API Server
+title: ''
 labels: 'Software: server'
+assignees: ''
+
 ---
 
 <!--

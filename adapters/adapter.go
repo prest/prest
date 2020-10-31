@@ -3,7 +3,6 @@ package adapters
 import (
 	"database/sql"
 	"net/http"
-	"net/url"
 )
 
 //Adapter interface
@@ -31,7 +30,7 @@ type Adapter interface {
 	PaginateIfPossible(r *http.Request) (paginatedQuery string, err error)
 	ParseBatchInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error)
 	ParseInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error)
-	ParseScript(scriptPath string, queryURL url.Values) (sqlQuery string, values []interface{}, err error)
+	ParseScript(scriptPath string, templateData map[string]interface{}) (sqlQuery string, values []interface{}, err error)
 	Query(SQL string, params ...interface{}) (sc Scanner)
 	QueryCount(SQL string, params ...interface{}) (sc Scanner)
 	ReturningByRequest(r *http.Request) (returningSyntax string, err error)

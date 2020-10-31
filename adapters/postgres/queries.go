@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -45,18 +44,10 @@ func (adapter *Postgres) GetScript(verb, folder, scriptName string) (script stri
 }
 
 // ParseScript use values sent by users and add on script
-func (adapter *Postgres) ParseScript(scriptPath string, queryURL url.Values) (sqlQuery string, values []interface{}, err error) {
+func (adapter *Postgres) ParseScript(scriptPath string, templateData map[string]interface{}) (sqlQuery string, values []interface{}, err error) {
 	_, tplName := path.Split(scriptPath)
-	q := make(map[string]interface{})
-	for key, value := range queryURL {
-		if len(value) == 1 {
-			q[key] = value[0]
-			continue
-		}
-		q[key] = value
-	}
 
-	funcs := &template.FuncRegistry{TemplateData: q}
+	funcs := &template.FuncRegistry{TemplateData: templateData}
 	tpl := gotemplate.New(tplName).Funcs(funcs.RegistryAllFuncs())
 
 	tpl, err = tpl.ParseFiles(scriptPath)

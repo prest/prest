@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
-	"net/url"
 	"reflect"
 	"sync"
 	"testing"
@@ -486,7 +485,7 @@ func TestMockEmptyMethods(t *testing.T) {
 	}
 
 	// ParseScript
-	_, _, err = mock.ParseScript("path/to/script", url.Values{"q": []string{"test"}})
+	_, _, err = mock.ParseScript("path/to/script", map[string]interface{}{"q": []string{"test"}})
 	if err != nil {
 		t.Errorf("expected empty return, got: %s", err)
 	}

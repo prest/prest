@@ -3,7 +3,6 @@
 [![GoDoc](https://godoc.org/github.com/prest/prest?status.png)](https://godoc.org/github.com/prest/prest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/prest/prest)](https://goreportcard.com/report/github.com/prest/prest)
 [![Coverage Status](https://coveralls.io/repos/github/prest/prest/badge.svg?branch=master)](https://coveralls.io/github/prest/prest?branch=master)
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/prest/prest?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![SourceLevel](https://app.sourcelevel.io/github/prest/prest.svg)](https://app.sourcelevel.io/github/prest/prest)
 
 _p_**REST** (**P**_ostgreSQL_ **REST**), simplify and accelerate development, instant, realtime, high-performance on any **Postgres** application, **existing or new**

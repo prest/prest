@@ -17,6 +17,7 @@ matrix:
   fast_finish: true
 env:
   - PREST_PG_USER=postgres PREST_PG_DATABASE=prest PREST_PG_PORT=5432 PREST_CONF=$TRAVIS_BUILD_DIR/testdata/prest.toml
+go_import_path: github.com/prest/prest
 before_install:
   - sudo apt-get -y install gcc-multilib
   - go get -v -d ./...
@@ -25,7 +26,6 @@ install:
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
 before_script:
-  - docker login -u="$DOCKER_LOGIN" -p="$DOCKER_PASSWORD"
   - sh testdata/schema.sh
 script:
   - curl -sfL https://git.io/goreleaser | sh -s -- check
@@ -47,8 +47,3 @@ deploy:
       branch: master
       go: "1.15.x"
       condition: $TRAVIS_OS_NAME = linux
-
-notifications:
-  webhooks:
-    urls:
-      - https://webhooks.gitter.im/e/edf464ac074390da55f9

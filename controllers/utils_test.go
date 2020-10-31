@@ -161,6 +161,8 @@ func doRequest(t *testing.T, url string, r interface{}, method string, expectedS
 		t.Error("error on New Request", err)
 	}
 
+	req.Header.Add("X-Application", "prest")
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -199,6 +201,11 @@ func createMockScripts(base string) {
 		log.Println(err)
 	}
 	_, err = os.Create(fmt.Sprint(base, "/fulltable/get_all.read.sql"))
+	if err != nil {
+		log.Println(err)
+	}
+
+	_, err = os.Create(fmt.Sprint(base, "/fulltable/get_header.read.sql"))
 	if err != nil {
 		log.Println(err)
 	}
@@ -255,6 +262,7 @@ func writeMockScripts(base string) {
 
 	write("SELECT * FROM test7 WHERE name = '{{defaultOrValue \"field1\" \"gopher\"}}'", "funcs.read.sql")
 	write("SELECT * FROM test7 WHERE name = '{{.field1}}'", "get_all.read.sql")
+	write("SELECT '{{index .header \"X-Application\"}}'", "get_header.read.sql")
 	write("INSERT INTO test7 (name, surname) VALUES ('{{.field1}}', '{{.field2}}')", "write_all.write.sql")
 	write("CREATE TABLE {{.field1}};", "create_table.write.sql")
 	write("UPDATE test7 SET name = '{{.field1}}' WHERE surname = '{{.field2}}'", "patch_all.update.sql")

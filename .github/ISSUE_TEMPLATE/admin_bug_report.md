@@ -1,7 +1,10 @@
 ---
 name: 'Admin: Bug report'
+title: ''
 about: 'Create a report to help us improve - Admin'
 labels: 'Bug', 'Software: admin'
+assignees: ''
+
 ---
 
 <!--
