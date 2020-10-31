@@ -56,3 +56,51 @@ func Test_checkCors(t *testing.T) {
 		t.Error("expected false, got true")
 	}
 }
+
+
+func TestMatchURL(t *testing.T) {
+	test := []struct {
+		Label        string
+		URL          string
+		JWTWhiteList string
+		match        bool
+	}{
+		{
+			Label:        "auth",
+			URL:          "/auth",
+			JWTWhiteList: `\/auth`,
+			match:        true,
+		},
+		{
+			Label:        "auth regex",
+			URL:          "/auth/any",
+			JWTWhiteList: `\/auth\/.*`,
+			match:        true,
+		},
+		{
+			Label:        "auth2 lock",
+			URL:          "/auth2",
+			JWTWhiteList: `\/auth`,
+			match:        true,
+		},
+		{
+			Label:        "multi allow",
+			URL:          "/auth",
+			JWTWhiteList: `\/auth \/databases`,
+			match:        true,
+		}
+	}
+
+	for _, tt := range test {
+		t.Run(tt.Label, func(t *testing.T) {
+			config.Get.JWTWhiteList = tt.JWTWhiteList
+			match, err := MatchURL(tt.URL)
+			if err != nil {
+				t.Error(err)
+			}
+			if match != tt.match {
+				t.Errorf("expected %v, but got %v\n", tt.match, match)
+			}
+		})
+	}
+}

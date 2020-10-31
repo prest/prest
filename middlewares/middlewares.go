@@ -3,6 +3,7 @@ package middlewares
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -104,7 +105,26 @@ func JwtMiddleware(key string, algo string) negroni.Handler {
 		},
 		SigningMethod: jwt.GetSigningMethod(algo),
 	})
-	return negroni.HandlerFunc(jwtMiddleware.HandlerWithNext)
+	// return negroni.HandlerFunc(jwtMiddleware.HandlerWithNext)
+
+	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+		match, err := MatchURL(r.URL.String())
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
+			return
+		}
+		if match {
+			next(w, r)
+			return
+		}
+		err = jwtMiddleware.CheckJWT(w, r)
+		if err != nil {
+			log.Println("check jwt error", err.Error())
+			w.Write([]byte(fmt.Sprintf(`{"error": "%v"}`, err.Error())))
+			return
+		}
+		next(w, r)
+	})
 }
 
 // Cors middleware
