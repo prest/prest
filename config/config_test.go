@@ -310,8 +310,8 @@ func Test_Auth(t *testing.T) {
 		t.Errorf("expected auth.enabled to be: false, got: %v", cfg.AuthEnabled)
 	}
 
-	if cfg.AuthTable != "users" {
-		t.Errorf("expected auth.table to be: users, got: %s", cfg.AuthTable)
+	if cfg.AuthTable != "prest_users" {
+		t.Errorf("expected auth.table to be: prest_users, got: %s", cfg.AuthTable)
 	}
 
 	if cfg.AuthUsername != "username" {
