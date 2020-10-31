@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/levpay/config"
+	"github.com/prest/prest/config"
 	"github.com/prest/prest/middlewares/statements"
 )
 
@@ -94,7 +94,7 @@ func TestMatchURL(t *testing.T) {
 
 	for _, tt := range test {
 		t.Run(tt.Label, func(t *testing.T) {
-			config.Get.JWTWhiteList = tt.JWTWhiteList
+			config.PrestConf.JWTWhiteList = tt.JWTWhiteList
 			match, err := MatchURL(tt.URL)
 			if err != nil {
 				t.Error(err)
