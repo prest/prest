@@ -1,9 +1,11 @@
 package middlewares
 
 import (
-	"github.com/prest/prest/middlewares/statements"
 	"net/http"
 	"testing"
+
+	"github.com/levpay/config"
+	"github.com/prest/prest/middlewares/statements"
 )
 
 func Test_getVars(t *testing.T) {
@@ -57,7 +59,6 @@ func Test_checkCors(t *testing.T) {
 	}
 }
 
-
 func TestMatchURL(t *testing.T) {
 	test := []struct {
 		Label        string
@@ -88,7 +89,7 @@ func TestMatchURL(t *testing.T) {
 			URL:          "/auth",
 			JWTWhiteList: `\/auth \/databases`,
 			match:        true,
-		}
+		},
 	}
 
 	for _, tt := range test {

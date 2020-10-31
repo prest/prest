@@ -105,7 +105,6 @@ func JwtMiddleware(key string, algo string) negroni.Handler {
 		},
 		SigningMethod: jwt.GetSigningMethod(algo),
 	})
-	// return negroni.HandlerFunc(jwtMiddleware.HandlerWithNext)
 
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		match, err := MatchURL(r.URL.String())
