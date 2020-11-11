@@ -1,11 +1,15 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/awslabs/aws-lambda-go-api-proxy/handlerfunc"
 	"github.com/gorilla/mux"
 	nlog "github.com/nuveo/log"
 	"github.com/prest/prest/adapters/postgres"
@@ -83,8 +87,19 @@ func MakeHandler() http.Handler {
 }
 
 func startServer() {
-	http.Handle(config.PrestConf.ContextPath, MakeHandler())
-	l := log.New(os.Stdout, "[prest] ", 0)
+	l := log.New(os.Stdout, "[prest-lambda] ", 0)
+
+	handler := MakeHandler()
+	if config.PrestConf.LambdaMode {
+		l.Println("Entering Lambda Mode")
+		lambdaProxy := handlerfunc.New(handler.ServeHTTP)
+		lambda.Start(func(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+			// If no name is provided in the HTTP request body, throw an error
+			return lambdaProxy.ProxyWithContext(ctx, req)
+		})
+	}
+
+	http.Handle(config.PrestConf.ContextPath, handler)
 
 	if !config.PrestConf.AccessConf.Restrict {
 		nlog.Warningln("You are running pREST in public mode.")
