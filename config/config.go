@@ -175,7 +175,7 @@ func Parse(cfg *Prest) (err error) {
 		// cloud factor support: https://devcenter.heroku.com/changelog-items/438
 		cfg.PGURL = os.Getenv("DATABASE_URL")
 	}
-	if os.Getenv("LAMBDA_MODE") == "true" {
+	if os.Getenv("PREST_LAMBDA_MODE") == "true" {
 		cfg.LambdaMode = true
 	}
 	err = parseDatabaseURL(cfg)

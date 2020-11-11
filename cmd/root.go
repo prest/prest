@@ -87,9 +87,12 @@ func MakeHandler() http.Handler {
 }
 
 func startServer() {
+	l := log.New(os.Stdout, "[prest-lambda] ", 0)
+
 	handler := MakeHandler()
 	if config.PrestConf.LambdaMode {
-		lambdaProxy := handlerfunc.New(handler)
+		l.Println("Entering Lambda Mode")
+		lambdaProxy := handlerfunc.New(handler.ServeHTTP)
 		lambda.Start(func(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 			// If no name is provided in the HTTP request body, throw an error
 			return lambdaProxy.ProxyWithContext(ctx, req)
@@ -97,7 +100,6 @@ func startServer() {
 	}
 
 	http.Handle(config.PrestConf.ContextPath, handler)
-	l := log.New(os.Stdout, "[prest] ", 0)
 
 	if !config.PrestConf.AccessConf.Restrict {
 		nlog.Warningln("You are running pREST in public mode.")
