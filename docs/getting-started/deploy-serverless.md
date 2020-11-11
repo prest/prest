@@ -13,7 +13,7 @@ Here are all the ways you can install pREST, choose one that best fits your need
 ## Index
 
 1. [AWS Lambda](/getting-started/deploy-serverless/#aws-lambda)
-1. [AWS Lambda](/getting-started/deploy-serverless/#aws-lambda)
+1. [LambCI](/getting-started/deploy-serverless/#lambci)
 
 ### AWS Lambda
 
