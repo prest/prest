@@ -15,6 +15,7 @@ import (
 	"sync"
 	"unicode"
 
+	"github.com/casbin/casbin"
 	"github.com/lib/pq"
 
 	"github.com/jmoiron/sqlx"
@@ -29,6 +30,7 @@ import (
 
 //Postgres adapter postgresql
 type Postgres struct {
+	enforcer *casbin.Enforcer
 }
 
 const (
@@ -84,7 +86,9 @@ func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt
 
 // Load postgres
 func Load() {
-	config.PrestConf.Adapter = &Postgres{}
+	config.PrestConf.Adapter = &Postgres{
+		enforcer: e,
+	}
 	db, err := connection.Get()
 	if err != nil {
 		log.Fatal(err)
@@ -92,6 +96,20 @@ func Load() {
 	err = db.Ping()
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func loadPermissions() *casbin.Enforcer {
+	enforcer, err := casbin.NewEnforcer()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	tables := config.PrestConf.AccessConf.Tables
+	for _, t := range tables {
+		for _, p := range t.Permissions {
+			enforcer.AddPolicy("*", t, p)
+		}
 	}
 }
 
@@ -1071,17 +1089,8 @@ func (adapter *Postgres) TablePermissions(table string, op string) bool {
 		return true
 	}
 
-	tables := config.PrestConf.AccessConf.Tables
-	for _, t := range tables {
-		if t.Name == table {
-			for _, p := range t.Permissions {
-				if p == op {
-					return true
-				}
-			}
-		}
-	}
-	return false
+	res, _ := adapter.enforcer.Enforce("*", table, op)
+	return res
 }
 
 func fieldsByPermission(table, op string) (fields []string) {
