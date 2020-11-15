@@ -15,7 +15,8 @@ import (
 	"sync"
 	"unicode"
 
-	"github.com/casbin/casbin"
+	"github.com/casbin/casbin/v2"
+	"github.com/casbin/casbin/v2/model"
 	"github.com/lib/pq"
 
 	"github.com/jmoiron/sqlx"
@@ -86,9 +87,13 @@ func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt
 
 // Load postgres
 func Load() {
-	config.PrestConf.Adapter = &Postgres{
-		enforcer: e,
+	enforcer, err := loadPermissions()
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	config.PrestConf.Adapter = &Postgres{
+		enforcer: enforcer}
 	db, err := connection.Get()
 	if err != nil {
 		log.Fatal(err)
@@ -99,10 +104,15 @@ func Load() {
 	}
 }
 
-func loadPermissions() *casbin.Enforcer {
-	enforcer, err := casbin.NewEnforcer()
+func loadPermissions() (*casbin.Enforcer, error) {
+	m := model.NewModel()
+	m.AddDef("r", "r", "sub, obj, act")
+	m.AddDef("p", "p", "sub, obj, act")
+	m.AddDef("g", "g", "_, _")
+
+	enforcer, err := casbin.NewEnforcer(m)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	tables := config.PrestConf.AccessConf.Tables
@@ -111,6 +121,7 @@ func loadPermissions() *casbin.Enforcer {
 			enforcer.AddPolicy("*", t, p)
 		}
 	}
+	return enforcer, nil
 }
 
 func init() {
@@ -1089,22 +1100,12 @@ func (adapter *Postgres) TablePermissions(table string, op string) bool {
 		return true
 	}
 
-	res, _ := adapter.enforcer.Enforce("*", table, op)
-	return res
-}
-
-func fieldsByPermission(table, op string) (fields []string) {
-	tables := config.PrestConf.AccessConf.Tables
-	for _, t := range tables {
-		if t.Name == table {
-			for _, perm := range t.Permissions {
-				if perm == op {
-					fields = t.Fields
-				}
-			}
-		}
+	res, err := adapter.enforcer.Enforce("*", table, op)
+	if err != nil {
+		log.Println(err)
+		return false
 	}
-	return
+	return res
 }
 
 func containsAsterisk(arr []string) bool {
@@ -1142,7 +1143,16 @@ func (adapter *Postgres) FieldsPermissions(r *http.Request, table string, op str
 		fields = []string{"*"}
 		return
 	}
-	allowedFields := fieldsByPermission(table, op)
+
+	policies := adapter.enforcer.GetFilteredPolicy(
+		1,
+		fmt.Sprintf("%s*", table),
+	)
+	allowedFields := make([]string, len(policies))
+	for i, p := range policies {
+		allowedFields[i] = strings.Split(p[1], ".")[1]
+	}
+
 	if len(allowedFields) == 0 {
 		err = errors.New("there's no configured field for this table")
 		return
