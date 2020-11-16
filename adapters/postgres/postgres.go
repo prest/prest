@@ -118,7 +118,7 @@ func loadPermissions() (*casbin.Enforcer, error) {
 	tables := config.PrestConf.AccessConf.Tables
 	for _, t := range tables {
 		for _, p := range t.Permissions {
-			enforcer.AddPolicy("*", t, p)
+			enforcer.AddPolicy("*", t.Name, p)
 		}
 	}
 	return enforcer, nil
@@ -1100,6 +1100,9 @@ func (adapter *Postgres) TablePermissions(table string, op string) bool {
 		return true
 	}
 
+	if adapter.enforcer == nil {
+		log.Fatal("Nil permission enforcer")
+	}
 	res, err := adapter.enforcer.Enforce("*", table, op)
 	if err != nil {
 		log.Println(err)
@@ -1144,6 +1147,9 @@ func (adapter *Postgres) FieldsPermissions(r *http.Request, table string, op str
 		return
 	}
 
+	if adapter.enforcer == nil {
+		log.Fatal("Nil permission enforcer")
+	}
 	policies := adapter.enforcer.GetFilteredPolicy(
 		1,
 		fmt.Sprintf("%s*", table),

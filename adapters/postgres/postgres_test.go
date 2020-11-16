@@ -860,6 +860,9 @@ func TestOrderByRequest(t *testing.T) {
 }
 
 func TestTablePermissions(t *testing.T) {
+	config.Load()
+	Load()
+
 	var testCases = []struct {
 		description string
 		table       string
@@ -1424,12 +1427,13 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 				Fields:      tt.args.fields,
 			})
 		t.Run(tt.name, func(t *testing.T) {
-			adapter := &Postgres{}
+			config.Load()
+			Load()
 			r, err := http.NewRequest(http.MethodGet, tt.args.url, strings.NewReader(""))
 			if err != nil {
 				t.Fatal(err)
 			}
-			gotFields, err := adapter.FieldsPermissions(r, tt.args.table, tt.args.op)
+			gotFields, err := config.PrestConf.Adapter.FieldsPermissions(r, tt.args.table, tt.args.op)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Postgres.FieldsPermissions() error = %v, wantErr %v", err, tt.wantErr)
 				return
