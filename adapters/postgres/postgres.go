@@ -17,6 +17,7 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
+	xormadapter "github.com/casbin/xorm-adapter/v2"
 	"github.com/lib/pq"
 
 	"github.com/jmoiron/sqlx"
@@ -110,7 +111,21 @@ func loadPermissions() (*casbin.Enforcer, error) {
 	m.AddDef("p", "p", "sub, obj, act")
 	m.AddDef("g", "g", "_, _")
 
-	enforcer, err := casbin.NewEnforcer(m)
+	a, err := xormadapter.NewAdapter(
+		"postgres",
+		fmt.Sprintf(
+			"user=%s password=%s host=%s port=%d sslmode=disable",
+			config.PrestConf.PGUser,
+			config.PrestConf.PGPass,
+			config.PrestConf.PGHost,
+			config.PrestConf.PGPort,
+		),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	enforcer, err := casbin.NewEnforcer(m, a)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +133,14 @@ func loadPermissions() (*casbin.Enforcer, error) {
 	tables := config.PrestConf.AccessConf.Tables
 	for _, t := range tables {
 		for _, p := range t.Permissions {
-			enforcer.AddPolicy("*", t.Name, p)
+			for _, f := range t.Fields {
+				if f == "*" {
+					f = t.Name
+				} else {
+					f = fmt.Sprintf("%s.%s", t.Name, f)
+				}
+				enforcer.AddPolicy("*", f, p)
+			}
 		}
 	}
 	return enforcer, nil
@@ -1150,13 +1172,15 @@ func (adapter *Postgres) FieldsPermissions(r *http.Request, table string, op str
 	if adapter.enforcer == nil {
 		log.Fatal("Nil permission enforcer")
 	}
-	policies := adapter.enforcer.GetFilteredPolicy(
-		1,
-		fmt.Sprintf("%s*", table),
-	)
+	policies := adapter.enforcer.GetPolicy()
 	allowedFields := make([]string, len(policies))
 	for i, p := range policies {
-		allowedFields[i] = strings.Split(p[1], ".")[1]
+		split := strings.Split(p[1], ".")
+		if p[1] == table {
+			allowedFields[i] = "*"
+		} else if len(split) > 1 {
+			allowedFields[i] = split[1]
+		}
 	}
 
 	if len(allowedFields) == 0 {
