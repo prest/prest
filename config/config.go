@@ -27,6 +27,16 @@ type AccessConf struct {
 	Tables   []TablesConf
 }
 
+// DBConfig represent the configuration from database
+type DBConfig struct {
+	Database string
+	Pass     string
+	Host     string
+	Port     int
+	User     string
+	Schema   string
+}
+
 // Prest basic config
 type Prest struct {
 	AuthEnabled      bool
@@ -43,6 +53,8 @@ type Prest struct {
 	PGUser           string
 	PGPass           string
 	PGDatabase       string
+	Databases        map[string]DBConfig
+	PGSchema         string
 	PGURL            string
 	ContextPath      string
 	SSLMode          string
@@ -98,8 +110,8 @@ func viperCfg() {
 	viper.SetDefault("auth.type", "body")
 	viper.SetDefault("http.host", "0.0.0.0")
 	viper.SetDefault("http.port", 3000)
-	viper.SetDefault("pg.host", "127.0.0.1")
-	viper.SetDefault("pg.port", 5432)
+	viper.SetDefault("databases.pg.host", "127.0.0.1")
+	viper.SetDefault("databases.pg.port", 5432)
 	viper.SetDefault("ssl.mode", "disable")
 	viper.SetDefault("pg.maxidleconn", 10)
 	viper.SetDefault("pg.maxopenconn", 10)
@@ -157,15 +169,32 @@ func Parse(cfg *Prest) (err error) {
 	cfg.HTTPHost = viper.GetString("http.host")
 	cfg.HTTPPort = viper.GetInt("http.port")
 	cfg.PGURL = viper.GetString("pg.url")
-	cfg.PGHost = viper.GetString("pg.host")
-	cfg.PGPort = viper.GetInt("pg.port")
-	cfg.PGUser = viper.GetString("pg.user")
-	cfg.PGPass = viper.GetString("pg.pass")
-	cfg.PGDatabase = viper.GetString("pg.database")
+	cfg.PGHost = viper.GetString("databases.pg.host")
+	cfg.PGPort = viper.GetInt("databases.pg.port")
+	cfg.PGUser = viper.GetString("databases.pg.user")
+	cfg.PGPass = viper.GetString("databases.pg.pass")
+	cfg.PGDatabase = viper.GetString("databases.pg.database")
 	cfg.SSLMode = viper.GetString("ssl.mode")
 	cfg.SSLCert = viper.GetString("ssl.cert")
 	cfg.SSLKey = viper.GetString("ssl.key")
 	cfg.SSLRootCert = viper.GetString("ssl.rootcert")
+	err = viper.UnmarshalKey("databases", &cfg.Databases)
+	if err != nil {
+		return
+	}
+
+	if len(cfg.Databases) > 1 {
+		for k, i := range cfg.Databases {
+			log.Printf("Teste: %s %v - %T\n\r", k, i, i)
+			cfg.PGHost = i.Host
+			cfg.PGPort = i.Port
+			cfg.PGUser = i.User
+			cfg.PGPass = i.Pass
+			cfg.PGDatabase = i.Database
+			cfg.PGSchema = i.Schema
+		}
+	}
+	log.Printf("Teste: %+v", cfg.Databases)
 	err = portFromEnv(cfg)
 	if err != nil {
 		return
