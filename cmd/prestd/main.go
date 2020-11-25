@@ -11,16 +11,20 @@ import (
 func main() {
 
 	// TODO: POC load lib (.so)
-	p, err := plugin.Open("./exts/lib/hello.so")
+	p, err := plugin.Open("./exts/lib/example.so")
 	if err != nil {
 		panic(err)
 	}
 
+	// string Hello is function name
 	f, err := p.Lookup("Hello")
 	if err != nil {
 		panic(err)
 	}
+
+	// Exec (call) function name
 	ret := f.(func() string)()
+	// Print function return
 	fmt.Println("ret plugin:", ret)
 
 	config.Load()
