@@ -1,5 +1,14 @@
 [jwt]
-default = false
+default = true
+
+[auth]
+enabled = true
+type = "body"
+encrypt = "MD5"
+table = "prest_users"
+username = "username"
+password = "password"
+metadata = ["first_name", "last_name", "last_login"]
 
 [pg]
 host = "127.0.0.1"
