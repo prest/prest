@@ -103,9 +103,12 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 	schema := vars["schema"]
 	table := vars["table"]
+	log.Println("database:", database)
 
 	config.PrestConf.Adapter.SetDatabase(database)
+	database = config.PrestConf.PGDatabase
 
+	log.Println("database CHANGE:", database)
 	// get selected columns, "*" if empty "_columns"
 	cols, err := config.PrestConf.Adapter.FieldsPermissions(r, table, "read")
 	if err != nil {
@@ -125,7 +128,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	query := config.PrestConf.Adapter.SelectSQL(selectStr, database, schema, table)
-
+	log.Println(query)
 	countQuery, err := config.PrestConf.Adapter.CountByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform CountByRequest: %v", err)
