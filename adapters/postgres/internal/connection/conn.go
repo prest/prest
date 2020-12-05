@@ -2,6 +2,7 @@ package connection
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/jmoiron/sqlx"
@@ -27,9 +28,18 @@ type Pool struct {
 func GetURI(DBName string) string {
 	var dbURI string
 
-	if DBName == "" {
+	if len(DBName) == 0 {
 		DBName = config.PrestConf.PGDatabase
 	}
+	log.Println("test", DBName)
+	con, ok := config.PrestConf.Databases[DBName]
+	if ok {
+		DBName = con.Database
+		config.PrestConf.PGUser = con.User
+		config.PrestConf.PGHost = con.Host
+		config.PrestConf.PGPort = con.Port
+	}
+	log.Println(DBName)
 	dbURI = fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=%v connect_timeout=%d",
 		config.PrestConf.PGUser,
 		DBName,
@@ -124,7 +134,12 @@ func MustGet() *sqlx.DB {
 
 // SetDatabase set current database in use
 func SetDatabase(name string) {
-	currDatabase = name
+	db, ok := config.PrestConf.Databases[name]
+	if !ok {
+		currDatabase = name
+		return
+	}
+	currDatabase = db.Database
 }
 
 // GetDatabase get current database in use
