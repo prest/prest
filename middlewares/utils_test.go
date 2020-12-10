@@ -63,31 +63,37 @@ func TestMatchURL(t *testing.T) {
 	test := []struct {
 		Label        string
 		URL          string
-		JWTWhiteList string
+		JWTWhiteList []string
 		match        bool
 	}{
 		{
 			Label:        "auth",
 			URL:          "/auth",
-			JWTWhiteList: `\/auth`,
+			JWTWhiteList: []string{`\/auth`},
 			match:        true,
 		},
 		{
 			Label:        "auth regex",
 			URL:          "/auth/any",
-			JWTWhiteList: `\/auth\/.*`,
+			JWTWhiteList: []string{`\/auth\/.*`},
 			match:        true,
 		},
 		{
 			Label:        "auth2 lock",
 			URL:          "/auth2",
-			JWTWhiteList: `\/auth`,
+			JWTWhiteList: []string{`\/auth`},
 			match:        true,
 		},
 		{
 			Label:        "multi allow",
 			URL:          "/auth",
-			JWTWhiteList: `\/auth \/databases`,
+			JWTWhiteList: []string{`\/auth`, `\/databases`},
+			match:        true,
+		},
+		{
+			Label:        "multi allow, without endpoint escaping",
+			URL:          "/auth",
+			JWTWhiteList: []string{"/auth", "/databases"},
 			match:        true,
 		},
 	}
