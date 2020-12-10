@@ -32,7 +32,7 @@ func AuthMiddleware() negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		match, err := MatchURL(r.URL.String())
 		if err != nil {
-			http.Error(w, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
+			http.Error(rw, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
 			return
 		}
 		if config.PrestConf.AuthEnabled && !match {
