@@ -117,7 +117,7 @@ func checkCors(r *http.Request, origin []string) (allowed bool) {
 
 // MatchURL matches the given url with a whitelist from config.core
 func MatchURL(url string) (match bool, err error) {
-	for _, exp := range strings.Fields(config.PrestConf.JWTWhiteList) {
+	for _, exp := range config.PrestConf.JWTWhiteList {
 		match, err = regexp.Match(exp, []byte(url))
 		if match || err != nil {
 			return
