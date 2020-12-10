@@ -30,7 +30,12 @@ func HandlerSet() negroni.Handler {
 // AuthMiddleware handle request token validation
 func AuthMiddleware() negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		if config.PrestConf.AuthEnabled {
+		match, err := MatchURL(r.URL.String())
+		if err != nil {
+			http.Error(rw, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
+			return
+		}
+		if config.PrestConf.AuthEnabled && !match {
 			// extract authorization token
 			ts := strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1)
 			if ts == "" {
