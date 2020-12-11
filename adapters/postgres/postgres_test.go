@@ -872,6 +872,7 @@ func TestTablePermissions(t *testing.T) {
 		{"Try to write without permission", "test_readonly_access", "write", false},
 		{"Delete", "test_write_and_delete_access", "delete", true},
 		{"Try to delete without permission", "test_readonly_access", "delete", false},
+		{"Try config does not write", "test_permission_does_not_exist", "read", true},
 	}
 
 	for _, tc := range testCases {
