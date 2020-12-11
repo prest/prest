@@ -35,7 +35,7 @@ func AuthMiddleware() negroni.Handler {
 			http.Error(rw, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
 			return
 		}
-		if config.PrestConf.AuthEnabled && match {
+		if config.PrestConf.AuthEnabled && !match {
 			// extract authorization token
 			ts := strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1)
 			if ts == "" {
