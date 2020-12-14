@@ -1072,22 +1072,22 @@ func (adapter *Postgres) TablePermissions(table string, op string) (access bool)
 		access = true
 	}
 
+	// ignore table loop
+	for _, ignoreT := range config.PrestConf.AccessConf.IgnoreTable {
+		if ignoreT == table {
+			access = true
+		}
+	}
+
 	tables := config.PrestConf.AccessConf.Tables
-	// validate permission if config does not write
-	tableIn := false
 	for _, t := range tables {
-		tableIn = true
 		if t.Name == table {
-			tableIn = false
 			for _, p := range t.Permissions {
 				if p == op {
 					access = true
 				}
 			}
 		}
-	}
-	if tableIn && !access {
-		access = true
 	}
 	return
 }

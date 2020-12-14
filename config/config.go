@@ -23,8 +23,9 @@ type TablesConf struct {
 
 // AccessConf informations
 type AccessConf struct {
-	Restrict bool
-	Tables   []TablesConf
+	Restrict    bool
+	IgnoreTable []string
+	Tables      []TablesConf
 }
 
 // Prest basic config
@@ -186,6 +187,7 @@ func Parse(cfg *Prest) (err error) {
 	cfg.JWTWhiteList = viper.GetStringSlice("jwt.whitelist")
 	cfg.MigrationsPath = viper.GetString("migrations")
 	cfg.AccessConf.Restrict = viper.GetBool("access.restrict")
+	cfg.AccessConf.IgnoreTable = viper.GetStringSlice("access.ignore_table")
 	cfg.QueriesPath = viper.GetString("queries.location")
 	cfg.CORSAllowOrigin = viper.GetStringSlice("cors.alloworigin")
 	cfg.CORSAllowHeaders = viper.GetStringSlice("cors.allowheaders")
