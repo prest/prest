@@ -12,6 +12,7 @@ database = "prest"
 
 [access]
 restrict = true  # can access only the tables listed below
+ignore_table = ["test_permission_does_not_exist"]
 
     [[access.tables]]
     name = "test"
