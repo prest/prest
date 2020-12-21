@@ -165,6 +165,14 @@ github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
+github.com/prest/prest/adapters v0.0.0-20200729234819-07cc1b6b492f h1:C8Nn2Q2EfLAiRm57YXfZvb7WFo784ZebmGsbABsY8pg=
+github.com/prest/prest/adapters v0.0.0-20200729234819-07cc1b6b492f/go.mod h1:RHI0ViCEsguMFajw2ljYKIdWbrGvkFBCTPsvCEQPg/4=
+github.com/prest/prest/config v0.0.0-20200729234819-07cc1b6b492f h1:e3zzUvc/t3b8Q+eYhIUd1jL6ndGECH8CYwLhDmpUq7g=
+github.com/prest/prest/config v0.0.0-20200729234819-07cc1b6b492f/go.mod h1:gQ6el6Zzd5rD6rC+2xxIZIJDRJch2uRRcWy3apkXVF0=
+github.com/prest/prest/controllers v0.0.0-20201101142512-f646e763875a h1:g+Ip2ZDnyYrvcK7IgZvL9BPTucKhwoLdLDX3Q5dhfmg=
+github.com/prest/prest/controllers v0.0.0-20201101142512-f646e763875a/go.mod h1:vU3JoXHAJ6GMfknvjxQAIGsJzDW+qTQ28rwCJIuok9s=
+github.com/prest/prest/middlewares v0.0.0-20200729234819-07cc1b6b492f h1:6CA1NhdOvxMhIlS/k6uYQECFr4BoaNZOzFZmTeZLTnw=
+github.com/prest/prest/middlewares v0.0.0-20200729234819-07cc1b6b492f/go.mod h1:urzqrisuia5/h4jInrHUpPXbE1DQI+SnSsi2nRknIf8=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
 github.com/prometheus/client_golang v0.9.3/go.mod h1:/TN21ttK/J9q6uSwhBd54HahCDft0ttaMvbicHlPoso=
 github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910/go.mod h1:MbSGuTsp3dbXC40dX6PRTWyKYBIrTGTE9sqQNg2J8bo=

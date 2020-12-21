@@ -57,6 +57,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 
 	config.PrestConf.Adapter.SetDatabase(database)
+	database = config.PrestConf.PGDatabase
 
 	requestWhere, values, err := config.PrestConf.Adapter.WhereByRequest(r, 3)
 	if err != nil {
@@ -103,12 +104,10 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 	schema := vars["schema"]
 	table := vars["table"]
-	log.Println("database:", database)
 
 	config.PrestConf.Adapter.SetDatabase(database)
 	database = config.PrestConf.PGDatabase
 
-	log.Println("database CHANGE:", database)
 	// get selected columns, "*" if empty "_columns"
 	cols, err := config.PrestConf.Adapter.FieldsPermissions(r, table, "read")
 	if err != nil {
@@ -224,7 +223,7 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sql := config.PrestConf.Adapter.InsertSQL(database, schema, table, names, placeholders)
+	sql := config.PrestConf.Adapter.InsertSQL(config.PrestConf.PGDatabase, schema, table, names, placeholders)
 
 	sc := config.PrestConf.Adapter.Insert(sql, values...)
 	if err = sc.Err(); err != nil {
@@ -259,10 +258,10 @@ func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 	var sc adapters.Scanner
 	method := r.Header.Get("Prest-Batch-Method")
 	if strings.ToLower(method) != "copy" {
-		sql := config.PrestConf.Adapter.InsertSQL(database, schema, table, names, placeholders)
+		sql := config.PrestConf.Adapter.InsertSQL(config.PrestConf.PGDatabase, schema, table, names, placeholders)
 		sc = config.PrestConf.Adapter.BatchInsertValues(sql, values...)
 	} else {
-		sc = config.PrestConf.Adapter.BatchInsertCopy(database, schema, table, strings.Split(names, ","), values...)
+		sc = config.PrestConf.Adapter.BatchInsertCopy(config.PrestConf.PGDatabase, schema, table, strings.Split(names, ","), values...)
 	}
 	if err = sc.Err(); err != nil {
 		errorMessage := sc.Err().Error()
@@ -294,7 +293,7 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sql := config.PrestConf.Adapter.DeleteSQL(database, schema, table)
+	sql := config.PrestConf.Adapter.DeleteSQL(config.PrestConf.PGDatabase, schema, table)
 	if where != "" {
 		sql = fmt.Sprint(sql, " WHERE ", where)
 	}
@@ -342,7 +341,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	sql := config.PrestConf.Adapter.UpdateSQL(database, schema, table, setSyntax)
+	sql := config.PrestConf.Adapter.UpdateSQL(config.PrestConf.PGDatabase, schema, table, setSyntax)
 
 	pid := len(values) + 1 // placeholder id
 
@@ -397,6 +396,7 @@ func ShowTable(w http.ResponseWriter, r *http.Request) {
 	table := vars["table"]
 
 	config.PrestConf.Adapter.SetDatabase(database)
+	database = config.PrestConf.PGDatabase
 	sc := config.PrestConf.Adapter.ShowTable(schema, table)
 	if sc.Err() != nil {
 		log.Println(fmt.Sprintf(" There error to excute the query. schema %s error %s", schema, sc.Err()))

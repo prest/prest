@@ -2,7 +2,6 @@ package connection
 
 import (
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/jmoiron/sqlx"
@@ -31,7 +30,7 @@ func GetURI(DBName string) string {
 	if len(DBName) == 0 {
 		DBName = config.PrestConf.PGDatabase
 	}
-	log.Println("test", DBName)
+
 	con, ok := config.PrestConf.Databases[DBName]
 	if ok {
 		DBName = con.Database
@@ -39,7 +38,6 @@ func GetURI(DBName string) string {
 		config.PrestConf.PGHost = con.Host
 		config.PrestConf.PGPort = con.Port
 	}
-	log.Println(DBName)
 	dbURI = fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=%v connect_timeout=%d",
 		config.PrestConf.PGUser,
 		DBName,
@@ -136,7 +134,7 @@ func MustGet() *sqlx.DB {
 func SetDatabase(name string) {
 	db, ok := config.PrestConf.Databases[name]
 	if !ok {
-		currDatabase = name
+		currDatabase = config.PrestConf.PGDatabase
 		return
 	}
 	currDatabase = db.Database

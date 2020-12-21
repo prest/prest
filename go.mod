@@ -16,3 +16,8 @@ require (
 	github.com/spf13/viper v1.7.1
 	github.com/urfave/negroni v1.0.0
 )
+
+replace (
+	github.com/prest/prest/adapters => ../adapters
+	github.com/prest/prest/controllers => ../controllers
+)

@@ -111,14 +111,12 @@ func viperCfg() {
 	viper.SetDefault("auth.type", "body")
 	viper.SetDefault("http.host", "0.0.0.0")
 	viper.SetDefault("http.port", 3000)
-	viper.SetDefault("databases.pg.host", "127.0.0.1")
-	viper.SetDefault("databases.pg.port", 5432)
 	viper.SetDefault("ssl.mode", "disable")
 	viper.SetDefault("pg.maxidleconn", 10)
 	viper.SetDefault("pg.maxopenconn", 10)
 	viper.SetDefault("pg.conntimeout", 10)
 	viper.SetDefault("debug", false)
-	viper.SetDefault("jwt.default", true)
+	viper.SetDefault("jwt.default", false)
 	viper.SetDefault("jwt.algo", "HS256")
 	viper.SetDefault("jwt.whitelist", []string{"/auth"})
 	viper.SetDefault("cors.allowheaders", []string{"*"})
@@ -170,32 +168,27 @@ func Parse(cfg *Prest) (err error) {
 	cfg.HTTPHost = viper.GetString("http.host")
 	cfg.HTTPPort = viper.GetInt("http.port")
 	cfg.PGURL = viper.GetString("pg.url")
-	cfg.PGHost = viper.GetString("databases.pg.host")
-	cfg.PGPort = viper.GetInt("databases.pg.port")
-	cfg.PGUser = viper.GetString("databases.pg.user")
-	cfg.PGPass = viper.GetString("databases.pg.pass")
-	cfg.PGDatabase = viper.GetString("databases.pg.database")
 	cfg.SSLMode = viper.GetString("ssl.mode")
 	cfg.SSLCert = viper.GetString("ssl.cert")
 	cfg.SSLKey = viper.GetString("ssl.key")
 	cfg.SSLRootCert = viper.GetString("ssl.rootcert")
+
 	err = viper.UnmarshalKey("databases", &cfg.Databases)
 	if err != nil {
+		log.Println("error unmarchal")
 		return
 	}
 
-	if len(cfg.Databases) > 1 {
-		for k, i := range cfg.Databases {
-			log.Printf("Teste: %s %v - %T\n\r", k, i, i)
-			cfg.PGHost = i.Host
-			cfg.PGPort = i.Port
-			cfg.PGUser = i.User
-			cfg.PGPass = i.Pass
-			cfg.PGDatabase = i.Database
-			cfg.PGSchema = i.Schema
+	if len(cfg.Databases) >= 1 {
+		for k, _ := range cfg.Databases {
+			cfg.PGHost = viper.GetString(fmt.Sprintf("databases.%s.host", k))
+			cfg.PGPort = viper.GetInt(fmt.Sprintf("databases.%s.port", k))
+			cfg.PGUser = viper.GetString(fmt.Sprintf("databases.%s.user", k))
+			cfg.PGPass = viper.GetString(fmt.Sprintf("databases.%s.pass", k))
+			cfg.PGDatabase = viper.GetString(fmt.Sprintf("databases.%s.database", k))
+			cfg.PGSchema = viper.GetString(fmt.Sprintf("databases.%s.schema", k))
 		}
 	}
-	log.Printf("Teste: %+v", cfg.Databases)
 	err = portFromEnv(cfg)
 	if err != nil {
 		return
