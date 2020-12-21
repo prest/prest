@@ -20,6 +20,7 @@ Via environment variables or via toml file.
 - PREST\_PG_URL or **DATABASE\_URL** (cloud factor, _when declaring this variable all the previous connection fields are overwritten_)
 - PREST\_JWT_KEY
 - PREST\_JWT_ALGO
+- PREST\_JWT_WHITELIST (*default /auth*)
 - PREST\_AUTH_ENABLED (*default false*)
 - PREST\_AUTH_ENCRYPT (*default MD5*)
 - PREST\_AUTH_TYPE (*default body*)
@@ -96,6 +97,15 @@ The supported signing algorithms are:
 * The [RSA signing method](https://en.wikipedia.org/wiki/RSA_(cryptosystem)): `RS256`,`RS384`,`RS512`
 * The [ECDSA signing method](https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm): `ES256`,`ES384`,`ES512`
 
+#### White list
+
+By default the endpoints `/auth` do not require JWT, the **whitelist** option serves to configure which endpoints will not ask for jwt token
+
+```toml
+[jwt]
+default = true
+whitelist = ["\/auth", "\/ping", "\/ping\/.*"]
+```
 
 ### Auth
 
@@ -111,14 +121,14 @@ username = "username"
 password = "password"
 ```
 
-| Name | Description |
-| ---- | ----------- |
-| enabled | **Boolean** field that activates or deactivates token generation endpoint support |
-| type | Type that will receive the login, support for **body and http basic authentication** |
-| encrypt | Type of encryption used in password field, support for **MD5 and SHA1** |
-| table | Table name we will consult (query) |
+| Name     | Description                                                                                                                                                           |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| enabled  | **Boolean** field that activates or deactivates token generation endpoint support                                                                                     |
+| type     | Type that will receive the login, support for **body and http basic authentication**                                                                                  |
+| encrypt  | Type of encryption used in password field, support for **MD5 and SHA1**                                                                                               |
+| table    | Table name we will consult (query)                                                                                                                                    |
 | username | User **field** that will be consulted - if your software uses email just abstract name username (at pREST code level it was necessary to define an internal standard) |
-| password | Password **field** that will be consulted |
+| password | Password **field** that will be consulted                                                                                                                             |
 
 
 > to validate all endpoints with generated jwt token must be activated jwt option

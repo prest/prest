@@ -23,8 +23,9 @@ type TablesConf struct {
 
 // AccessConf informations
 type AccessConf struct {
-	Restrict bool
-	Tables   []TablesConf
+	Restrict    bool
+	IgnoreTable []string
+	Tables      []TablesConf
 }
 
 // DBConfig represent the configuration from database
@@ -66,7 +67,7 @@ type Prest struct {
 	PGConnTimeout    int
 	JWTKey           string
 	JWTAlgo          string
-	JWTWhiteList     string
+	JWTWhiteList     []string
 	MigrationsPath   string
 	QueriesPath      string
 	AccessConf       AccessConf
@@ -119,7 +120,7 @@ func viperCfg() {
 	viper.SetDefault("debug", false)
 	viper.SetDefault("jwt.default", true)
 	viper.SetDefault("jwt.algo", "HS256")
-	viper.SetDefault("jwt.whitelist", "/auth")
+	viper.SetDefault("jwt.whitelist", []string{"/auth"})
 	viper.SetDefault("cors.allowheaders", []string{"*"})
 	viper.SetDefault("cache.enable", true)
 	viper.SetDefault("context", "/")
@@ -212,9 +213,10 @@ func Parse(cfg *Prest) (err error) {
 	cfg.PGConnTimeout = viper.GetInt("pg.conntimeout")
 	cfg.JWTKey = viper.GetString("jwt.key")
 	cfg.JWTAlgo = viper.GetString("jwt.algo")
-	cfg.JWTWhiteList = viper.GetString("jwt.whitelist")
+	cfg.JWTWhiteList = viper.GetStringSlice("jwt.whitelist")
 	cfg.MigrationsPath = viper.GetString("migrations")
 	cfg.AccessConf.Restrict = viper.GetBool("access.restrict")
+	cfg.AccessConf.IgnoreTable = viper.GetStringSlice("access.ignore_table")
 	cfg.QueriesPath = viper.GetString("queries.location")
 	cfg.CORSAllowOrigin = viper.GetStringSlice("cors.alloworigin")
 	cfg.CORSAllowHeaders = viper.GetStringSlice("cors.allowheaders")

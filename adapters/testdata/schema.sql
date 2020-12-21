@@ -18,6 +18,7 @@ CREATE TABLE testarray(id serial, data character varying(250)[]);
 CREATE TABLE test_empty_table(id serial, data character varying(250)[]);
 CREATE TABLE test_group_by_table(id serial, name text, age integer, salary int);
 CREATE TABLE test_multiple_fields(created_at timestamp);
+CREATE TABLE test_permission_does_not_exist(created_at timestamp);
 
 -- Inserts
 INSERT INTO test (name) VALUES ('prest tester');
@@ -41,6 +42,8 @@ INSERT INTO test_group_by_table(name, age, salary) VALUES ('gopher', 20, 100);
 INSERT INTO test_group_by_table(name, age, salary) VALUES ('guitarra humana', 19, 3998);
 
 INSERT INTO test_multiple_fields(created_at) VALUES ('1997-12-17 07:37:16-08');
+
+INSERT INTO test_permission_does_not_exist(created_at) VALUES ('2020-12-11 14:42:16-08');
 
 -- Views
 CREATE TABLE table_to_view(id serial, name text, celphone text);

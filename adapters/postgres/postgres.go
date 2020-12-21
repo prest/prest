@@ -1065,10 +1065,18 @@ func GetQueryOperator(op string) (string, error) {
 }
 
 // TablePermissions get tables permissions based in prest configuration
-func (adapter *Postgres) TablePermissions(table string, op string) bool {
+func (adapter *Postgres) TablePermissions(table string, op string) (access bool) {
+	access = false
 	restrict := config.PrestConf.AccessConf.Restrict
 	if !restrict {
-		return true
+		access = true
+	}
+
+	// ignore table loop
+	for _, ignoreT := range config.PrestConf.AccessConf.IgnoreTable {
+		if ignoreT == table {
+			access = true
+		}
 	}
 
 	tables := config.PrestConf.AccessConf.Tables
@@ -1076,12 +1084,12 @@ func (adapter *Postgres) TablePermissions(table string, op string) bool {
 		if t.Name == table {
 			for _, p := range t.Permissions {
 				if p == op {
-					return true
+					access = true
 				}
 			}
 		}
 	}
-	return false
+	return
 }
 
 func fieldsByPermission(table, op string) (fields []string) {
@@ -1094,6 +1102,9 @@ func fieldsByPermission(table, op string) (fields []string) {
 				}
 			}
 		}
+	}
+	if len(fields) == 0 {
+		fields = []string{"*"}
 	}
 	return
 }
@@ -1135,8 +1146,7 @@ func (adapter *Postgres) FieldsPermissions(r *http.Request, table string, op str
 	}
 	allowedFields := fieldsByPermission(table, op)
 	if len(allowedFields) == 0 {
-		err = errors.New("there's no configured field for this table")
-		return
+		allowedFields = []string{"*"}
 	}
 	if containsAsterisk(allowedFields) {
 		fields = []string{"*"}
@@ -1404,8 +1414,8 @@ func (adapter *Postgres) ShowTable(schema, table string) adapters.Scanner {
 			  	is_nullable,
 			  	is_generated,
 			  	is_updatable,
-			  	column_default as default_value 
-			 FROM information_schema.columns 
+			  	column_default as default_value
+			 FROM information_schema.columns
 			 WHERE table_name=$1 AND table_schema=$2
 			 ORDER BY table_schema, table_name, ordinal_position`
 	return adapter.Query(query, table, schema)

@@ -16,6 +16,13 @@ func TestLoad(t *testing.T) {
 	}
 
 	Load()
+	for _, ignoretable := range PrestConf.AccessConf.IgnoreTable {
+		if ignoretable != "test_permission_does_not_exist" {
+			t.Error("expected ['test_permission_does_not_exist'], but got another result")
+		}
+	}
+
+	Load()
 	if !PrestConf.AccessConf.Restrict {
 		t.Error("expected true, but got false")
 	}
