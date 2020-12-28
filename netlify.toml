@@ -1,6 +1,6 @@
 [build]
 publish = "docbuild/public"
-command = "sh scripts/documation-build.sh"
+command = "sh scripts/documentation-build.sh"
 
 [build.environment]
 HUGO_VERSION = "0.74.3"
