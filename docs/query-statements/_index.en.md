@@ -50,8 +50,16 @@ Query Operators:
 ### Filter (WHERE) with JSONb field
 
 ```
-http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD->>JSONFIELD:jsonb=VALUE (filter)
+http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD->>JSONFIELD:jsonb=VALUE
 ```
+
+### Filter (WHERE) with Full Text Search (tsquery)
+
+```
+http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD:tsquery=VALUE
+```
+
+> **Set language:** `FIELD$LANGUAGE:tsquery=VALUE`
 
 ### Select - GET
 
