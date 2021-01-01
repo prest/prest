@@ -1,5 +1,5 @@
 ---
-xtitle: "Query Statements"
+title: "Query Statements"
 date: 2017-08-30T19:06:04-03:00
 weight: 12
 menu: main
