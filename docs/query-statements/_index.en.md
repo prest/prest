@@ -1,31 +1,32 @@
 ---
-title: "Query Statements"
+xtitle: "Query Statements"
 date: 2017-08-30T19:06:04-03:00
 weight: 12
 menu: main
 ---
 
-### Auth /auth - POST
+## Auth /auth - POST
 
 pREST has support in jwt token generation based on two fields (example user and password), being possible to use an existing table from your database to login configuring some parameters in the configuration file (or environment variable), _by default this feature is_ **disabled**.
 
-#### Basic Authentication
+### Basic Authentication
 ```sh
 curl -i -X POST http://127.0.0.1:8000/auth -H "Content-Type: application/json" -d '{"username": "<username>", "password": "<password>"}'
 ```
 
-#### Basic Authentication
+### Basic Authentication
 ```sh
 curl -i -X POST http://127.0.0.1:8000/auth --user "<username>:<password>"
 ```
 
-### Filter (WHERE)
+## Filter (WHERE)
+Applying filter to the remaining queries, we use the parameters of the http **GET** method (_query string_), being converted to **WHERE** from _syntax SQL_.
 
 ```
 GET /DATABASE/SCHEMA/TABLE?FIELD=$eq.VALUE
 ```
 
-Query Operators:
+**Query Operators:**
 
 | Name      | Description                                                         |
 | --------- | ------------------------------------------------------------------- |
@@ -47,115 +48,63 @@ Query Operators:
 | $ilike    | Matches *case-insensitive* always cover the entire string.          |
 
 
-### Filter (WHERE) with JSONb field
+### With JSONb field
 
 ```
-http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD->>JSONFIELD:jsonb=VALUE
+?FIELD->>JSONFIELD:jsonb=VALUE
 ```
 
-### Filter (WHERE) with Full Text Search (tsquery)
+### With Full Text Search (tsquery)
 
 ```
-http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD:tsquery=VALUE
+?FIELD:tsquery=VALUE
 ```
 
 > **Set language:** `FIELD$LANGUAGE:tsquery=VALUE`
 
-### Select - GET
+### Filters parameters (query string) - GET
+
+| Query String | Description |
+| ------------ | ----------- |
+| `?_select={field name 1},{fiel name 2}` | Limit fields list on result - sql ansii standard |
+| `?_count={field name}` | Count per field - `*` representation all fields |
+| `?_render=xml` | Set API render syntax - default is `json` |
+| `?page={set page number}` | Navigation on return pages with large volume of data |
+| `?page_size={number to return by pages}` | 10 is default number |
+| `?distinct=true` | `DISTINCT` clause with SELECT |
+| `?_order={FIELD}` | `ORDER BY` in sql query. For `DESC` order, use the prefix `-`. For *multiple* orders, the fields are separated by comma `fieldname01,-fieldname02,fieldname03` |
+| `?_groupby={FIELD}` | `GROUP BY` in sql query, The grouper is more complicated, a topic has been created to describe how to use |
+| `?{FIELD NAME}={VALUE}` | Filter by field, you can set as many query parameters as needed | 
+
+### Group/Select functions support:
+
+| name     | Use in request |
+| -------- | -------------- |
+| SUM      | sum:field      |
+| AVG      | avg:field      |
+| MAX      | max:field      |
+| MIN      | min:field      |
+| MEDIAN   | median:field   |
+| STDDEV   | stddev:field   |
+| VARIANCE | variance:field |
+
+#### Filter with function
 
 ```
-http://127.0.0.1:8000/databases (show all databases)
-http://127.0.0.1:8000/databases?_count=* (count all databases)
-http://127.0.0.1:8000/databases?_renderer=xml (JSON by default)
-http://127.0.0.1:8000/schemas (show all schemas)
-http://127.0.0.1:8000/schemas?_count=* (count all schemas)
-http://127.0.0.1:8000/schemas?_renderer=xml (JSON by default)
-http://127.0.0.1:8000/tables (show all tables)
-http://127.0.0.1:8000/tables?_renderer=xml (JSON by default)
-http://127.0.0.1:8000/show/DATABASE/SCHEMA/TABLE (lists table structure - all fields contained in the table)
-http://127.0.0.1:8000/DATABASE/SCHEMA (show all tables, find by schema)
-http://127.0.0.1:8000/DATABASE/SCHEMA?_renderer=xml (JSON by default)
-http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE (show all rows, find by database and table)
-http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_select=column (select statement by columns)
-http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_select=column[array id] (select statement by array colum)
-
-http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_select=* (select all from TABLE)
-http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_count=* (use count function)
-http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_count=column (use count function)
-http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_page=2&_page_size=10 (pagination, page_size 10 by default)
-http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD=VALUE (filter)
-http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?_renderer=xml (JSON by default)
-
-
-Select operations over a VIEW
-http://127.0.0.1:8000/DATABASE/SCHEMA/VIEW?_select=column (select statement by columns in VIEW)
-http://127.0.0.1:8000/DATABASE/SCHEMA/VIEW?_select=* (select all from VIEW)
-http://127.0.0.1:8000/DATABASE/SCHEMA/VIEW?_count=* (use count function)
-http://127.0.0.1:8000/DATABASE/SCHEMA/VIEW?_count=column (use count function)
-http://127.0.0.1:8000/DATABASE/SCHEMA/VIEW?_page=2&_page_size=10 (pagination, page_size 10 by default)
-http://127.0.0.1:8000/DATABASE/SCHEMA/VIEW?FIELD=VALUE (filter)
-http://127.0.0.1:8000/DATABASE/SCHEMA/VIEW?_renderer=xml (JSON by default)
-
+/{DATABASE}/{SCHEMA}/{TABLE}?_select=fieldname00,sum:fieldname01&_groupby=fieldname01
 ```
 
-### Insert - POST
+#### GROUP BY with function
 
 ```
-http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE
+/{DATABASE}/{SCHEMA}/{TABLE}?_groupby=fieldname->>having:GROUPFUNC:FIELDNAME:CONDITION:VALUE-CONDITION
+/{DATABASE}/{SCHEMA}/{TABLE}?_select=fieldname00,sum:fieldname01&_groupby=fieldname01->>having:sum:fieldname01:$gt:500
 ```
 
-JSON DATA:
-```
-{
-    "FIELD1": "string value",
-    "FIELD2": 1234567890
-}
-```
-
-### Update - PATCH/PUT
-
-Using query string to make filter (WHERE), example:
-
-```
-http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD1=xyz
-```
-
-JSON DATA:
-```
-{
-    "FIELD1": "string value",
-    "FIELD2": 1234567890,
-    "ARRAYFIELD": ["value 1","value 2"]
-}
-```
-### Delete - DELETE
-
-Using query string to make filter (WHERE), example:
-
-```
-http://127.0.0.1:8000/DATABASE/SCHEMA/TABLE?FIELD1=xyz
-```
-
-## JOIN
-
-```
-/DATABASE/SCHEMA/Table?_join=Type:Table2:Table.field:Operator:Table2.field
-```
-Parameters:
-
-1. Type (INNER, LEFT, RIGHT, OUTER)
-1. Table2
-1. Table.field
-1. Operator ($eq, $lt, $gt, $lte, $gte)
-1. Table2.field
-
-Using query string to JOIN tables, example:
-
-```
-/DATABASE/SCHEMA/friends?_join=inner:users:friends.userid:$eq:users.id
-```
 
 ## Query Operators
+
+Uses these operators in various filter applications
 
 | Name | Description                                                         |
 | ---- | ------------------------------------------------------------------- |
@@ -168,76 +117,73 @@ Using query string to JOIN tables, example:
 | $in  | Matches any of the values specified in an array.                    |
 | $nin | Matches none of the values specified in an array.                   |
 
-## DISTINCT
 
-To use *DISTINCT* clause with SELECT, follow this syntax `_distinct=true`.
+## GET - Endpoints
 
-Examples:
+| Endpointis | Description |
+| ---------- | ----------- |
+| `/databases` | List all databases |
+| `/shemas` | List all schemas |
+| `/tables` | List all tables |
+| `/show/{DATABASE}/{SCHEMA}/{TABLE}` | Lists table structure - all fields contained in the table |
+| `/{DATABASE}/{SCHEMA}` | Lists table tables - find by schema |
+| `/{DATABASE}/{SCHEMA}/{TABLE}` | List all rows, find by database, schema and table |
+| `/{DATABASE}/{SCHEMA}/{VIEW}` | List all rows, find by database, schema and view |
 
-```
-GET /DATABASE/SCHEMA/TABLE/?_distinct=true
-```
 
-## ORDER BY
-
-Using *ORDER BY* in queries you must pass in *GET* request the attribute `_order` with fieldname(s) as value. For *DESC* order, use the prefix `-`. For *multiple* orders, the fields are separated by comma.
-
-Examples:
-
-### ASC
+## POST - Insert
 
 ```
-GET /DATABASE/SCHEMA/TABLE/?_order=fieldname
+/{DATABASE}/{SCHEMA}/{TABLE}
 ```
 
-### DESC
-
+JSON DATA:
 ```
-GET /DATABASE/SCHEMA/TABLE/?_order=-fieldname
-```
-
-### Multiple Orders
-
-```
-GET /DATABASE/SCHEMA/TABLE/?_order=fieldname01,-fieldname02,fieldname03
+{
+    "FIELD1": "string value",
+    "FIELD2": 1234567890
+}
 ```
 
-## GROUP BY
+## PATCH/PUT - Update
 
-We support this Group Functions:
-
-| name     | Use in request |
-| -------- | -------------- |
-| SUM      | sum:field      |
-| AVG      | avg:field      |
-| MAX      | max:field      |
-| MIN      | min:field      |
-| MEDIAN   | median:field   |
-| STDDEV   | stddev:field   |
-| VARIANCE | variance:field |
-
-### Examples:
+Using query string to make filter (WHERE), example:
 
 ```
-GET /DATABASE/SCHEMA/TABLE/?_select=fieldname00,fieldname01&_groupby=fieldname01
+/{DATABASE}/{SCHEMA}/{TABLE}?{FIELD NAME}={VALUE}
 ```
 
-#### Using Group Functions
+JSON DATA:
+```
+{
+    "FIELD1": "string value",
+    "FIELD2": 1234567890,
+    "ARRAYFIELD": ["value 1","value 2"]
+}
+```
+## DELETE - Delete
+
+Using query string to make filter (WHERE), example:
 
 ```
-GET /DATABASE/SCHEMA/TABLE/?_select=fieldname00,sum:fieldname01&_groupby=fieldname01
+/{DATABASE}/{SCHEMA}/{TABLE}?{FIELD NAME}={VALUE}
 ```
 
-#### Having support
-
-To use Having clause with **Group By**, follow this syntax:
+## JOIN
 
 ```
-GET /DATABASE/SCHEMA/TABLE/?_groupby=fieldname->>having:GROUPFUNC:FIELDNAME:CONDITION:VALUE-CONDITION
+/{DATABASE}/{SCHEMA}/{TABLE}?_join={TYPE}:{TABLE JOIN}:{TABLE.FIELD}:{OPERATOR}:{TABLE JOIN.FIELD}
 ```
+Parameters:
 
-Example:
+1. Type (INNER, LEFT, RIGHT, OUTER)
+1. Table used in the join
+1. Table.field - table name **dot** field
+1. Operator ($eq, $lt, $gt, $lte, $gte)
+1. Table2.field - table name **dot** field
+
+Using query string to JOIN tables, example:
 
 ```
-GET /DATABASE/SCHEMA/TABLE/?_select=fieldname00,sum:fieldname01&_groupby=fieldname01->>having:sum:fieldname01:$gt:500
+/{DATABASE}/{SCHEMA}/friends?_join=inner:users:friends.userid:$eq:users.id
 ```
