@@ -3,7 +3,7 @@ FROM registry.hub.docker.com/library/golang:1.15 as builder
 WORKDIR /workspace
 COPY . .
 RUN go mod download  \
-&& CGO_ENABLED=1 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -o prestd cmd/prestd/main.go \
+&& CGO_ENABLED=1 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -ldflags "-s -w" -o prestd cmd/prestd/main.go \
 && apt-get update && apt-get install --no-install-recommends -yq netcat=1.10-41.1
 
 WORKDIR /app
