@@ -14,12 +14,12 @@ pREST has support in **JWT Token** generation based on two fields (example user 
 
 > understand more about _http authentication_ [see this documentation](https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication)
 
-#### Bearer
+### Bearer
 ```sh
 curl -i -X POST http://127.0.0.1:8000/auth -H "Content-Type: application/json" -d '{"username": "<username>", "password": "<password>"}'
 ```
 
-#### Basic
+### Basic
 ```sh
 curl -i -X POST http://127.0.0.1:8000/auth --user "<username>:<password>"
 ```
