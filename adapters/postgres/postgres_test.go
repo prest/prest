@@ -887,6 +887,13 @@ func TestTablePermissions(t *testing.T) {
 
 }
 
+func TestSupportHyphenInTable(t *testing.T) {
+	r, err := http.NewRequest("GET", "/prest/public/test-table-support-hyphen", nil)
+	if err != nil {
+		t.Errorf("expected no errors on Support Hyphen in Table, but got: %v", err)
+	}
+}
+
 func TestRestrictFalse(t *testing.T) {
 	config.PrestConf.AccessConf.Restrict = false
 
