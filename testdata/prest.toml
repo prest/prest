@@ -14,7 +14,7 @@ port = 6000
 
 [pg]
 user = "postgres"
-database = "prest"
+database = "prest-test"
 
 [access]
 restrict = true  # can access only the tables listed below

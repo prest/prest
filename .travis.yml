@@ -16,7 +16,7 @@ matrix:
     - go: master
   fast_finish: true
 env:
-  - PREST_PG_USER=postgres PREST_PG_DATABASE=prest PREST_PG_PORT=5432 PREST_CONF=$TRAVIS_BUILD_DIR/testdata/prest.toml
+  - PREST_PG_USER=postgres PREST_PG_DATABASE=prest-test PREST_PG_PORT=5432 PREST_CONF=$TRAVIS_BUILD_DIR/testdata/prest.toml
 go_import_path: github.com/prest/prest
 before_install:
   - sudo apt-get -y install gcc-multilib
