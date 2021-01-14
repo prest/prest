@@ -1,4 +1,4 @@
-# <img align="right" src="https://docs.postgres.rest/logo.png" alt="RESTful API" title="RESTful API"> pREST
+# <img align="right" src="https://docs.prestd.com/logo.png" alt="RESTful API" title="RESTful API"> pREST
 [![Build Status](https://travis-ci.org/prest/prest.svg?branch=master)](https://travis-ci.org/prest/prest)
 [![GoDoc](https://godoc.org/github.com/prest/prest?status.png)](https://godoc.org/github.com/prest/prest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/prest/prest)](https://goreportcard.com/report/github.com/prest/prest)
@@ -24,4 +24,4 @@ Deploy to Heroku and instantly get a realtime RESTFul API backed by Heroku Postg
 
 ## Documentation
 
-https://postgres.rest/ ([source](https://github.com/prest/prest.github.io))
+https://docs.prestd.com/ ([source](https://github.com/prest/prest.github.io))
