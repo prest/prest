@@ -37,8 +37,8 @@ go install github.com/prest/prest/cmd/prestd
 
 ### With Homebrew
 
-If none of the above suits you, there's still an option of installing using [Homebrew](https://brew.sh/)
+If none of the above suits you, there's still an option of installing using [Homebrew](https://formulae.brew.sh/formula/prestd) [![Homebrew](https://img.shields.io/badge/dynamic/json.svg?url=https://formulae.brew.sh/api/formula/prestd.json&query=$.versions.stable&label=homebrew)](https://formulae.brew.sh/formula/prestd):
 
 ```sh
-brew install prest
+brew install prestd
 ```
