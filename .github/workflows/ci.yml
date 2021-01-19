@@ -1,0 +1,46 @@
+on: [push, pull_request]
+name: pREST CI
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Go 1.15
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.15
+
+      - name: Install Dependencies
+        run: |
+          echo "Installing DeepSource"
+          curl https://deepsource.io/cli | sh
+          echo "Installing GolangCI Lint"
+          curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sudo bash -s -- -b $GOPATH/bin v1.15.0
+          sudo apt -y install gcc-multilib
+          git config --global --add url."git@github.com:prest".insteadOf "https://github.com/prest"
+          go get -v -d ./...
+          go get -v github.com/inconshreveable/mousetrap
+          go get golang.org/x/tools/cmd/cover
+          go get github.com/mattn/goveralls
+      - name: Install golang-migrate
+        run: |
+          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.12.2/migrate.linux-amd64.tar.gz | tar xvz
+          sudo mv migrate.linux-amd64 /usr/bin/migrate
+          which migrate
+      - name: Setup Database
+        env:
+          PREST_PG_USER: postgres
+          PREST_PG_DATABASE: prest
+          PREST_PG_PORT: 5432
+          PREST_CONF: $TRAVIS_BUILD_DIR/testdata/prest.toml
+        run: |
+          make build_test_image
+          echo $TRAVIS_BUILD_DIR
+          sh ./testdata/schema.sh
+      - name: Test
+        run: |
+          curl -sfL https://git.io/goreleaser | sh -s -- check
+          sh testdata/migrations_test.sh
+          env go test -race -covermode=atomic -coverprofile=coverage.out ./...
+        
