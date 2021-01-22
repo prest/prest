@@ -25,4 +25,4 @@ Deploy to Heroku and instantly get a realtime RESTFul API backed by Heroku Postg
 
 ## Documentation
 
-https://docs.prestd.com/ ([source](https://github.com/prest/prest.github.io))
+https://docs.prestd.com/ ([content source](https://github.com/prest/prest/tree/master/docs) and [template source](https://github.com/prest/doc-template))
