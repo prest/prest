@@ -4,6 +4,20 @@ name: pREST CI
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image
+        image: postgres
+        # Provide the password for postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v2
       - name: Set up Go 1.15
@@ -29,13 +43,8 @@ jobs:
           sudo mv migrate.linux-amd64 /usr/bin/migrate
           which migrate
       - name: Setup Database
-        env:
-          PREST_PG_USER: postgres
-          PREST_PG_DATABASE: prest
-          PREST_PG_PORT: 5432
           PREST_CONF: $TRAVIS_BUILD_DIR/testdata/prest.toml
         run: |
-          make build_test_image
           echo $TRAVIS_BUILD_DIR
           sh ./testdata/schema.sh
       - name: Test
