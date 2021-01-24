@@ -55,22 +55,25 @@ func GetURI(DBName string) string {
 }
 
 // Get get postgres connection
-func Get() (*sqlx.DB, error) {
+func Get(database string) (*sqlx.DB, error) {
 	var DB *sqlx.DB
 
-	DB = getDatabaseFromPool(GetDatabase())
+	if database == "" {
+		database = GetDatabase()
+	}
+	DB = getDatabaseFromPool(database)
 	if DB != nil {
 		return DB, nil
 	}
 
-	DB, err = sqlx.Connect("postgres", GetURI(GetDatabase()))
+	DB, err = sqlx.Connect("postgres", GetURI(database))
 	if err != nil {
 		return nil, err
 	}
 	DB.SetMaxIdleConns(config.PrestConf.PGMaxIdleConn)
 	DB.SetMaxOpenConns(config.PrestConf.PGMAxOpenConn)
 
-	AddDatabaseToPool(GetDatabase(), DB)
+	AddDatabaseToPool(database, DB)
 
 	return DB, nil
 }
@@ -115,7 +118,7 @@ func MustGet() *sqlx.DB {
 	var err error
 	var DB *sqlx.DB
 
-	DB, err = Get()
+	DB, err = Get("") // TODO
 	if err != nil {
 		panic(fmt.Sprintf("Unable to connect to database: %v\n", err))
 	}

@@ -85,7 +85,7 @@ func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt
 // Load postgres
 func Load() {
 	config.PrestConf.Adapter = &Postgres{}
-	db, err := connection.Get()
+	db, err := connection.Get("")  // TODO
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func ClearStmt() {
 
 // GetTransaction get transaction
 func (adapter *Postgres) GetTransaction() (tx *sql.Tx, err error) {
-	db, err := connection.Get()
+	db, err := connection.Get("")
 	if err != nil {
 		log.Println(err)
 		return
@@ -587,8 +587,8 @@ func (adapter *Postgres) CountByRequest(req *http.Request) (countQuery string, e
 }
 
 // Query process queries
-func (adapter *Postgres) Query(SQL string, params ...interface{}) (sc adapters.Scanner) {
-	db, err := connection.Get()
+func (adapter *Postgres) Query(database string, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	db, err := connection.Get(database)
 	if err != nil {
 		log.Println(err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -615,8 +615,8 @@ func (adapter *Postgres) Query(SQL string, params ...interface{}) (sc adapters.S
 }
 
 // QueryCount process queries with count
-func (adapter *Postgres) QueryCount(SQL string, params ...interface{}) (sc adapters.Scanner) {
-	db, err := connection.Get()
+func (adapter *Postgres) QueryCount(database string, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	db, err := connection.Get(database)
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
 		return
@@ -670,7 +670,7 @@ func (adapter *Postgres) PaginateIfPossible(r *http.Request) (paginatedQuery str
 
 // BatchInsertCopy execute batch insert sql into a table unsing copy
 func (adapter *Postgres) BatchInsertCopy(dbname, schema, table string, keys []string, values ...interface{}) (sc adapters.Scanner) {
-	db, err := connection.Get()
+	db, err := connection.Get(dbname)
 	if err != nil {
 		log.Println(err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -744,7 +744,7 @@ func (adapter *Postgres) BatchInsertCopy(dbname, schema, table string, keys []st
 
 // BatchInsertValues execute batch insert sql into a table unsing multi values
 func (adapter *Postgres) BatchInsertValues(SQL string, values ...interface{}) (sc adapters.Scanner) {
-	db, err := connection.Get()
+	db, err := connection.Get("")
 	if err != nil {
 		log.Println(err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -813,7 +813,7 @@ func (adapter *Postgres) fullInsert(db *sqlx.DB, tx *sql.Tx, SQL string) (stmt *
 
 // Insert execute insert sql into a table
 func (adapter *Postgres) Insert(SQL string, params ...interface{}) (sc adapters.Scanner) {
-	db, err := connection.Get()
+	db, err := connection.Get("") // TODO
 	if err != nil {
 		log.Println(err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -848,7 +848,7 @@ func (adapter *Postgres) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 
 // Delete execute delete sql into a table
 func (adapter *Postgres) Delete(SQL string, params ...interface{}) (sc adapters.Scanner) {
-	db, err := connection.Get()
+	db, err := connection.Get("") // TODO
 	if err != nil {
 		log.Println(err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -935,7 +935,7 @@ func (adapter *Postgres) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 
 // Update execute update sql into a table
 func (adapter *Postgres) Update(SQL string, params ...interface{}) (sc adapters.Scanner) {
-	db, err := connection.Get()
+	db, err := connection.Get("") // TODO
 	if err != nil {
 		log.Println(err)
 		sc = &scanner.PrestScanner{Error: err}

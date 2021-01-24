@@ -18,7 +18,7 @@ var authUpCmd = &cobra.Command{
 			postgres.Load()
 		}
 
-		db, err := postgres.Get()
+		db, err := postgres.Get("")
 		if err != nil {
 			fmt.Fprintf(os.Stdout, err.Error())
 			return err
@@ -41,7 +41,7 @@ var authDownCmd = &cobra.Command{
 			postgres.Load()
 		}
 
-		db, err := postgres.Get()
+		db, err := postgres.Get("")
 		if err != nil {
 			fmt.Fprintf(os.Stdout, err.Error())
 			return err

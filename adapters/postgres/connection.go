@@ -11,8 +11,8 @@ func GetURI(DBName string) string {
 }
 
 // Get get postgres connection
-func Get() (*sqlx.DB, error) {
-	return connection.Get()
+func Get(database string) (*sqlx.DB, error) {
+	return connection.Get(database)
 }
 
 // GetPool of connection

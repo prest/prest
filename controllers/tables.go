@@ -42,7 +42,7 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 
 	sqlTables = fmt.Sprint(sqlTables, requestWhere, order)
 
-	sc := config.PrestConf.Adapter.Query(sqlTables, values...)
+	sc := config.PrestConf.Adapter.Query("", sqlTables, values...)
 	if sc.Err() != nil {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
@@ -88,7 +88,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	valuesAux := make([]interface{}, 0)
 	valuesAux = append(valuesAux, database, schema)
 	valuesAux = append(valuesAux, values...)
-	sc := config.PrestConf.Adapter.Query(sqlSchemaTables, valuesAux...)
+	sc := config.PrestConf.Adapter.Query("", sqlSchemaTables, valuesAux...)
 	if sc.Err() != nil {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
@@ -190,7 +190,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		runQuery = config.PrestConf.Adapter.QueryCount
 	}
 
-	sc := runQuery(sqlSelect, values...)
+	sc := runQuery("", sqlSelect, values...)
 	if err = sc.Err(); err != nil {
 		errorMessage := sc.Err().Error()
 		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
