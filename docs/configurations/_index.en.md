@@ -7,7 +7,7 @@ menu: main
 
 Via environment variables or via toml file.
 
-### Environment vars
+## Environment vars
 
 - PREST\_CONF
 - PREST\_HTTP_HOST (*default 0.0.0.0*)
@@ -32,7 +32,7 @@ Via environment variables or via toml file.
 ## TOML
 Optionally the pREST can be configured by TOML file.
 
-- You can follow this sample and create your own `prest.toml` file and put this on the same folder that you run `prest` command.
+You can follow this sample and create your own `prest.toml` file and put this on the same folder that you run `prest` command.
 
 ```toml
 migrations = "./migrations"
@@ -87,7 +87,7 @@ default = false
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
 ```
 
-- The `HS256` algorithm is used by default.
+The `HS256` algorithm is used by default.
 
 The JWT algorithm can be specified by using either the environment variable `PREST_JWT_ALGO` or the `algo` parameter in the section `[jwt]` of the `prest.toml` configuration file.
 
@@ -97,7 +97,7 @@ The supported signing algorithms are:
 * The [RSA signing method](https://en.wikipedia.org/wiki/RSA_(cryptosystem)): `RS256`,`RS384`,`RS512`
 * The [ECDSA signing method](https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm): `ES256`,`ES384`,`ES512`
 
-#### White list
+## White list
 
 By default the endpoints `/auth` do not require JWT, the **whitelist** option serves to configure which endpoints will not ask for jwt token
 
@@ -107,7 +107,7 @@ default = true
 whitelist = ["\/auth", "\/ping", "\/ping\/.*"]
 ```
 
-### Auth
+## Auth
 
 pREST has support in jwt token generation based on two fields (example user and password), being possible to use an existing table from your database to login configuring some parameters in the configuration file (or environment variable), _by default this feature is_ **disabled**.
 
@@ -130,26 +130,24 @@ password = "password"
 | username | User **field** that will be consulted - if your software uses email just abstract name username (at pREST code level it was necessary to define an internal standard) |
 | password | Password **field** that will be consulted                                                                                                                             |
 
-
 > to validate all endpoints with generated jwt token must be activated jwt option
 
 
 ## SSL
 
-- There is 4 options to set on ssl mode:
+There is 4 options to set on ssl mode:
 
-```toml
-"disable" -  # no SSL (default)
-"require" - # Always SSL (skip verification)
-"verify-ca" - # Always SSL (verify that the certificate presented by the server was signed by a trusted CA)
-"verify-full" - # Always SSL (verify that the certification presented by the server was signed by a trusted CA and the server host name matches the one in the certificate)
-```
+- `disable` - SSL off by default
+- `require` - Always SSL (skip verification)
+- `verify-ca` - Always SSL (verify that the certificate presented by the server was signed by a trusted CA)
+- `verify-full` - Always SSL (verify that the certification presented by the server was signed by a trusted CA and the server host name matches the one in the certificate)
+
 
 ## Debug Mode
 
-- Set environment variable `PREST_DEBUG` or `debug=true` on top of prest.toml file.
+Set environment variable `PREST_DEBUG` or `debug=true` on top of prest.toml file.
 
-```
+```toml
 PREST_DEBUG=true
 ```
 

@@ -1,9 +1,10 @@
-# <img align="right" src="https://docs.postgres.rest/logo.png" alt="RESTful API" title="RESTful API"> pREST
+# <img align="right" src="https://docs.prestd.com/logo.png" alt="RESTful API" title="RESTful API"> pREST
 [![Build Status](https://travis-ci.org/prest/prest.svg?branch=master)](https://travis-ci.org/prest/prest)
 [![GoDoc](https://godoc.org/github.com/prest/prest?status.png)](https://godoc.org/github.com/prest/prest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/prest/prest)](https://goreportcard.com/report/github.com/prest/prest)
 [![Coverage Status](https://coveralls.io/repos/github/prest/prest/badge.svg?branch=master)](https://coveralls.io/github/prest/prest?branch=master)
-[![SourceLevel](https://app.sourcelevel.io/github/prest/prest.svg)](https://app.sourcelevel.io/github/prest/prest)
+[![SourceLevel](https://app.sourcelevel.io/github/prest/-/prest.svg)](https://app.sourcelevel.io/github/prest/-/prest)
+[![Homebrew](https://img.shields.io/badge/dynamic/json.svg?url=https://formulae.brew.sh/api/formula/prestd.json&query=$.versions.stable&label=homebrew)](https://formulae.brew.sh/formula/prestd)
 
 _p_**REST** (**P**_ostgreSQL_ **REST**), simplify and accelerate development, instant, realtime, high-performance on any **Postgres** application, **existing or new**
 
@@ -24,4 +25,4 @@ Deploy to Heroku and instantly get a realtime RESTFul API backed by Heroku Postg
 
 ## Documentation
 
-https://postgres.rest/ ([source](https://github.com/prest/prest.github.io))
+https://docs.prestd.com/ ([content source](https://github.com/prest/prest/tree/master/docs) and [template source](https://github.com/prest/doc-template))

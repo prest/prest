@@ -11,5 +11,5 @@ Example:
 
 ```
 [cors]
-alloworigin = ["http://postgres.rest", "http://foo.com"]
+alloworigin = ["https://prestd.com", "http://foo.com"]
 ```

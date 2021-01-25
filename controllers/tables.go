@@ -87,8 +87,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	sqlSchemaTables = fmt.Sprint(sqlSchemaTables, requestWhere, order, " ", page)
 
 	valuesAux := make([]interface{}, 0)
-	valuesAux = append(valuesAux, database)
-	valuesAux = append(valuesAux, schema)
+	valuesAux = append(valuesAux, database, schema)
 	valuesAux = append(valuesAux, values...)
 	sc := config.PrestConf.Adapter.Query(sqlSchemaTables, valuesAux...)
 	if sc.Err() != nil {

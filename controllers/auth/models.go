@@ -1,6 +1,6 @@
 package auth
 
-import "github.com/dgrijalva/jwt-go"
+import "github.com/form3tech-oss/jwt-go"
 
 // User logged in user representation
 type User struct {

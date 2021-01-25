@@ -54,16 +54,16 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 		method      string
 		status      int
 	}{
-		{"Get tables by database and schema without custom where clause", "/prest/public", "GET", http.StatusOK},
-		{"Get tables by database and schema with custom where clause", "/prest/public?t.tablename=$eq.test", "GET", http.StatusOK},
-		{"Get tables by database and schema with order clause", "/prest/public?t.tablename=$eq.test&_order=t.tablename", "GET", http.StatusOK},
-		{"Get tables by database and schema with custom where clause and pagination", "/prest/public?t.tablename=$eq.test&_page=1&_page_size=20", "GET", http.StatusOK},
-		{"Get tables by database and schema with distinct clause", "/prest/public?_distinct=true", "GET", http.StatusOK},
+		{"Get tables by database and schema without custom where clause", "/prest-test/public", "GET", http.StatusOK},
+		{"Get tables by database and schema with custom where clause", "/prest-test/public?t.tablename=$eq.test", "GET", http.StatusOK},
+		{"Get tables by database and schema with order clause", "/prest-test/public?t.tablename=$eq.test&_order=t.tablename", "GET", http.StatusOK},
+		{"Get tables by database and schema with custom where clause and pagination", "/prest-test/public?t.tablename=$eq.test&_page=1&_page_size=20", "GET", http.StatusOK},
+		{"Get tables by database and schema with distinct clause", "/prest-test/public?_distinct=true", "GET", http.StatusOK},
 		// errors
-		{"Get tables by database and schema with custom where invalid clause", "/prest/public?0t.tablename=$eq.test", "GET", http.StatusBadRequest},
-		{"Get tables by databases and schema with custom where and pagination invalid", "/prest/public?t.tablename=$eq.test&_page=A&_page_size=20", "GET", http.StatusBadRequest},
-		{"Get tables by databases and schema with ORDER BY and column invalid", "/prest/public?_order=0t.tablename", "GET", http.StatusBadRequest},
-		{"Get tables by databases with noexistent column", "/prest/public?t.taababa=$eq.test", "GET", http.StatusBadRequest},
+		{"Get tables by database and schema with custom where invalid clause", "/prest-test/public?0t.tablename=$eq.test", "GET", http.StatusBadRequest},
+		{"Get tables by databases and schema with custom where and pagination invalid", "/prest-test/public?t.tablename=$eq.test&_page=A&_page_size=20", "GET", http.StatusBadRequest},
+		{"Get tables by databases and schema with ORDER BY and column invalid", "/prest-test/public?_order=0t.tablename", "GET", http.StatusBadRequest},
+		{"Get tables by databases with noexistent column", "/prest-test/public?t.taababa=$eq.test", "GET", http.StatusBadRequest},
 	}
 
 	router := mux.NewRouter()
@@ -90,47 +90,47 @@ func TestSelectFromTables(t *testing.T) {
 		status      int
 		body        string
 	}{
-		{"execute select in a table with array", "/prest/public/testarray", "GET", http.StatusOK, "[{\"id\":100,\"data\":[\"Gohan\",\"Goten\"]}]"},
-		{"execute select in a table without custom where clause", "/prest/public/test", "GET", http.StatusOK, ""},
-		{"execute select in a table case sentive", "/prest/public/Reply", "GET", http.StatusOK, "[{\"id\":1,\"name\":\"prest tester\"}]"},
-		{"execute select in a table with count all fields *", "/prest/public/test?_count=*", "GET", http.StatusOK, ""},
-		{"execute select in a table with count function", "/prest/public/test?_count=name", "GET", http.StatusOK, ""},
-		{"execute select in a table with custom where clause", "/prest/public/test?name=$eq.nuveo", "GET", http.StatusOK, ""},
-		{"execute select in a table with custom join clause", "/prest/public/test?_join=inner:test8:test8.nameforjoin:$eq:test.name", "GET", http.StatusOK, ""},
-		{"execute select in a table with order clause empty", "/prest/public/test?_order=", "GET", http.StatusOK, ""},
-		{"execute select in a table with custom where clause and pagination", "/prest/public/test?name=$eq.nuveo&_page=1&_page_size=20", "GET", http.StatusOK, ""},
-		{"execute select in a table with select fields", "/prest/public/test5?_select=celphone,name", "GET", http.StatusOK, ""},
-		{"execute select in a table with select *", "/prest/public/test5?_select=*", "GET", http.StatusOK, ""},
-		{"execute select in a table with select * and distinct", "/prest/public/test5?_select=*&_distinct=true", "GET", http.StatusOK, ""},
+		{"execute select in a table with array", "/prest-test/public/testarray", "GET", http.StatusOK, "[{\"id\":100,\"data\":[\"Gohan\",\"Goten\"]}]"},
+		{"execute select in a table without custom where clause", "/prest-test/public/test", "GET", http.StatusOK, ""},
+		{"execute select in a table case sentive", "/prest-test/public/Reply", "GET", http.StatusOK, "[{\"id\":1,\"name\":\"prest tester\"}]"},
+		{"execute select in a table with count all fields *", "/prest-test/public/test?_count=*", "GET", http.StatusOK, ""},
+		{"execute select in a table with count function", "/prest-test/public/test?_count=name", "GET", http.StatusOK, ""},
+		{"execute select in a table with custom where clause", "/prest-test/public/test?name=$eq.nuveo", "GET", http.StatusOK, ""},
+		{"execute select in a table with custom join clause", "/prest-test/public/test?_join=inner:test8:test8.nameforjoin:$eq:test.name", "GET", http.StatusOK, ""},
+		{"execute select in a table with order clause empty", "/prest-test/public/test?_order=", "GET", http.StatusOK, ""},
+		{"execute select in a table with custom where clause and pagination", "/prest-test/public/test?name=$eq.nuveo&_page=1&_page_size=20", "GET", http.StatusOK, ""},
+		{"execute select in a table with select fields", "/prest-test/public/test5?_select=celphone,name", "GET", http.StatusOK, ""},
+		{"execute select in a table with select *", "/prest-test/public/test5?_select=*", "GET", http.StatusOK, ""},
+		{"execute select in a table with select * and distinct", "/prest-test/public/test5?_select=*&_distinct=true", "GET", http.StatusOK, ""},
 
-		{"execute select in a table with group by clause", "/prest/public/test_group_by_table?_select=age,sum:salary&_groupby=age", "GET", http.StatusOK, ""},
-		{"execute select in a table with group by and having clause", "/prest/public/test_group_by_table?_select=age,sum:salary&_groupby=age->>having:sum:salary:$gt:3000", "GET", http.StatusOK, "[{\"age\":19,\"sum\":7997}]"},
+		{"execute select in a table with group by clause", "/prest-test/public/test_group_by_table?_select=age,sum:salary&_groupby=age", "GET", http.StatusOK, ""},
+		{"execute select in a table with group by and having clause", "/prest-test/public/test_group_by_table?_select=age,sum:salary&_groupby=age->>having:sum:salary:$gt:3000", "GET", http.StatusOK, "[{\"age\":19,\"sum\":7997}]"},
 
-		{"execute select in a view without custom where clause", "/prest/public/view_test", "GET", http.StatusOK, ""},
-		{"execute select in a view with count all fields *", "/prest/public/view_test?_count=*", "GET", http.StatusOK, ""},
-		{"execute select in a view with count function", "/prest/public/view_test?_count=player", "GET", http.StatusOK, ""},
-		{"execute select in a view with order function", "/prest/public/view_test?_order=-player", "GET", http.StatusOK, ""},
-		{"execute select in a view with custom where clause", "/prest/public/view_test?player=$eq.gopher", "GET", http.StatusOK, ""},
-		{"execute select in a view with custom join clause", "/prest/public/view_test?_join=inner:test2:test2.name:eq:view_test.player", "GET", http.StatusOK, ""},
-		{"execute select in a view with custom where clause and pagination", "/prest/public/view_test?player=$eq.gopher&_page=1&_page_size=20", "GET", http.StatusOK, ""},
-		{"execute select in a view with select fields", "/prest/public/view_test?_select=player", "GET", http.StatusOK, ""},
+		{"execute select in a view without custom where clause", "/prest-test/public/view_test", "GET", http.StatusOK, ""},
+		{"execute select in a view with count all fields *", "/prest-test/public/view_test?_count=*", "GET", http.StatusOK, ""},
+		{"execute select in a view with count function", "/prest-test/public/view_test?_count=player", "GET", http.StatusOK, ""},
+		{"execute select in a view with order function", "/prest-test/public/view_test?_order=-player", "GET", http.StatusOK, ""},
+		{"execute select in a view with custom where clause", "/prest-test/public/view_test?player=$eq.gopher", "GET", http.StatusOK, ""},
+		{"execute select in a view with custom join clause", "/prest-test/public/view_test?_join=inner:test2:test2.name:eq:view_test.player", "GET", http.StatusOK, ""},
+		{"execute select in a view with custom where clause and pagination", "/prest-test/public/view_test?player=$eq.gopher&_page=1&_page_size=20", "GET", http.StatusOK, ""},
+		{"execute select in a view with select fields", "/prest-test/public/view_test?_select=player", "GET", http.StatusOK, ""},
 
-		{"execute select in a table with invalid join clause", "/prest/public/test?_join=inner:test2:test2.name", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with invalid where clause", "/prest/public/test?0name=$eq.nuveo", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with order clause and column invalid", "/prest/public/test?_order=0name", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with invalid pagination clause", "/prest/public/test?name=$eq.nuveo&_page=A", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with invalid where clause", "/prest/public/test?0name=$eq.nuveo", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with invalid count clause", "/prest/public/test?_count=0name", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with invalid order clause", "/prest/public/test?_order=0name", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with invalid fields using group by clause", "/prest/public/test_group_by_table?_select=pa,sum:pum&_groupby=pa", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with invalid fields using group by and having clause", "/prest/public/test_group_by_table?_select=pa,sum:pum&_groupby=pa->>having:sum:pmu:$eq:150", "GET", http.StatusBadRequest, ""},
+		{"execute select in a table with invalid join clause", "/prest-test/public/test?_join=inner:test2:test2.name", "GET", http.StatusBadRequest, ""},
+		{"execute select in a table with invalid where clause", "/prest-test/public/test?0name=$eq.nuveo", "GET", http.StatusBadRequest, ""},
+		{"execute select in a table with order clause and column invalid", "/prest-test/public/test?_order=0name", "GET", http.StatusBadRequest, ""},
+		{"execute select in a table with invalid pagination clause", "/prest-test/public/test?name=$eq.nuveo&_page=A", "GET", http.StatusBadRequest, ""},
+		{"execute select in a table with invalid where clause", "/prest-test/public/test?0name=$eq.nuveo", "GET", http.StatusBadRequest, ""},
+		{"execute select in a table with invalid count clause", "/prest-test/public/test?_count=0name", "GET", http.StatusBadRequest, ""},
+		{"execute select in a table with invalid order clause", "/prest-test/public/test?_order=0name", "GET", http.StatusBadRequest, ""},
+		{"execute select in a table with invalid fields using group by clause", "/prest-test/public/test_group_by_table?_select=pa,sum:pum&_groupby=pa", "GET", http.StatusBadRequest, ""},
+		{"execute select in a table with invalid fields using group by and having clause", "/prest-test/public/test_group_by_table?_select=pa,sum:pum&_groupby=pa->>having:sum:pmu:$eq:150", "GET", http.StatusBadRequest, ""},
 
-		{"execute select in a view with an other column", "/prest/public/view_test?_select=celphone", "GET", http.StatusBadRequest, ""},
-		{"execute select in a view with where and column invalid", "/prest/public/view_test?0celphone=$eq.888888", "GET", http.StatusBadRequest, ""},
-		{"execute select in a view with custom join clause invalid", "/prest/public/view_test?_join=inner:test2.name:eq:view_test.player", "GET", http.StatusBadRequest, ""},
-		{"execute select in a view with custom where clause and pagination invalid", "/prest/public/view_test?player=$eq.gopher&_page=A&_page_size=20", "GET", http.StatusBadRequest, ""},
-		{"execute select in a view with order by and column invalid", "/prest/public/view_test?_order=0celphone", "GET", http.StatusBadRequest, ""},
-		{"execute select in a view with count column invalid", "/prest/public/view_test?_count=0celphone", "GET", http.StatusBadRequest, ""},
+		{"execute select in a view with an other column", "/prest-test/public/view_test?_select=celphone", "GET", http.StatusBadRequest, ""},
+		{"execute select in a view with where and column invalid", "/prest-test/public/view_test?0celphone=$eq.888888", "GET", http.StatusBadRequest, ""},
+		{"execute select in a view with custom join clause invalid", "/prest-test/public/view_test?_join=inner:test2.name:eq:view_test.player", "GET", http.StatusBadRequest, ""},
+		{"execute select in a view with custom where clause and pagination invalid", "/prest-test/public/view_test?player=$eq.gopher&_page=A&_page_size=20", "GET", http.StatusBadRequest, ""},
+		{"execute select in a view with order by and column invalid", "/prest-test/public/view_test?_order=0celphone", "GET", http.StatusBadRequest, ""},
+		{"execute select in a view with count column invalid", "/prest-test/public/view_test?_count=0celphone", "GET", http.StatusBadRequest, ""},
 	}
 
 	for _, tc := range testCases {
@@ -148,10 +148,10 @@ func TestSelectFromTables(t *testing.T) {
 
 func TestInsertInTables(t *testing.T) {
 	m := make(map[string]interface{})
-	m["name"] = "prest"
+	m["name"] = "prest-test"
 
 	mJSON := make(map[string]interface{})
-	mJSON["name"] = "prest"
+	mJSON["name"] = "prest-test"
 	mJSON["data"] = `{"term": "name", "subterm": ["names", "of", "subterms"], "obj": {"emp": "nuveo"}}`
 
 	mARRAY := make(map[string]interface{})
@@ -168,13 +168,13 @@ func TestInsertInTables(t *testing.T) {
 		request     map[string]interface{}
 		status      int
 	}{
-		{"execute insert in a table with array field", "/prest/public/testarray", mARRAY, http.StatusCreated},
-		{"execute insert in a table with jsonb field", "/prest/public/testjson", mJSON, http.StatusCreated},
-		{"execute insert in a table without custom where clause", "/prest/public/test", m, http.StatusCreated},
-		{"execute insert in a table with invalid database", "/0prest/public/test", m, http.StatusBadRequest},
-		{"execute insert in a table with invalid schema", "/prest/0public/test", m, http.StatusNotFound},
-		{"execute insert in a table with invalid table", "/prest/public/0test", m, http.StatusNotFound},
-		{"execute insert in a table with invalid body", "/prest/public/test", nil, http.StatusBadRequest},
+		{"execute insert in a table with array field", "/prest-test/public/testarray", mARRAY, http.StatusCreated},
+		{"execute insert in a table with jsonb field", "/prest-test/public/testjson", mJSON, http.StatusCreated},
+		{"execute insert in a table without custom where clause", "/prest-test/public/test", m, http.StatusCreated},
+		{"execute insert in a table with invalid database", "/0prest-test/public/test", m, http.StatusBadRequest},
+		{"execute insert in a table with invalid schema", "/prest-test/0public/test", m, http.StatusNotFound},
+		{"execute insert in a table with invalid table", "/prest-test/public/0test", m, http.StatusNotFound},
+		{"execute insert in a table with invalid body", "/prest-test/public/test", nil, http.StatusBadRequest},
 	}
 
 	for _, tc := range testCases {
@@ -186,16 +186,13 @@ func TestInsertInTables(t *testing.T) {
 func TestBatchInsertInTables(t *testing.T) {
 
 	m := make([]map[string]interface{}, 0)
-	m = append(m, map[string]interface{}{"name": "bprest"})
-	m = append(m, map[string]interface{}{"name": "aprest"})
+	m = append(m, map[string]interface{}{"name": "bprest"}, map[string]interface{}{"name": "aprest"})
 
 	mJSON := make([]map[string]interface{}, 0)
-	mJSON = append(mJSON, map[string]interface{}{"name": "cprest", "data": `{"term": "name", "subterm": ["names", "of", "subterms"], "obj": {"emp": "nuveo"}}`})
-	mJSON = append(mJSON, map[string]interface{}{"name": "dprest", "data": `{"term": "name", "subterms": ["names", "of", "subterms"], "obj": {"emp": "nuveo"}}`})
+	mJSON = append(mJSON, map[string]interface{}{"name": "cprest", "data": `{"term": "name", "subterm": ["names", "of", "subterms"], "obj": {"emp": "nuveo"}}`}, map[string]interface{}{"name": "dprest", "data": `{"term": "name", "subterms": ["names", "of", "subterms"], "obj": {"emp": "nuveo"}}`})
 
 	mARRAY := make([]map[string]interface{}, 0)
-	mARRAY = append(mARRAY, map[string]interface{}{"data": []string{"1", "2"}})
-	mARRAY = append(mARRAY, map[string]interface{}{"data": []string{"1", "2", "3"}})
+	mARRAY = append(mARRAY, map[string]interface{}{"data": []string{"1", "2"}}, map[string]interface{}{"data": []string{"1", "2", "3"}})
 
 	router := mux.NewRouter()
 	router.HandleFunc("/batch/{database}/{schema}/{table}", BatchInsertInTables).Methods("POST")
@@ -209,15 +206,15 @@ func TestBatchInsertInTables(t *testing.T) {
 		status      int
 		isCopy      bool
 	}{
-		{"execute insert in a table with array field", "/batch/prest/public/testarray", mARRAY, http.StatusCreated, false},
-		{"execute insert in a table with jsonb field", "/batch/prest/public/testjson", mJSON, http.StatusCreated, false},
-		{"execute insert in a table without custom where clause", "/batch/prest/public/test", m, http.StatusCreated, false},
-		{"execute insert in a table with invalid database", "/batch/0prest/public/test", m, http.StatusBadRequest, false},
-		{"execute insert in a table with invalid schema", "/batch/prest/0public/test", m, http.StatusNotFound, false},
-		{"execute insert in a table with invalid table", "/batch/prest/public/0test", m, http.StatusNotFound, false},
-		{"execute insert in a table with invalid body", "/batch/prest/public/test", nil, http.StatusBadRequest, false},
-		{"execute insert in a table with array field with copy", "/batch/prest/public/testarray", mARRAY, http.StatusCreated, true},
-		{"execute insert in a table with jsonb field with copy", "/batch/prest/public/testjson", mJSON, http.StatusCreated, true},
+		{"execute insert in a table with array field", "/batch/prest-test/public/testarray", mARRAY, http.StatusCreated, false},
+		{"execute insert in a table with jsonb field", "/batch/prest-test/public/testjson", mJSON, http.StatusCreated, false},
+		{"execute insert in a table without custom where clause", "/batch/prest-test/public/test", m, http.StatusCreated, false},
+		{"execute insert in a table with invalid database", "/batch/0prest-test/public/test", m, http.StatusBadRequest, false},
+		{"execute insert in a table with invalid schema", "/batch/prest-test/0public/test", m, http.StatusNotFound, false},
+		{"execute insert in a table with invalid table", "/batch/prest-test/public/0test", m, http.StatusNotFound, false},
+		{"execute insert in a table with invalid body", "/batch/prest-test/public/test", nil, http.StatusBadRequest, false},
+		{"execute insert in a table with array field with copy", "/batch/prest-test/public/testarray", mARRAY, http.StatusCreated, true},
+		{"execute insert in a table with jsonb field with copy", "/batch/prest-test/public/testjson", mJSON, http.StatusCreated, true},
 	}
 
 	for _, tc := range testCases {
@@ -264,12 +261,12 @@ func TestDeleteFromTable(t *testing.T) {
 		request     map[string]interface{}
 		status      int
 	}{
-		{"execute delete in a table without custom where clause", "/prest/public/test", nil, http.StatusOK},
-		{"excute delete in a table with where clause", "/prest/public/test?name=$eq.nuveo", nil, http.StatusOK},
-		{"execute delete in a table with invalid database", "/0prest/public/test", nil, http.StatusBadRequest},
-		{"execute delete in a table with invalid schema", "/prest/0public/test", nil, http.StatusNotFound},
-		{"execute delete in a table with invalid table", "/prest/public/0test", nil, http.StatusNotFound},
-		{"execute delete in a table with invalid where clause", "/prest/public/test?0name=$eq.nuveo", nil, http.StatusBadRequest},
+		{"execute delete in a table without custom where clause", "/prest-test/public/test", nil, http.StatusOK},
+		{"excute delete in a table with where clause", "/prest-test/public/test?name=$eq.nuveo", nil, http.StatusOK},
+		{"execute delete in a table with invalid database", "/0prest-test/public/test", nil, http.StatusBadRequest},
+		{"execute delete in a table with invalid schema", "/prest-test/0public/test", nil, http.StatusNotFound},
+		{"execute delete in a table with invalid table", "/prest-test/public/0test", nil, http.StatusNotFound},
+		{"execute delete in a table with invalid where clause", "/prest-test/public/test?0name=$eq.nuveo", nil, http.StatusBadRequest},
 	}
 
 	for _, tc := range testCases {
@@ -293,15 +290,15 @@ func TestUpdateFromTable(t *testing.T) {
 		request     map[string]interface{}
 		status      int
 	}{
-		{"execute update in a table without custom where clause", "/prest/public/test", m, http.StatusOK},
-		{"execute update in a table with where clause", "/prest/public/test?name=$eq.nuveo", m, http.StatusOK},
-		{"execute update in a table with where clause and returning all fields", "/prest/public/test?id=1&_returning=*", m, http.StatusOK},
-		{"execute update in a table with where clause and returning name field", "/prest/public/test?id=2&_returning=name", m, http.StatusOK},
-		{"execute update in a table with invalid database", "/0prest/public/test", m, http.StatusBadRequest},
-		{"execute update in a table with invalid schema", "/prest/0public/test", m, http.StatusNotFound},
-		{"execute update in a table with invalid table", "/prest/public/0test", m, http.StatusNotFound},
-		{"execute update in a table with invalid where clause", "/prest/public/test?0name=$eq.nuveo", m, http.StatusBadRequest},
-		{"execute update in a table with invalid body", "/prest/public/test?name=$eq.nuveo", nil, http.StatusBadRequest},
+		{"execute update in a table without custom where clause", "/prest-test/public/test", m, http.StatusOK},
+		{"execute update in a table with where clause", "/prest-test/public/test?name=$eq.nuveo", m, http.StatusOK},
+		{"execute update in a table with where clause and returning all fields", "/prest-test/public/test?id=1&_returning=*", m, http.StatusOK},
+		{"execute update in a table with where clause and returning name field", "/prest-test/public/test?id=2&_returning=name", m, http.StatusOK},
+		{"execute update in a table with invalid database", "/0prest-test/public/test", m, http.StatusBadRequest},
+		{"execute update in a table with invalid schema", "/prest-test/0public/test", m, http.StatusNotFound},
+		{"execute update in a table with invalid table", "/prest-test/public/0test", m, http.StatusNotFound},
+		{"execute update in a table with invalid where clause", "/prest-test/public/test?0name=$eq.nuveo", m, http.StatusBadRequest},
+		{"execute update in a table with invalid body", "/prest-test/public/test?name=$eq.nuveo", nil, http.StatusBadRequest},
 	}
 
 	for _, tc := range testCases {
@@ -324,8 +321,8 @@ func TestShowTable(t *testing.T) {
 		method      string
 		status      int
 	}{
-		{"execute select in a table test custom information table", "/show/prest/public/test", "GET", http.StatusOK},
-		{"execute select in a table test2 custom information table", "/show/prest/public/test2", "GET", http.StatusOK},
+		{"execute select in a table test custom information table", "/show/prest-test/public/test", "GET", http.StatusOK},
+		{"execute select in a table test2 custom information table", "/show/prest-test/public/test2", "GET", http.StatusOK},
 	}
 
 	for _, tc := range testCases {

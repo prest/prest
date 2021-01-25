@@ -160,12 +160,13 @@ func TestWhereByRequest(t *testing.T) {
 	}{
 		{"Where by request without paginate", "/databases?dbname=$eq.prest&test=$eq.cool", []string{`"dbname" = $`, `"test" = $`, " AND "}, []string{"prest", "cool"}, nil},
 		{"Where by request with alias", "/databases?dbname=$eq.prest&c.test=$eq.cool", []string{`"dbname" = $`, `"c".`, `"test" = $`, " AND "}, []string{"prest", "cool"}, nil},
-		{"Where by request with spaced values", "/prest/public/test5?name=$eq.prest tester", []string{`"name" = $`}, []string{"prest tester"}, nil},
-		{"Where by request with jsonb field", "/prest/public/test_jsonb_bug?name=$eq.goku&data->>description:jsonb=$eq.testing", []string{`"name" = $`, `"data"->>'description' = $`, " AND "}, []string{"goku", "testing"}, nil},
-		{"Where by request with dot values", "/prest/public/test5?name=$eq.prest.txt tester", []string{`"name" = $`}, []string{"prest.txt tester"}, nil},
-		{"Where by request with like", "/prest/public/test5?name=$like.%25val%25&phonenumber=123456", []string{`"name" LIKE $`, `"phonenumber" = $`, " AND "}, []string{"%val%", "123456"}, nil},
-		{"Where by request with ilike", "/prest/public/test5?name=$ilike.%25vAl%25&phonenumber=123456", []string{`"name" ILIKE $`, `"phonenumber" = $`, " AND "}, []string{"%vAl%", "123456"}, nil},
-		{"Where by request with multiple colunm values", "/prest/public/table?created_at='$gte.1997-11-03'&created_at='$lte.1997-12-05'", []string{`"created_at" >= $`, ` AND `, `"created_at" <= $`}, []string{`'1997-11-03'`, `'1997-12-05'`}, nil},
+		{"Where by request with spaced values", "/prest-test/public/test5?name=$eq.prest tester", []string{`"name" = $`}, []string{"prest tester"}, nil},
+		{"Where by request with jsonb field", "/prest-test/public/test_jsonb_bug?name=$eq.goku&data->>description:jsonb=$eq.testing", []string{`"name" = $`, `"data"->>'description' = $`, " AND "}, []string{"goku", "testing"}, nil},
+		{"Where by request with dot values", "/prest-test/public/test5?name=$eq.prest.txt tester", []string{`"name" = $`}, []string{"prest.txt tester"}, nil},
+		{"Where by request with like", "/prest-test/public/test5?name=$like.%25val%25&phonenumber=123456", []string{`"name" LIKE $`, `"phonenumber" = $`, " AND "}, []string{"%val%", "123456"}, nil},
+		{"Where by request with ilike", "/prest-test/public/test5?name=$ilike.%25vAl%25&phonenumber=123456", []string{`"name" ILIKE $`, `"phonenumber" = $`, " AND "}, []string{"%vAl%", "123456"}, nil},
+		{"Where by request with multiple colunm values", "/prest-test/public/table?created_at='$gte.1997-11-03'&created_at='$lte.1997-12-05'", []string{`"created_at" >= $`, ` AND `, `"created_at" <= $`}, []string{`'1997-11-03'`, `'1997-12-05'`}, nil},
+		{"Where by request with tsquery", "/prest-test/public/test5?name:tsquery=prest", []string{`name @@ to_tsquery("$")`}, []string{`'prest'`}, nil},
 	}
 
 	for _, tc := range testCases {
@@ -204,9 +205,9 @@ func TestInvalidWhereByRequest(t *testing.T) {
 		description string
 		url         string
 	}{
-		{"Where by request without jsonb key", "/prest/public/test_jsonb_bug?name=$eq.nuveo&data->>description:bla"},
-		{"Where by request with jsonb field invalid", "/prest/public/test_jsonb_bug?name=$eq.nuveo&data->>0description:jsonb=$eq.bla"},
-		{"Where by request with field invalid", "/prest/public/test?0name=$eq.prest"},
+		{"Where by request without jsonb key", "/prest-test/public/test_jsonb_bug?name=$eq.nuveo&data->>description:bla"},
+		{"Where by request with jsonb field invalid", "/prest-test/public/test_jsonb_bug?name=$eq.nuveo&data->>0description:jsonb=$eq.bla"},
+		{"Where by request with field invalid", "/prest-test/public/test?0name=$eq.prest"},
 	}
 
 	for _, tc := range testCases {
@@ -238,10 +239,10 @@ func TestReturningByRequest(t *testing.T) {
 		expectedSQL []string
 		err         error
 	}{
-		{"Returning by request with nothing", "/prest/public/test_group_by_table", []string{""}, nil},
-		{"Returning by request with _returning=*", "/prest/public/test_group_by_table?_returning=*", []string{"RETURNING *"}, nil},
-		{"Returning by request with _returning=field", "/prest/public/test_group_by_table?_returning=age", []string{"RETURNING age"}, nil},
-		{"Returning by request with multiple _returning=field", "/prest/public/test_group_by_table?_returning=age&_returning=salary", []string{"RETURNING age,salary"}, nil},
+		{"Returning by request with nothing", "/prest-test/public/test_group_by_table", []string{""}, nil},
+		{"Returning by request with _returning=*", "/prest-test/public/test_group_by_table?_returning=*", []string{"RETURNING *"}, nil},
+		{"Returning by request with _returning=field", "/prest-test/public/test_group_by_table?_returning=age", []string{"RETURNING age"}, nil},
+		{"Returning by request with multiple _returning=field", "/prest-test/public/test_group_by_table?_returning=age&_returning=salary", []string{"RETURNING age,salary"}, nil},
 	}
 	for _, tc := range testCases {
 		t.Log(tc.description)
@@ -269,19 +270,19 @@ func TestGroupByClause(t *testing.T) {
 		expectedSQL string
 		emptyCase   bool
 	}{
-		{"Group by clause with one field", "/prest/public/test5?_groupby=celphone", `GROUP BY "celphone"`, false},
-		{"Group by clause with two fields", "/prest/public/test5?_groupby=celphone,name", `GROUP BY "celphone","name"`, false},
-		{"Group by clause with two fields", "/prest/public/test5?_groupby=c.celphone,c.name", `GROUP BY "c"."celphone","c"."name"`, false},
-		{"Group by clause without fields", "/prest/public/test5?_groupby=", "", true},
+		{"Group by clause with one field", "/prest-test/public/test5?_groupby=celphone", `GROUP BY "celphone"`, false},
+		{"Group by clause with two fields", "/prest-test/public/test5?_groupby=celphone,name", `GROUP BY "celphone","name"`, false},
+		{"Group by clause with two fields", "/prest-test/public/test5?_groupby=c.celphone,c.name", `GROUP BY "c"."celphone","c"."name"`, false},
+		{"Group by clause without fields", "/prest-test/public/test5?_groupby=", "", true},
 
 		// having tests
-		{"Group by clause with having clause", "/prest/public/test5?_groupby=celphone->>having:sum:salary:$gt:500", `GROUP BY "celphone" HAVING SUM("salary") > 500`, false},
-		{"Group by clause with having clause", "/prest/public/test5?_groupby=c.celphone->>having:sum:salary:$gt:500", `GROUP BY "c"."celphone" HAVING SUM("salary") > 500`, false},
+		{"Group by clause with having clause", "/prest-test/public/test5?_groupby=celphone->>having:sum:salary:$gt:500", `GROUP BY "celphone" HAVING SUM("salary") > 500`, false},
+		{"Group by clause with having clause", "/prest-test/public/test5?_groupby=c.celphone->>having:sum:salary:$gt:500", `GROUP BY "c"."celphone" HAVING SUM("salary") > 500`, false},
 
 		// having errors, but continue with group by
-		{"Group by clause with wrong having clause (insufficient params)", "/prest/public/test5?_groupby=celphone->>having:sum:salary", `GROUP BY "celphone"`, false},
-		{"Group by clause with wrong having clause (wrong query operator)", "/prest/public/test5?_groupby=celphone->>having:sum:salary:$at:500", `GROUP BY "celphone"`, false},
-		{"Group by clause with wrong having clause (wrong group func)", "/prest/public/test5?_groupby=celphone->>having:sun:salary:$gt:500", `GROUP BY "celphone"`, false},
+		{"Group by clause with wrong having clause (insufficient params)", "/prest-test/public/test5?_groupby=celphone->>having:sum:salary", `GROUP BY "celphone"`, false},
+		{"Group by clause with wrong having clause (wrong query operator)", "/prest-test/public/test5?_groupby=celphone->>having:sum:salary:$at:500", `GROUP BY "celphone"`, false},
+		{"Group by clause with wrong having clause (wrong group func)", "/prest-test/public/test5?_groupby=celphone->>having:sun:salary:$gt:500", `GROUP BY "celphone"`, false},
 	}
 
 	for _, tc := range testCases {
@@ -577,12 +578,12 @@ func TestJoinByRequest(t *testing.T) {
 		expectedValues  []string
 		testEmptyResult bool
 	}{
-		{"Join by request", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name", []string{"INNER JOIN", `"test2" ON `, `"test2"."name" = "test"."name"`}, false},
-		{"Join by request with schema", "/prest/public/test?_join=inner:public.test2:test2.name:$eq:test.name", []string{"INNER JOIN", `"public"."test2" ON `, `"test2"."name" = "test"."name"`}, false},
-		{"Join empty params", "/prest/public/test?_join", []string{}, true},
-		{"Join missing param", "/prest/public/test?_join=inner:test2:test2.name:$eq", []string{}, true},
-		{"Join invalid operator", "/prest/public/test?_join=inner:test2:test2.name:notexist:test.name", []string{}, true},
-		{"Join invalid fields", "/prest/public/test?_join=inner:0test2:test2.name:notexist:test.name", []string{}, true},
+		{"Join by request", "/prest-test/public/test?_join=inner:test2:test2.name:$eq:test.name", []string{"INNER JOIN", `"test2" ON `, `"test2"."name" = "test"."name"`}, false},
+		{"Join by request with schema", "/prest-test/public/test?_join=inner:public.test2:test2.name:$eq:test.name", []string{"INNER JOIN", `"public"."test2" ON `, `"test2"."name" = "test"."name"`}, false},
+		{"Join empty params", "/prest-test/public/test?_join", []string{}, true},
+		{"Join missing param", "/prest-test/public/test?_join=inner:test2:test2.name:$eq", []string{}, true},
+		{"Join invalid operator", "/prest-test/public/test?_join=inner:test2:test2.name:notexist:test.name", []string{}, true},
+		{"Join invalid fields", "/prest-test/public/test?_join=inner:0test2:test2.name:notexist:test.name", []string{}, true},
 	}
 
 	for _, tc := range testCases {
@@ -616,7 +617,7 @@ func TestJoinByRequest(t *testing.T) {
 	var expectedSQL = []string{`"name" = $`, `"data"->>'description' = $`, " AND "}
 	var expectedValues = []string{"nuveo", "bla"}
 
-	r, err := http.NewRequest("GET", "/prest/public/test?_join=inner:test2:test2.name:$eq:test.name&name=$eq.nuveo&data->>description:jsonb=$eq.bla", nil)
+	r, err := http.NewRequest("GET", "/prest-test/public/test?_join=inner:test2:test2.name:$eq:test.name&name=$eq.nuveo&data->>description:jsonb=$eq.bla", nil)
 	if err != nil {
 		t.Errorf("expected no errorn on New Request, got %v", err)
 	}
@@ -658,10 +659,10 @@ func TestCountFields(t *testing.T) {
 		expectedSQL string
 		testError   bool
 	}{
-		{"Count fields from table", "/prest/public/test5?_count=celphone", `SELECT COUNT("celphone") FROM`, false},
-		{"Count all from table", "/prest/public/test5?_count=*", "SELECT COUNT(*) FROM", false},
-		{"Count with empty params", "/prest/public/test5?_count=", "", false},
-		{"Count with invalid columns", "/prest/public/test5?_count=celphone,0name", "", true},
+		{"Count fields from table", "/prest-test/public/test5?_count=celphone", `SELECT COUNT("celphone") FROM`, false},
+		{"Count all from table", "/prest-test/public/test5?_count=*", "SELECT COUNT(*) FROM", false},
+		{"Count with empty params", "/prest-test/public/test5?_count=", "", false},
+		{"Count with invalid columns", "/prest-test/public/test5?_count=celphone,0name", "", true},
 	}
 
 	for _, tc := range testCases {
@@ -795,7 +796,7 @@ func TestOrderByRequest(t *testing.T) {
 	t.Log("Query ORDER BY")
 	var expectedSQL = []string{"ORDER BY", `"name"`, `"number" DESC`}
 
-	r, err := http.NewRequest("GET", "/prest/public/test?_order=name,-number", nil)
+	r, err := http.NewRequest("GET", "/prest-test/public/test?_order=name,-number", nil)
 	if err != nil {
 		t.Errorf("expected no errors on NewRequest, got: %v", err)
 	}
@@ -813,7 +814,7 @@ func TestOrderByRequest(t *testing.T) {
 	t.Log("Query ORDER BY with alias")
 	expectedSQL = []string{"ORDER BY", `"c"."name"`, `"c"."number" DESC`}
 
-	r, err = http.NewRequest("GET", "/prest/public/test?_order=c.name,-c.number", nil)
+	r, err = http.NewRequest("GET", "/prest-test/public/test?_order=c.name,-c.number", nil)
 	if err != nil {
 		t.Errorf("expected no errors on NewRequest, got: %v", err)
 	}
@@ -829,7 +830,7 @@ func TestOrderByRequest(t *testing.T) {
 	}
 
 	t.Log("Query ORDER BY empty")
-	r, err = http.NewRequest("GET", "/prest/public/test?_order=", nil)
+	r, err = http.NewRequest("GET", "/prest-test/public/test?_order=", nil)
 	if err != nil {
 		t.Errorf("expected no errors on NewRequest, got: %v", err)
 	}
@@ -844,7 +845,7 @@ func TestOrderByRequest(t *testing.T) {
 	}
 
 	t.Log("Query ORDER BY invalid column")
-	r, err = http.NewRequest("GET", "/prest/public/test?_order=0name", nil)
+	r, err = http.NewRequest("GET", "/prest-test/public/test?_order=0name", nil)
 	if err != nil {
 		t.Errorf("expected no errors on NewRequest, got: %v", err)
 	}
@@ -886,12 +887,19 @@ func TestTablePermissions(t *testing.T) {
 
 }
 
+func TestSupportHyphenInTable(t *testing.T) {
+	_, err := http.NewRequest("GET", "/prest-test/public/test-table-support-hyphen", nil)
+	if err != nil {
+		t.Errorf("expected no errors on Support Hyphen in Table, but got: %v", err)
+	}
+}
+
 func TestRestrictFalse(t *testing.T) {
 	config.PrestConf.AccessConf.Restrict = false
 
 	t.Log("Read unrestrict", config.PrestConf.AccessConf.Restrict)
 
-	r, err := http.NewRequest("GET", "/prest/public/test_list_only_id?_select=*", nil)
+	r, err := http.NewRequest("GET", "/prest-test/public/test_list_only_id?_select=*", nil)
 	if err != nil {
 		t.Errorf("expected no errors on NewRequest, but got: %v", err)
 	}
@@ -961,12 +969,12 @@ func TestColumnsByRequest(t *testing.T) {
 		url         string
 		expectedSQL string
 	}{
-		{"Select array field from table", "/prest/public/testarray?_select=data", "data"},
-		{"Select fields from table", "/prest/public/test5?_select=celphone", "celphone"},
-		{"Select all from table", "/prest/public/test5?_select=*", "*"},
-		{"Select with empty '_select' field", "/prest/public/test5?_select=", ""},
-		{"Select with more columns", "/prest/public/test5?_select=celphone,battery", "celphone,battery"},
-		{"Select with more columns", "/prest/public/test5?_select=age,sum:salary&_groupby=age", `age,SUM("salary")`},
+		{"Select array field from table", "/prest-test/public/testarray?_select=data", "data"},
+		{"Select fields from table", "/prest-test/public/test5?_select=celphone", "celphone"},
+		{"Select all from table", "/prest-test/public/test5?_select=*", "*"},
+		{"Select with empty '_select' field", "/prest-test/public/test5?_select=", ""},
+		{"Select with more columns", "/prest-test/public/test5?_select=celphone,battery", "celphone,battery"},
+		{"Select with more columns", "/prest-test/public/test5?_select=age,sum:salary&_groupby=age", `age,SUM("salary")`},
 	}
 	for _, tc := range testCases {
 		r, err := http.NewRequest("GET", tc.url, nil)

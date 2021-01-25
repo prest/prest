@@ -18,6 +18,7 @@ create table testarray(id serial, data character varying(250)[]);
 create table test_empty_table(id serial, data character varying(250)[]);
 create table test_group_by_table(id serial, name text, age integer, salary int);
 CREATE TABLE prest_users(id serial, username text, password text);
+CREATE TABLE "test-table-support-hyphen" (id serial, name text);
 
 -- Inserts
 insert into test (name) values ('prest tester');
@@ -35,6 +36,7 @@ insert into test_deleteonly_access (name) values ('test01');
 insert into test_jsonb_bug (name, data) values('goku', '{"techniques": ["kamehameha", "kaioken", "genki-dama"]}');
 insert into test_jsonb_bug (name, data) values('goku', '{"description": "testing"}');
 insert into testarray (id, data) values(100, '{"Gohan","Goten"}');
+insert into "test-table-support-hyphen" (name) values ('test01');
 
 insert into test_group_by_table(name, age, salary) values ('joao', 20, 1250);
 insert into test_group_by_table(name, age, salary) values ('maria', 19, 3999);

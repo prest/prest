@@ -97,8 +97,8 @@ func Load() {
 
 func init() {
 	removeOperatorRegex = regexp.MustCompile(`\$[a-z]+.`)
-	insertTableNameRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.]*\.)*(\w+)\s*\(`)
-	insertTableNameQuotesRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.|"]*\.)*"(\w+)"\s*\(`)
+	insertTableNameRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.|-]*\.)*([\w|-]+)\s*\(`)
+	insertTableNameQuotesRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.|"|-]*\.)*"([\w|-]+)"\s*\(`)
 	groupRegex = regexp.MustCompile(`\"(.+?)\"`)
 }
 
@@ -213,6 +213,13 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 						jsonField[0] = fmt.Sprintf(`"%s"`, strings.Join(fields, `"."`))
 						whereKey = append(whereKey, fmt.Sprintf(`%s->>'%s' %s $%d`, jsonField[0], jsonField[1], op, pid))
 						values = append(values, value)
+					case "tsquery":
+						tsQueryField := strings.Split(keyInfo[0], "$")
+						tsQuery := fmt.Sprintf(`%s @@ to_tsquery('%s')`, tsQueryField[0], value)
+						if len(tsQueryField) == 2 {
+							tsQuery = fmt.Sprintf(`%s @@ to_tsquery('%s', '%s')`, tsQueryField[0], tsQueryField[1], value)
+						}
+						whereKey = append(whereKey, tsQuery)
 					default:
 						if chkInvalidIdentifier(keyInfo[0]) {
 							err = fmt.Errorf("invalid identifier: %s", keyInfo[0])
@@ -1061,7 +1068,6 @@ func GetQueryOperator(op string) (string, error) {
 
 	err := errors.New("Invalid operator")
 	return "", err
-
 }
 
 // TablePermissions get tables permissions based in prest configuration
