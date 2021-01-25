@@ -190,7 +190,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		runQuery = config.PrestConf.Adapter.QueryCount
 	}
 
-	sc := runQuery("", sqlSelect, values...)
+	sc := runQuery(database, sqlSelect, values...)
 	if err = sc.Err(); err != nil {
 		errorMessage := sc.Err().Error()
 		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
