@@ -28,7 +28,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-replace (
-	github.com/prest/prest/adapters => ../adapters
-	github.com/prest/prest/controllers => ../controllers
-)
+// replace (
+// 	github.com/prest/prest/adapters => ../adapters
+// 	github.com/prest/prest/controllers => ../controllers
+// )
