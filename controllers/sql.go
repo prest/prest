@@ -9,8 +9,8 @@ import (
 )
 
 // ExecuteScriptQuery is a function to execute and return result of script query
-func ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]byte, error) {
-	config.PrestConf.Adapter.SetDatabase(config.PrestConf.PGDatabase)
+func ExecuteScriptQuery(rq *http.Request, database, queriesPath, script string) ([]byte, error) {
+	config.PrestConf.Adapter.SetDatabase(database)
 	sqlPath, err := config.PrestConf.Adapter.GetScript(rq.Method, queriesPath, script)
 	if err != nil {
 		err = fmt.Errorf("could not get script %s/%s, %+v", queriesPath, script, err)
@@ -39,10 +39,13 @@ func ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]
 // ExecuteFromScripts is a controller to peform SQL in scripts created by users
 func ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+	database := vars["database"]
+	config.PrestConf.Adapter.SetDatabase(database)
+
 	queriesPath := vars["queriesLocation"]
 	script := vars["script"]
 
-	result, err := ExecuteScriptQuery(r, queriesPath, script)
+	result, err := ExecuteScriptQuery(r, config.PrestConf.PGDatabase, queriesPath, script)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

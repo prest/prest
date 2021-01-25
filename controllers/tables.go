@@ -215,7 +215,6 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	table := vars["table"]
 
 	config.PrestConf.Adapter.SetDatabase(database)
-
 	names, placeholders, values, err := config.PrestConf.Adapter.ParseInsertRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform InsertInTables: %v", err)
@@ -396,7 +395,7 @@ func ShowTable(w http.ResponseWriter, r *http.Request) {
 	table := vars["table"]
 
 	config.PrestConf.Adapter.SetDatabase(database)
-	database = config.PrestConf.PGDatabase
+	// database = config.PrestConf.PGDatabase
 	sc := config.PrestConf.Adapter.ShowTable(schema, table)
 	if sc.Err() != nil {
 		log.Println(fmt.Sprintf(" There error to excute the query. schema %s error %s", schema, sc.Err()))

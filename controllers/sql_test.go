@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 func TestExecuteScriptQuery(t *testing.T) {
 	r := mux.NewRouter()
 	r.HandleFunc("/testing/script-get/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp, err := ExecuteScriptQuery(r, "fulltable", "get_all")
+		resp, err := ExecuteScriptQuery(r, "prest", "fulltable", "get_all")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
@@ -37,7 +37,7 @@ func TestExecuteScriptQuery(t *testing.T) {
 	}))
 
 	r.HandleFunc("/testing/script-post/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp, err := ExecuteScriptQuery(r, "fulltable", "write_all")
+		resp, err := ExecuteScriptQuery(r, "prest", "fulltable", "write_all")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
