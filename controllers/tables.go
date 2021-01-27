@@ -56,7 +56,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 	schema := vars["schema"]
 
-	config.PrestConf.Adapter.SetDatabase(database)
+	config.PrestConf.Adapter.SetDatabase(database) // escrever test de concorrência.
 	database = config.PrestConf.PGDatabase
 
 	requestWhere, values, err := config.PrestConf.Adapter.WhereByRequest(r, 3)

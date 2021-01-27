@@ -61,16 +61,16 @@ func MakeHandler() http.Handler {
 	if config.PrestConf.AuthEnabled {
 		r.HandleFunc("/auth", controllers.Auth).Methods("POST")
 	}
-	r.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
-	r.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
-	r.HandleFunc("/tables", controllers.GetTables).Methods("GET")
+	r.HandleFunc("/_DATABASES", controllers.GetDatabases).Methods("GET") //TODO: listar as configurações dos bancos, do config
+	r.HandleFunc("/_SCHEMAS/{database}", controllers.GetSchemas).Methods("GET")
+	r.HandleFunc("/_TABLES/{database}/{schema}", controllers.GetTables).Methods("GET")
 	r.HandleFunc("/_QUERIES/{database}/{queriesLocation}/{script}", controllers.ExecuteFromScripts)
-	r.HandleFunc("/{database}/{schema}", controllers.GetTablesByDatabaseAndSchema).Methods("GET")
-	r.HandleFunc("/show/{database}/{schema}/{table}", controllers.ShowTable).Methods("GET")
+	r.HandleFunc("/_SHOW/{database}/{schema}/{table}", controllers.ShowTable).Methods("GET")
+	r.HandleFunc("/{database}/{schema}", controllers.GetTablesByDatabaseAndSchema).Methods("GET") // TODO: entender a diff, essa rota e GetTables
 	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
+	crudRoutes.HandleFunc("/_BATCH/{database}/{schema}/{table}", controllers.BatchInsertInTables).Methods("POST")
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.SelectFromTables).Methods("GET")
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.InsertInTables).Methods("POST")
-	crudRoutes.HandleFunc("/batch/{database}/{schema}/{table}", controllers.BatchInsertInTables).Methods("POST")
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.DeleteFromTable).Methods("DELETE")
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.UpdateTable).Methods("PUT", "PATCH")
 	r.PathPrefix("/").Handler(negroni.New(

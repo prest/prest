@@ -30,7 +30,7 @@ func GetURI(DBName string) string {
 	if len(DBName) == 0 {
 		DBName = config.PrestConf.PGDatabase
 	}
-
+	//TODO: quando não declarado o nome do banco usar o alias como nome
 	con, ok := config.PrestConf.Databases[DBName]
 	if ok {
 		DBName = con.Database
