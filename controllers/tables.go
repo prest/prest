@@ -222,7 +222,7 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 
 	sql := config.PrestConf.Adapter.InsertSQL(database, schema, table, names, placeholders)
 
-	sc := config.PrestConf.Adapter.Insert(sql, values...)
+	sc := config.PrestConf.Adapter.Insert(database, sql, values...)
 	if err = sc.Err(); err != nil {
 		errorMessage := sc.Err().Error()
 		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {

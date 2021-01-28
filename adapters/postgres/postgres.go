@@ -45,11 +45,11 @@ var groupRegex *regexp.Regexp
 // ErrBodyEmpty err throw when body is empty
 var ErrBodyEmpty = errors.New("body is empty")
 
-var stmts *Stmt
+var stmts Stmt = Stmt{PrepareMap: make(map[string]*sql.Stmt)}
 
 // Stmt statement representation
 type Stmt struct {
-	Mtx        *sync.Mutex
+	Mtx        sync.Mutex
 	PrepareMap map[string]*sql.Stmt
 }
 
@@ -85,7 +85,7 @@ func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt
 // Load postgres
 func Load() {
 	config.PrestConf.Adapter = &Postgres{}
-	db, err := connection.Get("")  // TODO
+	db, err := connection.Get("") // TODO
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -104,21 +104,14 @@ func init() {
 
 // GetStmt get statement
 func GetStmt() *Stmt {
-	if stmts == nil {
-		stmts = &Stmt{
-			Mtx:        &sync.Mutex{},
-			PrepareMap: make(map[string]*sql.Stmt),
-		}
-	}
-	return stmts
+	return &stmts
 }
 
 // ClearStmt used to reset the cache and allow multiple tests
 func ClearStmt() {
-	if stmts != nil {
-		stmts = nil
-		stmts = GetStmt()
-	}
+	stmts.Mtx.Lock()
+	stmts.PrepareMap = make(map[string]*sql.Stmt)
+	stmts.Mtx.Unlock()
 }
 
 // GetTransaction get transaction
@@ -162,7 +155,8 @@ func chkInvalidIdentifier(identifer ...string) bool {
 				v != '*' &&
 				v != '[' &&
 				v != ']' &&
-				v != '"' {
+				v != '"' &&
+				v != ' ' {
 				return true
 			}
 			if unicode.Is(unicode.Quotation_Mark, v) {
@@ -812,8 +806,8 @@ func (adapter *Postgres) fullInsert(db *sqlx.DB, tx *sql.Tx, SQL string) (stmt *
 }
 
 // Insert execute insert sql into a table
-func (adapter *Postgres) Insert(SQL string, params ...interface{}) (sc adapters.Scanner) {
-	db, err := connection.Get("") // TODO
+func (adapter *Postgres) Insert(database string, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	db, err := connection.Get(database)
 	if err != nil {
 		log.Println(err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -1310,6 +1304,11 @@ func NormalizeGroupFunction(paramValue string) (groupFuncSQL string, err error) 
 // SetDatabase set the current database name in use
 func (adapter *Postgres) SetDatabase(name string) {
 	connection.SetDatabase(name)
+}
+
+// GetDatabase get the current database name in use
+func (adapter *Postgres) GetDatabase() string {
+	return connection.GetDatabase()
 }
 
 // SelectSQL generate select sql

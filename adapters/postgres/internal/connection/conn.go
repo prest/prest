@@ -2,6 +2,7 @@ package connection
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/jmoiron/sqlx"
@@ -13,13 +14,14 @@ import (
 
 var (
 	err          error
-	pool         *Pool
+	pool         Pool = Pool{DB: make(map[string]*sqlx.DB)}
 	currDatabase string
+	connectMtx   sync.Mutex
 )
 
 // Pool struct
 type Pool struct {
-	Mtx *sync.Mutex
+	Mtx sync.Mutex
 	DB  map[string]*sqlx.DB
 }
 
@@ -51,6 +53,8 @@ func GetURI(DBName string) string {
 		dbURI += " sslrootcert=" + config.PrestConf.SSLRootCert
 	}
 
+	log.Println(fmt.Sprintf("The dbURI is: %s", dbURI))
+
 	return dbURI
 }
 
@@ -66,7 +70,9 @@ func Get(database string) (*sqlx.DB, error) {
 		return DB, nil
 	}
 
+	connectMtx.Lock()
 	DB, err = sqlx.Connect("postgres", GetURI(database))
+	connectMtx.Unlock()
 	if err != nil {
 		return nil, err
 	}
@@ -80,13 +86,7 @@ func Get(database string) (*sqlx.DB, error) {
 
 // GetPool of connection
 func GetPool() *Pool {
-	if pool == nil {
-		pool = &Pool{
-			Mtx: &sync.Mutex{},
-			DB:  make(map[string]*sqlx.DB),
-		}
-	}
-	return pool
+	return &pool
 }
 
 func getDatabaseFromPool(name string) *sqlx.DB {
@@ -127,10 +127,18 @@ func MustGet() *sqlx.DB {
 
 // SetDatabase set current database in use
 func SetDatabase(name string) {
+	p := GetPool()
+	p.Mtx.Lock()
 	currDatabase = name
+	p.Mtx.Unlock()
 }
 
 // GetDatabase get current database in use
-func GetDatabase() string {
-	return currDatabase
+func GetDatabase() (result string) {
+	p := GetPool()
+	p.Mtx.Lock()
+	result = currDatabase
+	p.Mtx.Unlock()
+
+	return
 }
