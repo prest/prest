@@ -737,8 +737,8 @@ func (adapter *Postgres) BatchInsertCopy(dbname, schema, table string, keys []st
 }
 
 // BatchInsertValues execute batch insert sql into a table unsing multi values
-func (adapter *Postgres) BatchInsertValues(SQL string, values ...interface{}) (sc adapters.Scanner) {
-	db, err := connection.Get("")
+func (adapter *Postgres) BatchInsertValues(database string, SQL string, values ...interface{}) (sc adapters.Scanner) {
+	db, err := connection.Get(database)
 	if err != nil {
 		log.Println(err)
 		sc = &scanner.PrestScanner{Error: err}

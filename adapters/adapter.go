@@ -8,7 +8,7 @@ import (
 //Adapter interface
 type Adapter interface {
 	GetTransaction() (tx *sql.Tx, err error)
-	BatchInsertValues(SQL string, params ...interface{}) (sc Scanner)
+	BatchInsertValues(database string, SQL string, params ...interface{}) (sc Scanner)
 	BatchInsertCopy(dbname, schema, table string, keys []string, params ...interface{}) (sc Scanner)
 	CountByRequest(req *http.Request) (countQuery string, err error)
 	DatabaseClause(req *http.Request) (query string, hasCount bool)

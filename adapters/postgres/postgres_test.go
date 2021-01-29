@@ -1217,7 +1217,7 @@ func TestBatchInsertValues(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.BatchInsertValues(tc.sql, tc.records...)
+		sc := config.PrestConf.Adapter.BatchInsertValues("", tc.sql, tc.records...)
 		if sc.Err() != nil {
 			t.Errorf("expected no errors, but got %s", sc.Err())
 		}

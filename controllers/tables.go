@@ -256,7 +256,7 @@ func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 	method := r.Header.Get("Prest-Batch-Method")
 	if strings.ToLower(method) != "copy" {
 		sql := config.PrestConf.Adapter.InsertSQL(database, schema, table, names, placeholders)
-		sc = config.PrestConf.Adapter.BatchInsertValues(sql, values...)
+		sc = config.PrestConf.Adapter.BatchInsertValues(database, sql, values...)
 	} else {
 		sc = config.PrestConf.Adapter.BatchInsertCopy(database, schema, table, strings.Split(names, ","), values...)
 	}
