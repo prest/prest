@@ -16,6 +16,42 @@ _p_**REST** (**P**_ostgreSQL_ **REST**), simplify and accelerate development, in
 
 There is PostgREST written in Haskell, but keeping Haskell software in production is not an easy job. With this need pREST was born. [Read more](https://github.com/prest/prest/issues/41).
 
+## Development usage
+
+For dependencies installation
+
+```sh
+go mod download
+```
+
+Building a local version
+
+```sh
+go build -ldflags "-s -w" -o prestd cmd/prestd/main.go
+```
+
+Executing the prestd
+
+```sh
+PREST_PG_USER=postgres PREST_PG_PASS=postgres PREST_PG_DATABASE=prest PREST_PG_PORT=5432 PREST_HTTP_PORT=3010 ./prestd
+```
+
+or use 'prest.toml' as a preset configuration, insert a user to see the changes
+
+```sh
+INSERT INTO prest_users (name, username, password) VALUES ('prest', 'prest', MD5('prest'));
+```
+
+Now you can authenticate
+
+```sh
+curl -i -X POST http://127.0.0.1:3010/auth -H "Content-Type: application/json" -d '{"username": "prest", "password": "prest"}'
+```
+
+```sh
+curl -i X GET http://127.0.0.1:3010/prest/public/prest_users -H "Accept: application/json" -H "Authorization: Bearer {token}"
+```
+
 ## 1-Click Deploy
 
 ### Heroku
