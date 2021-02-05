@@ -39,6 +39,10 @@ PREST_PG_USER=postgres PREST_PG_PASS=postgres PREST_PG_DATABASE=prest PREST_PG_P
 or use 'prest.toml' as a preset configuration, insert a user to see the changes
 
 ```sh
+./prestd migrate up auth
+```
+
+```sh
 INSERT INTO prest_users (name, username, password) VALUES ('prest', 'prest', MD5('prest'));
 ```
 
