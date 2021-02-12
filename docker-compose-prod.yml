@@ -11,17 +11,18 @@ services:
         ports:
             - "5432:5432"
     prest:
-        image: prest/prest:v1
+        # use latest build - analyze the risk of using this version in production
+        image: prest/prest
         links:
             - "postgres:postgres"
         environment:
-            - PREST_DEBUG=true # remove comment for enable DEBUG mode (disable JWT)
+            - PREST_DEBUG=false
+            - PREST_AUTH_ENABLED=true
             - PREST_PG_HOST=postgres
             - PREST_PG_USER=prest
             - PREST_PG_PASS=prest
             - PREST_PG_DATABASE=prest
             - PREST_PG_PORT=5432
-            - PREST_JWT_DEFAULT=false # remove if need jwt
         depends_on:
             - postgres
         ports:
