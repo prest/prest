@@ -10,7 +10,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gosidekick/migration/v3 v3.0.0
 	github.com/jmoiron/sqlx v1.3.1
-	github.com/lib/pq v1.9.0
+	github.com/lib/pq v1.10.0
 	github.com/magiconair/properties v1.8.4 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
