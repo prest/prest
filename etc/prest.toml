@@ -1,9 +1,30 @@
 [jwt]
 default = false
 
-[pg]
+[databases.pg]
 host = "127.0.0.1"
 user = "prest"
 pass = "prest"
 port = 5432
 database = "prest"
+
+[databases.foo]
+host = "127.0.0.1"
+user = "prest"
+pass = "prest"
+port = 5432
+database = "prest"
+
+[databases.bar]
+host = "127.0.0.1"
+user = "prest"
+pass = "prest"
+port = 5432
+database = "testes"
+
+[databases.teste]
+host = "127.0.0.1"
+user = "teste"
+pass = "teste"
+port = 5431
+database = "teste"

@@ -26,3 +26,8 @@ require (
 	golang.org/x/text v0.3.5 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
 )
+
+// replace (
+// 	github.com/prest/prest/adapters => ../adapters
+// 	github.com/prest/prest/controllers => ../controllers
+// )

@@ -27,8 +27,16 @@ type Pool struct {
 func GetURI(DBName string) string {
 	var dbURI string
 
-	if DBName == "" {
+	if len(DBName) == 0 {
 		DBName = config.PrestConf.PGDatabase
+	}
+	//TODO: quando não declarado o nome do banco usar o alias como nome
+	con, ok := config.PrestConf.Databases[DBName]
+	if ok {
+		DBName = con.Database
+		config.PrestConf.PGUser = con.User
+		config.PrestConf.PGHost = con.Host
+		config.PrestConf.PGPort = con.Port
 	}
 	dbURI = fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=%v connect_timeout=%d",
 		config.PrestConf.PGUser,
@@ -124,7 +132,12 @@ func MustGet() *sqlx.DB {
 
 // SetDatabase set current database in use
 func SetDatabase(name string) {
-	currDatabase = name
+	db, ok := config.PrestConf.Databases[name]
+	if !ok {
+		currDatabase = config.PrestConf.PGDatabase
+		return
+	}
+	currDatabase = db.Database
 }
 
 // GetDatabase get current database in use
