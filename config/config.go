@@ -101,7 +101,7 @@ func viperCfg() {
 	viper.SetDefault("http.port", 3000)
 	viper.SetDefault("pg.host", "127.0.0.1")
 	viper.SetDefault("pg.port", 5432)
-	viper.SetDefault("ssl.mode", "disable")
+	viper.SetDefault("ssl.mode", "require")
 	viper.SetDefault("pg.maxidleconn", 10)
 	viper.SetDefault("pg.maxopenconn", 10)
 	viper.SetDefault("pg.conntimeout", 10)

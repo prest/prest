@@ -137,8 +137,8 @@ password = "password"
 
 There is 4 options to set on ssl mode:
 
-- `disable` - SSL off by default
-- `require` - Always SSL (skip verification)
+- `require` - Always SSL (skip verification) **by default**
+- `disable` - SSL off
 - `verify-ca` - Always SSL (verify that the certificate presented by the server was signed by a trusted CA)
 - `verify-full` - Always SSL (verify that the certification presented by the server was signed by a trusted CA and the server host name matches the one in the certificate)
 
