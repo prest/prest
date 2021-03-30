@@ -1,5 +1,5 @@
 # <img align="right" src="https://docs.prestd.com/logo.png" alt="RESTful API" title="RESTful API"> pREST
-[![Build Status](https://travis-ci.org/prest/prest.svg?branch=main)](https://travis-ci.org/prest/prest)
+[![Build Status](https://travis-ci.com/prest/prest.svg?branch=main)](https://travis-ci.com/prest/prest)
 [![GoDoc](https://godoc.org/github.com/prest/prest?status.png)](https://godoc.org/github.com/prest/prest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/prest/prest)](https://goreportcard.com/report/github.com/prest/prest)
 [![Coverage Status](https://coveralls.io/repos/github/prest/prest/badge.svg?branch=main)](https://coveralls.io/github/prest/prest?branch=main)
