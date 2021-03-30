@@ -19,7 +19,7 @@ import (
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
-	Use:   "prest",
+	Use:   "prestd",
 	Short: "Serve a RESTful API from any PostgreSQL database",
 	Long:  `pREST (PostgreSQL REST), simplify and accelerate development, ⚡ instant, realtime, high-performance on any Postgres application, existing or new`,
 	Run: func(cmd *cobra.Command, args []string) {
