@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: prest
+    prestService: custom
+  name: prest
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prest
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: prest
+    spec:
+      containers:
+        - image: prest/prest:v1
+          imagePullPolicy: IfNotPresent
+          name: prest
+          env:
+            - name: DATABASE_URL
+              value: postgres://username:password@hostname:port/dbname
+            # Enable debugging mode. It should be disabled in production.
+            - name: PREST_DEBUG
+              value: "true"
+            # Disabled JWT token. It should be disabled in production.
+            - name: PREST_JWT_DEFAULT
+              value: "true"
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+          resources: {}
