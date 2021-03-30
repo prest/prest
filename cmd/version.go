@@ -13,6 +13,6 @@ var versionCmd = &cobra.Command{
 	Short: "Print the version number of pREST",
 	Long:  `All software has versions. This is pREST's`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Serve a RESTful API from any PostgreSQL database", helpers.PrestReleaseVersion())
+		fmt.Println("Simplify and accelerate development, ⚡ instant, realtime, high-performance on any Postgres application, existing or new", helpers.PrestReleaseVersion())
 	},
 }
