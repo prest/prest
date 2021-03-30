@@ -1,8 +1,8 @@
 # <img align="right" src="https://docs.prestd.com/logo.png" alt="RESTful API" title="RESTful API"> pREST
-[![Build Status](https://travis-ci.org/prest/prest.svg?branch=master)](https://travis-ci.org/prest/prest)
+[![Build Status](https://travis-ci.org/prest/prest.svg?branch=main)](https://travis-ci.org/prest/prest)
 [![GoDoc](https://godoc.org/github.com/prest/prest?status.png)](https://godoc.org/github.com/prest/prest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/prest/prest)](https://goreportcard.com/report/github.com/prest/prest)
-[![Coverage Status](https://coveralls.io/repos/github/prest/prest/badge.svg?branch=master)](https://coveralls.io/github/prest/prest?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/prest/prest/badge.svg?branch=main)](https://coveralls.io/github/prest/prest?branch=main)
 [![SourceLevel](https://app.sourcelevel.io/github/prest/-/prest.svg)](https://app.sourcelevel.io/github/prest/-/prest)
 [![Homebrew](https://img.shields.io/badge/dynamic/json.svg?url=https://formulae.brew.sh/api/formula/prestd.json&query=$.versions.stable&label=homebrew)](https://formulae.brew.sh/formula/prestd)
 
@@ -20,7 +20,7 @@ There is PostgREST written in Haskell, but keeping Haskell software in productio
 
 ```sh
 # Download docker compose file
-wget https://raw.githubusercontent.com/prest/prest/master/docker-compose-prod.yml -O docker-compose.yml
+wget https://raw.githubusercontent.com/prest/prest/main/docker-compose-prod.yml -O docker-compose.yml
 
 # Up (run) PostgreSQL and prestd
 docker-compose up
@@ -80,4 +80,4 @@ Deploy to Heroku and instantly get a realtime RESTFul API backed by Heroku Postg
 
 ## Documentation
 
-https://docs.prestd.com/ ([content source](https://github.com/prest/prest/tree/master/docs) and [template source](https://github.com/prest/doc-template))
+https://docs.prestd.com/ ([content source](https://github.com/prest/prest/tree/main/docs) and [template source](https://github.com/prest/doc-template))
