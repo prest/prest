@@ -27,6 +27,10 @@ Via environment variables or via toml file.
 - PREST\_AUTH_TABLE (*default prest_users*)
 - PREST\_AUTH_USERNAME (*default username*)
 - PREST\_AUTH_PASSWORD (*default password*)
+- PREST\_SSL_MODE (*default require*)
+- PREST\_SSL_CERT
+- PREST\_SSL_KEY
+- PREST\_SSL_ROOTCERT
 
 
 ## TOML
