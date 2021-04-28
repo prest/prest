@@ -46,6 +46,7 @@ services:
       - PREST_PG_DATABASE=prest
       - PREST_PG_PORT=5432
       - PREST_JWT_DEFAULT=false  # remove if need jwt
+      - PREST_SSL_MODE=disable
     depends_on:
       - timescaledb
     ports:
