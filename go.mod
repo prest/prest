@@ -5,7 +5,7 @@ go 1.15
 require (
 	github.com/auth0/go-jwt-middleware v1.0.0
 	github.com/clbanning/mxj v1.8.4
-	github.com/form3tech-oss/jwt-go v3.2.2+incompatible
+	github.com/form3tech-oss/jwt-go v3.2.3+incompatible
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gorilla/mux v1.8.0
 	github.com/gosidekick/migration/v3 v3.0.0
