@@ -25,7 +25,7 @@ wget https://raw.githubusercontent.com/prest/prest/main/docker-compose-prod.yml 
 # Up (run) PostgreSQL and prestd
 docker-compose up
 # Run data migration to create user structure for access (JWT)
-docker-compose exec prest ./prestd migrate up auth
+docker-compose exec prest prestd migrate up auth
 
 # Create user and password for API access (via JWT)
 ## user: prest
