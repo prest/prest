@@ -37,7 +37,7 @@ docker-compose exec postgres psql -d prest -U prest -c "select * from prest_user
 # Generate JWT Token with user and password created
 curl -i -X POST http://127.0.0.1:3000/auth -H "Content-Type: application/json" -d '{"username": "prest", "password": "prest"}'
 # Access endpoint using JWT Token
-curl -i X GET http://127.0.0.1:3000/prest/public/prest_users -H "Accept: application/json" -H "Authorization: Bearer {TOKEN}"
+curl -i -X GET http://127.0.0.1:3000/prest/public/prest_users -H "Accept: application/json" -H "Authorization: Bearer {TOKEN}"
 ```
 
 ## Development usage
