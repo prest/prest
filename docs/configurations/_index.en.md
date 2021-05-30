@@ -192,3 +192,5 @@ prestd migrate --url driver://url --path ./migrations next -n
 prestd migrate up auth
 prestd migrate down auth
 ```
+
+See the [migration documentation page](https://docs.prestd.com/migrations/) to understand how our migration system works.
