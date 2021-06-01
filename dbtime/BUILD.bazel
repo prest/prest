@@ -1,0 +1,14 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "dbtime",
+    srcs = ["dbtime.go"],
+    importpath = "github.com/prest/prest/dbtime",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "dbtime_test",
+    srcs = ["dbtime_test.go"],
+    embed = [":dbtime"],
+)

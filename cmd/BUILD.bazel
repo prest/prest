@@ -1,0 +1,33 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "cmd",
+    srcs = [
+        "auth.go",
+        "down.go",
+        "migrate.go",
+        "mversion.go",
+        "next.go",
+        "redo.go",
+        "reset.go",
+        "root.go",
+        "up.go",
+        "version.go",
+    ],
+    importpath = "github.com/prest/prest/cmd",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//adapters/postgres",
+        "//config",
+        "//config/router",
+        "//controllers",
+        "//helpers",
+        "//middlewares",
+        "@com_github_gorilla_mux//:mux",
+        "@com_github_gosidekick_migration_v3//:migration",
+        "@com_github_lib_pq//:pq",
+        "@com_github_nuveo_log//:log",
+        "@com_github_spf13_cobra//:cobra",
+        "@com_github_urfave_negroni//:negroni",
+    ],
+)

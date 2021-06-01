@@ -1,0 +1,9 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "auth",
+    srcs = ["models.go"],
+    importpath = "github.com/prest/prest/controllers/auth",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_form3tech_oss_jwt_go//:jwt-go"],
+)
