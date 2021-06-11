@@ -104,10 +104,34 @@ func AccessControl() negroni.Handler {
 
 // JwtMiddleware check if actual request have JWT
 func JwtMiddleware(key string, algo string) negroni.Handler {
-	jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
-		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
+	var keyGetter jwt.Keyfunc
+	switch algo[0:2]  {
+	case "RS":
+		rsaKey, err  := jwt.ParseRSAPublicKeyFromPEM( []byte(key))
+		if err != nil {
+			log.Fatal("PREST_JWT_KEY RSA: " + err.Error())
+		}
+		keyGetter = func(token *jwt.Token) (interface{}, error) {
+			return rsaKey, nil
+		}
+	case "ES":
+		ecdsaKey, err  := jwt.ParseECPublicKeyFromPEM( []byte(key))
+		if err != nil {
+			log.Fatal("PREST_JWT_KEY ECDSA: " + err.Error())
+		}
+		keyGetter = func(token *jwt.Token) (interface{}, error) {
+			return ecdsaKey, nil
+		}
+	case "HS":
+		keyGetter = func(token *jwt.Token) (interface{}, error) {
 			return []byte(key), nil
-		},
+		}
+	default:
+		log.Fatal("Invalid PREST_JWT_ALGO: " + algo)
+	}
+
+	jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
+		ValidationKeyGetter: keyGetter,
 		SigningMethod: jwt.GetSigningMethod(algo),
 	})
 
