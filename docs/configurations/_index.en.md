@@ -9,28 +9,33 @@ Via environment variables or via toml file.
 
 ## Environment vars
 
-- PREST\_CONF
-- PREST\_HTTP_HOST (*default 0.0.0.0*)
-- PREST\_HTTP_PORT or **PORT** (PORT is cloud factor, _when declaring this variable overwritten PREST\_HTTP_PORT, default 3000_)
-- PREST\_PG_HOST (*default 127.0.0.1*)
-- PREST\_PG_USER
-- PREST\_PG_PASS
-- PREST\_PG_DATABASE
-- PREST\_PG_PORT (*default 5432*)
-- PREST\_PG_URL or **DATABASE\_URL** (cloud factor, _when declaring this variable all the previous connection fields are overwritten_)
-- PREST\_JWT_KEY
-- PREST\_JWT_ALGO
-- PREST\_JWT_WHITELIST (*default /auth*)
-- PREST\_AUTH_ENABLED (*default false*)
-- PREST\_AUTH_ENCRYPT (*default MD5*)
-- PREST\_AUTH_TYPE (*default body*)
-- PREST\_AUTH_TABLE (*default prest_users*)
-- PREST\_AUTH_USERNAME (*default username*)
-- PREST\_AUTH_PASSWORD (*default password*)
-- PREST\_SSL_MODE (*default require*)
-- PREST\_SSL_CERT
-- PREST\_SSL_KEY
-- PREST\_SSL_ROOTCERT
+
+| var | default | description |
+| --- | --- | --- |
+| PREST\_CONF | ./prest.conf | |
+| PREST\_MIGRATIONS | ./migrations | |
+| PREST\_QUERIES_LOCATION | ./queries | |
+| PREST\_HTTP_HOST | 0.0.0.0 | |
+| PREST\_HTTP_PORT or **PORT** | 3000 | PORT is cloud factor, _when declaring this variable overwritten PREST\_HTTP_PORT |
+| PREST\_PG_HOST | 127.0.0.1 | |
+| PREST\_PG_USER | | |
+| PREST\_PG_PASS | | |
+| PREST\_PG_DATABASE | | |
+| PREST\_PG_PORT | 5432 | |
+| PREST\_PG_URL or **DATABASE\_URL** | | cloud factor, _when declaring this variable all the previous connection fields are overwritten_ |
+| PREST\_JWT_KEY | | |
+| PREST\_JWT_ALGO | HS256 | |
+| PREST\_JWT_WHITELIST | [/auth] | |
+| PREST\_AUTH_ENABLED | false | |
+| PREST\_AUTH_ENCRYPT | MD5 | |
+| PREST\_AUTH_TYPE | body | |
+| PREST\_AUTH_TABLE | prest_users | |
+| PREST\_AUTH_USERNAME | username | |
+| PREST\_AUTH_PASSWORD | password | |
+| PREST\_SSL_MODE | require | |
+| PREST\_SSL_CERT | | |
+| PREST\_SSL_KEY | | |
+| PREST\_SSL_ROOTCERT | | |
 
 
 ## TOML
