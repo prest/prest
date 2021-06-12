@@ -50,7 +50,7 @@ migrations = "./migrations"
 # enabling debug mode will disable JWT authorization
 
 [http]
-port = 6000 
+port = 6000
 # Port 6000 is blocked on windows. You must change to 8080 or any unblocked port
 
 [jwt]
@@ -164,36 +164,54 @@ PREST_DEBUG=true
 
 `--url` and `--path` flags are optional if pREST configurations already set.
 
-```bash
-# env var for migrations directory
-PREST_MIGRATIONS
+**apply all available migrations:**
 
-# apply all available migrations
+```sh
 prestd migrate --url driver://url --path ./migrations up
+```
 
-# roll back all migrations
+**roll back all migrations:**
+
+```sh
 prestd migrate --url driver://url --path ./migrations down
+```
 
-# roll back the most recently applied migration, then run it again.
+**roll back the most recently applied migration, then run it again:**
+
+```sh
 prestd migrate --url driver://url --path ./migrations redo
+```
+**run down and then up command:**
 
-# run down and then up command
+```sh
 prestd migrate --url driver://url --path ./migrations reset
+```
 
-# show the current migration version
+**show the current migration version:**
+
+```sh
 prestd migrate --url driver://url --path ./migrations version
+```
 
-# apply the next n migrations
+**apply the next n migrations:**
+
+```sh
 prestd migrate --url driver://url --path ./migrations next +1
 prestd migrate --url driver://url --path ./migrations next +2
 prestd migrate --url driver://url --path ./migrations next +n
+```
 
-# roll back the previous n migrations
+**roll back the previous n migrations:**
+
+```sh
 prestd migrate --url driver://url --path ./migrations next -1
 prestd migrate --url driver://url --path ./migrations next -2
 prestd migrate --url driver://url --path ./migrations next -n
+```
 
-# create or remove default pREST authentication table
+**create or remove default pREST authentication table:**
+
+```sh
 prestd migrate up auth
 prestd migrate down auth
 ```
