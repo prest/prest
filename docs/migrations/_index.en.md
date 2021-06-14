@@ -5,7 +5,66 @@ weight: 14
 menu: main
 ---
 
-## Migration Filename Format
+Migrations are the pREST's way of propagating database changes (adding a field, deleting a model table, bulk data modification, etc.). They are designed to be mostly automatic, but you will need to know when to do migrations, when to run them, and the common problems you may run into.
+
+We use SQL files for evolution and regration, so you can upgrade and downgrade.
+
+`--url` and `--path` flags are optional if pREST configurations already set.
+
+**apply all available migrations:**
+
+```sh
+prestd migrate --url driver://url --path ./migrations up
+```
+
+**roll back all migrations:**
+
+```sh
+prestd migrate --url driver://url --path ./migrations down
+```
+
+**roll back the most recently applied migration, then run it again:**
+
+```sh
+prestd migrate --url driver://url --path ./migrations redo
+```
+
+**run down and then up command:**
+
+```sh
+prestd migrate --url driver://url --path ./migrations reset
+```
+
+**show the current migration version:**
+
+```sh
+prestd migrate --url driver://url --path ./migrations version
+```
+
+**apply the next n migrations:**
+
+```sh
+prestd migrate --url driver://url --path ./migrations next +1
+prestd migrate --url driver://url --path ./migrations next +2
+prestd migrate --url driver://url --path ./migrations next +n
+```
+
+**roll back the previous n migrations:**
+
+```sh
+prestd migrate --url driver://url --path ./migrations next -1
+prestd migrate --url driver://url --path ./migrations next -2
+prestd migrate --url driver://url --path ./migrations next -n
+```
+
+**create or remove default pREST authentication table:**
+
+```sh
+prestd migrate up auth
+prestd migrate down auth
+```
+
+## Filename Format
 
 A single logical migration is represented as two separate migration files, one
 to migrate "up" to the specified version from the previous version, and a second to migrate back "down" to the previous version. These migrations can be provided by any one of the supported migration sources.
@@ -52,7 +111,7 @@ is a no-op or is irreversible. It is recommended to still include both migration
 If your database does not support comments, then deleting the migration file will also work.
 Note, an actual empty file (e.g. a 0 byte file) may cause issues with your database since migrate will attempt to run an empty query. In this case, deleting the migration file will also work.
 
-## Migration Content Format
+## Content Format
 
 The format of the migration files themselves varies between database systems.
 Different databases have different semantics around schema changes and when and

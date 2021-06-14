@@ -9,7 +9,6 @@ Via environment variables or via toml file.
 
 ## Environment vars
 
-
 | var | default | description |
 | --- | --- | --- |
 | PREST\_CONF | ./prest.conf | |
@@ -37,8 +36,8 @@ Via environment variables or via toml file.
 | PREST\_SSL_KEY | | |
 | PREST\_SSL_ROOTCERT | | |
 
-
 ## TOML
+
 Optionally the pREST can be configured by TOML file.
 
 You can follow this sample and create your own `prest.toml` file and put this on the same folder that you run `prest` command.
@@ -141,16 +140,14 @@ password = "password"
 
 > to validate all endpoints with generated jwt token must be activated jwt option
 
-
 ## SSL
 
 There is 4 options to set on ssl mode:
 
-- `require` - Always SSL (skip verification) **by default**
-- `disable` - SSL off
-- `verify-ca` - Always SSL (verify that the certificate presented by the server was signed by a trusted CA)
-- `verify-full` - Always SSL (verify that the certification presented by the server was signed by a trusted CA and the server host name matches the one in the certificate)
-
+* `require` - Always SSL (skip verification) **by default**
+* `disable` - SSL off
+* `verify-ca` - Always SSL (verify that the certificate presented by the server was signed by a trusted CA)
+* `verify-full` - Always SSL (verify that the certification presented by the server was signed by a trusted CA and the server host name matches the one in the certificate)
 
 ## Debug Mode
 
@@ -159,61 +156,3 @@ Set environment variable `PREST_DEBUG` or `debug=true` on top of prest.toml file
 ```toml
 PREST_DEBUG=true
 ```
-
-## Migrations
-
-`--url` and `--path` flags are optional if pREST configurations already set.
-
-**apply all available migrations:**
-
-```sh
-prestd migrate --url driver://url --path ./migrations up
-```
-
-**roll back all migrations:**
-
-```sh
-prestd migrate --url driver://url --path ./migrations down
-```
-
-**roll back the most recently applied migration, then run it again:**
-
-```sh
-prestd migrate --url driver://url --path ./migrations redo
-```
-**run down and then up command:**
-
-```sh
-prestd migrate --url driver://url --path ./migrations reset
-```
-
-**show the current migration version:**
-
-```sh
-prestd migrate --url driver://url --path ./migrations version
-```
-
-**apply the next n migrations:**
-
-```sh
-prestd migrate --url driver://url --path ./migrations next +1
-prestd migrate --url driver://url --path ./migrations next +2
-prestd migrate --url driver://url --path ./migrations next +n
-```
-
-**roll back the previous n migrations:**
-
-```sh
-prestd migrate --url driver://url --path ./migrations next -1
-prestd migrate --url driver://url --path ./migrations next -2
-prestd migrate --url driver://url --path ./migrations next -n
-```
-
-**create or remove default pREST authentication table:**
-
-```sh
-prestd migrate up auth
-prestd migrate down auth
-```
-
-See the [migration documentation page](https://docs.prestd.com/migrations/) to understand how our migration system works.
