@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
-rm -rf docbuild && \
-git clone https://github.com/prest/prest.github.io docbuild && \
-rm -rf docbuild/content && \
-cp -rf docs docbuild/content && \
+
+# Clone doc-template repo only if 'docbuild' directory doesn't exist
+[ -d docbuild ] || (git clone https://github.com/prest/doc-template docbuild)
+
+# Update local template repo and build documentation
 cd docbuild && \
-hugo $@
+    git fetch && \
+    git pull --force && \
+    rm -rf content && \
+    cp -rf ../docs content && \
+    rm -rf static/content && \
+    mv content/assets static/content && \
+    hugo "$@"
+

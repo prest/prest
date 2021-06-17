@@ -9,27 +9,35 @@ Via environment variables or via toml file.
 
 ## Environment vars
 
-- PREST\_CONF
-- PREST\_HTTP_HOST (*default 0.0.0.0*)
-- PREST\_HTTP_PORT or **PORT** (PORT is cloud factor, _when declaring this variable overwritten PREST\_HTTP_PORT, default 3000_)
-- PREST\_PG_HOST (*default 127.0.0.1*)
-- PREST\_PG_USER
-- PREST\_PG_PASS
-- PREST\_PG_DATABASE
-- PREST\_PG_PORT (*default 5432*)
-- PREST\_PG_URL or **DATABASE\_URL** (cloud factor, _when declaring this variable all the previous connection fields are overwritten_)
-- PREST\_JWT_KEY
-- PREST\_JWT_ALGO
-- PREST\_JWT_WHITELIST (*default /auth*)
-- PREST\_AUTH_ENABLED (*default false*)
-- PREST\_AUTH_ENCRYPT (*default MD5*)
-- PREST\_AUTH_TYPE (*default body*)
-- PREST\_AUTH_TABLE (*default prest_users*)
-- PREST\_AUTH_USERNAME (*default username*)
-- PREST\_AUTH_PASSWORD (*default password*)
-
+| var | default | description |
+| --- | --- | --- |
+| PREST\_CONF | ./prest.conf | |
+| PREST\_MIGRATIONS | ./migrations | |
+| PREST\_QUERIES_LOCATION | ./queries | |
+| PREST\_HTTP_HOST | 0.0.0.0 | |
+| PREST\_HTTP_PORT or **PORT** | 3000 | PORT is cloud factor, _when declaring this variable overwritten PREST\_HTTP_PORT |
+| PREST\_PG_HOST | 127.0.0.1 | |
+| PREST\_PG_USER | | |
+| PREST\_PG_PASS | | |
+| PREST\_PG_DATABASE | | |
+| PREST\_PG_PORT | 5432 | |
+| PREST\_PG_URL or **DATABASE\_URL** | | cloud factor, _when declaring this variable all the previous connection fields are overwritten_ |
+| PREST\_JWT_KEY | | |
+| PREST\_JWT_ALGO | HS256 | |
+| PREST\_JWT_WHITELIST | [/auth] | |
+| PREST\_AUTH_ENABLED | false | |
+| PREST\_AUTH_ENCRYPT | MD5 | |
+| PREST\_AUTH_TYPE | body | |
+| PREST\_AUTH_TABLE | prest_users | |
+| PREST\_AUTH_USERNAME | username | |
+| PREST\_AUTH_PASSWORD | password | |
+| PREST\_SSL_MODE | require | |
+| PREST\_SSL_CERT | | |
+| PREST\_SSL_KEY | | |
+| PREST\_SSL_ROOTCERT | | |
 
 ## TOML
+
 Optionally the pREST can be configured by TOML file.
 
 You can follow this sample and create your own `prest.toml` file and put this on the same folder that you run `prest` command.
@@ -41,7 +49,7 @@ migrations = "./migrations"
 # enabling debug mode will disable JWT authorization
 
 [http]
-port = 6000 
+port = 6000
 # Port 6000 is blocked on windows. You must change to 8080 or any unblocked port
 
 [jwt]
@@ -132,16 +140,14 @@ password = "password"
 
 > to validate all endpoints with generated jwt token must be activated jwt option
 
-
 ## SSL
 
 There is 4 options to set on ssl mode:
 
-- `disable` - SSL off by default
-- `require` - Always SSL (skip verification)
-- `verify-ca` - Always SSL (verify that the certificate presented by the server was signed by a trusted CA)
-- `verify-full` - Always SSL (verify that the certification presented by the server was signed by a trusted CA and the server host name matches the one in the certificate)
-
+* `require` - Always SSL (skip verification) **by default**
+* `disable` - SSL off
+* `verify-ca` - Always SSL (verify that the certificate presented by the server was signed by a trusted CA)
+* `verify-full` - Always SSL (verify that the certification presented by the server was signed by a trusted CA and the server host name matches the one in the certificate)
 
 ## Debug Mode
 
@@ -149,42 +155,4 @@ Set environment variable `PREST_DEBUG` or `debug=true` on top of prest.toml file
 
 ```toml
 PREST_DEBUG=true
-```
-
-## Migrations
-
-`--url` and `--path` flags are optional if pREST configurations already set.
-
-```bash
-# env var for migrations directory
-PREST_MIGRATIONS
-
-# apply all available migrations
-prestd migrate --url driver://url --path ./migrations up
-
-# roll back all migrations
-prestd migrate --url driver://url --path ./migrations down
-
-# roll back the most recently applied migration, then run it again.
-prestd migrate --url driver://url --path ./migrations redo
-
-# run down and then up command
-prestd migrate --url driver://url --path ./migrations reset
-
-# show the current migration version
-prestd migrate --url driver://url --path ./migrations version
-
-# apply the next n migrations
-prestd migrate --url driver://url --path ./migrations next +1
-prestd migrate --url driver://url --path ./migrations next +2
-prestd migrate --url driver://url --path ./migrations next +n
-
-# roll back the previous n migrations
-prestd migrate --url driver://url --path ./migrations next -1
-prestd migrate --url driver://url --path ./migrations next -2
-prestd migrate --url driver://url --path ./migrations next -n
-
-# create or remove default pREST authentication table
-prestd migrate up auth
-prestd migrate down auth
 ```

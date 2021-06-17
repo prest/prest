@@ -3,7 +3,7 @@ publish = "docbuild/public"
 command = "sh scripts/documentation-build.sh"
 
 [build.environment]
-HUGO_VERSION = "0.74.3"
+HUGO_VERSION = "0.82.0"
 HUGO_ENABLEGITINFO = "true"
 
 [context.production.environment]

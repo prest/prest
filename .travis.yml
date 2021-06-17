@@ -44,6 +44,6 @@ deploy:
   - provider: script
     script: bash scripts/releaser-latest.sh
     on:
-      branch: master
+      branch: main
       go: "1.15.x"
       condition: $TRAVIS_OS_NAME = linux
