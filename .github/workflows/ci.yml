@@ -12,6 +12,9 @@ jobs:
         # Provide the password for postgres
         env:
           POSTGRES_PASSWORD: postgres
+          
+        ports:
+        - 5432:5432
         # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready
@@ -47,6 +50,8 @@ jobs:
       - name: Setup Database
         env:
           PREST_CONF: ./testdata/prest.toml
+          PREST_PG_USER: postgres
+          PREST_PG_DATABASE: postgres
         run: |
           export PREST_CONF=./testdata/prest.toml
           sh ./testdata/schema.sh
