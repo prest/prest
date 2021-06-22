@@ -20,6 +20,14 @@ jobs:
         with:
           go-version: 1.15
 
+      - name: Setup Database
+        env:
+          PREST_PG_HOST: localhost
+          PREST_PG_PORT: 5432
+          PREST_PG_USER: postgres
+          PREST_PG_DATABASE: prest-test
+        run: psql -d $PREST_PG_DATABASE -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -f ./testdata/schema.sql
+
       - name: Install Dependencies
         run: |
           echo "Installing DeepSource"
@@ -40,17 +48,6 @@ jobs:
           curl -L https://github.com/golang-migrate/migrate/releases/download/v4.12.2/migrate.linux-amd64.tar.gz | tar xvz
           sudo mv migrate.linux-amd64 /usr/bin/migrate
           which migrate
-
-      - name: Setup Database
-        env:
-          PREST_CONF: ./testdata/prest.toml
-          PREST_PG_HOST: localhost
-          PREST_PG_PORT: 5432
-          PREST_PG_USER: postgres
-          PREST_PG_DATABASE: prest-test
-        run: |
-          export PREST_CONF=./testdata/prest.toml
-          sh ./testdata/schema.sh
 
       - name: Test
         run: |
