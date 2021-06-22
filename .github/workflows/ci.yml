@@ -53,8 +53,7 @@ jobs:
           PREST_PG_USER: postgres
           PREST_PG_DATABASE: postgres
           POSTGRES_USER: prest
-          POSTGRES_DB: prest
-          POSTGRES_PASSWORD: prest
+          PGPASSWORD: postgres
         run: |
           export PREST_CONF=./testdata/prest.toml
           sh ./testdata/schema.sh
