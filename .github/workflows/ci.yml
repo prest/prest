@@ -68,6 +68,7 @@ jobs:
           PREST_PG_DATABASE: prest-test
           PREST_PG_USER: postgres
           PREST_PG_PASS: postgres
+          PREST_SSL_MODE: disable
         run: |
           curl -sfL https://git.io/goreleaser | sh -s -- check
           sh testdata/migrations_test.sh
