@@ -34,7 +34,9 @@ jobs:
           PREST_PG_PASS: postgres
           PGPASSWORD: postgres
         run: |
-          pwd
+          ls ./
+          ls $GITHUB_WORKSPACE
+          echo $GITHUB_WORKSPACE
           psql -d $PREST_PG_DATABASE -h $PREST_PG_HOST -U $PREST_PG_USER -f $GITHUB_WORKSPACE/testdata/schema.sql
 
       - name: Set up Go
