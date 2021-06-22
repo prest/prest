@@ -11,16 +11,17 @@ jobs:
         image: postgres
         # Provide the password for postgres
         env:
-          POSTGRES_PASSWORD: postgres
-          
+          POSTGRES_USER: postgres
+          POSTGRES_DB: prest-test
         ports:
-        - 5432:5432
+          - 5432:5432
         # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
     steps:
       - uses: actions/checkout@v2
       - name: Set up Go 1.15
@@ -36,30 +37,32 @@ jobs:
           curl https://deepsource.io/cli | sh
           echo "Installing GolangCI Lint"
           curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sudo bash -s -- -b $GOPATH/bin v1.15.0
-          sudo apt -y install gcc-multilib
+          sudo apt -y install gcc-multilib postgresql-contrib
           git config --global --add url."git@github.com:prest".insteadOf "https://github.com/prest"
           go get -v -d ./...
           go get -v github.com/inconshreveable/mousetrap
           go get golang.org/x/tools/cmd/cover
           go get github.com/mattn/goveralls
+
       - name: Install golang-migrate
         run: |
           curl -L https://github.com/golang-migrate/migrate/releases/download/v4.12.2/migrate.linux-amd64.tar.gz | tar xvz
           sudo mv migrate.linux-amd64 /usr/bin/migrate
           which migrate
+
       - name: Setup Database
         env:
           PREST_CONF: ./testdata/prest.toml
+          PREST_PG_HOST: postgres
+          PREST_PG_PORT: ${{ job.services.postgres.ports[5432] }}
           PREST_PG_USER: postgres
-          PREST_PG_DATABASE: postgres
-          POSTGRES_USER: prest
-          PGPASSWORD: postgres
+          PREST_PG_DATABASE: prest-test
         run: |
           export PREST_CONF=./testdata/prest.toml
           sh ./testdata/schema.sh
+
       - name: Test
         run: |
           curl -sfL https://git.io/goreleaser | sh -s -- check
           sh testdata/migrations_test.sh
           env go test -race -covermode=atomic -coverprofile=coverage.out ./...
-        
