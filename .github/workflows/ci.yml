@@ -45,7 +45,7 @@ jobs:
         env:
           PREST_CONF: ./testdata/prest.toml
           PREST_PG_HOST: localhost
-          PREST_PG_PORT: ${{ job.services.postgres.ports[5432] }}
+          PREST_PG_PORT: 5432
           PREST_PG_USER: postgres
           PREST_PG_DATABASE: prest-test
         run: |
