@@ -33,7 +33,9 @@ jobs:
           PREST_PG_USER: postgres
           PREST_PG_PASS: postgres
           PGPASSWORD: postgres
-        run: psql -d $PREST_PG_DATABASE -h $PREST_PG_HOST -U $PREST_PG_USER -f ${{ github.workspace }}/testdata/schema.sql
+        run: |
+          pwd
+          psql -d $PREST_PG_DATABASE -h $PREST_PG_HOST -U $PREST_PG_USER -f $GITHUB_WORKSPACE/testdata/schema.sql
 
       - name: Set up Go
         uses: actions/setup-go@v2
@@ -63,8 +65,8 @@ jobs:
 
       - name: pREST Test
         env:
-          PREST_CONF: ${{ github.workspace }}/testdata/prest.toml
-          PREST_MIGRATIONS: ${{ github.workspace }}/testdata/migrations
+          PREST_CONF: $GITHUB_WORKSPACE/testdata/prest.toml
+          PREST_MIGRATIONS: $GITHUB_WORKSPACE/testdata/migrations
           PREST_PG_HOST: postgres
           PREST_PG_DATABASE: prest-test
           PREST_PG_USER: postgres
@@ -72,5 +74,5 @@ jobs:
           PREST_SSL_MODE: disable
         run: |
           curl -sfL https://git.io/goreleaser | sh -s -- check
-          sh ${{ github.workspace }}/testdata/migrations_test.sh
+          sh $GITHUB_WORKSPACE/testdata/migrations_test.sh
           env go test -race -covermode=atomic -coverprofile=coverage.out ./...
