@@ -24,7 +24,7 @@ jobs:
       - name: Install PostgreSQL client
         run: |
           apt-get update
-          apt-get install --yes postgresql-client
+          apt-get install -y postgresql-client
 
       - name: Setup Database
         env:
@@ -35,10 +35,10 @@ jobs:
           PGPASSWORD: postgres
         run: psql -d $PREST_PG_DATABASE -h $PREST_PG_HOST -U $PREST_PG_USER -f ./testdata/schema.sql
 
-      - name: Set up Go 1.15
+      - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.15
+          go-version: 1.16
 
       - name: Install Dependencies
         run: |
@@ -61,7 +61,13 @@ jobs:
           mv migrate.linux-amd64 /usr/bin/migrate
           which migrate
 
-      - name: Test
+      - name: pREST Test
+        env:
+          PREST_CONF: ./testdata/prest.toml
+          PREST_PG_HOST: postgres
+          PREST_PG_DATABASE: prest-test
+          PREST_PG_USER: postgres
+          PREST_PG_PASS: postgres
         run: |
           curl -sfL https://git.io/goreleaser | sh -s -- check
           sh testdata/migrations_test.sh
