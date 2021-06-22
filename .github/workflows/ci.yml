@@ -8,18 +8,16 @@ jobs:
       postgres:
         image: postgres:alpine
         env:
-          POSTGRES_USER: postgres
+          POSTGRES_USER: ""
           POSTGRES_DB: prest-test
-        ports:
-          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v2
-      - name: Set up Go 1.15
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.15
-
       - name: Setup Database
         env:
           PREST_PG_HOST: localhost
@@ -27,6 +25,11 @@ jobs:
           PREST_PG_USER: postgres
           PREST_PG_DATABASE: prest-test
         run: psql -d $PREST_PG_DATABASE -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -f ./testdata/schema.sql
+
+      - name: Set up Go 1.15
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.15
 
       - name: Install Dependencies
         run: |
