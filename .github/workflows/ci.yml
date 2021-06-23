@@ -33,13 +33,7 @@ jobs:
           PREST_PG_USER: postgres
           PREST_PG_PASS: postgres
           PGPASSWORD: postgres
-        run: |
-          echo "pwd:" $(pwd)
-          echo $GITHUB_WORKSPACE
-          echo "$GITHUB_WORKSPACE/testdata/schema.sql"
-          ls $GITHUB_WORKSPACE/testdata/schema.sql
-          ls $GITHUB_WORKSPACE
-          psql -d $PREST_PG_DATABASE -h $PREST_PG_HOST -U $PREST_PG_USER -f $GITHUB_WORKSPACE/testdata/schema.sql
+        run: psql -d $PREST_PG_DATABASE -h $PREST_PG_HOST -U $PREST_PG_USER -f $GITHUB_WORKSPACE/testdata/schema.sql
 
       - name: Set up Go
         uses: actions/setup-go@v2
