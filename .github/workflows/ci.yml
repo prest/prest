@@ -29,11 +29,11 @@ jobs:
       - name: Setup Database
         env:
           PREST_PG_HOST: postgres
-          PREST_PG_DATABASE: prest-test
+          PREST_PG_DATABASE: prest
           PREST_PG_USER: postgres
           PREST_PG_PASS: postgres
           PGPASSWORD: postgres
-        run: psql -d $PREST_PG_DATABASE -h $PREST_PG_HOST -U $PREST_PG_USER -f $GITHUB_WORKSPACE/testdata/schema.sql
+        run: sh $GITHUB_WORKSPACE/testdata/schema.sh
 
       - name: Set up Go
         uses: actions/setup-go@v2
@@ -66,7 +66,7 @@ jobs:
           PREST_CONF: $GITHUB_WORKSPACE/testdata/prest.toml
           PREST_MIGRATIONS: $GITHUB_WORKSPACE/testdata/migrations
           PREST_PG_HOST: postgres
-          PREST_PG_DATABASE: prest-test
+          PREST_PG_DATABASE: prest
           PREST_PG_USER: postgres
           PREST_PG_PASS: postgres
           PREST_SSL_MODE: disable

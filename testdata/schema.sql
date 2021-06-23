@@ -1,5 +1,3 @@
-CREATE DATABASE loadtest;
-
 -- CREATE TABLES
 
 CREATE TABLE test(id serial, name text);

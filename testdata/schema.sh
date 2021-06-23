@@ -7,4 +7,4 @@ DB_NAME=${PREST_PG_DATABASE:-prest}
 psql -h $DB_HOST -p $DB_PORT -U $DB_USER -c "DROP DATABASE IF EXISTS \"$DB_NAME\";"
 psql -h $DB_HOST -p $DB_PORT -U $DB_USER -c "create database \"$DB_NAME\";"
 
-psql -d $DB_NAME -h $DB_HOST -p $DB_PORT -U $DB_USER -f testdata/schema.sql
+psql -d $DB_NAME -h $DB_HOST -p $DB_PORT -U $DB_USER -f $GITHUB_WORKSPACE/testdata/schema.sql

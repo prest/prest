@@ -52,7 +52,7 @@ func TestParseInsertRequest(t *testing.T) {
 	m["name"] = "prest"
 	mc := make(map[string]interface{})
 	mc["test"] = "prest"
-	mc["dbname"] = "prest-test"
+	mc["dbname"] = "prest"
 
 	var testCases = []struct {
 		description      string
@@ -102,7 +102,7 @@ func TestSetByRequest(t *testing.T) {
 	m["name"] = "prest"
 	mc := make(map[string]interface{})
 	mc["test"] = "prest"
-	mc["dbname"] = "prest-test"
+	mc["dbname"] = "prest"
 	ma := make(map[string]interface{})
 	ma["c.name"] = "prest"
 
@@ -113,7 +113,7 @@ func TestSetByRequest(t *testing.T) {
 		expectedValues []string
 		err            error
 	}{
-		{"set by request more than one field", mc, []string{`"dbname"=$`, `"test"=$`, ", "}, []string{"prest-test", "prest-test"}, nil},
+		{"set by request more than one field", mc, []string{`"dbname"=$`, `"test"=$`, ", "}, []string{"prest", "prest"}, nil},
 		{"set by request one field", m, []string{`"name"=$`}, []string{"prest"}, nil},
 		{"set by request alias", ma, []string{`"c".`, `"name"=$`}, []string{"prest"}, nil},
 		{"set by request empty body", nil, nil, nil, ErrBodyEmpty},
@@ -158,8 +158,8 @@ func TestWhereByRequest(t *testing.T) {
 		expectedValues []string
 		err            error
 	}{
-		{"Where by request without paginate", "/databases?dbname=$eq.prest-test&test=$eq.cool", []string{`"dbname" = $`, `"test" = $`, " AND "}, []string{"prest", "cool"}, nil},
-		{"Where by request with alias", "/databases?dbname=$eq.prest-test&c.test=$eq.cool", []string{`"dbname" = $`, `"c".`, `"test" = $`, " AND "}, []string{"prest", "cool"}, nil},
+		{"Where by request without paginate", "/databases?dbname=$eq.prest&test=$eq.cool", []string{`"dbname" = $`, `"test" = $`, " AND "}, []string{"prest", "cool"}, nil},
+		{"Where by request with alias", "/databases?dbname=$eq.prest&c.test=$eq.cool", []string{`"dbname" = $`, `"c".`, `"test" = $`, " AND "}, []string{"prest", "cool"}, nil},
 		{"Where by request with spaced values", "/prest-test/public/test5?name=$eq.prest tester", []string{`"name" = $`}, []string{"prest tester"}, nil},
 		{"Where by request with jsonb field", "/prest-test/public/test_jsonb_bug?name=$eq.goku&data->>description:jsonb=$eq.testing", []string{`"name" = $`, `"data"->>'description' = $`, " AND "}, []string{"goku", "testing"}, nil},
 		{"Where by request with dot values", "/prest-test/public/test5?name=$eq.prest.txt tester", []string{`"name" = $`}, []string{"prest.txt tester"}, nil},
