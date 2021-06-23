@@ -14,3 +14,4 @@ psql -h $DB_HOST -p $DB_PORT -U $DB_USER -c "create database \"loadtest\";"
 
 # load fixture data
 psql -d $DB_NAME -h $DB_HOST -p $DB_PORT -U $DB_USER -f $GITHUB_WORKSPACE/testdata/schema.sql
+psql -d loadtest -h $DB_HOST -p $DB_PORT -U $DB_USER -f $GITHUB_WORKSPACE/testdata/schema.sql
