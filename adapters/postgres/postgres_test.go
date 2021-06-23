@@ -52,7 +52,7 @@ func TestParseInsertRequest(t *testing.T) {
 	m["name"] = "prest"
 	mc := make(map[string]interface{})
 	mc["test"] = "prest"
-	mc["dbname"] = "prest"
+	mc["dbname"] = "prest-test"
 
 	var testCases = []struct {
 		description      string
@@ -102,7 +102,7 @@ func TestSetByRequest(t *testing.T) {
 	m["name"] = "prest"
 	mc := make(map[string]interface{})
 	mc["test"] = "prest"
-	mc["dbname"] = "prest"
+	mc["dbname"] = "prest-test"
 	ma := make(map[string]interface{})
 	ma["c.name"] = "prest"
 
@@ -113,7 +113,7 @@ func TestSetByRequest(t *testing.T) {
 		expectedValues []string
 		err            error
 	}{
-		{"set by request more than one field", mc, []string{`"dbname"=$`, `"test"=$`, ", "}, []string{"prest", "prest"}, nil},
+		{"set by request more than one field", mc, []string{`"dbname"=$`, `"test"=$`, ", "}, []string{"prest-test", "prest-test"}, nil},
 		{"set by request one field", m, []string{`"name"=$`}, []string{"prest"}, nil},
 		{"set by request alias", ma, []string{`"c".`, `"name"=$`}, []string{"prest"}, nil},
 		{"set by request empty body", nil, nil, nil, ErrBodyEmpty},
@@ -158,8 +158,8 @@ func TestWhereByRequest(t *testing.T) {
 		expectedValues []string
 		err            error
 	}{
-		{"Where by request without paginate", "/databases?dbname=$eq.prest&test=$eq.cool", []string{`"dbname" = $`, `"test" = $`, " AND "}, []string{"prest", "cool"}, nil},
-		{"Where by request with alias", "/databases?dbname=$eq.prest&c.test=$eq.cool", []string{`"dbname" = $`, `"c".`, `"test" = $`, " AND "}, []string{"prest", "cool"}, nil},
+		{"Where by request without paginate", "/databases?dbname=$eq.prest-test&test=$eq.cool", []string{`"dbname" = $`, `"test" = $`, " AND "}, []string{"prest", "cool"}, nil},
+		{"Where by request with alias", "/databases?dbname=$eq.prest-test&c.test=$eq.cool", []string{`"dbname" = $`, `"c".`, `"test" = $`, " AND "}, []string{"prest", "cool"}, nil},
 		{"Where by request with spaced values", "/prest-test/public/test5?name=$eq.prest tester", []string{`"name" = $`}, []string{"prest tester"}, nil},
 		{"Where by request with jsonb field", "/prest-test/public/test_jsonb_bug?name=$eq.goku&data->>description:jsonb=$eq.testing", []string{`"name" = $`, `"data"->>'description' = $`, " AND "}, []string{"goku", "testing"}, nil},
 		{"Where by request with dot values", "/prest-test/public/test5?name=$eq.prest.txt tester", []string{`"name" = $`}, []string{"prest.txt tester"}, nil},
@@ -382,8 +382,8 @@ func TestPaginateIfPossible(t *testing.T) {
 		expected    string
 		err         error
 	}{
-		{"Paginate if possible", "/databases?dbname=prest&test=cool&_page=1&_page_size=20", "LIMIT 20 OFFSET(1 - 1) * 20", nil},
-		{"Invalid Paginate if possible", "/databases?dbname=prest&test=cool", "", nil},
+		{"Paginate if possible", "/databases?dbname=prest-test&test=cool&_page=1&_page_size=20", "LIMIT 20 OFFSET(1 - 1) * 20", nil},
+		{"Invalid Paginate if possible", "/databases?dbname=prest-test&test=cool", "", nil},
 	}
 
 	for _, tc := range testCase {
@@ -409,8 +409,8 @@ func TestInvalidPaginateIfPossible(t *testing.T) {
 		description string
 		url         string
 	}{
-		{"Paginate with invalid page value", "/databases?dbname=prest&test=cool&_page=X&_page_size=20"},
-		{"Paginate with invalid page size value", "/databases?dbname=prest&test=cool&_page=1&_page_size=K"},
+		{"Paginate with invalid page value", "/databases?dbname=prest-test&test=cool&_page=X&_page_size=20"},
+		{"Paginate with invalid page size value", "/databases?dbname=prest-test&test=cool&_page=1&_page_size=K"},
 	}
 
 	for _, tc := range testCases {
@@ -997,9 +997,9 @@ func TestDistinctClause(t *testing.T) {
 		expected    string
 		err         error
 	}{
-		{"Valid distinct true", "/databases?dbname=prest&test=cool&_distinct=true", "SELECT DISTINCT", nil},
-		{"Valid distinct false", "/databases?dbname=prest&test=cool&_distinct=false", "", nil},
-		{"Invalid distinct", "/databases?dbname=prest&test=cool", "", nil},
+		{"Valid distinct true", "/databases?dbname=prest-test&test=cool&_distinct=true", "SELECT DISTINCT", nil},
+		{"Valid distinct false", "/databases?dbname=prest-test&test=cool&_distinct=false", "", nil},
+		{"Invalid distinct", "/databases?dbname=prest-test&test=cool", "", nil},
 	}
 
 	for _, tc := range testCase {
