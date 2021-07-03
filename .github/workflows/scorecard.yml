@@ -93,7 +93,7 @@ jobs:
           issue-number: ${{ github.event.pull_request.number || github.event.client_payload.pull_request.number }}
           comment-id: ${{ steps.fc.outputs.comment-id }}
           body: |
-            Integration tests ${{ job.status }} for [${{ github.event.client_payload.slash_command.args.named.sha || github.event.pull_request.head.sha }}](${{ REPO }}/actions/runs/${{ github.run_id }})
+            Integration tests ${{ job.status }} for [${{ github.event.client_payload.slash_command.args.named.sha || github.event.pull_request.head.sha }}](/prest/prest/actions/runs/${{ github.run_id }})
 
       - name: set fork job status
         uses: actions/github-script@a3e7071a34d7e1f219a8a4de9a5e0a34d1ee1293 # v4.0.2
