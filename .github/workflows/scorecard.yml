@@ -76,8 +76,7 @@ jobs:
           USE_BLOB_CACHE: true
           BLOB_URL: ${{secrets.BUCKET_URL}}
         run: |
-            ./scorecard --repo=$REPO --show-details --metadata=openssf  --format json > ./$OUTPUT_PATH/results.json
-            ginkgo --focus="E2E TEST:executable|E2E TEST:blob" ./e2e/...
+            scorecard --repo=$REPO --show-details --metadata=openssf  --format json > ./$OUTPUT_PATH/results.json
 
       - name: find comment
         if: ${{ always() }}
