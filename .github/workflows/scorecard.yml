@@ -68,6 +68,7 @@ jobs:
             go mod download
             go get github.com/ossf/scorecard
             go install github.com/ossf/scorecard
+            mkdir $OUTPUT_PATH
 
       - name: Test Blob cache
         env:
