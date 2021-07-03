@@ -15,6 +15,7 @@
 # Run secret-dependent integration tests
 on:
   pull_request:
+  repository_dispatch:
 
 name: scorecard tests
 env:
