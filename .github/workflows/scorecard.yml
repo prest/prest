@@ -66,6 +66,7 @@ jobs:
       - name: Prepare test env
         run: |
             go mod download
+            go get github.com/ossf/scorecard
             go install github.com/ossf/scorecard
 
       - name: Test Blob cache
