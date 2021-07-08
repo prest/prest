@@ -1,0 +1,8 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "transactions",
+    srcs = ["transaction.go"],
+    importpath = "github.com/prest/prest/transactions",
+    visibility = ["//visibility:public"],
+)

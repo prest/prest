@@ -1,0 +1,27 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "mock",
+    srcs = [
+        "conn.go",
+        "mock.go",
+    ],
+    importpath = "github.com/prest/prest/adapters/mock",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//adapters",
+        "//adapters/scanner",
+        "//config",
+    ],
+)
+
+go_test(
+    name = "mock_test",
+    srcs = ["mock_test.go"],
+    embed = [":mock"],
+    deps = [
+        "//adapters",
+        "//adapters/scanner",
+        "//config",
+    ],
+)

@@ -1,0 +1,20 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "connection",
+    srcs = ["conn.go"],
+    importpath = "github.com/prest/prest/adapters/postgres/internal/connection",
+    visibility = ["//adapters/postgres:__subpackages__"],
+    deps = [
+        "//config",
+        "@com_github_jmoiron_sqlx//:sqlx",
+        "@com_github_lib_pq//:pq",
+    ],
+)
+
+go_test(
+    name = "connection_test",
+    srcs = ["conn_test.go"],
+    embed = [":connection"],
+    deps = ["//config"],
+)

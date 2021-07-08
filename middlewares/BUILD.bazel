@@ -1,0 +1,40 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "middlewares",
+    srcs = [
+        "config.go",
+        "middlewares.go",
+        "utils.go",
+    ],
+    importpath = "github.com/prest/prest/middlewares",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//config",
+        "//controllers/auth",
+        "//middlewares/statements",
+        "@com_github_auth0_go_jwt_middleware//:go-jwt-middleware",
+        "@com_github_clbanning_mxj//j2x",
+        "@com_github_form3tech_oss_jwt_go//:jwt-go",
+        "@com_github_urfave_negroni//:negroni",
+    ],
+)
+
+go_test(
+    name = "middlewares_test",
+    srcs = [
+        "config_test.go",
+        "utils_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    embed = [":middlewares"],
+    deps = [
+        "//adapters/postgres",
+        "//config",
+        "//config/router",
+        "//controllers",
+        "//middlewares/statements",
+        "@com_github_gorilla_mux//:mux",
+        "@com_github_urfave_negroni//:negroni",
+    ],
+)

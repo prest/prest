@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "router",
+    srcs = ["routers.go"],
+    importpath = "github.com/prest/prest/config/router",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_gorilla_mux//:mux"],
+)
+
+go_test(
+    name = "router_test",
+    srcs = ["routers_test.go"],
+    embed = [":router"],
+)
