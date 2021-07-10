@@ -2,6 +2,7 @@ package connection
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/jmoiron/sqlx"
@@ -13,13 +14,14 @@ import (
 
 var (
 	err          error
-	pool         *Pool
+	pool         Pool = Pool{DB: make(map[string]*sqlx.DB)}
 	currDatabase string
+	connectMtx   sync.Mutex
 )
 
 // Pool struct
 type Pool struct {
-	Mtx *sync.Mutex
+	Mtx sync.Mutex
 	DB  map[string]*sqlx.DB
 }
 
@@ -51,39 +53,40 @@ func GetURI(DBName string) string {
 		dbURI += " sslrootcert=" + config.PrestConf.SSLRootCert
 	}
 
+	log.Println(fmt.Sprintf("The dbURI is: %s", dbURI))
+
 	return dbURI
 }
 
 // Get get postgres connection
-func Get() (*sqlx.DB, error) {
+func Get(database string) (*sqlx.DB, error) {
 	var DB *sqlx.DB
 
-	DB = getDatabaseFromPool(GetDatabase())
+	if database == "" {
+		database = GetDatabase()
+	}
+	DB = getDatabaseFromPool(database)
 	if DB != nil {
 		return DB, nil
 	}
 
-	DB, err = sqlx.Connect("postgres", GetURI(GetDatabase()))
+	connectMtx.Lock()
+	DB, err = sqlx.Connect("postgres", GetURI(database))
+	connectMtx.Unlock()
 	if err != nil {
 		return nil, err
 	}
 	DB.SetMaxIdleConns(config.PrestConf.PGMaxIdleConn)
 	DB.SetMaxOpenConns(config.PrestConf.PGMAxOpenConn)
 
-	AddDatabaseToPool(GetDatabase(), DB)
+	AddDatabaseToPool(database, DB)
 
 	return DB, nil
 }
 
 // GetPool of connection
 func GetPool() *Pool {
-	if pool == nil {
-		pool = &Pool{
-			Mtx: &sync.Mutex{},
-			DB:  make(map[string]*sqlx.DB),
-		}
-	}
-	return pool
+	return &pool
 }
 
 func getDatabaseFromPool(name string) *sqlx.DB {
@@ -115,7 +118,7 @@ func MustGet() *sqlx.DB {
 	var err error
 	var DB *sqlx.DB
 
-	DB, err = Get()
+	DB, err = Get("") // TODO
 	if err != nil {
 		panic(fmt.Sprintf("Unable to connect to database: %v\n", err))
 	}
@@ -124,10 +127,18 @@ func MustGet() *sqlx.DB {
 
 // SetDatabase set current database in use
 func SetDatabase(name string) {
+	p := GetPool()
+	p.Mtx.Lock()
 	currDatabase = name
+	p.Mtx.Unlock()
 }
 
 // GetDatabase get current database in use
-func GetDatabase() string {
-	return currDatabase
+func GetDatabase() (result string) {
+	p := GetPool()
+	p.Mtx.Lock()
+	result = currDatabase
+	p.Mtx.Unlock()
+
+	return
 }

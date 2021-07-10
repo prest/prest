@@ -47,7 +47,7 @@ func checkTable(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if index != nil {
-		db, err := postgres.Get()
+		db, err := postgres.Get("")
 		if err != nil {
 			return err
 		}

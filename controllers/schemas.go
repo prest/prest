@@ -45,7 +45,7 @@ func GetSchemas(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sqlSchemas = fmt.Sprint(sqlSchemas, order, " ", page)
-	sc := config.PrestConf.Adapter.Query(sqlSchemas, values...)
+	sc := config.PrestConf.Adapter.Query("", sqlSchemas, values...)
 	if sc.Err() != nil {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return

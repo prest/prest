@@ -69,7 +69,7 @@ func (adapter *Postgres) ParseScript(scriptPath string, templateData map[string]
 
 // WriteSQL perform INSERT's, UPDATE's, DELETE's operations
 func WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
-	db, err := connection.Get()
+	db, err := connection.Get("")
 	if err != nil {
 		log.Println(err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -117,7 +117,7 @@ func WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
 func (adapter *Postgres) ExecuteScripts(method, sql string, values []interface{}) (sc adapters.Scanner) {
 	switch method {
 	case "GET":
-		sc = adapter.Query(sql, values...)
+		sc = adapter.Query("", sql, values...)
 	case "POST", "PUT", "PATCH", "DELETE":
 		sc = WriteSQL(sql, values)
 	default:

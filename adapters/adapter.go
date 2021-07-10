@@ -8,7 +8,7 @@ import (
 //Adapter interface
 type Adapter interface {
 	GetTransaction() (tx *sql.Tx, err error)
-	BatchInsertValues(SQL string, params ...interface{}) (sc Scanner)
+	BatchInsertValues(database string, SQL string, params ...interface{}) (sc Scanner)
 	BatchInsertCopy(dbname, schema, table string, keys []string, params ...interface{}) (sc Scanner)
 	CountByRequest(req *http.Request) (countQuery string, err error)
 	DatabaseClause(req *http.Request) (query string, hasCount bool)
@@ -22,7 +22,7 @@ type Adapter interface {
 	FieldsPermissions(r *http.Request, table string, op string) (fields []string, err error)
 	GetScript(verb, folder, scriptName string) (script string, err error)
 	GroupByClause(r *http.Request) (groupBySQL string)
-	Insert(SQL string, params ...interface{}) (sc Scanner)
+	Insert(database string, SQL string, params ...interface{}) (sc Scanner)
 	InsertWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc Scanner)
 	InsertSQL(database string, schema string, table string, names string, placeholders string) string
 	JoinByRequest(r *http.Request) (values []string, err error)
@@ -31,8 +31,8 @@ type Adapter interface {
 	ParseBatchInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error)
 	ParseInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error)
 	ParseScript(scriptPath string, templateData map[string]interface{}) (sqlQuery string, values []interface{}, err error)
-	Query(SQL string, params ...interface{}) (sc Scanner)
-	QueryCount(SQL string, params ...interface{}) (sc Scanner)
+	Query(database string, SQL string, params ...interface{}) (sc Scanner)
+	QueryCount(database string, SQL string, params ...interface{}) (sc Scanner)
 	ReturningByRequest(r *http.Request) (returningSyntax string, err error)
 	SchemaClause(req *http.Request) (query string, hasCount bool)
 	SchemaOrderBy(order string, hasCount bool) (orderBy string)
@@ -42,6 +42,7 @@ type Adapter interface {
 	SelectFields(fields []string) (sql string, err error)
 	SelectSQL(selectStr string, database string, schema string, table string) string
 	SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, values []interface{}, err error)
+	GetDatabase() string
 	SetDatabase(name string)
 	TableClause() (query string)
 	TableOrderBy(order string) (orderBy string)

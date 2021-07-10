@@ -338,7 +338,7 @@ func (m *Mock) ParseBatchInsertRequest(r *http.Request) (colsName string, placeh
 }
 
 // BatchInsertValues mock
-func (m *Mock) BatchInsertValues(SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (m *Mock) BatchInsertValues(database string, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	m.t.Helper()
 	sc = m.perform(true)
 	return
