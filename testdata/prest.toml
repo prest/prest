@@ -1,8 +1,3 @@
-# migrations = "./migrations"
-
-# [jwt]
-# key = "mysecretkey"
-
 [auth]
 table = "prest_users"
 username = "username"
@@ -11,10 +6,6 @@ metadata = ["first_name", "last_name", "last_login"]
 
 [http]
 port = 6000
-
-[pg]
-user = "postgres"
-database = "prest-test"
 
 [access]
 restrict = true  # can access only the tables listed below

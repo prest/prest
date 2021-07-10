@@ -382,8 +382,8 @@ func TestPaginateIfPossible(t *testing.T) {
 		expected    string
 		err         error
 	}{
-		{"Paginate if possible", "/databases?dbname=prest&test=cool&_page=1&_page_size=20", "LIMIT 20 OFFSET(1 - 1) * 20", nil},
-		{"Invalid Paginate if possible", "/databases?dbname=prest&test=cool", "", nil},
+		{"Paginate if possible", "/databases?dbname=prest-test&test=cool&_page=1&_page_size=20", "LIMIT 20 OFFSET(1 - 1) * 20", nil},
+		{"Invalid Paginate if possible", "/databases?dbname=prest-test&test=cool", "", nil},
 	}
 
 	for _, tc := range testCase {
@@ -409,8 +409,8 @@ func TestInvalidPaginateIfPossible(t *testing.T) {
 		description string
 		url         string
 	}{
-		{"Paginate with invalid page value", "/databases?dbname=prest&test=cool&_page=X&_page_size=20"},
-		{"Paginate with invalid page size value", "/databases?dbname=prest&test=cool&_page=1&_page_size=K"},
+		{"Paginate with invalid page value", "/databases?dbname=prest-test&test=cool&_page=X&_page_size=20"},
+		{"Paginate with invalid page size value", "/databases?dbname=prest-test&test=cool&_page=1&_page_size=K"},
 	}
 
 	for _, tc := range testCases {
@@ -997,9 +997,9 @@ func TestDistinctClause(t *testing.T) {
 		expected    string
 		err         error
 	}{
-		{"Valid distinct true", "/databases?dbname=prest&test=cool&_distinct=true", "SELECT DISTINCT", nil},
-		{"Valid distinct false", "/databases?dbname=prest&test=cool&_distinct=false", "", nil},
-		{"Invalid distinct", "/databases?dbname=prest&test=cool", "", nil},
+		{"Valid distinct true", "/databases?dbname=prest-test&test=cool&_distinct=true", "SELECT DISTINCT", nil},
+		{"Valid distinct false", "/databases?dbname=prest-test&test=cool&_distinct=false", "", nil},
+		{"Invalid distinct", "/databases?dbname=prest-test&test=cool", "", nil},
 	}
 
 	for _, tc := range testCase {
