@@ -1,7 +1,0 @@
-{
-    "vim.useCtrlKeys": false,
-    "vim.cursorStylePerMode.replace": "line",
-    "vim.cursorStylePerMode.visual": "line",
-    "vim.cursorStylePerMode.visualblock": "line",
-    "vim.cursorStylePerMode.visualline": "line"
-}
