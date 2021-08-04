@@ -32,7 +32,7 @@ docker pull prest/prest:v1
 ### Using go install
 
 ```sh
-go install github.com/prest/prest/cmd/prestd
+go install github.com/prest/prest/cmd/prestd@latest
 ```
 
 ### With Homebrew
