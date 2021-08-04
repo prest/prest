@@ -73,7 +73,7 @@ GET /DATABASE/SCHEMA/TABLE?FIELD=$eq.VALUE
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `?_select={field name 1},{fiel name 2}`  | Limit fields list on result - sql ansii standard                                                                                                               |
 | `?_count={field name}`                   | Count per field - `*` representation all fields                                                                                                                |
-| `?_render=xml`                           | Set API render syntax - default is `json`                                                                                                                      |
+| `?_renderer=xml`                         | Set API render syntax, supported: `json` (default), `xml`                                                                                                            |
 | `?page={set page number}`                | Navigation on return pages with large volume of data                                                                                                           |
 | `?page_size={number to return by pages}` | 10 is default number                                                                                                                                           |
 | `?_distinct=true`                         | `DISTINCT` clause with SELECT                                                                                                                                  |
