@@ -125,6 +125,16 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 	query := config.PrestConf.Adapter.SelectSQL(selectStr, database, schema, table)
 
+	distinct, err := config.PrestConf.Adapter.DistinctClause(r)
+	if err != nil {
+		err = fmt.Errorf("could not perform Distinct: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if distinct != "" {
+		query = strings.Replace(query, "SELECT", distinct, 1)
+	}
+
 	countQuery, err := config.PrestConf.Adapter.CountByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform CountByRequest: %v", err)
