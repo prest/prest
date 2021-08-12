@@ -45,7 +45,7 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sqlDatabases = fmt.Sprint(sqlDatabases, " ", page)
-	sc := config.PrestConf.Adapter.Query(sqlDatabases, values...)
+	sc := config.PrestConf.Adapter.Query(config.PrestConf.PGDatabase, sqlDatabases, values...)
 	if sc.Err() != nil {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return

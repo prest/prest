@@ -20,14 +20,14 @@ import (
 
 func init() {
 	config.Load()
-	Load()
+	Load(config.PrestConf.PGDatabase)
 }
 
 func TestLoad(t *testing.T) {
 	// Only run the failing part when a specific env variable is set
 	if os.Getenv("BE_CRASHER") == "1" {
-		Load()
-		os.Setenv("PREST_PG_DATABASE", "prest")
+		Load(config.PrestConf.PGDatabase)
+		os.Setenv("PREST_PG_DATABASE", config.PrestConf.PGDatabase)
 		return
 	}
 	os.Setenv("PREST_PG_DATABASE", "loadtest")
@@ -47,12 +47,12 @@ func TestLoad(t *testing.T) {
 
 func TestParseInsertRequest(t *testing.T) {
 	config.Load()
-	Load()
+	Load(config.PrestConf.PGDatabase)
 	m := make(map[string]interface{})
 	m["name"] = "prest"
 	mc := make(map[string]interface{})
 	mc["test"] = "prest"
-	mc["dbname"] = "prest"
+	mc["dbname"] = config.PrestConf.PGDatabase
 
 	var testCases = []struct {
 		description      string
@@ -309,7 +309,7 @@ func TestGroupByClause(t *testing.T) {
 }
 
 func TestEmptyTable(t *testing.T) {
-	sc := config.PrestConf.Adapter.Query("SELECT * FROM test_empty_table")
+	sc := config.PrestConf.Adapter.Query(config.PrestConf.PGDatabase, "SELECT * FROM test_empty_table")
 	if sc.Err() != nil {
 		t.Fatal(sc.Err())
 	}
@@ -337,9 +337,9 @@ func TestQuery(t *testing.T) {
 	for _, tc := range testCases {
 		t.Log(tc.description)
 		if tc.param {
-			sc = config.PrestConf.Adapter.Query(tc.sql, "public")
+			sc = config.PrestConf.Adapter.Query(config.PrestConf.PGDatabase, tc.sql, "public")
 		} else {
-			sc = config.PrestConf.Adapter.Query(tc.sql)
+			sc = config.PrestConf.Adapter.Query(config.PrestConf.PGDatabase, tc.sql)
 		}
 
 		if sc.Err() != tc.err {
@@ -444,7 +444,7 @@ func TestInsert(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.Insert(tc.sql, tc.values...)
+		sc := config.PrestConf.Adapter.Insert(config.PrestConf.PGDatabase, tc.sql, tc.values...)
 		if sc.Err() != nil {
 			t.Errorf("expected no errors, but got %s", sc.Err())
 		}
@@ -468,7 +468,7 @@ func TestInsertInvalid(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.Insert(tc.sql, tc.values...)
+		sc := config.PrestConf.Adapter.Insert(config.PrestConf.PGDatabase, tc.sql, tc.values...)
 		if sc.Err() == nil {
 			t.Errorf("expected  errors, but no has")
 		}
@@ -491,7 +491,7 @@ func TestDelete(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.Delete(tc.sql, tc.values)
+		sc := config.PrestConf.Adapter.Delete(config.PrestConf.PGDatabase, tc.sql, tc.values)
 		if sc.Err() == nil {
 			t.Errorf("expected error, but got: %s", sc.Err())
 		}
@@ -524,7 +524,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	t.Log("Update data into a table")
-	sc := config.PrestConf.Adapter.Update(`UPDATE "prest"."public"."test" SET "name"=$2 WHERE "name"=$1`, "prest tester", "prest")
+	sc := config.PrestConf.Adapter.Update(config.PrestConf.PGDatabase, `UPDATE "prest"."public"."test" SET "name"=$2 WHERE "name"=$1`, "prest tester", "prest")
 	if sc.Err() != nil {
 		t.Errorf("expected no errors, but got: %s", sc.Err())
 	}
@@ -535,7 +535,7 @@ func TestUpdate(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.Update(tc.sql, tc.values...)
+		sc := config.PrestConf.Adapter.Update(config.PrestConf.PGDatabase, tc.sql, tc.values...)
 		if sc.Err() == nil {
 			t.Errorf("expected error, but got: %s", sc.Err())
 		}
@@ -1061,62 +1061,62 @@ func TestNormalizeGroupFunction(t *testing.T) {
 }
 
 func TestCacheQuery(t *testing.T) {
-	sc := config.PrestConf.Adapter.Query(`SELECT * FROM "Reply"`)
+	sc := config.PrestConf.Adapter.Query(config.PrestConf.PGDatabase, `SELECT * FROM "Reply"`)
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
-	sc = config.PrestConf.Adapter.Query(`SELECT * FROM "Reply"`)
+	sc = config.PrestConf.Adapter.Query(config.PrestConf.PGDatabase, `SELECT * FROM "Reply"`)
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
 }
 
 func TestCacheQueryCount(t *testing.T) {
-	sc := config.PrestConf.Adapter.QueryCount(`SELECT COUNT(*) FROM "Reply"`)
+	sc := config.PrestConf.Adapter.QueryCount(config.PrestConf.PGDatabase, `SELECT COUNT(*) FROM "Reply"`)
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
-	sc = config.PrestConf.Adapter.QueryCount(`SELECT COUNT(*) FROM "Reply"`)
+	sc = config.PrestConf.Adapter.QueryCount(config.PrestConf.PGDatabase, `SELECT COUNT(*) FROM "Reply"`)
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
 }
 
 func TestCacheInsert(t *testing.T) {
-	sc := config.PrestConf.Adapter.Insert("INSERT INTO test(name) VALUES('testcache')")
+	sc := config.PrestConf.Adapter.Insert(config.PrestConf.PGDatabase, "INSERT INTO test(name) VALUES('testcache')")
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
-	sc = config.PrestConf.Adapter.Insert("INSERT INTO test(name) VALUES('testcache')")
+	sc = config.PrestConf.Adapter.Insert(config.PrestConf.PGDatabase, "INSERT INTO test(name) VALUES('testcache')")
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
 }
 
 func TestCacheUpdate(t *testing.T) {
-	sc := config.PrestConf.Adapter.Update("UPDATE test SET name='test cache' WHERE name='testcache'")
+	sc := config.PrestConf.Adapter.Update(config.PrestConf.PGDatabase, "UPDATE test SET name='test cache' WHERE name='testcache'")
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
-	sc = config.PrestConf.Adapter.Update("UPDATE test SET name='test cache' WHERE name='testcache'")
+	sc = config.PrestConf.Adapter.Update(config.PrestConf.PGDatabase, "UPDATE test SET name='test cache' WHERE name='testcache'")
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
 }
 
 func TestCacheDelete(t *testing.T) {
-	sc := config.PrestConf.Adapter.Delete("DELETE FROM test WHERE name='test cache'")
+	sc := config.PrestConf.Adapter.Delete(config.PrestConf.PGDatabase, "DELETE FROM test WHERE name='test cache'")
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
-	sc = config.PrestConf.Adapter.Delete("DELETE FROM test WHERE name='test cache'")
+	sc = config.PrestConf.Adapter.Delete(config.PrestConf.PGDatabase, "DELETE FROM test WHERE name='test cache'")
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
 }
 
 func BenchmarkPrepare(b *testing.B) {
-	db := connection.MustGet()
+	db := connection.MustGet(config.PrestConf.PGDatabase)
 	for index := 0; index < b.N; index++ {
 		_, err := Prepare(db, `SELECT * FROM "Reply"`)
 		if err != nil {
@@ -1128,9 +1128,9 @@ func BenchmarkPrepare(b *testing.B) {
 func TestDisableCache(t *testing.T) {
 	os.Setenv("PREST_CACHE_ENABLE", "false")
 	config.Load()
-	Load()
+	Load(config.PrestConf.PGDatabase)
 	ClearStmt()
-	sc := config.PrestConf.Adapter.Query(`SELECT * FROM "Reply"`)
+	sc := config.PrestConf.Adapter.Query(config.PrestConf.PGDatabase, `SELECT * FROM "Reply"`)
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
@@ -1143,7 +1143,7 @@ func TestDisableCache(t *testing.T) {
 
 func TestParseBatchInsertRequest(t *testing.T) {
 	config.Load()
-	Load()
+	Load(config.PrestConf.PGDatabase)
 	m := make(map[string]interface{})
 	m["name"] = "prest"
 	m["pumpkin"] = "prest"
@@ -1194,7 +1194,7 @@ func TestParseBatchInsertRequest(t *testing.T) {
 
 func TestBatchInsertValues(t *testing.T) {
 	config.Load()
-	Load()
+	Load(config.PrestConf.PGDatabase)
 	var testCases = []struct {
 		description string
 		sql         string
@@ -1217,7 +1217,7 @@ func TestBatchInsertValues(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.BatchInsertValues(tc.sql, tc.records...)
+		sc := config.PrestConf.Adapter.BatchInsertValues(config.PrestConf.PGDatabase, tc.sql, tc.records...)
 		if sc.Err() != nil {
 			t.Errorf("expected no errors, but got %s", sc.Err())
 		}
@@ -1230,7 +1230,7 @@ func TestBatchInsertValues(t *testing.T) {
 
 func TestPostgres_BatchInsertCopy(t *testing.T) {
 	config.Load()
-	Load()
+	Load(config.PrestConf.PGDatabase)
 	type args struct {
 		dbname string
 		schema string

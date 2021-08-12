@@ -14,6 +14,8 @@ import (
 	"github.com/prest/prest/config"
 )
 
+const dbname = "prest"
+
 func TestMock_validate(t *testing.T) {
 	type fields struct {
 		mtx   *sync.RWMutex
@@ -221,7 +223,7 @@ func TestMock_Insert(t *testing.T) {
 				t:   t,
 			}
 			m.AddItem(tt.item.Body, tt.item.Error, tt.item.IsCount)
-			if gotSc := m.Insert(""); !reflect.DeepEqual(gotSc, tt.wantSc) {
+			if gotSc := m.Insert(config.PrestConf.PGDatabase, ""); !reflect.DeepEqual(gotSc, tt.wantSc) {
 				t.Errorf("Mock.Insert() = %v, want %v", gotSc, tt.wantSc)
 			}
 		})
@@ -263,7 +265,7 @@ func TestMock_BatchInsertValues(t *testing.T) {
 				t:   t,
 			}
 			m.AddItem(tt.item.Body, tt.item.Error, tt.item.IsCount)
-			if gotSc := m.BatchInsertValues(""); !reflect.DeepEqual(gotSc, tt.wantSc) {
+			if gotSc := m.BatchInsertValues(dbname, ""); !reflect.DeepEqual(gotSc, tt.wantSc) {
 				t.Errorf("Mock.BatchInsert() = %v, want %v", gotSc, tt.wantSc)
 			}
 		})
@@ -303,7 +305,7 @@ func TestMock_Delete(t *testing.T) {
 				t:   t,
 			}
 			m.AddItem(tt.item.Body, tt.item.Error, tt.item.IsCount)
-			if gotSc := m.Delete(""); !reflect.DeepEqual(gotSc, tt.wantSc) {
+			if gotSc := m.Delete(dbname, ""); !reflect.DeepEqual(gotSc, tt.wantSc) {
 				t.Errorf("Mock.Delete() = %v, want %v", gotSc, tt.wantSc)
 			}
 		})
@@ -343,7 +345,7 @@ func TestMock_Update(t *testing.T) {
 				t:   t,
 			}
 			m.AddItem(tt.item.Body, tt.item.Error, tt.item.IsCount)
-			if gotSc := m.Update(""); !reflect.DeepEqual(gotSc, tt.wantSc) {
+			if gotSc := m.Update(dbname, ""); !reflect.DeepEqual(gotSc, tt.wantSc) {
 				t.Errorf("Mock.Update() = %v, want %v", gotSc, tt.wantSc)
 			}
 		})
@@ -383,7 +385,7 @@ func TestMock_QueryCount(t *testing.T) {
 				t:   t,
 			}
 			m.AddItem(tt.item.Body, tt.item.Error, tt.item.IsCount)
-			if gotSc := m.QueryCount(""); !reflect.DeepEqual(gotSc, tt.wantSc) {
+			if gotSc := m.QueryCount(config.PrestConf.PGDatabase, ""); !reflect.DeepEqual(gotSc, tt.wantSc) {
 				t.Errorf("Mock.QueryCount() = %v, want %v", gotSc, tt.wantSc)
 			}
 		})
@@ -425,7 +427,7 @@ func TestMock_Query(t *testing.T) {
 				t:   t,
 			}
 			m.AddItem(tt.item.Body, tt.item.Error, tt.item.IsCount)
-			if gotSc := m.Query(""); !reflect.DeepEqual(gotSc, tt.wantSc) {
+			if gotSc := m.Query(config.PrestConf.PGDatabase, ""); !reflect.DeepEqual(gotSc, tt.wantSc) {
 				t.Errorf("Mock.Query() = %v, want %v", gotSc, tt.wantSc)
 			}
 		})
@@ -453,7 +455,7 @@ func TestMock_GetTransaction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := New(t)
-			gotTx, err := m.GetTransaction()
+			gotTx, err := m.GetTransaction(dbname)
 			errMactches := (err != nil) != tt.wantErr
 			if errMactches {
 				t.Errorf("Mock.GetTransaction() error = %v, wantErr %v", err, tt.wantErr)
@@ -521,7 +523,7 @@ func TestMockEmptyMethods(t *testing.T) {
 	}
 
 	// GetTransaction
-	_, err = mock.GetTransaction()
+	_, err = mock.GetTransaction(dbname)
 	if err != nil {
 		t.Errorf("expected empty return, got: %s", err)
 	}
@@ -596,9 +598,6 @@ func TestMockEmptyMethods(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected empty return, got: %s", err)
 	}
-
-	// SetDatabase
-	mock.SetDatabase("prest")
 
 	// SelectSQL
 	s := mock.SelectSQL("select 1", "prest", "public", "test1")

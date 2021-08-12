@@ -148,7 +148,7 @@ func (m *Mock) PaginateIfPossible(r *http.Request) (paginatedQuery string, err e
 }
 
 // GetTransaction mock
-func (m *Mock) GetTransaction() (tx *sql.Tx, err error) {
+func (m *Mock) GetTransaction(database string) (tx *sql.Tx, err error) {
 	db, err := sql.Open("mock", "prest")
 	if err != nil {
 		return
@@ -157,7 +157,7 @@ func (m *Mock) GetTransaction() (tx *sql.Tx, err error) {
 }
 
 // Query mock
-func (m *Mock) Query(SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (m *Mock) Query(database, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	m.t.Helper()
 	sc = m.perform(true)
 	return
@@ -200,7 +200,7 @@ func (m *Mock) GroupByClause(r *http.Request) (groupBySQL string) {
 }
 
 // QueryCount mock
-func (m *Mock) QueryCount(SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (m *Mock) QueryCount(database, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	m.t.Helper()
 	sc = m.perform(false)
 	return
@@ -212,7 +212,7 @@ func (m *Mock) ParseInsertRequest(r *http.Request) (colsName string, colsValue s
 }
 
 // Insert mock
-func (m *Mock) Insert(SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (m *Mock) Insert(database, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	m.t.Helper()
 	sc = m.perform(false)
 	return
@@ -226,7 +226,7 @@ func (m *Mock) InsertWithTransaction(tx *sql.Tx, SQL string, params ...interface
 }
 
 // Delete mock
-func (m *Mock) Delete(SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (m *Mock) Delete(database, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	m.t.Helper()
 	sc = m.perform(false)
 	return
@@ -245,7 +245,7 @@ func (m *Mock) SetByRequest(r *http.Request, initialPlaceholderID int) (setSynta
 }
 
 // Update mock
-func (m *Mock) Update(SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (m *Mock) Update(database, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	m.t.Helper()
 	sc = m.perform(false)
 	return
@@ -261,10 +261,6 @@ func (m *Mock) UpdateWithTransaction(tx *sql.Tx, SQL string, params ...interface
 // DistinctClause mock
 func (m *Mock) DistinctClause(r *http.Request) (distinctQuery string, err error) {
 	return
-}
-
-// SetDatabase mock
-func (m *Mock) SetDatabase(name string) {
 }
 
 // SelectSQL mock
@@ -338,7 +334,7 @@ func (m *Mock) ParseBatchInsertRequest(r *http.Request) (colsName string, placeh
 }
 
 // BatchInsertValues mock
-func (m *Mock) BatchInsertValues(SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (m *Mock) BatchInsertValues(database, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	m.t.Helper()
 	sc = m.perform(true)
 	return
@@ -352,7 +348,7 @@ func (m *Mock) BatchInsertCopy(dbname, schema, table string, keys []string, valu
 }
 
 // ShowTable shows table structure
-func (m *Mock) ShowTable(schema, table string) (sc adapters.Scanner) {
+func (m *Mock) ShowTable(database, schema, table string) (sc adapters.Scanner) {
 	return
 }
 

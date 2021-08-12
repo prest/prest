@@ -11,8 +11,8 @@ func GetURI(DBName string) string {
 }
 
 // Get get postgres connection
-func Get() (*sqlx.DB, error) {
-	return connection.Get()
+func Get(database string) (*sqlx.DB, error) {
+	return connection.Get(database)
 }
 
 // GetPool of connection
@@ -26,16 +26,7 @@ func AddDatabaseToPool(name string, DB *sqlx.DB) {
 }
 
 // MustGet get postgres connection
-func MustGet() *sqlx.DB {
-	return connection.MustGet()
+func MustGet(database string) *sqlx.DB {
+	return connection.MustGet(database)
 }
 
-// SetDatabase set current database in use
-func SetDatabase(name string) {
-	connection.SetDatabase(name)
-}
-
-// GetDatabase get current database in use
-func GetDatabase() string {
-	return connection.GetDatabase()
-}
