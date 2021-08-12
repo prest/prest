@@ -128,7 +128,7 @@ Uses these operators in various filter applications
 | Endpointis                          | Description                                               |
 | ----------------------------------- | --------------------------------------------------------- |
 | `/databases`                        | List all databases                                        |
-| `/shemas`                           | List all schemas                                          |
+| `/schemas`                          | List all schemas                                          |
 | `/tables`                           | List all tables                                           |
 | `/show/{DATABASE}/{SCHEMA}/{TABLE}` | Lists table structure - all fields contained in the table |
 | `/{DATABASE}/{SCHEMA}`              | Lists table tables - find by schema                       |
