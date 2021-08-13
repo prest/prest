@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	gotemplate "text/template"
 
@@ -45,7 +44,7 @@ func (adapter *Postgres) GetScript(verb, folder, scriptName string) (script stri
 
 // ParseScript use values sent by users and add on script
 func (adapter *Postgres) ParseScript(scriptPath string, templateData map[string]interface{}) (sqlQuery string, values []interface{}, err error) {
-	_, tplName := path.Split(scriptPath)
+	_, tplName := filepath.Split(scriptPath)
 
 	funcs := &template.FuncRegistry{TemplateData: templateData}
 	tpl := gotemplate.New(tplName).Funcs(funcs.RegistryAllFuncs())
