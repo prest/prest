@@ -25,7 +25,7 @@ var RootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if config.PrestConf.Adapter == nil {
 			nlog.Warningln("adapter is not set. Using the default (postgres)")
-			postgres.Load()
+			postgres.Load(config.PrestConf.PGDatabase)
 		}
 		startServer()
 	},

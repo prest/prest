@@ -26,9 +26,9 @@ var migrateCmd = &cobra.Command{
 
 func checkTable(cmd *cobra.Command, args []string) error {
 	if config.PrestConf.Adapter == nil {
-		postgres.Load()
+		postgres.Load(config.PrestConf.PGDatabase)
 	}
-	sc := config.PrestConf.Adapter.ShowTable("public", "schema_migrations")
+	sc := config.PrestConf.Adapter.ShowTable(config.PrestConf.PGDatabase, "public", "schema_migrations")
 	if err := sc.Err(); err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func checkTable(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if index != nil {
-		db, err := postgres.Get()
+		db, err := postgres.Get(config.PrestConf.PGDatabase)
 		if err != nil {
 			return err
 		}

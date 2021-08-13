@@ -42,7 +42,7 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 
 	sqlTables = fmt.Sprint(sqlTables, requestWhere, order)
 
-	sc := config.PrestConf.Adapter.Query(sqlTables, values...)
+	sc := config.PrestConf.Adapter.Query(config.PrestConf.PGDatabase, sqlTables, values...)
 	if sc.Err() != nil {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
@@ -55,8 +55,6 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	database := vars["database"]
 	schema := vars["schema"]
-
-	config.PrestConf.Adapter.SetDatabase(database)
 
 	requestWhere, values, err := config.PrestConf.Adapter.WhereByRequest(r, 3)
 	if err != nil {
@@ -88,7 +86,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	valuesAux := make([]interface{}, 0)
 	valuesAux = append(valuesAux, database, schema)
 	valuesAux = append(valuesAux, values...)
-	sc := config.PrestConf.Adapter.Query(sqlSchemaTables, valuesAux...)
+	sc := config.PrestConf.Adapter.Query(database, sqlSchemaTables, valuesAux...)
 	if sc.Err() != nil {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
@@ -102,8 +100,6 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 	schema := vars["schema"]
 	table := vars["table"]
-
-	config.PrestConf.Adapter.SetDatabase(database)
 
 	// get selected columns, "*" if empty "_columns"
 	cols, err := config.PrestConf.Adapter.FieldsPermissions(r, table, "read")
@@ -200,7 +196,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		runQuery = config.PrestConf.Adapter.QueryCount
 	}
 
-	sc := runQuery(sqlSelect, values...)
+	sc := runQuery(database ,sqlSelect, values...)
 	if err = sc.Err(); err != nil {
 		errorMessage := sc.Err().Error()
 		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
@@ -221,8 +217,6 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	config.PrestConf.Adapter.SetDatabase(database)
-
 	names, placeholders, values, err := config.PrestConf.Adapter.ParseInsertRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform InsertInTables: %v", err)
@@ -232,7 +226,7 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 
 	sql := config.PrestConf.Adapter.InsertSQL(database, schema, table, names, placeholders)
 
-	sc := config.PrestConf.Adapter.Insert(sql, values...)
+	sc := config.PrestConf.Adapter.Insert(database, sql, values...)
 	if err = sc.Err(); err != nil {
 		errorMessage := sc.Err().Error()
 		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
@@ -254,8 +248,6 @@ func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	config.PrestConf.Adapter.SetDatabase(database)
-
 	names, placeholders, values, err := config.PrestConf.Adapter.ParseBatchInsertRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform BatchInsertInTables: %v", err)
@@ -266,7 +258,7 @@ func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 	method := r.Header.Get("Prest-Batch-Method")
 	if strings.ToLower(method) != "copy" {
 		sql := config.PrestConf.Adapter.InsertSQL(database, schema, table, names, placeholders)
-		sc = config.PrestConf.Adapter.BatchInsertValues(sql, values...)
+		sc = config.PrestConf.Adapter.BatchInsertValues(database, sql, values...)
 	} else {
 		sc = config.PrestConf.Adapter.BatchInsertCopy(database, schema, table, strings.Split(names, ","), values...)
 	}
@@ -290,8 +282,6 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 	schema := vars["schema"]
 	table := vars["table"]
-
-	config.PrestConf.Adapter.SetDatabase(database)
 
 	where, values, err := config.PrestConf.Adapter.WhereByRequest(r, 1)
 	if err != nil {
@@ -319,7 +309,7 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 			returningSyntax)
 	}
 
-	sc := config.PrestConf.Adapter.Delete(sql, values...)
+	sc := config.PrestConf.Adapter.Delete(database, sql, values...)
 	if err = sc.Err(); err != nil {
 		errorMessage := sc.Err().Error()
 		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
@@ -339,8 +329,6 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 	schema := vars["schema"]
 	table := vars["table"]
-
-	config.PrestConf.Adapter.SetDatabase(database)
 
 	setSyntax, values, err := config.PrestConf.Adapter.SetByRequest(r, 1)
 	if err != nil {
@@ -381,7 +369,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 			returningSyntax)
 	}
 
-	sc := config.PrestConf.Adapter.Update(sql, values...)
+	sc := config.PrestConf.Adapter.Update(database, sql, values...)
 	if err = sc.Err(); err != nil {
 		errorMessage := sc.Err().Error()
 		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
@@ -402,8 +390,7 @@ func ShowTable(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	config.PrestConf.Adapter.SetDatabase(database)
-	sc := config.PrestConf.Adapter.ShowTable(schema, table)
+	sc := config.PrestConf.Adapter.ShowTable(database, schema, table)
 	if sc.Err() != nil {
 		log.Println(fmt.Sprintf(" There error to excute the query. schema %s error %s", schema, sc.Err()))
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)

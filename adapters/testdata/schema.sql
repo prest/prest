@@ -26,7 +26,7 @@ INSERT INTO test (name) VALUES ('tester02');
 INSERT INTO test2 (name, number) VALUES ('tester02', 2);
 INSERT INTO test3 (name) VALUES ('prest');
 INSERT INTO test3 (name) VALUES ('prest tester');
-INSERT INTO test5 (name, celphone) VALUES ('prest tester', '444444');
+INSERT INTO test5 (name, celphone) VALUES ('prest tester', '444444'), ('prest tester', '444444');
 INSERT INTO test7 (name, surname) VALUES ('gopher', 'da silva');
 INSERT INTO test_readonly_access (name) VALUES ('test01');
 INSERT INTO test_write_and_delete_access (name) VALUES ('test01');

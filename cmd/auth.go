@@ -15,10 +15,10 @@ var authUpCmd = &cobra.Command{
 	Long:  "Create basic table to use on auth endpoint",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if config.PrestConf.Adapter == nil {
-			postgres.Load()
+			postgres.Load(config.PrestConf.PGDatabase)
 		}
 
-		db, err := postgres.Get()
+		db, err := postgres.Get(config.PrestConf.PGDatabase)
 		if err != nil {
 			fmt.Fprintf(os.Stdout, err.Error())
 			return err
@@ -38,10 +38,10 @@ var authDownCmd = &cobra.Command{
 	Long:  "Drop basic table used on auth endpoint",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if config.PrestConf.Adapter == nil {
-			postgres.Load()
+			postgres.Load(config.PrestConf.PGDatabase)
 		}
 
-		db, err := postgres.Get()
+		db, err := postgres.Get(config.PrestConf.PGDatabase)
 		if err != nil {
 			fmt.Fprintf(os.Stdout, err.Error())
 			return err

@@ -14,7 +14,6 @@ import (
 var (
 	err          error
 	pool         *Pool
-	currDatabase string
 )
 
 // Pool struct
@@ -25,12 +24,10 @@ type Pool struct {
 
 // GetURI postgres connection URI
 func GetURI(DBName string) string {
-	var dbURI string
-
 	if DBName == "" {
 		DBName = config.PrestConf.PGDatabase
 	}
-	dbURI = fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=%v connect_timeout=%d",
+	dbURI := fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=%v connect_timeout=%d",
 		config.PrestConf.PGUser,
 		DBName,
 		config.PrestConf.PGHost,
@@ -55,22 +52,20 @@ func GetURI(DBName string) string {
 }
 
 // Get get postgres connection
-func Get() (*sqlx.DB, error) {
-	var DB *sqlx.DB
-
-	DB = getDatabaseFromPool(GetDatabase())
+func Get(database string) (*sqlx.DB, error) {
+	DB := getDatabaseFromPool(database)
 	if DB != nil {
 		return DB, nil
 	}
 
-	DB, err = sqlx.Connect("postgres", GetURI(GetDatabase()))
+	DB, err = sqlx.Connect("postgres", GetURI(database))
 	if err != nil {
 		return nil, err
 	}
 	DB.SetMaxIdleConns(config.PrestConf.PGMaxIdleConn)
 	DB.SetMaxOpenConns(config.PrestConf.PGMAxOpenConn)
 
-	AddDatabaseToPool(GetDatabase(), DB)
+	AddDatabaseToPool(database, DB)
 
 	return DB, nil
 }
@@ -87,13 +82,10 @@ func GetPool() *Pool {
 }
 
 func getDatabaseFromPool(name string) *sqlx.DB {
-	var DB *sqlx.DB
-	var p *Pool
-
-	p = GetPool()
+	p := GetPool()
 
 	p.Mtx.Lock()
-	DB = p.DB[GetURI(name)]
+	DB := p.DB[GetURI(name)]
 	p.Mtx.Unlock()
 
 	return DB
@@ -101,9 +93,7 @@ func getDatabaseFromPool(name string) *sqlx.DB {
 
 // AddDatabaseToPool add connection to pool
 func AddDatabaseToPool(name string, DB *sqlx.DB) {
-	var p *Pool
-
-	p = GetPool()
+	p := GetPool()
 
 	p.Mtx.Lock()
 	p.DB[GetURI(name)] = DB
@@ -111,23 +101,10 @@ func AddDatabaseToPool(name string, DB *sqlx.DB) {
 }
 
 // MustGet get postgres connection
-func MustGet() *sqlx.DB {
-	var err error
-	var DB *sqlx.DB
-
-	DB, err = Get()
+func MustGet(database string) *sqlx.DB {
+	DB, err := Get(database)
 	if err != nil {
 		panic(fmt.Sprintf("Unable to connect to database: %v\n", err))
 	}
 	return DB
-}
-
-// SetDatabase set current database in use
-func SetDatabase(name string) {
-	currDatabase = name
-}
-
-// GetDatabase get current database in use
-func GetDatabase() string {
-	return currDatabase
 }
