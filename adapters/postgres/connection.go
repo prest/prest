@@ -29,4 +29,3 @@ func AddDatabaseToPool(name string, DB *sqlx.DB) {
 func MustGet(database string) *sqlx.DB {
 	return connection.MustGet(database)
 }
-

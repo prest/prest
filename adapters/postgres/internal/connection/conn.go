@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	err          error
-	pool         *Pool
+	err  error
+	pool *Pool
 )
 
 // Pool struct
