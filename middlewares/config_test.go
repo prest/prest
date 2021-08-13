@@ -19,7 +19,7 @@ import (
 
 func init() {
 	config.Load()
-	postgres.Load()
+	postgres.Load(config.PrestConf.PGDatabase)
 }
 
 func TestInitApp(t *testing.T) {
@@ -91,7 +91,7 @@ func TestGetAppWithoutReorderedMiddleware(t *testing.T) {
 func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 	os.Setenv("PREST_DEBUG", "true")
 	config.Load()
-	postgres.Load()
+	postgres.Load(config.PrestConf.PGDatabase)
 	app = nil
 	r := router.Get()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })

@@ -25,7 +25,7 @@ func main() {
 	config.Load()
 
 	// Load Postgres Adapter
-	postgres.Load()
+	postgres.Load(config.PrestConf.PGDatabase)
 
 	// Get pREST app
 	n := middlewares.GetApp()
@@ -76,7 +76,7 @@ import (
 func main() {
 	config.Load()
 	// Load Postgres Adapter
-	postgres.Load()
+	postgres.Load(config.PrestConf.PGDatabase)
 	// Reorder middlewares
 	middlewares.MiddlewareStack = []negroni.Handler{
 		negroni.Handler(negroni.NewRecovery()),

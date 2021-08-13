@@ -12,7 +12,7 @@ import (
 
 func Test_basicPasswordCheck(t *testing.T) {
 	config.Load()
-	postgres.Load()
+	postgres.Load(config.PrestConf.PGDatabase)
 
 	_, err := basicPasswordCheck("test@postgres.rest", "123456")
 	if err != nil {

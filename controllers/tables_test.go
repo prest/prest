@@ -15,7 +15,7 @@ import (
 
 func init() {
 	config.Load()
-	postgres.Load()
+	postgres.Load(config.PrestConf.PGDatabase)
 }
 
 func TestGetTables(t *testing.T) {

@@ -106,7 +106,7 @@ func TestRenderWithXML(t *testing.T) {
 	}
 	os.Setenv("PREST_DEBUG", "true")
 	config.Load()
-	postgres.Load()
+	postgres.Load(config.PrestConf.PGDatabase)
 	n := middlewares.GetApp()
 	r := router.Get()
 

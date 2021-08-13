@@ -12,7 +12,7 @@ import (
 
 func TestGetSchemas(t *testing.T) {
 	config.Load()
-	postgres.Load()
+	postgres.Load(config.PrestConf.PGDatabase)
 
 	var testCases = []struct {
 		description string

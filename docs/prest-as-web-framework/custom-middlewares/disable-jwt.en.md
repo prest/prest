@@ -46,7 +46,7 @@ func main() {
 	config.Load()
 
 	// pREST Postgres
-	postgres.Load()
+	postgres.Load(config.PrestConf.PGDatabase)
 
 	// pREST routes
 	r := router.Get()
