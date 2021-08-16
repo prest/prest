@@ -43,6 +43,7 @@ type Adapter interface {
 	SelectSQL(selectStr string, database string, schema string, table string) string
 	SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, values []interface{}, err error)
 	SetDatabase(name string)
+	GetDatabase() string
 	TableClause() (query string)
 	TableOrderBy(order string) (orderBy string)
 	TablePermissions(table string, op string) bool

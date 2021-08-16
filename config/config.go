@@ -64,6 +64,7 @@ type Prest struct {
 	Debug            bool
 	Adapter          adapters.Adapter
 	EnableDefaultJWT bool
+	SingleDB         bool
 	EnableCache      bool
 	HTTPSMode        bool
 	HTTPSCert        string
@@ -105,6 +106,7 @@ func viperCfg() {
 	viper.SetDefault("pg.maxidleconn", 10)
 	viper.SetDefault("pg.maxopenconn", 10)
 	viper.SetDefault("pg.conntimeout", 10)
+	viper.SetDefault("pg.single", true)
 	viper.SetDefault("debug", false)
 	viper.SetDefault("jwt.default", true)
 	viper.SetDefault("jwt.algo", "HS256")
@@ -182,6 +184,7 @@ func Parse(cfg *Prest) (err error) {
 	cfg.PGMaxIdleConn = viper.GetInt("pg.maxidleconn")
 	cfg.PGMAxOpenConn = viper.GetInt("pg.maxopenconn")
 	cfg.PGConnTimeout = viper.GetInt("pg.conntimeout")
+	cfg.SingleDB = viper.GetBool("pg.single")
 	cfg.JWTKey = viper.GetString("jwt.key")
 	cfg.JWTAlgo = viper.GetString("jwt.algo")
 	cfg.JWTWhiteList = viper.GetStringSlice("jwt.whitelist")

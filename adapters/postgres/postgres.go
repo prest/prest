@@ -1426,3 +1426,8 @@ func (adapter *Postgres) ShowTable(schema, table string) adapters.Scanner {
 			 ORDER BY table_schema, table_name, ordinal_position`
 	return adapter.Query(query, table, schema)
 }
+
+// GetDatabase returns the current DB name
+func (adapter *Postgres) GetDatabase() string {
+	return connection.GetDatabase()
+}

@@ -367,3 +367,8 @@ func (m *Mock) AddItem(body []byte, err error, isCount bool) {
 	m.Items = append(m.Items, i)
 	m.mtx.Unlock()
 }
+
+// GetDatabase ron mock db
+func (m *Mock) GetDatabase() (db string) {
+	return
+}
