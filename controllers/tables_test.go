@@ -64,6 +64,7 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 		{"Get tables by databases and schema with custom where and pagination invalid", "/prest-test/public?t.tablename=$eq.test&_page=A&_page_size=20", "GET", http.StatusBadRequest},
 		{"Get tables by databases and schema with ORDER BY and column invalid", "/prest-test/public?_order=0t.tablename", "GET", http.StatusBadRequest},
 		{"Get tables by databases with noexistent column", "/prest-test/public?t.taababa=$eq.test", "GET", http.StatusBadRequest},
+		{"Get tables by databases with not configured database", "/random/public?t.taababa=$eq.test", "GET", http.StatusBadRequest},
 	}
 
 	router := mux.NewRouter()
@@ -131,6 +132,8 @@ func TestSelectFromTables(t *testing.T) {
 		{"execute select in a view with custom where clause and pagination invalid", "/prest-test/public/view_test?player=$eq.gopher&_page=A&_page_size=20", "GET", http.StatusBadRequest, ""},
 		{"execute select in a view with order by and column invalid", "/prest-test/public/view_test?_order=0celphone", "GET", http.StatusBadRequest, ""},
 		{"execute select in a view with count column invalid", "/prest-test/public/view_test?_count=0celphone", "GET", http.StatusBadRequest, ""},
+
+		{"execute select in a db that does not exist", "/invalid/public/view_test?_count=0celphone", "GET", http.StatusBadRequest, ""},
 	}
 
 	for _, tc := range testCases {
@@ -175,6 +178,8 @@ func TestInsertInTables(t *testing.T) {
 		{"execute insert in a table with invalid schema", "/prest-test/0public/test", m, http.StatusNotFound},
 		{"execute insert in a table with invalid table", "/prest-test/public/0test", m, http.StatusNotFound},
 		{"execute insert in a table with invalid body", "/prest-test/public/test", nil, http.StatusBadRequest},
+
+		{"execute insert in a database that does not exist", "/invalid/public/0test", m, http.StatusBadRequest},
 	}
 
 	for _, tc := range testCases {
@@ -215,6 +220,8 @@ func TestBatchInsertInTables(t *testing.T) {
 		{"execute insert in a table with invalid body", "/batch/prest-test/public/test", nil, http.StatusBadRequest, false},
 		{"execute insert in a table with array field with copy", "/batch/prest-test/public/testarray", mARRAY, http.StatusCreated, true},
 		{"execute insert in a table with jsonb field with copy", "/batch/prest-test/public/testjson", mJSON, http.StatusCreated, true},
+
+		{"execute insert in a db that does not exist", "/batch/invalid/public/test", nil, http.StatusBadRequest, false},
 	}
 
 	for _, tc := range testCases {
@@ -267,6 +274,8 @@ func TestDeleteFromTable(t *testing.T) {
 		{"execute delete in a table with invalid schema", "/prest-test/0public/test", nil, http.StatusNotFound},
 		{"execute delete in a table with invalid table", "/prest-test/public/0test", nil, http.StatusNotFound},
 		{"execute delete in a table with invalid where clause", "/prest-test/public/test?0name=$eq.nuveo", nil, http.StatusBadRequest},
+
+		{"execute delete in a invalid db", "/invalid/public/0test", nil, http.StatusBadRequest},
 	}
 
 	for _, tc := range testCases {
@@ -299,6 +308,8 @@ func TestUpdateFromTable(t *testing.T) {
 		{"execute update in a table with invalid table", "/prest-test/public/0test", m, http.StatusNotFound},
 		{"execute update in a table with invalid where clause", "/prest-test/public/test?0name=$eq.nuveo", m, http.StatusBadRequest},
 		{"execute update in a table with invalid body", "/prest-test/public/test?name=$eq.nuveo", nil, http.StatusBadRequest},
+
+		{"execute update in a invalid db", "/invalid/public/test", m, http.StatusBadRequest},
 	}
 
 	for _, tc := range testCases {
@@ -323,6 +334,7 @@ func TestShowTable(t *testing.T) {
 	}{
 		{"execute select in a table test custom information table", "/show/prest-test/public/test", "GET", http.StatusOK},
 		{"execute select in a table test2 custom information table", "/show/prest-test/public/test2", "GET", http.StatusOK},
+		{"execute select in a invalid db", "/show/invalid/public/test2", "GET", http.StatusBadRequest},
 	}
 
 	for _, tc := range testCases {
