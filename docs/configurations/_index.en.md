@@ -70,6 +70,7 @@ user = "postgres"
 pass = "mypass"
 port = 5432
 database = "prest"
+single = true
 ## or used cloud factor
 # URL = "postgresql://user:pass@localhost/mydatabase/?sslmode=disable"
 
@@ -155,4 +156,13 @@ Set environment variable `PREST_DEBUG` or `debug=true` on top of prest.toml file
 
 ```toml
 PREST_DEBUG=true
+```
+
+## Single mode
+
+While serving multiple databases over the same API with pREST is doable, it's by default a single database setup. This is this way to prevent unwanted behavior that may make prest instable for users, in order to change that It's possible to pass a variable on your `toml` file to disable it under the `[pg]` tag as shown bellow.
+
+```toml
+[pg]
+    single = false
 ```
