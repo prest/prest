@@ -1,0 +1,1 @@
+UPDATE test7 SET name = '{{.field1}}' WHERE surname = '{{.field2}}'

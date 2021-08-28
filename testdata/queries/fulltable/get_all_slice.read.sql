@@ -1,0 +1,1 @@
+SELECT * FROM test7 WHERE name IN {{inFormat "field1"}}

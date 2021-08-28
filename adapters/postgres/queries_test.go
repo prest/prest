@@ -2,9 +2,7 @@ package postgres
 
 import (
 	"fmt"
-	"log"
 	"os"
-	"os/user"
 	"testing"
 
 	"github.com/prest/prest/config"
@@ -13,12 +11,7 @@ import (
 func TestMain(m *testing.M) {
 	os.Setenv("PREST_CONF", "./testdata/prest.toml")
 	config.Load()
-	createMockScripts(config.PrestConf.QueriesPath)
-	writeMockScripts(config.PrestConf.QueriesPath)
-
 	code := m.Run()
-
-	removeMockScripts(config.PrestConf.QueriesPath)
 	os.Exit(code)
 }
 
@@ -71,12 +64,7 @@ func TestParseScriptInvalid(t *testing.T) {
 	templateData := map[string]interface{}{}
 	templateData["field1"] = "abc"
 
-	user, err := user.Current()
-	if err != nil {
-		log.Fatal(err)
-	}
-	scriptPath := fmt.Sprint(user.HomeDir, "/queries/fulltable/%s")
-
+	scriptPath := fmt.Sprint(os.Getenv("PREST_QUERIES_LOCATION"), "/fulltable/%s")
 	t.Log("Parse script with get_all file")
 	sql, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "get_all.read.sql"), templateData)
 	if err != nil {
@@ -92,11 +80,7 @@ func TestParseScript(t *testing.T) {
 	templateData := map[string]interface{}{}
 	templateData["field1"] = []string{"abc", "test"}
 
-	user, err := user.Current()
-	if err != nil {
-		log.Fatal(err)
-	}
-	scriptPath := fmt.Sprint(user.HomeDir, "/queries/fulltable/%s")
+	scriptPath := fmt.Sprint(os.Getenv("PREST_QUERIES_LOCATION"), "/fulltable/%s")
 
 	t.Log("Parse script with get_all_slice file")
 	sql, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "get_all_slice.read.sql"), templateData)

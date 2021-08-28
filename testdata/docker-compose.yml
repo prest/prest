@@ -34,6 +34,7 @@ services:
       - PREST_SSL_MODE=disable
       - PREST_CONF=/workspace/testdata/prest.toml
       - PREST_MIGRATIONS=/workspace/testdata/migrations
+      - PREST_QUERIES_LOCATION=/workspace/testdata/queries
       - BE_CRASHER=1
     depends_on:
       postgres:
