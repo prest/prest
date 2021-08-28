@@ -90,7 +90,7 @@ jobs:
       - name: pREST Test
         run: |
           env go run ./cmd/prestd/main.go migrate up
-          env go test -race -covermode=atomic -coverprofile=./coverage.out ./...
+          env go test -race -covermode=atomic -coverprofile=/__w/prest/prest/coverage.out ./...
 
       - name: goreleaser check
         run: curl -sfL https://git.io/goreleaser | sh -s -- check
@@ -98,7 +98,7 @@ jobs:
       - name: Coveralls
         uses: shogo82148/actions-goveralls@v1
         with:
-          path-to-profile: ./coverage.out
+          path-to-profile: /__w/prest/prest/coverage.out
 
       - name: Login to Docker Hub
         if: startsWith(github.ref, 'refs/tags/v')
