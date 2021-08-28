@@ -129,7 +129,7 @@ func TestGetDefaultPrestConf(t *testing.T) {
 	}{
 		{"empty config", "./prest.toml", "", ""},
 		{"custom config", "./prest.toml", "../prest.toml", "../prest.toml"},
-		{"default config", "./testdata/prest.toml", "", "./testdata/prest.toml"},
+		{"default config", "./prest.toml", "", "./prest.toml"},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
