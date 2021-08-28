@@ -13,13 +13,6 @@ import (
 	"github.com/prest/prest/middlewares"
 )
 
-func TestMain(m *testing.M) {
-	os.Setenv("PREST_CONF", "./testdata/prest.toml")
-	config.Load()
-	code := m.Run()
-	os.Exit(code)
-}
-
 func TestExecuteScriptQuery(t *testing.T) {
 	r := mux.NewRouter()
 	r.HandleFunc("/testing/script-get/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

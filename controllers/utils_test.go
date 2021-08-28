@@ -160,7 +160,7 @@ func doRequest(t *testing.T, url string, r interface{}, method string, expectedS
 	}
 
 	if resp.StatusCode != expectedStatus {
-		t.Errorf("expected %d, got: %d", expectedStatus, resp.StatusCode)
+		t.Errorf("%s expected %d, got: %d", url, expectedStatus, resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
