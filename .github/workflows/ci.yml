@@ -71,7 +71,8 @@ jobs:
           PREST_PG_PASS: postgres
           PREST_SSL_MODE: disable
         run: |
-          ls -l $GITHUB_WORKSPACE
-          curl -sfL https://git.io/goreleaser | sh -s -- check
+          ls -l $GITHUB_WORKSPACE/testdata
+          ls -l $GITHUB_WORKSPACE/testdata/migrations
+          // curl -sfL https://git.io/goreleaser | sh -s -- check
           // sh $GITHUB_WORKSPACE/testdata/migrations_test.sh
           // env go test -race -covermode=atomic -coverprofile=coverage.out ./...
