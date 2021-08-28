@@ -123,7 +123,7 @@ jobs:
 
       - name: GoReleaser
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [[ $GITHUB_REF == refs/tags/v* ]]; then
             bash ./scripts/releaser-tag.sh
