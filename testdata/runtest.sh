@@ -12,9 +12,9 @@ go run ./cmd/prestd/main.go migrate up
 
 echo "\n\n.:: PRESTD: TESTING STARTING..."
 if [ -z ${1+x} ]; then
-    go test -race -covermode=atomic -coverprofile=coverage.out ./...;
+    go test -v -race -covermode=atomic -coverprofile=coverage.out ./...;
 else
-    go test -race -covermode=atomic -coverprofile=coverage.out $@
+    go test -v -race -covermode=atomic -coverprofile=coverage.out $@
 fi
 
 echo "\n\n.:: POSTGRES: DROP DATABASES"
