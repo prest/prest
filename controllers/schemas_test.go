@@ -21,7 +21,7 @@ func TestGetSchemas(t *testing.T) {
 		status      int
 		body        string
 	}{
-		{"Get schemas without custom where clause", "/schemas", "GET", http.StatusOK, "[{\"schema_name\":\"information_schema\"}, \n {\"schema_name\":\"pg_catalog\"}, \n {\"schema_name\":\"pg_temp_1\"}, \n {\"schema_name\":\"pg_toast\"}, \n {\"schema_name\":\"pg_toast_temp_1\"}, \n {\"schema_name\":\"public\"}]"},
+		{"Get schemas without custom where clause", "/schemas", "GET", http.StatusOK, "[{\"schema_name\":\"information_schema\"}, \n {\"schema_name\":\"pg_catalog\"}, \n {\"schema_name\":\"pg_toast\"}, \n {\"schema_name\":\"public\"}]"},
 		{"Get schemas with custom where clause", "/schemas?schema_name=$eq.public", "GET", http.StatusOK, "[{\"schema_name\":\"public\"}]"},
 		{"Get schemas with custom order clause", "/schemas?schema_name=$eq.public&_order=schema_name", "GET", http.StatusOK, "[{\"schema_name\":\"public\"}]"},
 		{"Get schemas with custom order invalid clause", "/schemas?schema_name=$eq.public&_order=$eq.schema_name", "GET", http.StatusBadRequest, "Invalid identifier\n"},
