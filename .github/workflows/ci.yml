@@ -5,6 +5,14 @@ jobs:
   test:
     runs-on: ubuntu-latest
     container: golang:latest
+    env:
+      PREST_PG_HOST: postgres
+      PREST_PG_DATABASE: prest-test
+      PREST_PG_USER: postgres
+      PREST_PG_PASS: postgres
+      PREST_SSL_MODE: disable
+      PREST_CONF: ./testdata/prest.toml
+      PREST_MIGRATIONS: ./testdata/migrations
     services:
       postgres:
         image: postgres:latest
@@ -27,12 +35,6 @@ jobs:
           apt-get install -y postgresql-client
 
       - name: Setup Database
-        env:
-          PREST_PG_HOST: postgres
-          PREST_PG_DATABASE: prest
-          PREST_PG_USER: postgres
-          PREST_PG_PASS: postgres
-          PGPASSWORD: postgres
         run: sh $GITHUB_WORKSPACE/testdata/schema.sh
 
       - name: Set up Go
@@ -62,15 +64,6 @@ jobs:
           which migrate
 
       - name: pREST Test
-        env:
-          PREST_CONF: ./testdata/prest.toml
-          PREST_MIGRATIONS: ./testdata/migrations
-          PREST_PG_HOST: postgres
-          PREST_PG_DATABASE: prest
-          PREST_PG_USER: postgres
-          PREST_PG_PASS: postgres
-          PREST_SSL_MODE: disable
-          GITHUB_WORKSPACE: $GITHUB_WORKSPACE
         run: |
           // curl -sfL https://git.io/goreleaser | sh -s -- check
           sh $GITHUB_WORKSPACE/testdata/migrations_test.sh
