@@ -93,7 +93,7 @@ func TestSelectFromTables(t *testing.T) {
 	}{
 		{"execute select in a table with array", "/prest-test/public/testarray", "GET", http.StatusOK, "[{\"id\":100,\"data\":[\"Gohan\",\"Goten\"]}]"},
 		{"execute select in a table without custom where clause", "/prest-test/public/test", "GET", http.StatusOK, ""},
-		{"execute select in a table case sentive", "/prest-test/public/Reply", "GET", http.StatusOK, "[{\"id\":1,\"name\":\"prest tester\"}]"},
+		{"execute select in a table case sentive", "/prest-test/public/Reply", "GET", http.StatusOK, "[{\"id\":1,\"name\":\"prest tester\"}, \n {\"id\":2,\"name\":\"copy\"}, \n {\"id\":3,\"name\":\"copy\"}]"},
 		{"execute select in a table with count all fields *", "/prest-test/public/test?_count=*", "GET", http.StatusOK, ""},
 		{"execute select in a table with count function", "/prest-test/public/test?_count=name", "GET", http.StatusOK, ""},
 		{"execute select in a table with custom where clause", "/prest-test/public/test?name=$eq.nuveo", "GET", http.StatusOK, ""},
