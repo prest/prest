@@ -27,10 +27,9 @@ func TestLoad(t *testing.T) {
 	// Only run the failing part when a specific env variable is set
 	if os.Getenv("BE_CRASHER") == "1" {
 		Load()
-		os.Setenv("PREST_PG_DATABASE", "prest")
+		os.Setenv("PREST_PG_DATABASE", "prest-test")
 		return
 	}
-	os.Setenv("PREST_PG_DATABASE", "prest-test")
 	// Start the actual test in a different subprocess
 	cmd := exec.Command(os.Args[0], "-test.run=TestLoad")
 	cmd.Env = append(os.Environ(), "BE_CRASHER=1")
