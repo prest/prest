@@ -5,6 +5,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     container: golang:latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: /__w/prest/prest
     env:
       PREST_PG_HOST: postgres
       PREST_PG_DATABASE: prest-test
