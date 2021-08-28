@@ -1,5 +1,12 @@
-on: [push, pull_request]
-name: pREST CI
+name: build
+
+on:
+  push:
+    branches:
+      - 'main'
+    tags:
+      - 'v*'
+  pull_request:
 
 jobs:
   test:
@@ -20,6 +27,7 @@ jobs:
       PREST_MIGRATIONS: /__w/prest/prest/testdata/migrations
       PREST_QUERIES_LOCATION: /__w/prest/prest/testdata/queries
       BE_CRASHER: 1
+      DOCKER_CLI_EXPERIMENTAL: "enabled"
     services:
       postgres:
         image: postgres:latest
@@ -36,6 +44,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - name: Install PostgreSQL client
         run: |
           apt-get update
@@ -52,7 +62,15 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.16
+          go-version: 1.17
+
+      - name: Cache Go modules
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
       - name: Install Dependencies
         run: |
@@ -77,6 +95,36 @@ jobs:
 
       - name: pREST Test
         run: |
-          curl -sfL https://git.io/goreleaser | sh -s -- check
           env go run ./cmd/prestd/main.go migrate up
-          env go test -race -covermode=atomic -coverprofile=coverage.out ./...
+          env go test -race -covermode=atomic -coverprofile=./coverage.out ./...
+
+      - name: goreleaser check
+        run: curl -sfL https://git.io/goreleaser | sh -s -- check
+
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to Docker Hub
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Login to GitHub Container Registry
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: GoReleaser
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            bash ./scripts/releaser-tag.sh
+          fi
