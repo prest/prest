@@ -7,7 +7,7 @@ import (
 )
 
 func TestLoad(t *testing.T) {
-	os.Setenv("PREST_CONF", "testdata/prest.toml")
+	os.Setenv("PREST_CONF", "./testdata/prest.toml")
 	defer os.Unsetenv("PREST_CONF")
 
 	Load()
@@ -33,7 +33,7 @@ func TestLoad(t *testing.T) {
 }
 
 func TestParse(t *testing.T) {
-	os.Setenv("PREST_CONF", "testdata/prest.toml")
+	os.Setenv("PREST_CONF", "./testdata/prest.toml")
 
 	viperCfg()
 	cfg := &Prest{}
@@ -85,7 +85,7 @@ func TestParse(t *testing.T) {
 	}
 
 	os.Unsetenv("PREST_JWT_DEFAULT")
-	os.Setenv("PREST_CONF", "testdata/prest.toml")
+	os.Setenv("PREST_CONF", "./testdata/prest.toml")
 
 	viperCfg()
 	cfg = &Prest{}
@@ -304,7 +304,7 @@ func Test_portFromEnv(t *testing.T) {
 }
 
 func Test_Auth(t *testing.T) {
-	os.Setenv("PREST_CONF", "testdata/prest.toml")
+	os.Setenv("PREST_CONF", "./testdata/prest.toml")
 
 	viperCfg()
 	cfg := &Prest{}
