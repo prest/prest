@@ -2,11 +2,11 @@ package controllers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/nuveo/log"
 	"github.com/prest/prest/adapters"
 	"github.com/prest/prest/config"
 )
@@ -216,7 +216,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	if err = sc.Err(); err != nil {
 		errorMessage := sc.Err().Error()
 		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
-			fmt.Println(errorMessage)
+			log.Println(errorMessage)
 			http.Error(w, errorMessage, http.StatusNotFound)
 			return
 		}
@@ -254,7 +254,7 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	if err = sc.Err(); err != nil {
 		errorMessage := sc.Err().Error()
 		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
-			fmt.Println(errorMessage)
+			log.Println(errorMessage)
 			http.Error(w, errorMessage, http.StatusNotFound)
 			return
 		}
@@ -297,7 +297,7 @@ func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 	if err = sc.Err(); err != nil {
 		errorMessage := sc.Err().Error()
 		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
-			fmt.Println(errorMessage)
+			log.Println(errorMessage)
 			http.Error(w, errorMessage, http.StatusNotFound)
 			return
 		}
@@ -353,7 +353,7 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	if err = sc.Err(); err != nil {
 		errorMessage := sc.Err().Error()
 		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
-			fmt.Println(errorMessage)
+			log.Println(errorMessage)
 			http.Error(w, errorMessage, http.StatusNotFound)
 			return
 		}
@@ -421,7 +421,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	if err = sc.Err(); err != nil {
 		errorMessage := sc.Err().Error()
 		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
-			fmt.Println(errorMessage)
+			log.Println(errorMessage)
 			http.Error(w, errorMessage, http.StatusNotFound)
 			return
 		}

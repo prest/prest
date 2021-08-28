@@ -13,7 +13,6 @@ import (
 )
 
 func validate(t *testing.T, w *httptest.ResponseRecorder, r *http.Request, h http.HandlerFunc, where string) {
-	fmt.Println("Test:", where)
 	h(w, r)
 
 	if w.Code != 200 {
@@ -27,7 +26,6 @@ func validate(t *testing.T, w *httptest.ResponseRecorder, r *http.Request, h htt
 }
 
 func doValidGetRequest(t *testing.T, url string, where string) {
-	fmt.Println("Test:", where)
 	resp, err := http.Get(url)
 	if err != nil {
 		t.Error("expected no errors in Get")
@@ -44,7 +42,6 @@ func doValidGetRequest(t *testing.T, url string, where string) {
 }
 
 func doValidPostRequest(t *testing.T, url string, r map[string]interface{}, where string) {
-	fmt.Println("Test:", where)
 	byt, err := json.Marshal(r)
 	if err != nil {
 		t.Error("expected no errors in json marshal, but was!")
@@ -66,7 +63,6 @@ func doValidPostRequest(t *testing.T, url string, r map[string]interface{}, wher
 }
 
 func doValidDeleteRequest(t *testing.T, url string, where string) {
-	fmt.Println("Test:", where)
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		t.Error("expected no errors in NewRequest, but was!")
@@ -89,7 +85,6 @@ func doValidDeleteRequest(t *testing.T, url string, where string) {
 }
 
 func doValidPutRequest(t *testing.T, url string, r map[string]interface{}, where string) {
-	fmt.Println("Test:", where)
 	byt, err := json.Marshal(r)
 	if err != nil {
 		t.Error("expected no errors in json marshal, but was!")
@@ -117,7 +112,6 @@ func doValidPutRequest(t *testing.T, url string, r map[string]interface{}, where
 }
 
 func doValidPatchRequest(t *testing.T, url string, r map[string]interface{}, where string) {
-	fmt.Println("Test:", where)
 	byt, err := json.Marshal(r)
 	if err != nil {
 		t.Error("expected no errors in json marshal, but was!")
@@ -145,7 +139,6 @@ func doValidPatchRequest(t *testing.T, url string, r map[string]interface{}, whe
 }
 
 func doRequest(t *testing.T, url string, r interface{}, method string, expectedStatus int, where string, expectedBody ...string) {
-	fmt.Println("Test:", where)
 	var byt []byte
 	var err error
 
