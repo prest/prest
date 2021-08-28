@@ -131,6 +131,9 @@ func TestGetDefaultPrestConf(t *testing.T) {
 		{"custom config", "./prest.toml", "../prest.toml", "../prest.toml"},
 		{"default config", "./prest.toml", "", "./prest.toml"},
 	}
+	// file does not exist in the project root
+	f, _ := os.Create("./prest.toml")
+	defer f.Close()
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			defaultFile = tc.defaultFile
