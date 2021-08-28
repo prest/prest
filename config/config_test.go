@@ -7,9 +7,6 @@ import (
 )
 
 func TestLoad(t *testing.T) {
-	os.Setenv("PREST_CONF", "./testdata/prest.toml")
-	defer os.Unsetenv("PREST_CONF")
-
 	Load()
 	if len(PrestConf.AccessConf.Tables) < 2 {
 		t.Errorf("expected > 2, got: %d", len(PrestConf.AccessConf.Tables))
@@ -29,12 +26,9 @@ func TestLoad(t *testing.T) {
 
 	os.Setenv("PREST_CONF", "foo/bar/prest.toml")
 	Load()
-
 }
 
 func TestParse(t *testing.T) {
-	os.Setenv("PREST_CONF", "./testdata/prest.toml")
-
 	viperCfg()
 	cfg := &Prest{}
 	err := Parse(cfg)
@@ -49,8 +43,6 @@ func TestParse(t *testing.T) {
 	}
 
 	os.Unsetenv("PREST_CONF")
-
-	os.Setenv("PREST_CONF", "../prest.toml")
 	os.Setenv("PREST_HTTP_PORT", "4000")
 
 	viperCfg()
@@ -85,7 +77,6 @@ func TestParse(t *testing.T) {
 	}
 
 	os.Unsetenv("PREST_JWT_DEFAULT")
-	os.Setenv("PREST_CONF", "./testdata/prest.toml")
 
 	viperCfg()
 	cfg = &Prest{}
