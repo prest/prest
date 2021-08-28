@@ -129,16 +129,6 @@ func TestParse(t *testing.T) {
 	}
 }
 
-func TestPanicAndFatalErrors(t *testing.T) {
-	if os.Getenv("BE_CRASHER") == "1" {
-		os.Setenv("PREST_CONF", "/foo/bar/not_found.toml")
-		viperCfg()
-		cfg := &Prest{}
-		_ = Parse(cfg)
-		os.Unsetenv("PREST_CONF")
-	}
-}
-
 func TestGetDefaultPrestConf(t *testing.T) {
 	testCases := []struct {
 		name        string
