@@ -2,7 +2,6 @@ package config
 
 import (
 	"os"
-	"os/exec"
 	"testing"
 )
 
@@ -119,14 +118,6 @@ func TestParse(t *testing.T) {
 	}
 
 	os.Unsetenv("PREST_JWT_ALGO")
-
-	// test configs that will panic
-	cmd := exec.Command(os.Args[0], "-test.run=TestPanicAndFatalErrors")
-	cmd.Env = append(os.Environ(), "BE_CRASHER=1")
-	err = cmd.Run()
-	if e, ok := err.(*exec.ExitError); !ok && e.Success() {
-		t.Fatal("process ran without error")
-	}
 }
 
 func TestGetDefaultPrestConf(t *testing.T) {
