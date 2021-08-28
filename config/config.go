@@ -129,10 +129,6 @@ func getDefaultPrestConf(prestConf string) (cfg string) {
 	cfg = prestConf
 	if prestConf == "" {
 		cfg = defaultFile
-		_, err := os.Stat(cfg)
-		if err != nil {
-			cfg = ""
-		}
 	}
 	return
 }
