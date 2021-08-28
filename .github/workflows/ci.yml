@@ -14,6 +14,7 @@ jobs:
       PREST_SSL_MODE: disable
       PREST_CONF: /__w/prest/prest/testdata/prest.toml
       PREST_MIGRATIONS: /__w/prest/prest/testdata/migrations
+      PREST_QUERIES_LOCATION: /__w/prest/prest/testdata/queries
       BE_CRASHER: 1
     services:
       postgres:
