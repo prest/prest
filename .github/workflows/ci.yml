@@ -35,7 +35,12 @@ jobs:
           apt-get install -y postgresql-client
 
       - name: Setup Database
-        run: sh $GITHUB_WORKSPACE/testdata/schema.sh
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -c "DROP DATABASE IF EXISTS \"$PREST_PG_DATABASE\";"
+          psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -c "CREATE DATABASE \"$PREST_PG_DATABASE\";"
+          psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -d $PREST_PG_DATABASE -f ./testdata/schema.sql
 
       - name: Set up Go
         uses: actions/setup-go@v2
