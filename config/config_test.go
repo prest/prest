@@ -122,22 +122,26 @@ func TestParse(t *testing.T) {
 
 func TestGetDefaultPrestConf(t *testing.T) {
 	testCases := []struct {
-		name        string
-		defaultFile string
-		prestConf   string
-		result      string
+		name      string
+		prestConf string
+		result    string
 	}{
-		{"empty config", "./prest.toml", "", ""},
-		{"custom config", "./prest.toml", "../prest.toml", "../prest.toml"},
-		{"default config", "./prest.toml", "", "./prest.toml"},
+		{"custom config", "../prest.toml", "../prest.toml"},
+		{"default config", "", "./prest.toml"},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			defaultFile = tc.defaultFile
 			cfg := getDefaultPrestConf(tc.prestConf)
-			if cfg != tc.result {
-				t.Errorf("expected %v, but got %v", tc.result, cfg)
+			if tc.prestConf == "" {
+				if cfg != "./prest.toml" {
+					t.Errorf("expected %v, but got %v", tc.result, cfg)
+				}
+			} else {
+				if cfg != tc.result || cfg == "./prest.toml" {
+					t.Errorf("expected %v, but got %v", tc.result, cfg)
+				}
 			}
+
 		})
 	}
 }
