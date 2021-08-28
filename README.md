@@ -1,4 +1,5 @@
 # <img align="right" src="https://docs.prestd.com/logo.png" alt="RESTful API" title="RESTful API"> pREST
+
 [![Build Status](https://travis-ci.com/prest/prest.svg?branch=main)](https://travis-ci.com/prest/prest)
 [![GoDoc](https://godoc.org/github.com/prest/prest?status.png)](https://godoc.org/github.com/prest/prest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/prest/prest)](https://goreportcard.com/report/github.com/prest/prest)
@@ -74,13 +75,38 @@ PREST_PG_USER=postgres PREST_PG_PASS=postgres PREST_PG_DATABASE=prest PREST_PG_P
 
 or use `'prest.toml'` file as a preset configuration, insert a user to see the changes
 
+### Running local unit tests (integration/e2e)
+
+pREST's unit tests depend on a working postgres database for sql query execution, to simplify the preparation of the local environment we use docker (and docker-compose) to upload the environment with postgres.
+
+**all tests:**
+
+```sh
+docker-compose -f testdata/docker-compose.yml up --abort-on-container-exit
+```
+
+**package-specific testing:**
+_in the example below the `config` package will be tested_
+
+```sh
+docker-compose -f testdata/docker-compose.yml run prest-test sh ./testdata/runtest.sh ./config
+```
+
+**specific function test:**
+_in the example below will run the test `TestGetDefaultPrestConf` from the `config` package_
+
+```sh
+docker-compose -f testdata/docker-compose.yml run prest-test sh ./testdata/runtest.sh ./config -run TestGetDefaultPrestConf
+```
+
 ## 1-Click Deploy
 
 ### Heroku
+
 Deploy to Heroku and instantly get a realtime RESTFul API backed by Heroku Postgres:
 
 [![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/prest/prest-heroku)
 
 ## Documentation
 
-https://docs.prestd.com/ ([content source](https://github.com/prest/prest/tree/main/docs) and [template source](https://github.com/prest/doc-template))
+<https://docs.prestd.com/> ([content source](https://github.com/prest/prest/tree/main/docs) and [template source](https://github.com/prest/doc-template))
