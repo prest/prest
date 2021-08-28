@@ -77,7 +77,7 @@ jobs:
 
       - name: pREST Test
         run: |
-          // curl -sfL https://git.io/goreleaser | sh -s -- check
+          curl -sfL https://git.io/goreleaser | sh -s -- check
           env go run ./cmd/prestd/main.go migrate up
           env go run ./cmd/prestd/main.go migrate up auth
           env go test -race -covermode=atomic -coverprofile=coverage.out ./...
