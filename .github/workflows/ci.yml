@@ -12,8 +12,8 @@ jobs:
       PREST_PG_PASS: postgres
       PREST_PG_PORT: 5432
       PREST_SSL_MODE: disable
-      PREST_CONF: ./testdata/prest.toml
-      PREST_MIGRATIONS: ./testdata/migrations
+      PREST_CONF: /__w/prest/prest/testdata/prest.toml
+      PREST_MIGRATIONS: /__w/prest/prest/testdata/migrations
     services:
       postgres:
         image: postgres:latest
