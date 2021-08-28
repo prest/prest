@@ -30,7 +30,7 @@ func TestLoad(t *testing.T) {
 		os.Setenv("PREST_PG_DATABASE", "prest")
 		return
 	}
-	os.Setenv("PREST_PG_DATABASE", "loadtest")
+	os.Setenv("PREST_PG_DATABASE", "prest-test")
 	// Start the actual test in a different subprocess
 	cmd := exec.Command(os.Args[0], "-test.run=TestLoad")
 	cmd.Env = append(os.Environ(), "BE_CRASHER=1")
