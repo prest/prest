@@ -165,7 +165,7 @@ func TestWhereByRequest(t *testing.T) {
 		{"Where by request with like", "/prest-test/public/test5?name=$like.%25val%25&phonenumber=123456", []string{`"name" LIKE $`, `"phonenumber" = $`, " AND "}, []string{"%val%", "123456"}, nil},
 		{"Where by request with ilike", "/prest-test/public/test5?name=$ilike.%25vAl%25&phonenumber=123456", []string{`"name" ILIKE $`, `"phonenumber" = $`, " AND "}, []string{"%vAl%", "123456"}, nil},
 		{"Where by request with multiple colunm values", "/prest-test/public/table?created_at='$gte.1997-11-03'&created_at='$lte.1997-12-05'", []string{`"created_at" >= $`, ` AND `, `"created_at" <= $`}, []string{`'1997-11-03'`, `'1997-12-05'`}, nil},
-		{"Where by request with tsquery", "/prest-test/public/test5?name:tsquery=prest", []string{`name @@ to_tsquery("$")`}, []string{`'prest'`}, nil},
+		{"Where by request with tsquery", "/prest-test/public/test5?name:tsquery=prest", []string{`name @@ to_tsquery('prest')`}, []string{`'prest'`}, nil},
 	}
 
 	for _, tc := range testCases {
@@ -241,7 +241,7 @@ func TestReturningByRequest(t *testing.T) {
 		{"Returning by request with nothing", "/prest-test/public/test_group_by_table", []string{""}, nil},
 		{"Returning by request with _returning=*", "/prest-test/public/test_group_by_table?_returning=*", []string{"RETURNING *"}, nil},
 		{"Returning by request with _returning=field", "/prest-test/public/test_group_by_table?_returning=age", []string{"RETURNING age"}, nil},
-		{"Returning by request with multiple _returning=field", "/prest-test/public/test_group_by_table?_returning=age&_returning=salary", []string{"RETURNING age,salary"}, nil},
+		{"Returning by request with multiple _returning=field", "/prest-test/public/test_group_by_table?_returning=age&_returning=salary", []string{"RETURNING age, salary"}, nil},
 	}
 	for _, tc := range testCases {
 		t.Log(tc.description)
@@ -255,7 +255,7 @@ func TestReturningByRequest(t *testing.T) {
 			t.Errorf("expected no errors in returning by request, got %v", err)
 		}
 		for _, sql := range tc.expectedSQL {
-			if !strings.Contains(returning, sql) {
+			if !strings.Contains(sql, returning) {
 				t.Errorf("expected %s in %s, but not was!", sql, returning)
 			}
 		}
@@ -328,8 +328,8 @@ func TestQuery(t *testing.T) {
 		err         error
 	}{
 		{"Query execution", "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name ASC", false, 1, nil},
-		{"Query execution 2", "SELECT number FROM prest.public.test2 ORDER BY number ASC", false, 1, nil},
-		{"Query execution with quotes", `SELECT "number" FROM "prest"."public"."test2" ORDER BY "number" ASC`, false, 1, nil},
+		{"Query execution 2", `SELECT number FROM "prest-test"."public"."test2" ORDER BY number ASC`, false, 1, nil},
+		{"Query execution with quotes", `SELECT "number" FROM "prest-test"."public"."test2" ORDER BY "number" ASC`, false, 1, nil},
 		{"Query execution with params", "SELECT schema_name FROM information_schema.schemata WHERE schema_name = $1 ORDER BY schema_name ASC", true, 1, nil},
 	}
 
@@ -340,7 +340,6 @@ func TestQuery(t *testing.T) {
 		} else {
 			sc = config.PrestConf.Adapter.Query(tc.sql)
 		}
-
 		if sc.Err() != tc.err {
 			t.Errorf("expected no errors, but got %s", sc.Err())
 		}
@@ -436,9 +435,9 @@ func TestInsert(t *testing.T) {
 		sql         string
 		values      []interface{}
 	}{
-		{"Insert data into a table with one field", `INSERT INTO prest.public.test4(name) VALUES($1)`, []interface{}{"prest-test-insert"}},
-		{"Insert data into a table with more than one field", `INSERT INTO prest.public.test5(name, celphone) VALUES($1, $2)`, []interface{}{"prest-test-insert", "88888888"}},
-		{"Insert data into a table with more than one field and with quotes case sensitive", `INSERT INTO "prest"."public"."Reply"("name") VALUES($1)`, []interface{}{"prest-test-insert"}},
+		{"Insert data into a table with one field", `INSERT INTO "prest-test"."public"."test4"("name") VALUES($1)`, []interface{}{"prest-test-insert"}},
+		{"Insert data into a table with more than one field", `INSERT INTO "prest-test"."public"."test5"("name", "celphone") VALUES($1, $2)`, []interface{}{"prest-test-insert", "88888888"}},
+		{"Insert data into a table with more than one field and with quotes case sensitive", `INSERT INTO "prest-test"."public"."Reply"("name") VALUES($1)`, []interface{}{"prest-test-insert"}},
 	}
 
 	for _, tc := range testCases {
@@ -459,10 +458,10 @@ func TestInsertInvalid(t *testing.T) {
 		sql         string
 		values      []interface{}
 	}{
-		{"Insert data into a table invalid database", "INSERT INTO 0prest.public.test4(name) VALUES($1)", []interface{}{"prest-test-insert"}},
-		{"Insert data into a table invalid schema", "INSERT INTO prest.0public.test4(name) VALUES($1)", []interface{}{"prest-test-insert"}},
-		{"Insert data into a table invalid table", "INSERT INTO prest.public.0test4(name) VALUES($1)", []interface{}{"prest-test-insert"}},
-		{"Insert data into a table with empty name", "INSERT INTO (name) VALUES($1)", []interface{}{"prest-test-insert"}},
+		{"Insert data into a table invalid database", `INSERT INTO "0prest-test"."public"."test4"(name) VALUES($1)`, []interface{}{"prest-test-insert"}},
+		{"Insert data into a table invalid schema", `INSERT INTO "prest-test"."0public"."test4"(name) VALUES($1)`, []interface{}{"prest-test-insert"}},
+		{"Insert data into a table invalid table", `INSERT INTO "prest-test"."public-"."0test4"(name) VALUES($1)`, []interface{}{"prest-test-insert"}},
+		{"Insert data into a table with empty name", `INSERT INTO (name) VALUES($1)`, []interface{}{"prest-test-insert"}},
 	}
 
 	for _, tc := range testCases {
@@ -483,9 +482,9 @@ func TestDelete(t *testing.T) {
 		sql         string
 		values      []interface{}
 	}{
-		{"Try Delete data from invalid database", "DELETE FROM 0prest.public.test WHERE name=$1", []interface{}{"test"}},
-		{"Try Delete data from invalid schema", "DELETE FROM prest.0public.test WHERE name=$1", []interface{}{"test"}},
-		{"Try Delete data from invalid table", "DELETE FROM prest.public.0test WHERE name=$1", []interface{}{"test"}},
+		{"Try Delete data from invalid database", `DELETE FROM "0prest-test"."public"."test" WHERE name=$1`, []interface{}{"test"}},
+		{"Try Delete data from invalid schema", `DELETE FROM "prest-test"."0public"."test" WHERE name=$1`, []interface{}{"test"}},
+		{"Try Delete data from invalid table", `DELETE FROM "prest-test."public"."0test" WHERE name=$1`, []interface{}{"test"}},
 	}
 
 	for _, tc := range testCases {
@@ -501,7 +500,7 @@ func TestDelete(t *testing.T) {
 	}
 
 	t.Log("Delete data from table")
-	sc := config.PrestConf.Adapter.Delete(`DELETE FROM "prest"."public"."test" WHERE "name"=$1`, "test")
+	sc := config.PrestConf.Adapter.Delete(`DELETE FROM "prest-test"."public"."test" WHERE "name"=$1`, "test")
 	if sc.Err() != nil {
 		t.Errorf("expected no error, but got: %s", sc.Err())
 	}
@@ -517,13 +516,13 @@ func TestUpdate(t *testing.T) {
 		sql         string
 		values      []interface{}
 	}{
-		{"Update data into an invalid database", "UPDATE 0prest.publc.test3 SET name=$1", []interface{}{"prest tester"}},
-		{"Update data into an invalid schema", "UPDATE prest.0publc.test3 SET name=$1", []interface{}{"prest tester"}},
-		{"Update data into an invalid table", "UPDATE prest.publc.0test3 SET name=$1", []interface{}{"prest tester"}},
+		{"Update data into an invalid database", `UPDATE "0prest-test"."public"."test3" SET name=$1`, []interface{}{"prest tester"}},
+		{"Update data into an invalid schema", `UPDATE "prest-test"."0public"."test3" SET name=$1`, []interface{}{"prest tester"}},
+		{"Update data into an invalid table", `UPDATE "prest-test"."public"."0test3" SET name=$1`, []interface{}{"prest tester"}},
 	}
 
 	t.Log("Update data into a table")
-	sc := config.PrestConf.Adapter.Update(`UPDATE "prest"."public"."test" SET "name"=$2 WHERE "name"=$1`, "prest tester", "prest")
+	sc := config.PrestConf.Adapter.Update(`UPDATE "prest-test"."public"."test" SET "name"=$2 WHERE "name"=$1`, "prest tester", "prest")
 	if sc.Err() != nil {
 		t.Errorf("expected no errors, but got: %s", sc.Err())
 	}
@@ -872,13 +871,12 @@ func TestTablePermissions(t *testing.T) {
 		{"Try to write without permission", "test_readonly_access", "write", false},
 		{"Delete", "test_write_and_delete_access", "delete", true},
 		{"Try to delete without permission", "test_readonly_access", "delete", false},
-		{"Try config does not write", "test_permission_does_not_exist", "read", true},
+		{"Try config does not write", "test_permission_does_not_exist", "read", false},
 	}
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
 		p := config.PrestConf.Adapter.TablePermissions(tc.table, tc.permission)
-
 		if p != tc.out {
 			t.Errorf("expected %v, got %v", tc.out, p)
 		}
@@ -1201,15 +1199,15 @@ func TestBatchInsertValues(t *testing.T) {
 	}{
 		{
 			"Insert data into a table with one field",
-			`INSERT INTO prest.public.test4(name) VALUES($1),($2)`,
+			`INSERT INTO "prest-test"."public"."test4"("name") VALUES($1),($2)`,
 			[]interface{}{"1prest-test-batch-insert", "1batch-prest-test-insert"},
 		}, {
 			"Insert data into a table with more than one field",
-			`INSERT INTO prest.public.test5(name, celphone) VALUES($1, $2),($3, $4)`,
+			`INSERT INTO "prest-test"."public"."test5"("name", "celphone") VALUES($1, $2),($3, $4)`,
 			[]interface{}{"2prest-test-batch-insert", "88888888", "2batch-prest-test-insert", "98888888"},
 		}, {
 			"Insert data into a table with more than one field and with quotes case sensitive",
-			`INSERT INTO "prest"."public"."Reply"("name") VALUES($1),($2)`,
+			`INSERT INTO "prest-test"."public"."Reply"("name") VALUES($1),($2)`,
 			[]interface{}{"3prest-test-batch-insert", "3batch-prest-test-insert"},
 		},
 	}
@@ -1245,7 +1243,7 @@ func TestPostgres_BatchInsertCopy(t *testing.T) {
 		{
 			"batch copy",
 			args{
-				"prest",
+				"prest-test",
 				"public",
 				"Reply",
 				[]string{`"name"`},
@@ -1256,7 +1254,7 @@ func TestPostgres_BatchInsertCopy(t *testing.T) {
 		{
 			"batch copy without quotes",
 			args{
-				"prest",
+				"prest-test",
 				"public",
 				"Reply",
 				[]string{"name"},
@@ -1267,7 +1265,7 @@ func TestPostgres_BatchInsertCopy(t *testing.T) {
 		{
 			"batch copy with err",
 			args{
-				"prest",
+				"prest-test",
 				"public",
 				"Reply",
 				[]string{"na"},
@@ -1324,8 +1322,9 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 			args: args{
 				url: "/table_field_permission",
 			},
-			restrict: true,
-			wantErr:  true,
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{"*"},
 		},
 		{
 			name: "allowed fields contains * and user don't pass select",
