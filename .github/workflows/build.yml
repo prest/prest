@@ -28,7 +28,6 @@ jobs:
       PREST_QUERIES_LOCATION: /__w/prest/prest/testdata/queries
       BE_CRASHER: 1
       DOCKER_CLI_EXPERIMENTAL: "enabled"
-      COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     services:
       postgres:
         image: postgres:latest
@@ -92,10 +91,14 @@ jobs:
         run: |
           env go run ./cmd/prestd/main.go migrate up
           env go test -race -covermode=atomic -coverprofile=./coverage.out ./...
-          $GOPATH/bin/goveralls -coverprofile=./coverage.out -service=github
 
       - name: goreleaser check
         run: curl -sfL https://git.io/goreleaser | sh -s -- check
+
+      - name: goveralls
+        env:
+          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ls -l $GOPATH/bin/goveralls
 
       - name: Login to Docker Hub
         if: startsWith(github.ref, 'refs/tags/v')
