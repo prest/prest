@@ -204,8 +204,8 @@ func TestInvalidWhereByRequest(t *testing.T) {
 		description string
 		url         string
 	}{
-		{"Where by request without jsonb key", "/prest-test/public/test_jsonb_bug?name=$eq.nuveo&data->>description:bla"},
-		{"Where by request with jsonb field invalid", "/prest-test/public/test_jsonb_bug?name=$eq.nuveo&data->>0description:jsonb=$eq.bla"},
+		{"Where by request without jsonb key", "/prest-test/public/test_jsonb_bug?name=$eq.test&data->>description:bla"},
+		{"Where by request with jsonb field invalid", "/prest-test/public/test_jsonb_bug?name=$eq.test&data->>0description:jsonb=$eq.bla"},
 		{"Where by request with field invalid", "/prest-test/public/test?0name=$eq.prest"},
 	}
 
@@ -483,9 +483,9 @@ func TestDelete(t *testing.T) {
 		sql         string
 		values      []interface{}
 	}{
-		{"Try Delete data from invalid database", "DELETE FROM 0prest.public.test WHERE name=$1", []interface{}{"nuveo"}},
-		{"Try Delete data from invalid schema", "DELETE FROM prest.0public.test WHERE name=$1", []interface{}{"nuveo"}},
-		{"Try Delete data from invalid table", "DELETE FROM prest.public.0test WHERE name=$1", []interface{}{"nuveo"}},
+		{"Try Delete data from invalid database", "DELETE FROM 0prest.public.test WHERE name=$1", []interface{}{"test"}},
+		{"Try Delete data from invalid schema", "DELETE FROM prest.0public.test WHERE name=$1", []interface{}{"test"}},
+		{"Try Delete data from invalid table", "DELETE FROM prest.public.0test WHERE name=$1", []interface{}{"test"}},
 	}
 
 	for _, tc := range testCases {
@@ -501,7 +501,7 @@ func TestDelete(t *testing.T) {
 	}
 
 	t.Log("Delete data from table")
-	sc := config.PrestConf.Adapter.Delete(`DELETE FROM "prest"."public"."test" WHERE "name"=$1`, "nuveo")
+	sc := config.PrestConf.Adapter.Delete(`DELETE FROM "prest"."public"."test" WHERE "name"=$1`, "test")
 	if sc.Err() != nil {
 		t.Errorf("expected no error, but got: %s", sc.Err())
 	}
@@ -614,9 +614,9 @@ func TestJoinByRequest(t *testing.T) {
 
 	t.Log("Join with where")
 	var expectedSQL = []string{`"name" = $`, `"data"->>'description' = $`, " AND "}
-	var expectedValues = []string{"nuveo", "bla"}
+	var expectedValues = []string{"test", "bla"}
 
-	r, err := http.NewRequest("GET", "/prest-test/public/test?_join=inner:test2:test2.name:$eq:test.name&name=$eq.nuveo&data->>description:jsonb=$eq.bla", nil)
+	r, err := http.NewRequest("GET", "/prest-test/public/test?_join=inner:test2:test2.name:$eq:test.name&name=$eq.test&data->>description:jsonb=$eq.bla", nil)
 	if err != nil {
 		t.Errorf("expected no errorn on New Request, got %v", err)
 	}

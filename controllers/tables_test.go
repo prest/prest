@@ -96,10 +96,10 @@ func TestSelectFromTables(t *testing.T) {
 		{"execute select in a table case sentive", "/prest-test/public/Reply", "GET", http.StatusOK, "[{\"id\":1,\"name\":\"prest tester\"}]"},
 		{"execute select in a table with count all fields *", "/prest-test/public/test?_count=*", "GET", http.StatusOK, ""},
 		{"execute select in a table with count function", "/prest-test/public/test?_count=name", "GET", http.StatusOK, ""},
-		{"execute select in a table with custom where clause", "/prest-test/public/test?name=$eq.nuveo", "GET", http.StatusOK, ""},
+		{"execute select in a table with custom where clause", "/prest-test/public/test?name=$eq.test", "GET", http.StatusOK, ""},
 		{"execute select in a table with custom join clause", "/prest-test/public/test?_join=inner:test8:test8.nameforjoin:$eq:test.name", "GET", http.StatusOK, ""},
 		{"execute select in a table with order clause empty", "/prest-test/public/test?_order=", "GET", http.StatusOK, ""},
-		{"execute select in a table with custom where clause and pagination", "/prest-test/public/test?name=$eq.nuveo&_page=1&_page_size=20", "GET", http.StatusOK, ""},
+		{"execute select in a table with custom where clause and pagination", "/prest-test/public/test?name=$eq.test&_page=1&_page_size=20", "GET", http.StatusOK, ""},
 		{"execute select in a table with select fields", "/prest-test/public/test5?_select=celphone,name", "GET", http.StatusOK, ""},
 		{"execute select in a table with select *", "/prest-test/public/test5?_select=*", "GET", http.StatusOK, ""},
 		{"execute select in a table with select * and distinct", "/prest-test/public/test5?_select=*&_distinct=true", "GET", http.StatusOK, ""},
@@ -117,10 +117,10 @@ func TestSelectFromTables(t *testing.T) {
 		{"execute select in a view with select fields", "/prest-test/public/view_test?_select=player", "GET", http.StatusOK, ""},
 
 		{"execute select in a table with invalid join clause", "/prest-test/public/test?_join=inner:test2:test2.name", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with invalid where clause", "/prest-test/public/test?0name=$eq.nuveo", "GET", http.StatusBadRequest, ""},
+		{"execute select in a table with invalid where clause", "/prest-test/public/test?0name=$eq.test", "GET", http.StatusBadRequest, ""},
 		{"execute select in a table with order clause and column invalid", "/prest-test/public/test?_order=0name", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with invalid pagination clause", "/prest-test/public/test?name=$eq.nuveo&_page=A", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with invalid where clause", "/prest-test/public/test?0name=$eq.nuveo", "GET", http.StatusBadRequest, ""},
+		{"execute select in a table with invalid pagination clause", "/prest-test/public/test?name=$eq.test&_page=A", "GET", http.StatusBadRequest, ""},
+		{"execute select in a table with invalid where clause", "/prest-test/public/test?0name=$eq.test", "GET", http.StatusBadRequest, ""},
 		{"execute select in a table with invalid count clause", "/prest-test/public/test?_count=0name", "GET", http.StatusBadRequest, ""},
 		{"execute select in a table with invalid order clause", "/prest-test/public/test?_order=0name", "GET", http.StatusBadRequest, ""},
 		{"execute select in a table with invalid fields using group by clause", "/prest-test/public/test_group_by_table?_select=pa,sum:pum&_groupby=pa", "GET", http.StatusBadRequest, ""},
@@ -155,7 +155,7 @@ func TestInsertInTables(t *testing.T) {
 
 	mJSON := make(map[string]interface{})
 	mJSON["name"] = "prest-test"
-	mJSON["data"] = `{"term": "name", "subterm": ["names", "of", "subterms"], "obj": {"emp": "nuveo"}}`
+	mJSON["data"] = `{"term": "name", "subterm": ["names", "of", "subterms"], "obj": {"emp": "prestd"}}`
 
 	mARRAY := make(map[string]interface{})
 	mARRAY["data"] = []string{"value 1", "value 2", "value 3"}
@@ -194,7 +194,7 @@ func TestBatchInsertInTables(t *testing.T) {
 	m = append(m, map[string]interface{}{"name": "bprest"}, map[string]interface{}{"name": "aprest"})
 
 	mJSON := make([]map[string]interface{}, 0)
-	mJSON = append(mJSON, map[string]interface{}{"name": "cprest", "data": `{"term": "name", "subterm": ["names", "of", "subterms"], "obj": {"emp": "nuveo"}}`}, map[string]interface{}{"name": "dprest", "data": `{"term": "name", "subterms": ["names", "of", "subterms"], "obj": {"emp": "nuveo"}}`})
+	mJSON = append(mJSON, map[string]interface{}{"name": "cprest", "data": `{"term": "name", "subterm": ["names", "of", "subterms"], "obj": {"emp": "prestd"}}`}, map[string]interface{}{"name": "dprest", "data": `{"term": "name", "subterms": ["names", "of", "subterms"], "obj": {"emp": "prestd"}}`})
 
 	mARRAY := make([]map[string]interface{}, 0)
 	mARRAY = append(mARRAY, map[string]interface{}{"data": []string{"1", "2"}}, map[string]interface{}{"data": []string{"1", "2", "3"}})
@@ -269,7 +269,7 @@ func TestDeleteFromTable(t *testing.T) {
 		status      int
 	}{
 		{"execute delete in a table without custom where clause", "/prest-test/public/test", nil, http.StatusOK},
-		{"excute delete in a table with where clause", "/prest-test/public/test?name=$eq.nuveo", nil, http.StatusOK},
+		{"excute delete in a table with where clause", "/prest-test/public/test?name=$eq.test", nil, http.StatusOK},
 		{"execute delete in a table with invalid database", "/0prest-test/public/test", nil, http.StatusBadRequest},
 		{"execute delete in a table with invalid schema", "/prest-test/0public/test", nil, http.StatusNotFound},
 		{"execute delete in a table with invalid table", "/prest-test/public/0test", nil, http.StatusNotFound},
@@ -300,7 +300,7 @@ func TestUpdateFromTable(t *testing.T) {
 		status      int
 	}{
 		{"execute update in a table without custom where clause", "/prest-test/public/test", m, http.StatusOK},
-		{"execute update in a table with where clause", "/prest-test/public/test?name=$eq.nuveo", m, http.StatusOK},
+		{"execute update in a table with where clause", "/prest-test/public/test?name=$eq.test", m, http.StatusOK},
 		{"execute update in a table with where clause and returning all fields", "/prest-test/public/test?id=1&_returning=*", m, http.StatusOK},
 		{"execute update in a table with where clause and returning name field", "/prest-test/public/test?id=2&_returning=name", m, http.StatusOK},
 		{"execute update in a table with invalid database", "/0prest-test/public/test", m, http.StatusBadRequest},
