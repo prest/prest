@@ -47,21 +47,25 @@ Please try to make your pull request easy to review for us. Please read the "[Ho
 * Don't make changes unrelated to your PR. Maybe there are typos on some comments, maybe refactoring would be welcome on a function... but if that is not related to your PR, please make *another* PR for that.
 * Split big pull requests into multiple small ones. An incremental change will be faster to review than a huge PR.
 
-### Sign your work
+## Code of Conduct
 
-The sign-off is a simple line at the end of the explanation for the patch. Your signature certifies that you wrote the patch or otherwise have the right to pass it on as an open-source patch. The rules are pretty simple: If you can certify [DCO](https://probot.github.io/apps/dco/), then you just add a line to every git commit message:
+This project and everyone participating in it are governed by the [prestd code of conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please read the [full text](CODE_OF_CONDUCT.md) so that you can read which actions may or may not be tolerated.
 
-```
-Signed-off-by: Thiago Avelino <avelino@email.com>
-```
+## Contributor License Agreement (CLA)
 
-Please use your real name, we really dislike pseudonyms or anonymous contributions. We are in the open-source world without secrets. If you set your `user.name` and `user.email` git configs, you can sign your commit automatically with `git commit -s`.
+### Individual
 
-### Maintainers
+In order to accept your pull request, we need you to submit a CLA. You only need to do this once. If you are submitting a pull request for the first time, you can complete your CLA [here](https://cla-assistant.io/prest/prest) or just submit a Pull Request and our CLA Bot will ask you to sign the CLA before merging your Pull Request.
+
+### Company
+
+If you are making contributions to our repositories on behalf of your company, then we will need a Corporate Contributor License Agreement (CLA) signed. In order to do that, please contact us at [opensource@prestd.com](mailto:opensource@prestd.com).
+
+## Maintainers
 
 To make sure every PR is checked, we have [team maintainers](MAINTAINERS). Every PR **MUST** be reviewed by at least two maintainers (or owners) before it can get merged. A maintainer should be a contributor of pREST and contributed at least 4 accepted PRs. A contributor should apply as a maintainer in the [Github Discussions](https://github.com/prest/prest/discussions). The owners or the team maintainers may invite the contributor. A maintainer should spend some time on code reviews. If a maintainer has no time to do that, they should apply to leave the maintainers team and we will give them the honor of being a member of the **advisors team**. Of course, if an advisor has time to code review, we will gladly welcome them back to the maintainers team. If a maintainer is inactive for more than 3 months and forgets to leave the maintainers team, the owners may move him or her from the maintainers team to the advisors team.
 
-### Owners
+## Owners
 
 Since pREST is maintained by community and [prestd](https://prestd.com/) (a company that supports the community), to keep the development healthy we will elect three owners every year. All contributors may vote to elect up to three candidates, one of which will be the main owner, and the other two the assistant owners. When the new owners have been elected, the old owners will give up ownership to the newly elected owners. If an owner is unable to do so, the other owners will assist in ceding ownership to the newly elected owners.
 
@@ -71,42 +75,20 @@ After the election, the new owners should proactively agree with our [CONTRIBUTI
 I'm honored to having been elected an owner of pREST, I agree with [CONTRIBUTING](CONTRIBUTING.md). I will spend part of my time on pREST and lead the development of pREST.
 ```
 
-### Versions
+## Versions
 
 pREST has the `main` branch as a tip branch and has version branches such as `v1.1`. `v1.1` is a release branch and we will tag `v1.1.0` for binary download. If `v1.1.0` has bugs, we will accept pull requests on the `v1.1` branch and publish a `v1.1.1` tag, after bringing the bug fix also to the main branch.
 
 Since the `main` branch is a tip version, if you wish to use pREST in production, please download the latest release tag version. All the branches will be protected via GitHub, all the PRs to every branch must be reviewed by two maintainers and must pass the automatic tests.
 
-### Copyright
+## Copyright
 
 Code that you contribute should use the standard copyright header:
 
 ```
-// Copyright 2016 The pREST Authors. All rights reserved.
+// Copyright 2016 The prestd Authors. All rights reserved.
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 ```
 
 Files in the repository contain copyright from the year they are added to the year they are last changed. If the copyright author is changed, just paste the header below the old one.
-
-
-
-## Running tests
-
-Clone the repository and create a test database and insert dummy data for specs.
-
-```
-PREST_PG_HOST=127.0.0.1 PREST_PG_DATABASE=prest sh ./testdata/schema.sh
-```
-
-Run migrations on test database.
-
-```
-PREST_PG_HOST=127.0.0.1 PREST_PG_DATABASE=prest sh ./testdata/migrations_test.sh
-```
-
-Run tests.
-
-```
-PREST_PG_HOST=127.0.0.1 PREST_PG_DATABASE=prest sh ./testdata/test.sh
-```
