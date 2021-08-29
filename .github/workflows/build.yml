@@ -95,9 +95,9 @@ jobs:
         run: curl -sfL https://git.io/goreleaser | sh -s -- check
 
       - name: goveralls
+        if: ${{ false }}
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        working-directory: src/github.com/prest/prest
         run: |
           go install github.com/mattn/goveralls@latest
           goveralls -coverprofile=coverage.out
