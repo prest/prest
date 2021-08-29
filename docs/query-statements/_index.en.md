@@ -15,16 +15,19 @@ pREST has support in **JWT Token** generation based on two fields (example user 
 > understand more about _http authentication_ [see this documentation](https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication)
 
 ### Bearer
+
 ```sh
 curl -i -X POST http://127.0.0.1:8000/auth -H "Content-Type: application/json" -d '{"username": "<username>", "password": "<password>"}'
 ```
 
 ### Basic
+
 ```sh
 curl -i -X POST http://127.0.0.1:8000/auth --user "<username>:<password>"
 ```
 
 ## Filter (WHERE)
+
 Applying filter to the remaining queries, we use the parameters of the http **GET** method (_query string_), being converted to **WHERE** from _syntax SQL_.
 
 ```
@@ -52,7 +55,6 @@ GET /DATABASE/SCHEMA/TABLE?FIELD=$eq.VALUE
 | $like     | Matches always cover the entire string.                             |
 | $ilike    | Matches *case-insensitive* always cover the entire string.          |
 
-
 ### With JSONb field
 
 ```
@@ -71,6 +73,8 @@ GET /DATABASE/SCHEMA/TABLE?FIELD=$eq.VALUE
 
 | Query String                             | Description                                                                                                                                                    |
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `_page=` | the api return is paged, this parameter sets which page you want |
+| `_page_size=` | delimits the number of records per page, default `10` |
 | `?_select={field name 1},{fiel name 2}`  | Limit fields list on result - sql ansii standard                                                                                                               |
 | `?_count={field name}`                   | Count per field - `*` representation all fields                                                                                                                |
 | `?_renderer=xml`                         | Set API render syntax, supported: `json` (default), `xml`                                                                                                            |
@@ -81,7 +85,7 @@ GET /DATABASE/SCHEMA/TABLE?FIELD=$eq.VALUE
 | `?_groupby={FIELD}`                      | `GROUP BY` in sql query, The grouper is more complicated, a topic has been created to describe how to use                                                      |
 | `?{FIELD NAME}={VALUE}`                  | Filter by field, you can set as many query parameters as needed                                                                                                |
 
-### Group/Select functions support:
+### Group/Select functions support
 
 | name     | Use in request |
 | -------- | -------------- |
@@ -106,7 +110,6 @@ GET /DATABASE/SCHEMA/TABLE?FIELD=$eq.VALUE
 /{DATABASE}/{SCHEMA}/{TABLE}?_select=fieldname00,sum:fieldname01&_groupby=fieldname01->>having:sum:fieldname01:$gt:500
 ```
 
-
 ## Query Operators
 
 Uses these operators in various filter applications
@@ -122,7 +125,6 @@ Uses these operators in various filter applications
 | $in  | Matches any of the values specified in an array.                    |
 | $nin | Matches none of the values specified in an array.                   |
 
-
 ## GET - Endpoints
 
 | Endpointis                          | Description                                               |
@@ -135,7 +137,6 @@ Uses these operators in various filter applications
 | `/{DATABASE}/{SCHEMA}/{TABLE}`      | List all rows, find by database, schema and table         |
 | `/{DATABASE}/{SCHEMA}/{VIEW}`       | List all rows, find by database, schema and view          |
 
-
 ## POST - Insert
 
 ```
@@ -143,6 +144,7 @@ Uses these operators in various filter applications
 ```
 
 JSON DATA:
+
 ```
 {
     "FIELD1": "string value",
@@ -159,6 +161,7 @@ Using query string to make filter (WHERE), example:
 ```
 
 JSON DATA:
+
 ```
 {
     "FIELD1": "string value",
@@ -166,6 +169,7 @@ JSON DATA:
     "ARRAYFIELD": ["value 1","value 2"]
 }
 ```
+
 ## DELETE - Delete
 
 Using query string to make filter (WHERE), example:
@@ -179,6 +183,7 @@ Using query string to make filter (WHERE), example:
 ```
 /{DATABASE}/{SCHEMA}/{TABLE}?_join={TYPE}:{TABLE JOIN}:{TABLE.FIELD}:{OPERATOR}:{TABLE JOIN.FIELD}
 ```
+
 Parameters:
 
 1. Type (INNER, LEFT, RIGHT, OUTER)
