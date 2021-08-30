@@ -91,6 +91,12 @@ jobs:
           env go run ./cmd/prestd/main.go migrate up
           env go test -race -covermode=atomic -coverprofile=covprofile ./...
 
+      - name: Clear Database
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -c "DROP DATABASE IF EXISTS \"$PREST_PG_DATABASE\";"
+
       - name: Send coverage
         run: $GOPATH/bin/goveralls -repotoken ${{ secrets.COVERALLS_TOKEN }} -coverprofile=covprofile
 
