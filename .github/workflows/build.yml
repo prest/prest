@@ -89,7 +89,7 @@ jobs:
       - name: pREST Test
         run: |
           env go run ./cmd/prestd/main.go migrate up
-          # env go test -race -covermode=atomic -coverprofile=coverage.out ./...
+          env go test -race -covermode=atomic -coverprofile=coverage.out ./...
           $GOPATH/bin/goveralls -repotoken ${{ secrets.COVERALLS_TOKEN }} -race -covermode=atomic -coverprofile=coverage.out
 
       - name: goreleaser check
