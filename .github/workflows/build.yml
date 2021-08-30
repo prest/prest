@@ -85,6 +85,7 @@ jobs:
           go get -v -d ./...
           go get -v github.com/inconshreveable/mousetrap
           go get golang.org/x/tools/cmd/cover
+          go get github.com/mattn/goveralls
 
       - name: pREST Test
         run: |
@@ -97,9 +98,7 @@ jobs:
       - name: goveralls
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          go install github.com/mattn/goveralls@latest
-          goveralls -coverprofile=coverage.out
+        run: $GOPATH/bin/goveralls -coverprofile=coverage.out -repotoken $COVERALLS_TOKEN
 
       - name: Login to Docker Hub
         if: startsWith(github.ref, 'refs/tags/v')
