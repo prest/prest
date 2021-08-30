@@ -84,14 +84,13 @@ jobs:
           git config --global --add url."git@github.com:prest".insteadOf "https://github.com/prest"
           go get -v -d ./...
           go get -v github.com/inconshreveable/mousetrap
-          go get golang.org/x/tools/cmd/cover
-          go get github.com/mattn/goveralls
+          go install github.com/mattn/goveralls@master
 
       - name: pREST Test
         run: |
           env go run ./cmd/prestd/main.go migrate up
-          env go test -race -covermode=atomic -coverprofile=coverage.out ./...
-          $GOPATH/bin/goveralls -repotoken ${{ secrets.COVERALLS_TOKEN }} -coverprofile=coverage.out
+          # env go test -race -covermode=atomic -coverprofile=coverage.out ./...
+          $GOPATH/bin/goveralls -repotoken ${{ secrets.COVERALLS_TOKEN }} -race -covermode=atomic -coverprofile=coverage.out
 
       - name: goreleaser check
         run: curl -sfL https://git.io/goreleaser | sh -s -- check

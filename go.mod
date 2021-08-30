@@ -16,4 +16,6 @@ require (
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.8.1
 	github.com/urfave/negroni v1.0.0
+	golang.org/x/mod v0.5.0 // indirect
+	golang.org/x/tools v0.1.5 // indirect
 )
