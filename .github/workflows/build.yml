@@ -97,9 +97,9 @@ jobs:
 
       - name: goveralls
         run: |
-        ls -l $GOPATH/bin
-        ls -l $GOPATH/bin/goveralls
-        $GOPATH/bin/goveralls -repotoken ${{ secrets.GITHUB_TOKEN }} -service=github -coverprofile=coverage.out
+          ls -l $GOPATH/bin
+          ls -l $GOPATH/bin/goveralls
+          $GOPATH/bin/goveralls -repotoken ${{ secrets.GITHUB_TOKEN }} -service=github -coverprofile=coverage.out
 
       - name: Login to Docker Hub
         if: startsWith(github.ref, 'refs/tags/v')
