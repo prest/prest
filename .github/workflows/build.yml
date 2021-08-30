@@ -96,6 +96,8 @@ jobs:
           PGPASSWORD: postgres
         run: |
           psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -c "DROP DATABASE IF EXISTS \"$PREST_PG_DATABASE\";"
+          psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -c "CREATE DATABASE \"$PREST_PG_DATABASE\";"
+          psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -d $PREST_PG_DATABASE -f ./testdata/schema.sql
 
       - name: Send coverage
         run: $GOPATH/bin/goveralls -repotoken ${{ secrets.COVERALLS_TOKEN }} -coverprofile=covprofile
