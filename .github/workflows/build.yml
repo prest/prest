@@ -96,9 +96,10 @@ jobs:
         run: curl -sfL https://git.io/goreleaser | sh -s -- check
 
       - name: goveralls
-        env:
-          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: $GOPATH/bin/goveralls -coverprofile=coverage.out -repotoken $COVERALLS_TOKEN
+        run: |
+        ls -l $GOPATH/bin
+        ls -l $GOPATH/bin/goveralls
+        $GOPATH/bin/goveralls -repotoken ${{ secrets.GITHUB_TOKEN }} -service=github -coverprofile=coverage.out
 
       - name: Login to Docker Hub
         if: startsWith(github.ref, 'refs/tags/v')
