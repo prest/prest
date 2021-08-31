@@ -89,12 +89,12 @@ jobs:
       - name: pREST Test
         run: |
           env go run ./cmd/prestd/main.go migrate up
-          env go test -race -covermode=atomic -coverprofile=covprofile ./...
+          env go test -race -covermode=atomic -coverprofile=./coverage.out ./...
 
-      - name: Send coverage
-        env:
-          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: goveralls -coverprofile=covprofile -service=github
+      - name: Upload coverage
+        uses: codecov/codecov-action@v2
+        with:
+          file: ./coverage.out
 
       - name: goreleaser check
         run: curl -sfL https://git.io/goreleaser | sh -s -- check
