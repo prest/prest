@@ -5,7 +5,6 @@ go 1.15
 require (
 	github.com/auth0/go-jwt-middleware v1.0.1
 	github.com/clbanning/mxj v1.8.4
-	github.com/coreos/etcd v3.3.25+incompatible
 	github.com/form3tech-oss/jwt-go v3.2.5+incompatible
 	github.com/gorilla/mux v1.8.0
 	github.com/gosidekick/migration/v3 v3.0.0
