@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.com/prest/prest.svg?branch=main)](https://travis-ci.com/prest/prest)
 [![GoDoc](https://godoc.org/github.com/prest/prest?status.png)](https://godoc.org/github.com/prest/prest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/prest/prest)](https://goreportcard.com/report/github.com/prest/prest)
-[![Coverage Status](https://coveralls.io/repos/github/prest/prest/badge.svg?branch=main)](https://coveralls.io/github/prest/prest?branch=main)
+[![codecov](https://codecov.io/gh/prest/prest/branch/main/graph/badge.svg?token=eVD9urwIEv)](https://codecov.io/gh/prest/prest)
 [![SourceLevel](https://app.sourcelevel.io/github/prest/-/prest.svg)](https://app.sourcelevel.io/github/prest/-/prest)
 [![Homebrew](https://img.shields.io/badge/dynamic/json.svg?url=https://formulae.brew.sh/api/formula/prestd.json&query=$.versions.stable&label=homebrew)](https://formulae.brew.sh/formula/prestd)
 [![Slack](https://img.shields.io/badge/slack-prestd-blueviolet.svg?logo=slack)](http://slack.prestd.com/)
