@@ -93,10 +93,10 @@ docker-compose -f testdata/docker-compose.yml run prest-test sh ./testdata/runte
 ```
 
 **specific function test:**
-_in the example below will run the test `TestGetDefaultPrestConf` from the `config` package_
+_in the example below will run the test `TestGetDefaultPrestConf` from the `config` package, don't forget to call the `TestMain` function before your function_
 
 ```sh
-docker-compose -f testdata/docker-compose.yml run prest-test sh ./testdata/runtest.sh ./config -run TestGetDefaultPrestConf
+docker-compose -f testdata/docker-compose.yml run prest-test sh ./testdata/runtest.sh ./config -run TestMain,TestGetDefaultPrestConf
 ```
 
 ## 1-Click Deploy
