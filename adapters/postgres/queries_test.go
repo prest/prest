@@ -3,6 +3,7 @@ package postgres
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/prest/prest/config"
@@ -76,6 +77,16 @@ func TestParseScriptInvalid(t *testing.T) {
 	}
 }
 
+func TestParseScriptSyntaxInvalid(t *testing.T) {
+	templateData := map[string]interface{}{}
+	templateData["field1"] = 1
+	scriptPath := fmt.Sprint(os.Getenv("PREST_QUERIES_LOCATION"), "/fulltable/%s")
+	_, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "parse_syntax_invalid.read.sql"), templateData)
+	if !strings.Contains(err.Error(), "could not parse file") {
+		t.Errorf("expected no error, but got: %v", err)
+	}
+}
+
 func TestParseScript(t *testing.T) {
 	templateData := map[string]interface{}{}
 	templateData["field1"] = []string{"abc", "test"}
@@ -93,42 +104,25 @@ func TestParseScript(t *testing.T) {
 	}
 }
 
-func TestValidWriteSQL(t *testing.T) {
+func TestWriteSQL(t *testing.T) {
 	var testValidCases = []struct {
 		description string
 		sql         string
 		values      []interface{}
-		err         error
+		pass        bool
 	}{
-		{"Execute a valid INSERT sql", "INSERT INTO test7(name) values ('lulu')", []interface{}{}, nil},
-		{"Execute a valid UPDATE sql", "UPDATE test7 SET name = 'lulu' WHERE surname = 'temer'", []interface{}{}, nil},
-		{"Execute a valid DELETE sql", "DELETE FROM test7 WHERE name = 'lulu'", []interface{}{}, nil},
+		{"Execute a valid INSERT sql", "INSERT INTO test7(name) values ('lulu')", []interface{}{}, true},
+		{"Execute a valid UPDATE sql", "UPDATE test7 SET name = 'lulu' WHERE surname = 'temer'", []interface{}{}, true},
+		{"Execute a valid DELETE sql", "DELETE FROM test7 WHERE name = 'lulu'", []interface{}{}, true},
+		{"Execute a valid DELETE sql", "DELETE FROM test7 WHERE name = 'lulu'", []interface{}{1, 2}, false},
 	}
 	for _, tc := range testValidCases {
 		t.Log(tc.description)
 		sc := WriteSQL(tc.sql, tc.values)
-		if tc.err != sc.Err() {
-			t.Error(tc.err, sc.Err())
-		}
-	}
-}
-
-func TestInvalidWriteSQL(t *testing.T) {
-	var testInvalidCases = []struct {
-		description string
-		sql         string
-		values      []interface{}
-	}{
-		{"Execute an invalid INSERT sql", "INSERT INTO test7 (tool) values (lulu)", []interface{}{}},
-		{"Execute an invalid UPDATE sql", "UPDATE test7 SET name = lulu WHERE surname =", []interface{}{}},
-		{"Execute an invalid DELETE sql", "DELETE FROM test7 WHERE name = lulu AND surname =", []interface{}{}},
-	}
-
-	for _, tc := range testInvalidCases {
-		t.Log(tc.description)
-		sc := WriteSQL(tc.sql, tc.values)
-		if sc.Err() == nil {
-			t.Errorf("expected nil, but got %v", sc.Err())
+		if sc.Err() != nil && tc.pass {
+			t.Errorf("pass true, got: %s", sc.Err())
+		} else if sc.Err() == nil && !tc.pass {
+			t.Errorf("pass false, got: %s", sc.Err())
 		}
 	}
 }

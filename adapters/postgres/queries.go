@@ -80,8 +80,8 @@ func WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	valuesAux := make([]interface{}, 0, len(values))
 
+	valuesAux := make([]interface{}, 0, len(values))
 	for i := 0; i < len(values); i++ {
 		valuesAux = append(valuesAux, values[i])
 	}
