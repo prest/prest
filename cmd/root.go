@@ -9,7 +9,7 @@ import (
 	nlog "github.com/nuveo/log"
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
-	"github.com/prest/prest/controllers"
+	"github.com/prest/prest/router"
 	"github.com/spf13/cobra"
 )
 
@@ -51,7 +51,7 @@ func Execute() {
 
 // startServer starts the server
 func startServer() {
-	http.Handle(config.PrestConf.ContextPath, controllers.Routes())
+	http.Handle(config.PrestConf.ContextPath, router.Routes())
 	l := log.New(os.Stdout, "[prest] ", 0)
 
 	if !config.PrestConf.AccessConf.Restrict {
