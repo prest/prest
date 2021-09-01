@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
+	"github.com/prest/prest/testutils"
 )
 
 func init() {
@@ -43,7 +44,7 @@ func TestGetTables(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetTables")
+		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetTables")
 	}
 }
 
@@ -74,7 +75,7 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetTablesByDatabaseAndSchema")
+		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetTablesByDatabaseAndSchema")
 	}
 }
 
@@ -142,10 +143,10 @@ func TestSelectFromTables(t *testing.T) {
 		//config.Load()
 
 		if tc.body != "" {
-			doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "SelectFromTables", tc.body)
+			testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "SelectFromTables", tc.body)
 			continue
 		}
-		doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "SelectFromTables")
+		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "SelectFromTables")
 	}
 }
 
@@ -184,7 +185,7 @@ func TestInsertInTables(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		doRequest(t, server.URL+tc.url, tc.request, "POST", tc.status, "InsertInTables")
+		testutils.DoRequest(t, server.URL+tc.url, tc.request, "POST", tc.status, "InsertInTables")
 	}
 }
 
@@ -280,7 +281,7 @@ func TestDeleteFromTable(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		doRequest(t, server.URL+tc.url, tc.request, "DELETE", tc.status, "DeleteFromTable")
+		testutils.DoRequest(t, server.URL+tc.url, tc.request, "DELETE", tc.status, "DeleteFromTable")
 	}
 }
 
@@ -315,8 +316,8 @@ func TestUpdateFromTable(t *testing.T) {
 	for _, tc := range testCases {
 		t.Log(tc.description)
 
-		doRequest(t, server.URL+tc.url, tc.request, "PUT", tc.status, "UpdateTable")
-		doRequest(t, server.URL+tc.url, tc.request, "PATCH", tc.status, "UpdateTable")
+		testutils.DoRequest(t, server.URL+tc.url, tc.request, "PUT", tc.status, "UpdateTable")
+		testutils.DoRequest(t, server.URL+tc.url, tc.request, "PATCH", tc.status, "UpdateTable")
 	}
 }
 
@@ -339,6 +340,6 @@ func TestShowTable(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "ShowTable")
+		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "ShowTable")
 	}
 }

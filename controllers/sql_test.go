@@ -10,6 +10,7 @@ import (
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/middlewares"
+	"github.com/prest/prest/testutils"
 )
 
 func TestExecuteScriptQuery(t *testing.T) {
@@ -45,7 +46,7 @@ func TestExecuteScriptQuery(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		doRequest(t, ts.URL+tc.url, nil, tc.method, tc.status, "ExecuteScriptQuery")
+		testutils.DoRequest(t, ts.URL+tc.url, nil, tc.method, tc.status, "ExecuteScriptQuery")
 	}
 }
 
@@ -76,7 +77,7 @@ func TestExecuteFromScripts(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "ExecuteFromScripts")
+		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "ExecuteFromScripts")
 	}
 }
 
@@ -102,7 +103,7 @@ func TestRenderWithXML(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body)
+		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body)
 
 	}
 }
