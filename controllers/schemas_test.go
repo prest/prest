@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
+	"github.com/prest/prest/testutils"
 )
 
 func TestGetSchemas(t *testing.T) {
@@ -39,7 +40,7 @@ func TestGetSchemas(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body)
+		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body)
 	}
 }
 
@@ -70,7 +71,7 @@ func TestVersionDependentGetSchemas(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body...)
+		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body...)
 	}
 
 }

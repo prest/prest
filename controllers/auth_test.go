@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
+	"github.com/prest/prest/testutils"
 )
 
 func initAuthRoutes() *mux.Router {
@@ -69,7 +70,7 @@ func TestAuthDisable(t *testing.T) {
 	defer server.Close()
 
 	t.Log("/auth request POST method, disable auth")
-	doRequest(t, server.URL+"/auth", nil, "POST", http.StatusNotFound, "AuthDisable")
+	testutils.DoRequest(t, server.URL+"/auth", nil, "POST", http.StatusNotFound, "AuthDisable")
 }
 
 func TestAuthEnable(t *testing.T) {
@@ -92,6 +93,6 @@ func TestAuthEnable(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		doRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "AuthEnable")
+		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "AuthEnable")
 	}
 }
