@@ -6,15 +6,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/gorilla/mux"
 	nlog "github.com/nuveo/log"
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
-	"github.com/prest/prest/config/router"
 	"github.com/prest/prest/controllers"
-	"github.com/prest/prest/middlewares"
 	"github.com/spf13/cobra"
-	"github.com/urfave/negroni"
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -53,37 +49,9 @@ func Execute() {
 	}
 }
 
-// MakeHandler reagister all routes
-func MakeHandler() http.Handler {
-	n := middlewares.GetApp()
-	r := router.Get()
-	// if auth is enabled
-	if config.PrestConf.AuthEnabled {
-		r.HandleFunc("/auth", controllers.Auth).Methods("POST")
-	}
-	r.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
-	r.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
-	r.HandleFunc("/tables", controllers.GetTables).Methods("GET")
-	r.HandleFunc("/_QUERIES/{queriesLocation}/{script}", controllers.ExecuteFromScripts)
-	r.HandleFunc("/{database}/{schema}", controllers.GetTablesByDatabaseAndSchema).Methods("GET")
-	r.HandleFunc("/show/{database}/{schema}/{table}", controllers.ShowTable).Methods("GET")
-	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.SelectFromTables).Methods("GET")
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.InsertInTables).Methods("POST")
-	crudRoutes.HandleFunc("/batch/{database}/{schema}/{table}", controllers.BatchInsertInTables).Methods("POST")
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.DeleteFromTable).Methods("DELETE")
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.UpdateTable).Methods("PUT", "PATCH")
-	r.PathPrefix("/").Handler(negroni.New(
-		middlewares.AccessControl(),
-		middlewares.AuthMiddleware(),
-		negroni.Wrap(crudRoutes),
-	))
-	n.UseHandler(r)
-	return n
-}
-
+// startServer starts the server
 func startServer() {
-	http.Handle(config.PrestConf.ContextPath, MakeHandler())
+	http.Handle(config.PrestConf.ContextPath, controllers.Routes())
 	l := log.New(os.Stdout, "[prest] ", 0)
 
 	if !config.PrestConf.AccessConf.Restrict {
