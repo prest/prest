@@ -9,7 +9,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
-	"github.com/prest/prest/config/router"
 	"github.com/prest/prest/middlewares"
 )
 
@@ -95,8 +94,7 @@ func TestRenderWithXML(t *testing.T) {
 	config.Load()
 	postgres.Load()
 	n := middlewares.GetApp()
-	r := router.Get()
-
+	r := mux.NewRouter()
 	r.HandleFunc("/schemas", GetSchemas).Methods("GET")
 	n.UseHandler(r)
 	server := httptest.NewServer(n)

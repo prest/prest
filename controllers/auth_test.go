@@ -8,9 +8,19 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gorilla/mux"
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
 )
+
+func initAuthRoutes() *mux.Router {
+	r := mux.NewRouter()
+	// if auth is enabled
+	if config.PrestConf.AuthEnabled {
+		r.HandleFunc("/auth", Auth).Methods("POST")
+	}
+	return r
+}
 
 func Test_basicPasswordCheck(t *testing.T) {
 	config.Load()
@@ -55,7 +65,7 @@ func Test_encrypt(t *testing.T) {
 }
 
 func TestAuthDisable(t *testing.T) {
-	server := httptest.NewServer(Routes())
+	server := httptest.NewServer(initAuthRoutes())
 	defer server.Close()
 
 	t.Log("/auth request POST method, disable auth")
@@ -67,7 +77,7 @@ func TestAuthEnable(t *testing.T) {
 	postgres.Load()
 	config.PrestConf.AuthEnabled = true
 
-	server := httptest.NewServer(Routes())
+	server := httptest.NewServer(initAuthRoutes())
 	defer server.Close()
 
 	var testCases = []struct {
@@ -76,7 +86,7 @@ func TestAuthEnable(t *testing.T) {
 		method      string
 		status      int
 	}{
-		{"/auth request GET method", "/auth", "GET", http.StatusNotFound},
+		{"/auth request GET method", "/auth", "GET", http.StatusMethodNotAllowed},
 		{"/auth request POST method", "/auth", "POST", http.StatusUnauthorized},
 	}
 

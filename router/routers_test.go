@@ -9,9 +9,9 @@ func TestInitRouter(t *testing.T) {
 	}
 }
 
-func TestGet(t *testing.T) {
+func TestGetRouter(t *testing.T) {
 	router = nil
-	r := Get()
+	r := GetRouter()
 	if r == nil {
 		t.Errorf("Should return a router.")
 	}
