@@ -13,7 +13,6 @@ import (
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/controllers"
-	"github.com/prest/prest/router"
 	"github.com/urfave/negroni"
 )
 
@@ -93,7 +92,7 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 	config.Load()
 	postgres.Load()
 	app = nil
-	r := router.Get()
+	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
 	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
 
@@ -267,7 +266,7 @@ func TestJWTSignatureKo(t *testing.T) {
 
 func appTest() *negroni.Negroni {
 	n := GetApp()
-	r := router.Get()
+	r := mux.NewRouter()
 	if !config.PrestConf.Debug && !config.PrestConf.EnableDefaultJWT {
 		n.UseHandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotImplemented)
@@ -300,7 +299,7 @@ func TestCors(t *testing.T) {
 	os.Setenv("PREST_CONF", "../testdata/prest.toml")
 	config.Load()
 	app = nil
-	r := router.Get()
+	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
 	n := GetApp()
 	n.UseHandler(r)
