@@ -8,7 +8,7 @@ import (
 	"github.com/urfave/negroni"
 )
 
-// MakeHandler reagister all routes
+// Routes reagister all routes
 func Routes() *negroni.Negroni {
 	n := middlewares.GetApp()
 	r := router.Get()
