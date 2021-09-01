@@ -1,4 +1,4 @@
-FROM registry.hub.docker.com/library/golang:1.15 as builder
+FROM registry.hub.docker.com/library/golang:1.17 as builder
 WORKDIR /workspace
 COPY . .
 RUN go mod download  \
