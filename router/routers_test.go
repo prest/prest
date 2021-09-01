@@ -51,10 +51,19 @@ func TestDefaultRouters(t *testing.T) {
 		{"/{database}/{schema}/{table}", "DELETE", http.StatusUnauthorized},
 		{"/{database}/{schema}/{table}", "PUT", http.StatusUnauthorized},
 		{"/{database}/{schema}/{table}", "PATCH", http.StatusUnauthorized},
+		{"/auth", "GET", http.StatusNotFound},
 		{"/", "GET", http.StatusNotFound},
 	}
 	for _, tc := range testCases {
 		t.Log(tc.method, "\t", tc.url)
 		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, tc.url)
 	}
+}
+
+func TestAuthRouterActive(t *testing.T) {
+	config.PrestConf.AuthEnabled = true
+	initRouter()
+	server := httptest.NewServer(GetRouter())
+	testutils.DoRequest(t, server.URL+"/auth", nil, "GET", http.StatusNotFound, "AuthEnable")
+	testutils.DoRequest(t, server.URL+"/auth", nil, "POST", http.StatusUnauthorized, "AuthEnable")
 }
