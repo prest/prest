@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/prest/prest/adapters/postgres"
@@ -64,9 +63,9 @@ func TestAuthDisable(t *testing.T) {
 }
 
 func TestAuthEnable(t *testing.T) {
-	os.Setenv("PREST_AUTH_ENABLED", "true")
 	config.Load()
 	postgres.Load()
+	config.PrestConf.AuthEnabled = true
 
 	server := httptest.NewServer(Routes())
 	defer server.Close()
