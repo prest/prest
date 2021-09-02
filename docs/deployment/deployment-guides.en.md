@@ -14,12 +14,12 @@ Choose from the below guides to deploy the pREST and connect it to a Postgres da
 
 If you want to test pREST with real data from your environment and verify the features, the following one-click deployments will be useful for you:
 
-- [Deploy using Heroku]()
+- [Deploy using Heroku](/deployment/heroku/)
 
 ## Deployment guides
 
 Choose from the full list of deployment guides:
 
-- [Deploy using Docker]()
-- [Deploy using Kubernetes]()
-- [Deploy using Heroku]()
+- [Deploy using Docker](/deployment/docker/)
+- [Deploy using Heroku](/deployment/heroku/)
+- Deploy using Kubernetes **soon**, but read [here](https://github.com/prest/prest/tree/main/install-manifests/kubernetes)
