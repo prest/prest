@@ -22,7 +22,7 @@ There is PostgREST written in Haskell, but keeping Haskell software in productio
 
 ## Test using Docker
 
-> _To simplify the process of bringing up the test environment we will use **docker-compose**, assuming you do not have the repository cloned locally, we are assuming you are reading this page for the first time_
+> _To simplify the process of bringing up the test environment we will use **docker-compose**_
 
 ```sh
 # Download docker compose file
@@ -46,60 +46,7 @@ curl -i -X POST http://127.0.0.1:3000/auth -H "Content-Type: application/json" -
 curl -i -X GET http://127.0.0.1:3000/prest/public/prest_users -H "Accept: application/json" -H "Authorization: Bearer {TOKEN}"
 ```
 
-## Development usage
-
-Download all of pREST's dependencies
-
-```sh
-git clone git@github.com:prest/prest.git && cd prest
-go mod download
-```
-
-We recommend using `go run` for development environment, remember that it is necessary environment variables for _p_**REST** to connect to PostgreSQL - we will explain in the next steps how to do it
-
-```sh
-go run cmd/prestd/main.go
-```
-
-Building a **local version** (we will not use flags for production environment)
-
-```sh
-go build -o prestd cmd/prestd/main.go
-```
-
-Executing the `prestd` after generating binary or using `go run`
-
-```sh
-PREST_PG_USER=postgres PREST_PG_PASS=postgres PREST_PG_DATABASE=prest PREST_PG_PORT=5432 PREST_HTTP_PORT=3010 ./prestd
-```
-
-> to use `go run` replace `./prestd` with `go run`
-
-or use `'prest.toml'` file as a preset configuration, insert a user to see the changes
-
-### Running local unit tests (integration/e2e)
-
-pREST's unit tests depend on a working postgres database for sql query execution, to simplify the preparation of the local environment we use docker (and docker-compose) to upload the environment with postgres.
-
-**all tests:**
-
-```sh
-docker-compose -f testdata/docker-compose.yml up --abort-on-container-exit
-```
-
-**package-specific testing:**
-_in the example below the `config` package will be tested_
-
-```sh
-docker-compose -f testdata/docker-compose.yml run prest-test sh ./testdata/runtest.sh ./config
-```
-
-**specific function test:**
-_in the example below will run the test `TestGetDefaultPrestConf` from the `config` package, don't forget to call the `TestMain` function before your function_
-
-```sh
-docker-compose -f testdata/docker-compose.yml run prest-test sh ./testdata/runtest.sh ./config -run TestMain,TestGetDefaultPrestConf
-```
+Want to contribute to the project and don't know where to start? See our contribution guide [here](https://docs.prestd.com/contribute/).
 
 ## 1-Click Deploy
 
