@@ -35,7 +35,7 @@ This process gives everyone a chance to validate the design, helps prevent dupli
 
 ### Testing redux
 
-Before sending code out for review, run all the tests for the whole tree to make sure the changes don't break other usage and keep the compatibility on upgrade. To make sure you are running the test suite exactly like we do, you should install the CLI for [Travis CI](https://travis-ci.org/), as we are using the server for continous testing.
+Before sending code out for review, run all the tests for the whole tree to make sure the changes don't break other usage and keep the compatibility on upgrade. To make sure you are running the test suite exactly like we do - the tests are run in [GitHub Actions](https://github.com/features/actions), I recommend reading [Development Guides](/contribute/development-guide) that explains how to run the tests locally.
 
 ### Code review
 
@@ -49,7 +49,7 @@ Please try to make your pull request easy to review for us. Please read the "[Ho
 
 ## Code of Conduct
 
-This project and everyone participating in it are governed by the [prestd code of conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please read the [full text](CODE_OF_CONDUCT.md) so that you can read which actions may or may not be tolerated.
+This project and everyone participating in it are governed by the [prestd code of conduct](/contribute/code-of-conduct). By participating, you are expected to uphold this code. Please read the [full text](/contribute/code-of-conduct) so that you can read which actions may or may not be tolerated.
 
 ## Contributor License Agreement (CLA)
 
@@ -63,23 +63,15 @@ If you are making contributions to our repositories on behalf of your company, t
 
 ## Maintainers
 
-To make sure every PR is checked, we have [team maintainers](MAINTAINERS). Every PR **MUST** be reviewed by at least two maintainers (or owners) before it can get merged. A maintainer should be a contributor of pREST and contributed at least 4 accepted PRs. A contributor should apply as a maintainer in the [Github Discussions](https://github.com/prest/prest/discussions). The owners or the team maintainers may invite the contributor. A maintainer should spend some time on code reviews. If a maintainer has no time to do that, they should apply to leave the maintainers team and we will give them the honor of being a member of the **advisors team**. Of course, if an advisor has time to code review, we will gladly welcome them back to the maintainers team. If a maintainer is inactive for more than 3 months and forgets to leave the maintainers team, the owners may move him or her from the maintainers team to the advisors team.
+To make sure every PR is checked, we have [team maintainers](https://github.com/orgs/prest/people).
+Every PR **MUST** be reviewed by at least two maintainers (or owners) before it can get merged. A maintainer should be a contributor of pREST and contributed at least 4 accepted PRs. A contributor should apply as a maintainer in the [Github Discussions](https://github.com/prest/prest/discussions).
+The team maintainers may invite the contributor. A maintainer should spend some time on code reviews. If a maintainer has no time to do that, they should apply to leave the maintainers team and we will give them the honor of being a member of the **advisors team**. Of course, if an advisor has time to code review, we will gladly welcome them back to the maintainers team. If a maintainer is inactive for more than 3 months and forgets to leave the maintainers team, the owners may move him or her from the maintainers team to the advisors team.
 
 ## Owners
 
-Since pREST is maintained by community and [prestd](https://prestd.com/) (a company that supports the community), to keep the development healthy we will elect three owners every year. All contributors may vote to elect up to three candidates, one of which will be the main owner, and the other two the assistant owners. When the new owners have been elected, the old owners will give up ownership to the newly elected owners. If an owner is unable to do so, the other owners will assist in ceding ownership to the newly elected owners.
+Since pREST is maintained by community and [prestd](https://prestd.com/) (a company that supports the community, **not owner, but helper**), to keep the development healthy we will elect three owners every year. All contributors may vote to elect up to three candidates, one of which will be the main owner, and the other two the assistant owners. When the new owners have been elected, the old owners will give up ownership to the newly elected owners. If an owner is unable to do so, the other owners will assist in ceding ownership to the newly elected owners.
 
-After the election, the new owners should proactively agree with our [CONTRIBUTING](CONTRIBUTING.md) requirements on the [Github Discussions](https://github.com/prest/prest/discussions). Below are the words to speak:
-
-```
-I'm honored to having been elected an owner of pREST, I agree with [CONTRIBUTING](CONTRIBUTING.md). I will spend part of my time on pREST and lead the development of pREST.
-```
-
-## Versions
-
-pREST has the `main` branch as a tip branch and has version branches such as `v1.1`. `v1.1` is a release branch and we will tag `v1.1.0` for binary download. If `v1.1.0` has bugs, we will accept pull requests on the `v1.1` branch and publish a `v1.1.1` tag, after bringing the bug fix also to the main branch.
-
-Since the `main` branch is a tip version, if you wish to use pREST in production, please download the latest release tag version. All the branches will be protected via GitHub, all the PRs to every branch must be reviewed by two maintainers and must pass the automatic tests.
+After the election, the new owners should proactively agree with our _CONTRIBUTING (this page)_ requirements on the [Github Discussions](https://github.com/prest/prest/discussions). Below are the words to speak:
 
 ## Copyright
 
