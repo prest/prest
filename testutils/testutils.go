@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// DoRequest ...
+// DoRequest function used to test internal http requests
 func DoRequest(t *testing.T, url string, r interface{}, method string, expectedStatus int, where string, expectedBody ...string) {
 	var byt []byte
 	var err error
@@ -49,7 +49,7 @@ func DoRequest(t *testing.T, url string, r interface{}, method string, expectedS
 	}
 }
 
-// containsStringInSlice ...
+// containsStringInSlice check if there is string in slice
 func containsStringInSlice(s []string, e string) bool {
 	for _, a := range s {
 		if a == e {
