@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
-	"github.com/form3tech-oss/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/controllers/auth"
 	"github.com/urfave/negroni"
