@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,6 +18,12 @@ import (
 func init() {
 	config.Load()
 	postgres.Load()
+	if config.PrestConf.PGDatabase != "prest-test" {
+		log.Fatal("expected db: 'prest-test' got ", config.PrestConf.PGDatabase)
+	}
+	if config.PrestConf.Adapter.GetDatabase() != "prest-test" {
+		log.Fatal("expected Adapter db: 'prest-test' got ", config.PrestConf.Adapter.GetDatabase())
+	}
 }
 
 func TestGetTables(t *testing.T) {
@@ -72,7 +79,6 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 	router.HandleFunc("/{database}/{schema}", GetTablesByDatabaseAndSchema).Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
-
 	for _, tc := range testCases {
 		t.Log(tc.description)
 		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetTablesByDatabaseAndSchema")

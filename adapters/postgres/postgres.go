@@ -93,6 +93,7 @@ func Load() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	config.PrestConf.Adapter.SetDatabase(config.PrestConf.PGDatabase)
 }
 
 func init() {
