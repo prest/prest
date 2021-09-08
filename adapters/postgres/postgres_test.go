@@ -16,11 +16,19 @@ import (
 	"github.com/prest/prest/adapters/postgres/internal/connection"
 	"github.com/prest/prest/adapters/postgres/statements"
 	"github.com/prest/prest/config"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
 	config.Load()
 	Load()
+}
+
+func TestLoadHasDBSetted(t *testing.T) {
+	config.Load()
+	Load()
+	require.Equal(t, "prest-test", config.PrestConf.PGDatabase)
+	require.Equal(t, "prest-test", config.PrestConf.Adapter.GetDatabase())
 }
 
 func TestLoad(t *testing.T) {
