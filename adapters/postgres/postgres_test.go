@@ -15,6 +15,7 @@ import (
 	"github.com/prest/prest/adapters"
 	"github.com/prest/prest/adapters/postgres/internal/connection"
 	"github.com/prest/prest/adapters/postgres/statements"
+	"github.com/prest/prest/adapters/scanner"
 	"github.com/prest/prest/config"
 )
 
@@ -1691,4 +1692,24 @@ ORDER BY
 		})
 	}
 
+}
+
+func Test_ShowTable(t *testing.T) {
+	pg := Postgres{}
+	sc := pg.ShowTable("testschema", "testtable")
+
+	scMock := newScannerMock(t)
+
+	if !reflect.DeepEqual(sc, scMock) {
+		t.Errorf("Should return a adpter Scanner with this structure: {[] <nil> true}; but got: %v", sc)
+	}
+}
+func newScannerMock(t *testing.T) (sc adapters.Scanner) {
+	t.Helper()
+	sc = &scanner.PrestScanner{
+		Buff:    bytes.NewBuffer([]byte("[]")),
+		Error:   nil,
+		IsQuery: true,
+	}
+	return
 }
