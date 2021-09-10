@@ -1515,3 +1515,188 @@ func Test_containsAsterisk(t *testing.T) {
 		})
 	}
 }
+
+func Test_Postgres_GeneratesFuncs(t *testing.T) {
+
+	// TEST FOR THESE FUNCTIONS:
+	// SelectSQL
+	// InsertSQL
+	// DeleteSQL
+	// UpdateSQL
+	// DatabaseWhere
+	// DatabaseOrderBy
+	// SchemaOrderBy
+	// TableClause --> THIS FUNCTION DONT NEED A TEST AT NOW...
+	// TableWhere
+	// TableOrderBy
+	// SchemaTablesClause --> THIS FUNCTION DONT NEED A TEST AT NOW...
+	// SchemaTablesWhere
+	// SchemaTablesOrderBy
+
+	//Postgres struct MOCK
+	// will be used just to invoke the functions
+	pg := Postgres{}
+
+	// all of this tests is for functions whats returns a string. We can use two string as args of tests. The string we will got by the function, and the expected string.
+	type args struct {
+		gotByFunc string
+		expect    string
+	}
+	testCases := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "test_SelectSQL",
+			args: args{
+				gotByFunc: pg.SelectSQL("select", "database", "schema", "table"),
+				expect:    `select "database"."schema"."table"`,
+			},
+		},
+		{
+			name: "test_InsertSQL",
+			args: args{
+				gotByFunc: pg.InsertSQL("database", "schema", "table", "names", "(name1, name2)"),
+				expect:    `INSERT INTO "database"."schema"."table"(names) VALUES(name1, name2)`,
+			},
+		},
+		{
+			name: "test_DeleteSQL",
+			args: args{
+				gotByFunc: pg.DeleteSQL("database", "schema", "table"),
+				expect:    `DELETE FROM "database"."schema"."table"`,
+			},
+		},
+		{
+			name: "test_UpdateSQL",
+			args: args{
+				gotByFunc: pg.UpdateSQL("database", "schema", "table", "syntax"),
+				expect:    `UPDATE "database"."schema"."table" SET syntax`,
+			},
+		},
+		{
+			name: "test_DatabaseWhere_Empty",
+			args: args{
+				gotByFunc: pg.DatabaseWhere(""),
+				expect:    statements.DatabasesWhere,
+			},
+		},
+		{
+			name: "test_DatabaseWhere_withRequest",
+			args: args{
+				gotByFunc: pg.DatabaseWhere("testrequestwhere"),
+				expect:    fmt.Sprintf(`%v AND testrequestwhere`, statements.DatabasesWhere),
+			},
+		},
+		{
+			name: "test_DatabaseOrderBy",
+			args: args{
+				gotByFunc: pg.DatabaseOrderBy("order", true),
+				expect:    "order",
+			},
+		},
+		{
+			name: "test_DatabaseOrderBy_Empty_hasCount",
+			args: args{
+				gotByFunc: pg.DatabaseOrderBy("", true),
+				expect:    "",
+			},
+		},
+		{
+			name: "test_DatabaseOrderBy_Empty_nocount",
+			args: args{
+				gotByFunc: pg.DatabaseOrderBy("", false),
+				expect: fmt.Sprintf(`
+ORDER BY
+	%s ASC`, statements.FieldDatabaseName),
+			},
+		},
+		{
+			name: "test_SchemaOrderBy",
+			args: args{
+				gotByFunc: pg.SchemaOrderBy("order", true),
+				expect:    "order",
+			},
+		},
+		{
+			name: "test_SchemaOrderBy_Empty_hasCount",
+			args: args{
+				gotByFunc: pg.SchemaOrderBy("", true),
+				expect:    "",
+			},
+		},
+		{
+			name: "test_SchemaOrderBy_Empty_nocount",
+			args: args{
+				gotByFunc: pg.SchemaOrderBy("", false),
+				expect: fmt.Sprintf(`
+ORDER BY
+	%s ASC`, statements.FieldSchemaName),
+			},
+		},
+		{
+			name: "test_TableWhere",
+			args: args{
+				gotByFunc: pg.TableWhere("requestWhere"),
+				expect:    fmt.Sprintf(`%v AND requestWhere`, statements.TablesWhere),
+			},
+		},
+		{
+			name: "test_TableWhere_Empty",
+			args: args{
+				gotByFunc: pg.TableWhere(""),
+				expect:    statements.TablesWhere,
+			},
+		},
+		{
+			name: "test_TableOrderBy",
+			args: args{
+				gotByFunc: pg.TableOrderBy("order"),
+				expect:    "order",
+			},
+		},
+		{
+			name: "test_TableOrderBy_Empty",
+			args: args{
+				gotByFunc: pg.TableOrderBy(""),
+				expect:    statements.TablesOrderBy,
+			},
+		},
+		{
+			name: "test_SchemaTablesWhere",
+			args: args{
+				gotByFunc: pg.SchemaTablesWhere("requestWhere"),
+				expect:    fmt.Sprintf("%v AND requestWhere", statements.SchemaTablesWhere),
+			},
+		},
+		{
+			name: "test_SchemaTablesWhere_Empty",
+			args: args{
+				gotByFunc: pg.SchemaTablesWhere(""),
+				expect:    statements.SchemaTablesWhere,
+			},
+		},
+		{
+			name: "test_SchemaTablesOrderBy",
+			args: args{
+				gotByFunc: pg.SchemaTablesOrderBy("order"),
+				expect:    "order",
+			},
+		},
+		{
+			name: "test_SchemaTablesOrderBy_Empty",
+			args: args{
+				gotByFunc: pg.SchemaTablesOrderBy(""),
+				expect:    statements.SchemaTablesOrderBy,
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.args.gotByFunc != tc.args.expect {
+				t.Errorf("Got: %v, Want: %v", tc.args.gotByFunc, tc.args.expect)
+			}
+		})
+	}
+
+}
