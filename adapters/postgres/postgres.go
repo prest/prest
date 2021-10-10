@@ -70,10 +70,12 @@ func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt
 	} else {
 		statement, err = db.Prepare(SQL)
 	}
-
 	if err != nil {
 		return
 	}
+	// close connection on exit (using defer)
+	defer statement.Close()
+
 	if config.PrestConf.EnableCache && (tx == nil) {
 		s.Mtx.Lock()
 		s.PrepareMap[SQL] = statement
@@ -604,6 +606,9 @@ func (adapter *Postgres) Query(SQL string, params ...interface{}) (sc adapters.S
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
+	// close connection on exit (using defer)
+	defer p.Close()
+
 	var jsonData []byte
 	err = p.QueryRow(params...).Scan(&jsonData)
 	if len(jsonData) == 0 {
@@ -839,6 +844,9 @@ func (adapter *Postgres) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
+	// close connection on exit (using defer)
+	defer stmt.Close()
+
 	log.Debugln(SQL, " parameters: ", params)
 	var jsonData []byte
 	err = stmt.QueryRow(params...).Scan(&jsonData)
@@ -881,6 +889,9 @@ func (adapter *Postgres) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
+	// close connection on exit (using defer)
+	defer stmt.Close()
+
 	if strings.Contains(SQL, "RETURNING") {
 		rows, _ := stmt.Query(params...)
 		cols, _ := rows.Columns()
@@ -967,6 +978,9 @@ func (adapter *Postgres) update(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
+	// close connection on exit (using defer)
+	defer stmt.Close()
+
 	log.Debugln("generated SQL:", SQL, " parameters: ", params)
 	if strings.Contains(SQL, "RETURNING") {
 		rows, _ := stmt.Query(params...)
