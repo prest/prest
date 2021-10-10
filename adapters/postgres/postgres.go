@@ -73,8 +73,6 @@ func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt
 	if err != nil {
 		return
 	}
-	// close connection on exit (using defer)
-	defer statement.Close()
 
 	if config.PrestConf.EnableCache && (tx == nil) {
 		s.Mtx.Lock()
@@ -606,11 +604,11 @@ func (adapter *Postgres) Query(SQL string, params ...interface{}) (sc adapters.S
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	// close connection on exit (using defer)
-	defer p.Close()
 
 	var jsonData []byte
 	err = p.QueryRow(params...).Scan(&jsonData)
+	// close connection on exit (using defer)
+	defer p.Close()
 	if len(jsonData) == 0 {
 		jsonData = []byte("[]")
 	}
@@ -844,8 +842,6 @@ func (adapter *Postgres) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	// close connection on exit (using defer)
-	defer stmt.Close()
 
 	log.Debugln(SQL, " parameters: ", params)
 	var jsonData []byte
@@ -854,6 +850,8 @@ func (adapter *Postgres) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 		Error: err,
 		Buff:  bytes.NewBuffer(jsonData),
 	}
+	// close connection on exit (using defer)
+	defer stmt.Close()
 	return
 }
 
@@ -889,8 +887,6 @@ func (adapter *Postgres) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	// close connection on exit (using defer)
-	defer stmt.Close()
 
 	if strings.Contains(SQL, "RETURNING") {
 		rows, _ := stmt.Query(params...)
@@ -927,6 +923,8 @@ func (adapter *Postgres) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 	var result sql.Result
 	var rowsAffected int64
 	result, err = stmt.Exec(params...)
+	// close connection on exit (using defer)
+	defer stmt.Close()
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
 		return
@@ -978,8 +976,6 @@ func (adapter *Postgres) update(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	// close connection on exit (using defer)
-	defer stmt.Close()
 
 	log.Debugln("generated SQL:", SQL, " parameters: ", params)
 	if strings.Contains(SQL, "RETURNING") {
@@ -1017,6 +1013,8 @@ func (adapter *Postgres) update(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 	var result sql.Result
 	var rowsAffected int64
 	result, err = stmt.Exec(params...)
+	// close connection on exit (using defer)
+	defer stmt.Close()
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
 		return
