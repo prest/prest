@@ -63,10 +63,14 @@ func Get() (*sqlx.DB, error) {
 		return DB, nil
 	}
 
+	// open Postgres connection
 	DB, err = sqlx.Connect("postgres", GetURI(GetDatabase()))
 	if err != nil {
 		return nil, err
 	}
+	// close connection on exit (using defer)
+	defer DB.Close()
+
 	DB.SetMaxIdleConns(config.PrestConf.PGMaxIdleConn)
 	DB.SetMaxOpenConns(config.PrestConf.PGMAxOpenConn)
 
