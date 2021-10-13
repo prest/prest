@@ -106,8 +106,8 @@ jobs:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         with:
-          username: ${{ DOCKER_USERNAME }}
-          password: ${{ DOCKER_PASSWORD }}
+          username: $DOCKER_USERNAME
+          password: $DOCKER_PASSWORD
 
       - name: Login to GitHub Container Registry
         if: startsWith(github.ref, 'refs/tags/v')
@@ -117,7 +117,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ GITHUB_TOKEN }}
+          password: $GITHUB_TOKEN
 
       - name: GoReleaser
         env:
