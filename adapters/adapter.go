@@ -7,12 +7,31 @@ import (
 
 //Adapter interface
 type Adapter interface {
+	// GetTransaction attempts to get a transaction from the db connection
 	GetTransaction() (tx *sql.Tx, err error)
+	// BatchInsertValues execute batch insert sql into a table unsing params values
 	BatchInsertValues(SQL string, params ...interface{}) (sc Scanner)
+	// BatchInsertCopy executes a batch insert sql into a table unsing copy and given params
 	BatchInsertCopy(dbname, schema, table string, keys []string, params ...interface{}) (sc Scanner)
+	// CountByRequest implements COUNT(fields) OPERTATION
+	//
+	// returns a `SELECT COUNT(%s) FROM` query with the given
+	// URL query values from named '_count' key
 	CountByRequest(req *http.Request) (countQuery string, err error)
+	// DatabaseClause returns a SELECT from URL query params
+	//
+	// returns 'SELECT (datname|COUNT(datname)) FROM pg_database'
+	// if no `_count` query param provided will return the first option above
 	DatabaseClause(req *http.Request) (query string, hasCount bool)
+	// DatabaseOrderBy generate database order by statement
+	//
+	// if order argument is empty and hasCount=true, will return empty string
 	DatabaseOrderBy(order string, hasCount bool) (orderBy string)
+	// DatabaseWhere generates a database where syntax
+	//
+	// returns 'WHERE NOT datistemplate' if requestWhere is not provided
+	//
+	// returns 'WHERE NOT datistemplate AND <requestWhere>' if provided
 	DatabaseWhere(requestWhere string) (whereSyntax string)
 	Delete(SQL string, params ...interface{}) (sc Scanner)
 	DeleteWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc Scanner)
