@@ -53,8 +53,8 @@ func Pong(w http.ResponseWriter, r *http.Request) {
 
 All you need to know about all the API routes, please view the following links for more details.
 
-| Route | Description | method |
-| ----------- | ----------- | ----------- |
+| Route | Description | Method | Details |
+| ----------- | ----------- | ----------- | ----------- |
 | `/databases` | databases list | GET | [link](#databases) |
 | `/schemas` | schemas list | GET | [link](#schemas) |
 | `/tables` | tables list | GET | [link](#tables) |
