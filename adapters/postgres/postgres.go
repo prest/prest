@@ -73,6 +73,7 @@ func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt
 	if err != nil {
 		return
 	}
+	defer statement.Close()
 
 	if config.PrestConf.EnableCache && (tx == nil) {
 		s.Mtx.Lock()
@@ -604,11 +605,9 @@ func (adapter *Postgres) Query(SQL string, params ...interface{}) (sc adapters.S
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
+	defer p.Close()
 	var jsonData []byte
 	err = p.QueryRow(params...).Scan(&jsonData)
-	// close connection on exit (using defer)
-	defer p.Close()
 	if len(jsonData) == 0 {
 		jsonData = []byte("[]")
 	}
@@ -633,6 +632,7 @@ func (adapter *Postgres) QueryCount(SQL string, params ...interface{}) (sc adapt
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
+	defer p.Close()
 
 	var result struct {
 		Count int64 `json:"count"`
@@ -720,6 +720,7 @@ func (adapter *Postgres) BatchInsertCopy(dbname, schema, table string, keys []st
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
+	defer stmt.Close()
 	initOffSet := 0
 	limitOffset := len(keys)
 	for limitOffset <= len(values) {
@@ -733,12 +734,6 @@ func (adapter *Postgres) BatchInsertCopy(dbname, schema, table string, keys []st
 		limitOffset += len(keys)
 	}
 	_, err = stmt.Exec()
-	if err != nil {
-		log.Println(err)
-		sc = &scanner.PrestScanner{Error: err}
-		return
-	}
-	err = stmt.Close()
 	if err != nil {
 		log.Println(err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -842,7 +837,6 @@ func (adapter *Postgres) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
 	log.Debugln(SQL, " parameters: ", params)
 	var jsonData []byte
 	err = stmt.QueryRow(params...).Scan(&jsonData)
@@ -850,8 +844,6 @@ func (adapter *Postgres) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 		Error: err,
 		Buff:  bytes.NewBuffer(jsonData),
 	}
-	// close connection on exit (using defer)
-	defer stmt.Close()
 	return
 }
 
@@ -887,7 +879,7 @@ func (adapter *Postgres) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
+	defer stmt.Close()
 	if strings.Contains(SQL, "RETURNING") {
 		rows, _ := stmt.Query(params...)
 		cols, _ := rows.Columns()
@@ -923,8 +915,6 @@ func (adapter *Postgres) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 	var result sql.Result
 	var rowsAffected int64
 	result, err = stmt.Exec(params...)
-	// close connection on exit (using defer)
-	defer stmt.Close()
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
 		return
@@ -976,7 +966,7 @@ func (adapter *Postgres) update(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-
+	defer stmt.Close()
 	log.Debugln("generated SQL:", SQL, " parameters: ", params)
 	if strings.Contains(SQL, "RETURNING") {
 		rows, _ := stmt.Query(params...)
@@ -1013,8 +1003,6 @@ func (adapter *Postgres) update(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 	var result sql.Result
 	var rowsAffected int64
 	result, err = stmt.Exec(params...)
-	// close connection on exit (using defer)
-	defer stmt.Close()
 	if err != nil {
 		sc = &scanner.PrestScanner{Error: err}
 		return
