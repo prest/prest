@@ -32,9 +32,10 @@ type Postgres struct {
 }
 
 const (
-	pageNumberKey   = "_page"
-	pageSizeKey     = "_page_size"
-	defaultPageSize = 10
+	pageNumberKey     = "_page"
+	pageSizeKey       = "_page_size"
+	defaultPageSize   = 10
+	defaultPageNumber = 1
 )
 
 var removeOperatorRegex *regexp.Regexp
@@ -649,7 +650,7 @@ func (adapter *Postgres) QueryCount(SQL string, params ...interface{}) (sc adapt
 	return
 }
 
-// PaginateIfPossible func
+// PaginateIfPossible, when passing non-valid paging parameters (conversion to integer) the query will be made with default value
 func (adapter *Postgres) PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 	values := r.URL.Query()
 	if _, ok := values[pageNumberKey]; !ok {
@@ -658,15 +659,18 @@ func (adapter *Postgres) PaginateIfPossible(r *http.Request) (paginatedQuery str
 	}
 	pageNumber, err := strconv.Atoi(values[pageNumberKey][0])
 	if err != nil {
-		return
+		pageNumber = defaultPageNumber
 	}
+
 	pageSize := defaultPageSize
 	if size, ok := values[pageSizeKey]; ok {
 		pageSize, err = strconv.Atoi(size[0])
 		if err != nil {
-			return
+			pageSize = defaultPageSize
 		}
 	}
+	// resetting the error (if any) to zero to return default value (pageSize and pageNumber)
+	err = nil
 	paginatedQuery = fmt.Sprintf("LIMIT %d OFFSET(%d - 1) * %d", pageSize, pageNumber, pageSize)
 	return
 }
