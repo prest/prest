@@ -390,6 +390,7 @@ func TestPaginateIfPossible(t *testing.T) {
 		err         error
 	}{
 		{"Paginate if possible", "/databases?dbname=prest-test&test=cool&_page=1&_page_size=20", "LIMIT 20 OFFSET(1 - 1) * 20", nil},
+		{"Paginate not interge value", "/databases?dbname=prest-test&_page=1abcde", "LIMIT 10 OFFSET(1 - 1) * 10", nil},
 		{"Invalid Paginate if possible", "/databases?dbname=prest-test&test=cool", "", nil},
 	}
 
