@@ -650,7 +650,7 @@ func (adapter *Postgres) QueryCount(SQL string, params ...interface{}) (sc adapt
 	return
 }
 
-// PaginateIfPossible, when passing non-valid paging parameters (conversion to integer) the query will be made with default value
+// PaginateIfPossible when passing non-valid paging parameters (conversion to integer) the query will be made with default value
 func (adapter *Postgres) PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 	values := r.URL.Query()
 	if _, ok := values[pageNumberKey]; !ok {
@@ -671,6 +671,9 @@ func (adapter *Postgres) PaginateIfPossible(r *http.Request) (paginatedQuery str
 	}
 	// resetting the error (if any) to zero to return default value (pageSize and pageNumber)
 	err = nil
+	if pageNumber-1 < 0 {
+		pageNumber = 1
+	}
 	paginatedQuery = fmt.Sprintf("LIMIT %d OFFSET(%d - 1) * %d", pageSize, pageNumber, pageSize)
 	return
 }
