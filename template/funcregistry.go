@@ -21,6 +21,7 @@ func (fr *FuncRegistry) RegistryAllFuncs() (funcs template.FuncMap) {
 		"inFormat":       fr.inFormat,
 		"unEscape":       fr.unEscape,
 		"split":          fr.split,
+		"limitOffset":    fr.limitOffset,
 	}
 	return
 }
