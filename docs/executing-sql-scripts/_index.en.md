@@ -8,6 +8,7 @@ menu: main
 If need perform an advanced SQL, you can write some scripts SQL and access them by REST. These scripts are templates where you can pass by URL, values to them.
 
 _awesome_folder/example_of_powerful.read.sql_:
+
 ```sql
 SELECT * FROM table WHERE name = "{{.field1}}" OR name = "{{.field2}}";
 ```
@@ -24,6 +25,7 @@ To activate it, you need configure a location to scripts in your prest.toml like
 [queries]
 location = /path/to/queries/
 ```
+
 ### Scripts templates rules
 
 In your scripts, the fields to replace have to look like: _field1 or field2 are examples_
@@ -42,7 +44,6 @@ Script file must have a suffix based on http verb:
 |DELETE|.delete.sql|
 
 In `queries.location`, you need given a folder to your scripts:
-
 
 ```sh
 queries/
@@ -111,8 +112,8 @@ makes available the headers `X-UserId` and `X-Application` in the script:
 
 ### Template functions
 
-
 #### isSet
+
 Return true if param is set.
 
 ```sql
@@ -124,6 +125,7 @@ WHERE name = "{{.field1}}"
 ```
 
 #### defaultOrValue
+
 Return param value or default value.
 
 ```sql
@@ -131,6 +133,7 @@ SELECT * FROM table WHERE name = '{{defaultOrValue "field1" "gopher"}}';
 ```
 
 #### inFormat
+
 If value of param is an slice this function format to an IN SQL clause.
 
 ```sql
@@ -138,10 +141,25 @@ SELECT * FROM table WHERE name IN {{inFormat "field1"}};
 ```
 
 #### split
+
 Splits a string into substrings separated by a delimiter
 
 ```sql
 SELECT * FROM table WHERE
 name IN ({{ range $index,$part := split 'test1,test2,test3' `,` }}{{if gt $index 0 }},{{end}}'{{$part}}'{{ end }});
+```
 
+#### limitOffset
+
+Assemble `limit offset()` string with validation for non-allowed characters
+_parameters must be integer values_
+
+```sql
+SELECT * FROM table {{limitOffset "1" "10"}}
+```
+
+**generating the query:**
+
+```sql
+SELECT * FROM table LIMIT 10 OFFSET(1 - 1) * 10
 ```
