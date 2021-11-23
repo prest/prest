@@ -173,7 +173,7 @@ func TestParseFuncLimitOffset(t *testing.T) {
 		t.Errorf("expected no error, but got: %v", err)
 	}
 
-	if strings.Contains(sql, "LIMIT 10 OFFSET(1 - 1) * 10") {
+	if sql != "SELECT * FROM test7 LIMIT 10 OFFSET(1 - 1) * 10\n" {
 		t.Errorf("SQL unexpected, got: %s", sql)
 	}
 }
