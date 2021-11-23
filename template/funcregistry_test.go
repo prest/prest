@@ -1,6 +1,7 @@
 package template
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -96,5 +97,19 @@ func TestUnEscape(t *testing.T) {
 	value := funcs.unEscape(uri)
 	if value != "test1 test2 test3" {
 		t.Errorf("expected 'test1 test2 test3', bug got %s", value)
+	}
+}
+
+func TestLimitOffset(t *testing.T) {
+	data := make(map[string]interface{})
+	pageNumber := 1
+	pageSize := 10
+	data["_page"] = pageNumber
+	data["_page_size"] = pageSize
+	funcs := &FuncRegistry{TemplateData: data}
+	value := funcs.limitOffset(fmt.Sprint(pageNumber), fmt.Sprint(pageSize))
+	expected := fmt.Sprintf("LIMIT %d OFFSET(%d - 1) * %d", pageSize, pageNumber, pageSize)
+	if value != expected {
+		t.Errorf("expected '%s', bug got %s", expected, value)
 	}
 }
