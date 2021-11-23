@@ -429,7 +429,7 @@ func TestInvalidPaginateIfPossible(t *testing.T) {
 		}
 
 		sql, err := config.PrestConf.Adapter.PaginateIfPossible(req)
-		if err != nil {
+		if err == nil {
 			t.Errorf("expected errors, but got %s", err)
 		}
 
