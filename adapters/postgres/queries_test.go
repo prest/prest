@@ -161,3 +161,19 @@ func TestExecuteScripts(t *testing.T) {
 		t.Errorf("expected errors, but got %s", sc.Err())
 	}
 }
+
+func TestParseFuncLimitOffset(t *testing.T) {
+	templateData := map[string]interface{}{}
+
+	scriptPath := fmt.Sprint(os.Getenv("PREST_QUERIES_LOCATION"), "/fulltable/%s")
+
+	t.Log("Parse script with limitoffset file")
+	sql, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "limitoffset.read.sql"), templateData)
+	if err != nil {
+		t.Errorf("expected no error, but got: %v", err)
+	}
+
+	if strings.Contains(sql, "LIMIT 10 OFFSET(1 - 1) * 10") {
+		t.Errorf("SQL unexpected, got: %s", sql)
+	}
+}
