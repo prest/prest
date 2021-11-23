@@ -390,7 +390,6 @@ func TestPaginateIfPossible(t *testing.T) {
 		err         error
 	}{
 		{"Paginate if possible", "/databases?dbname=prest-test&test=cool&_page=1&_page_size=20", "LIMIT 20 OFFSET(1 - 1) * 20", nil},
-		{"Paginate not interge value", "/databases?dbname=prest-test&_page=1abcde", "LIMIT 10 OFFSET(1 - 1) * 10", nil},
 		{"?_page negative", "/databases?dbname=prest-test&_page=0", "LIMIT 10 OFFSET(1 - 1) * 10", nil},
 		{"Invalid Paginate if possible", "/databases?dbname=prest-test&test=cool", "", nil},
 	}
@@ -399,16 +398,16 @@ func TestPaginateIfPossible(t *testing.T) {
 		t.Log(tc.description)
 		req, err := http.NewRequest("GET", tc.url, nil)
 		if err != nil {
-			t.Errorf("expected no errors in http request, but got %s", err)
+			t.Errorf("url: %s / expected no errors in http request, but got %s", tc.url, err)
 		}
 
 		sql, err := config.PrestConf.Adapter.PaginateIfPossible(req)
 		if err != nil {
-			t.Errorf("expected no errors, but got %s", err)
+			t.Errorf("desc: %s / expected no errors, but got %s", tc.description, err)
 		}
 
 		if !strings.Contains(tc.expected, sql) {
-			t.Errorf("expected %s in %s, but not was!", tc.expected, sql)
+			t.Errorf("desc: %s / expected %s in %s, but not was!", tc.description, tc.expected, sql)
 		}
 	}
 }
@@ -430,7 +429,7 @@ func TestInvalidPaginateIfPossible(t *testing.T) {
 		}
 
 		sql, err := config.PrestConf.Adapter.PaginateIfPossible(req)
-		if err == nil {
+		if err != nil {
 			t.Errorf("expected errors, but got %s", err)
 		}
 

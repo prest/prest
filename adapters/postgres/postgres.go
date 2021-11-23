@@ -25,6 +25,7 @@ import (
 	"github.com/prest/prest/adapters/postgres/statements"
 	"github.com/prest/prest/adapters/scanner"
 	"github.com/prest/prest/config"
+	"github.com/prest/prest/template"
 )
 
 //Postgres adapter postgresql
@@ -653,15 +654,13 @@ func (adapter *Postgres) QueryCount(SQL string, params ...interface{}) (sc adapt
 // PaginateIfPossible when passing non-valid paging parameters (conversion to integer) the query will be made with default value
 func (adapter *Postgres) PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 	values := r.URL.Query()
-	if _, ok := values[pageNumberKey]; !ok {
-		paginatedQuery = ""
-		return
+	pageNumber := defaultPageNumber
+	if number, ok := values[pageNumberKey]; !ok {
+		pageNumber, err = strconv.Atoi(number[0])
+		if err != nil {
+			return
+		}
 	}
-	pageNumber, err := strconv.Atoi(values[pageNumberKey][0])
-	if err != nil {
-		pageNumber = defaultPageNumber
-	}
-
 	pageSize := defaultPageSize
 	if size, ok := values[pageSizeKey]; ok {
 		pageSize, err = strconv.Atoi(size[0])
@@ -669,13 +668,7 @@ func (adapter *Postgres) PaginateIfPossible(r *http.Request) (paginatedQuery str
 			pageSize = defaultPageSize
 		}
 	}
-	// resetting the error (if any) to zero to return default value (pageSize and pageNumber)
-	err = nil
-	if pageNumber-1 < 0 {
-		pageNumber = 1
-	}
-	paginatedQuery = fmt.Sprintf("LIMIT %d OFFSET(%d - 1) * %d", pageSize, pageNumber, pageSize)
-	return
+	return template.LimitOffset(fmt.Sprint(pageNumber), fmt.Sprint(pageSize))
 }
 
 // BatchInsertCopy execute batch insert sql into a table unsing copy
