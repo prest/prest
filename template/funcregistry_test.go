@@ -112,4 +112,19 @@ func TestLimitOffset(t *testing.T) {
 	if value != expected {
 		t.Errorf("expected '%s', bug got %s", expected, value)
 	}
+
+	value = funcs.limitOffset("0", fmt.Sprint(pageSize))
+	if value != expected {
+		t.Errorf("expected '%s', bug got %s", expected, value)
+	}
+
+	value = funcs.limitOffset("a", fmt.Sprint(pageSize))
+	if value != "" {
+		t.Errorf("expected '%s', bug got %s", "", value)
+	}
+
+	value = funcs.limitOffset(fmt.Sprint(pageNumber), "a")
+	if value != "" {
+		t.Errorf("expected '%s', bug got %s", "", value)
+	}
 }
