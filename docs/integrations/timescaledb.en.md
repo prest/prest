@@ -1,6 +1,6 @@
 ---
 date: 2020-12-28T11:30:00+03:00
-title: Timescaledb
+title: TimescaleDB
 type: homepage
 menu:
   timescaledb:
@@ -8,13 +8,13 @@ menu:
 weight: 2
 ---
 
-# pREST + TimescaleDB
+# TimescaleDB and pREST
 
-Sample Dataset used: https://docs.timescale.com/latest/tutorials/other-sample-datasets#in-depth-devices
+Sample Dataset used: <https://docs.timescale.com/latest/tutorials/other-sample-datasets#in-depth-devices>
 
-### Setup
+## Setup
 
-#### Creating `docker-compose.yml` file
+### Creating `docker-compose.yml` file
 
 ```bash
 mkdir /tmp/prest+timescaledb
@@ -54,14 +54,14 @@ services:
 YML
 ```
 
-#### Starting up the containers
+### Starting up the containers
 
 ```bash
 docker-compose pull
 docker-compose up -d
 ```
 
-#### Creating database structure
+### Creating database structure
 
 ```bash
 curl https://timescaledata.blob.core.windows.net/datasets/devices_small.tar.gz -o /tmp/devices_small.tar.gz
@@ -69,7 +69,7 @@ tar -C /tmp -xzvf /tmp/devices_small.tar.gz
 docker-compose exec -T timescaledb psql -U prest -f /var/tmp/devices.sql
 ```
 
-#### Loading data
+### Loading data
 
 ```bash
 docker-compose exec -T timescaledb psql -U prest <<SQL
@@ -78,10 +78,9 @@ COPY readings FROM '/var/tmp/devices_small_readings.csv' WITH (FORMAT CSV);
 SQL
 ```
 
+## Simple Query
 
-### Simple Query
-
-#### SQL execution
+### SQL execution
 
 ```bash
 docker-compose exec -T timescaledb psql -U prest <<SQL
@@ -98,7 +97,7 @@ LIMIT
 SQL
 ```
 
-#### pREST execution
+### pREST execution
 
 ```bash
 curl -G http://localhost:3000/prest/public/readings \
@@ -109,10 +108,9 @@ curl -G http://localhost:3000/prest/public/readings \
   -d _page_size=10
 ```
 
+## Joining tables
 
-### Joining tables
-
-#### SQL execution
+### SQL execution
 
 ```bash
 docker-compose exec -T timescaledb psql -U prest <<SQL
@@ -132,7 +130,7 @@ LIMIT
 SQL
 ```
 
-#### pREST execution
+### pREST execution
 
 ```bash
 curl -G http://localhost:3000/prest/public/readings \
@@ -145,10 +143,9 @@ curl -G http://localhost:3000/prest/public/readings \
   -d _page_size=5
 ```
 
+## Using VIEWs
 
-### Using VIEWs
-
-#### Creating VIEW named `battery_level_by_hour`
+### Creating VIEW named `battery_level_by_hour`
 
 ```bash
 docker-compose exec -T timescaledb psql -U prest <<SQL
@@ -166,7 +163,7 @@ GROUP BY
 SQL
 ```
 
-#### Aggregating data over `battery_level_by_hour` view
+### Aggregating data over `battery_level_by_hour` view
 
 ```bash
 docker-compose exec -T timescaledb psql -U prest <<SQL
@@ -185,7 +182,7 @@ LIMIT
 SQL
 ```
 
-#### pREST execution
+### pREST execution
 
 ```bash
 curl -G http://localhost:3000/prest/public/battery_level_by_hour \
@@ -195,7 +192,7 @@ curl -G http://localhost:3000/prest/public/battery_level_by_hour \
   -d _order='hour'
 ```
 
-#### Simple SELECT over `battery_level_by_hour` view
+### Simple SELECT over `battery_level_by_hour` view
 
 ```bash
 docker-compose exec -T timescaledb psql -U prest <<SQL
@@ -210,7 +207,7 @@ LIMIT
 SQL
 ```
 
-#### pREST execution over `battery_level_by_hour` view
+### pREST execution over `battery_level_by_hour` view
 
 ```bash
 curl -G http://localhost:3000/prest/public/battery_level_by_hour \
@@ -221,10 +218,9 @@ curl -G http://localhost:3000/prest/public/battery_level_by_hour \
   -d _page_size='5'
 ```
 
+## Batch Insert data
 
-### Batch Insert data
-
-#### Using default INSERT statement WITH returning inserted data
+### Using default INSERT statement WITH returning inserted data
 
 ```bash
 curl http://localhost:3000/batch/prest/public/readings \
@@ -240,7 +236,7 @@ curl http://localhost:3000/batch/prest/public/readings \
 JSON
 ```
 
-#### Using COPY statement WITHOUT returning inserted data
+### Using COPY statement WITHOUT returning inserted data
 
 ```bash
 curl http://localhost:3000/batch/prest/public/readings \
