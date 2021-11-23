@@ -654,6 +654,10 @@ func (adapter *Postgres) QueryCount(SQL string, params ...interface{}) (sc adapt
 // PaginateIfPossible when passing non-valid paging parameters (conversion to integer) the query will be made with default value
 func (adapter *Postgres) PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 	values := r.URL.Query()
+	if _, ok := values[pageNumberKey]; !ok {
+		paginatedQuery = ""
+		return
+	}
 	pageNumber, err := strconv.Atoi(values[pageNumberKey][0])
 	if err != nil {
 		return
@@ -662,10 +666,11 @@ func (adapter *Postgres) PaginateIfPossible(r *http.Request) (paginatedQuery str
 	if size, ok := values[pageSizeKey]; ok {
 		pageSize, err = strconv.Atoi(size[0])
 		if err != nil {
-			pageSize = defaultPageSize
+			return
 		}
 	}
-	return template.LimitOffset(fmt.Sprint(pageNumber), fmt.Sprint(pageSize))
+	paginatedQuery, err = template.LimitOffset(fmt.Sprint(pageNumber), fmt.Sprint(pageSize))
+	return
 }
 
 // BatchInsertCopy execute batch insert sql into a table unsing copy
