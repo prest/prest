@@ -3,6 +3,7 @@ package template
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"text/template"
 )
@@ -54,5 +55,30 @@ func (fr *FuncRegistry) unEscape(key string) (value string) {
 
 func (fr *FuncRegistry) split(orig, sep string) (values []string) {
 	values = strings.Split(orig, sep)
+	return
+}
+
+// LimitOffset create and format limit query (offset, SQL ANSI)
+func LimitOffset(pageNumberStr, pageSizeStr string) (paginatedQuery string, err error) {
+	pageNumber, err := strconv.Atoi(pageNumberStr)
+	if err != nil {
+		return
+	}
+	pageSize, err := strconv.Atoi(pageSizeStr)
+	if err != nil {
+		return
+	}
+	if pageNumber-1 < 0 {
+		pageNumber = 1
+	}
+	paginatedQuery = fmt.Sprintf("LIMIT %d OFFSET(%d - 1) * %d", pageSize, pageNumber, pageSize)
+	return
+}
+
+func (fr *FuncRegistry) limitOffset(pageNumber, pageSize string) (value string) {
+	value, err := LimitOffset(pageNumber, pageSize)
+	if err != nil {
+		value = ""
+	}
 	return
 }
