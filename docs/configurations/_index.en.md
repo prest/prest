@@ -166,3 +166,9 @@ While serving multiple databases over the same API with pREST is doable, it's by
 [pg]
     single = false
 ```
+
+## CORS support
+
+**Cross-Origin Resource Sharing**
+
+Read the specific topic where we talk about CROS [here](/cors-support/).
