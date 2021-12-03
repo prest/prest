@@ -9,7 +9,7 @@ menu: main
 
 There are two settings to be made for releasing CROS (Cross-Origin Resource Sharing) in pREST, **source** and **method**.
 
-In the `prest.toml` you can configurate the CORS allowed origin.
+In the `prest.toml` you can configure the CORS allowed origin.
 
 Example:
 
