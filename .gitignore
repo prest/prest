@@ -35,3 +35,4 @@ prestd
 prest.toml
 /cmd/prestd/prestd
 docbuild/
+/vendor
