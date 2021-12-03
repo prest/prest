@@ -44,3 +44,34 @@ release:
   github:
     owner: prest
     name: prest
+dockers:
+- image_templates:
+  - 'prest/prest:{{ .Tag }}'
+  - 'ghcr.io/prest/prest:{{ .Tag }}'
+  dockerfile: Dockerfile
+  use: buildx
+  build_flag_templates:
+  - "--pull"
+  - "--label=org.opencontainers.image.created={{.Date}}"
+  - "--label=org.opencontainers.image.name={{.ProjectName}}"
+  - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+  - "--label=org.opencontainers.image.version={{.Version}}"
+  - "--label=org.opencontainers.image.source={{.GitURL}}"
+  extra_files:
+  - scripts/entrypoint.sh
+- image_templates:
+  - 'prest/prest:{{ .Tag }}'
+  - 'ghcr.io/prest/prest:{{ .Tag }}'
+  dockerfile: Dockerfile
+  use: buildx
+  build_flag_templates:
+  - "--pull"
+  - "--label=org.opencontainers.image.created={{.Date}}"
+  - "--label=org.opencontainers.image.name={{.ProjectName}}"
+  - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+  - "--label=org.opencontainers.image.version={{.Version}}"
+  - "--label=org.opencontainers.image.source={{.GitURL}}"
+  - "--platform=linux/arm64"
+  goarch: arm64
+  extra_files:
+  - scripts/entrypoint.sh
