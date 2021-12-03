@@ -3,7 +3,7 @@ module github.com/prest/prest
 go 1.15
 
 require (
-	github.com/auth0/go-jwt-middleware v1.0.2-0.20211104132826-8ea1f08a4fdf
+	github.com/auth0/go-jwt-middleware v1.0.1
 	github.com/clbanning/mxj v1.8.4
 	github.com/form3tech-oss/jwt-go v3.2.5+incompatible
 	github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00 // indirect
