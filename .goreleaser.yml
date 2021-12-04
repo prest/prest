@@ -57,8 +57,6 @@ dockers:
   - "--label=org.opencontainers.image.revision={{.FullCommit}}"
   - "--label=org.opencontainers.image.version={{.Version}}"
   - "--label=org.opencontainers.image.source={{.GitURL}}"
-  extra_files:
-  - scripts/entrypoint.sh
 - image_templates:
   - 'prest/prest:{{ .Tag }}'
   - 'ghcr.io/prest/prest:{{ .Tag }}'

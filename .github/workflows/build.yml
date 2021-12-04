@@ -125,11 +125,9 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: GoReleaser
+        if: startsWith(github.ref, 'refs/tags/v')
         env:
           DOCKER_LOGIN: ${{ secrets.DOCKER_LOGIN }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [[ $GITHUB_REF == refs/tags/v* ]]; then
-            bash ./scripts/releaser-tag.sh
-          fi
+        run: bash ./scripts/releaser-tag.sh
