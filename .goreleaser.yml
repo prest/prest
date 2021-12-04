@@ -50,7 +50,7 @@ dockers:
   - 'prest/prest:{{ .Tag }}'
   - 'ghcr.io/prest/prest:latest'
   - 'ghcr.io/prest/prest:{{ .Tag }}'
-  dockerfile: DockerfileGoReleaser
+  dockerfile: Dockerfile
   use: buildx
   build_flag_templates:
   - "--pull"
@@ -64,7 +64,7 @@ dockers:
   - 'prest/prest:{{ .Tag }}-arm64'
   - 'ghcr.io/prest/prest:latest-arm64'
   - 'ghcr.io/prest/prest:{{ .Tag }}-arm64'
-  dockerfile: DockerfileGoReleaser
+  dockerfile: Dockerfile
   use: buildx
   build_flag_templates:
   - "--pull"
