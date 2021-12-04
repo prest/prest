@@ -130,5 +130,5 @@ jobs:
           DOCKER_LOGIN: ${{ secrets.DOCKER_LOGIN }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REF: ${GITHUB_REF#refs/tags/}
+          GITHUB_REF: ${GITHUB_REF}
         run: bash ./scripts/releaser-tag.sh

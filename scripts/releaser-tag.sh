@@ -19,14 +19,16 @@ if [ -n "$GITHUB_TOKEN" ]; then
 	echo "$GITHUB_TOKEN" | docker login ghcr.io -u docker --password-stdin
 fi
 
+DOCKER_TAG=${GITHUB_REF#refs/tags/}
+
 git checkout . && \
     docker build . -t prest/prest:v1 && \
-    docker tag prest/prest:v1 prest/prest:$GITHUB_REF && \
+    docker tag prest/prest:v1 prest/prest:$DOCKER_TAG && \
     docker tag prest/prest:v1 prest/prest:latest && \
     docker push prest/prest:v1 && \
     docker push prest/prest:latest && \
-    docker push prest/prest:$GITHUB_REF && \
+    docker push prest/prest:$DOCKER_TAG && \
     docker push ghcr.io/prest/prest:v1 && \
     docker push ghcr.io/prest/prest:latest && \
-    docker push ghcr.io/prest/prest:$GITHUB_REF && \
+    docker push ghcr.io/prest/prest:$DOCKER_TAG && \
     curl -sL https://git.io/goreleaser | bash
