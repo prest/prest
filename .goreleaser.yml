@@ -46,9 +46,11 @@ release:
     name: prest
 dockers:
 - image_templates:
+  - 'prest/prest:latest'
   - 'prest/prest:{{ .Tag }}'
+  - 'ghcr.io/prest/prest:latest'
   - 'ghcr.io/prest/prest:{{ .Tag }}'
-  dockerfile: Dockerfile
+  dockerfile: DockerfileGoReleaser
   use: buildx
   build_flag_templates:
   - "--pull"
@@ -58,9 +60,11 @@ dockers:
   - "--label=org.opencontainers.image.version={{.Version}}"
   - "--label=org.opencontainers.image.source={{.GitURL}}"
 - image_templates:
-  - 'prest/prest:{{ .Tag }}'
-  - 'ghcr.io/prest/prest:{{ .Tag }}'
-  dockerfile: Dockerfile
+  - 'prest/prest:latest-arm64'
+  - 'prest/prest:{{ .Tag }}-arm64'
+  - 'ghcr.io/prest/prest:latest-arm64'
+  - 'ghcr.io/prest/prest:{{ .Tag }}-arm64'
+  dockerfile: DockerfileGoReleaser
   use: buildx
   build_flag_templates:
   - "--pull"
