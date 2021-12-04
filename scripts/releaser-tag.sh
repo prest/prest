@@ -19,4 +19,5 @@ if [ -n "$GITHUB_TOKEN" ]; then
 	echo "$GITHUB_TOKEN" | docker login ghcr.io -u docker --password-stdin
 fi
 
-curl -sL https://git.io/goreleaser | bash
+git checkout . && \
+    curl -sL https://git.io/goreleaser | bash
