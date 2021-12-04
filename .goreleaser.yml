@@ -73,5 +73,3 @@ dockers:
   - "--label=org.opencontainers.image.source={{.GitURL}}"
   - "--platform=linux/arm64"
   goarch: arm64
-  extra_files:
-  - scripts/entrypoint.sh
