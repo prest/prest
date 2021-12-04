@@ -20,4 +20,13 @@ if [ -n "$GITHUB_TOKEN" ]; then
 fi
 
 git checkout . && \
+    docker build . -t prest/prest:v1 && \
+    docker tag prest/prest:v1 prest/prest:$GITHUB_REF && \
+    docker tag prest/prest:v1 prest/prest:latest && \
+    docker push prest/prest:v1 && \
+    docker push prest/prest:latest && \
+    docker push prest/prest:$GITHUB_REF && \
+    docker push ghcr.io/prest/prest:v1 && \
+    docker push ghcr.io/prest/prest:latest && \
+    docker push ghcr.io/prest/prest:$GITHUB_REF && \
     curl -sL https://git.io/goreleaser | bash
