@@ -11,12 +11,8 @@ fi
 
 if [ -n "$GORELEASER_GITHUB_TOKEN" ] ; then
 	export GITHUB_TOKEN=$GORELEASER_GITHUB_TOKEN
-fi
-
-if [ -n "$GITHUB_TOKEN" ]; then
-	# Log into GitHub package registry
-	echo "$GITHUB_TOKEN" | docker login docker.pkg.github.com -u docker --password-stdin
-	echo "$GITHUB_TOKEN" | docker login ghcr.io -u docker --password-stdin
+	echo "$GORELEASER_GITHUB_TOKEN" | docker login docker.pkg.github.com -u docker --password-stdin
+	echo "$GORELEASER_GITHUB_TOKEN" | docker login ghcr.io -u docker --password-stdin
 fi
 
 export DOCKER_TAG=${GITHUB_REF#refs/tags/}
@@ -25,6 +21,9 @@ git checkout . && \
     docker build . -t prest/prest:v1 && \
     docker tag prest/prest:v1 prest/prest:$DOCKER_TAG && \
     docker tag prest/prest:v1 prest/prest:latest && \
+    docker tag prest/prest:v1 ghcr.io/prest/prest:v1 && \
+    docker tag prest/prest:v1 ghcr.io/prest/prest:$DOCKER_TAG && \
+    docker tag prest/prest:v1 ghcr.io/prest/prest:latest && \
     docker push ghcr.io/prest/prest:v1 && \
     docker push ghcr.io/prest/prest:latest && \
     docker push ghcr.io/prest/prest:$DOCKER_TAG && \
