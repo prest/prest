@@ -1,7 +1,7 @@
 FROM registry.hub.docker.com/library/golang:1.17 as builder
 WORKDIR /workspace
 COPY . .
-RUN go mod download  \
+RUN go mod download all \
     && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -ldflags "-s -w" -o prestd cmd/prestd/main.go \
     && apt-get update && apt-get install --no-install-recommends -yq netcat
 
