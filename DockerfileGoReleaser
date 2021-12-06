@@ -1,7 +1,0 @@
-FROM gcr.io/distroless/base:debug
-COPY /__w/prest/prest/etc/entrypoint.sh /app/entrypoint.sh
-COPY /__w/prest/prest/etc/prest.toml /app/prest.toml
-COPY /__w/prest/prest/dist/prest_linux_amd64/prestd /bin/prestd
-USER nonroot:nonroot
-WORKDIR /app
-ENTRYPOINT ["sh", "/app/entrypoint.sh"]
