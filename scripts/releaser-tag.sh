@@ -11,8 +11,8 @@ fi
 
 if [ -n "$GORELEASER_GITHUB_TOKEN" ] ; then
 	export GITHUB_TOKEN=$GORELEASER_GITHUB_TOKEN
-	echo "$GORELEASER_GITHUB_TOKEN" | docker login docker.pkg.github.com -u docker --password-stdin
-	echo "$GORELEASER_GITHUB_TOKEN" | docker login ghcr.io -u docker --password-stdin
+	echo "$GORELEASER_GITHUB_TOKEN" | docker login docker.pkg.github.com -u prest --password-stdin
+	echo "$GORELEASER_GITHUB_TOKEN" | docker login ghcr.io -u prest --password-stdin
 fi
 
 export DOCKER_TAG=${GITHUB_REF#refs/tags/}
