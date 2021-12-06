@@ -163,3 +163,9 @@ SELECT * FROM table {{limitOffset "1" "10"}}
 ```sql
 SELECT * FROM table LIMIT 10 OFFSET(1 - 1) * 10
 ```
+
+_We recommend using the default pREST variables `_page` and `_page_size`:_
+
+```sql
+{{limitOffset ._page ._page_size}}
+```
