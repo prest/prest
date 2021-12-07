@@ -26,7 +26,7 @@ To activate it, you need configure a location to scripts in your prest.toml like
 location = /path/to/queries/
 ```
 
-### Scripts templates rules
+## Scripts templates rules
 
 In your scripts, the fields to replace have to look like: _field1 or field2 are examples_
 
@@ -76,7 +76,7 @@ PATCH  /_QUERIES/bar/some_update?field1=foo
 DELETE /_QUERIES/bar/some_delete?field1=foo
 ```
 
-### Template data
+## Template data
 
 You can access the query parameters of the incoming HTTP request using the `.` notation.
 
@@ -110,9 +110,9 @@ makes available the headers `X-UserId` and `X-Application` in the script:
 {{index .header "X-Application"}}
 ```
 
-### Template functions
+## Template functions
 
-#### isSet
+### isSet
 
 Return true if param is set.
 
@@ -124,7 +124,7 @@ WHERE name = "{{.field1}}"
 ;
 ```
 
-#### defaultOrValue
+### defaultOrValue
 
 Return param value or default value.
 
@@ -132,7 +132,7 @@ Return param value or default value.
 SELECT * FROM table WHERE name = '{{defaultOrValue "field1" "gopher"}}';
 ```
 
-#### inFormat
+### inFormat
 
 If value of param is an slice this function format to an IN SQL clause.
 
@@ -140,7 +140,7 @@ If value of param is an slice this function format to an IN SQL clause.
 SELECT * FROM table WHERE name IN {{inFormat "field1"}};
 ```
 
-#### split
+### split
 
 Splits a string into substrings separated by a delimiter
 
@@ -149,7 +149,7 @@ SELECT * FROM table WHERE
 name IN ({{ range $index,$part := split 'test1,test2,test3' `,` }}{{if gt $index 0 }},{{end}}'{{$part}}'{{ end }});
 ```
 
-#### limitOffset
+### limitOffset
 
 Assemble `limit offset()` string with validation for non-allowed characters
 _parameters must be integer values_
@@ -169,3 +169,9 @@ _We recommend using the default pREST variables `_page` and `_page_size`:_
 ```sql
 {{limitOffset ._page ._page_size}}
 ```
+
+## Ready-made queries from existing systems
+
+_consultations ready to use prest_
+
+- [Opps CMS](https://github.com/opps/prest-queries)
