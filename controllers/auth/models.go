@@ -1,6 +1,10 @@
 package auth
 
-import "github.com/form3tech-oss/jwt-go"
+import (
+	"context"
+
+	jwt "github.com/form3tech-oss/jwt-go"
+)
 
 // User logged in user representation
 type User struct {
@@ -14,4 +18,14 @@ type User struct {
 type Claims struct {
 	UserInfo User
 	jwt.StandardClaims
+}
+
+// Validate does nothing for this example.
+func (c *Claims) Validate(ctx context.Context) error {
+	/**
+	if c.ShouldReject {
+		return errors.New("should reject was set to true")
+	}
+	*/
+	return nil
 }
