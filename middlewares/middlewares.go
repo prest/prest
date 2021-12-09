@@ -156,7 +156,7 @@ func JwtMiddleware(key string, algo string) negroni.Handler {
 		middleware.CheckJWT(handler).ServeHTTP(w, r)
 
 		if encounteredError {
-			log.Println("check jwt error", err.Error())
+			log.Println("check jwt error")
 			w.Write([]byte(`{"error": "Failed to validate JWT"}`))
 			return
 		}
