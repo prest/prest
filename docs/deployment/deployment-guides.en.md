@@ -22,4 +22,5 @@ Choose from the full list of deployment guides:
 
 - [Deploy using Docker](/deployment/docker/)
 - [Deploy using Heroku](/deployment/heroku/)
+- [Deploy using AWS Copilot](/deployment/aws-copilot)
 - Deploy using Kubernetes **soon**, but read [here](https://github.com/prest/prest/tree/main/install-manifests/kubernetes)
