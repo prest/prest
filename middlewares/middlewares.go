@@ -2,6 +2,9 @@ package middlewares
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -102,11 +105,44 @@ func AccessControl() negroni.Handler {
 	})
 }
 
+var ErrNoPEMKey = errors.New("no RSA/EC/PUBLIC PEM data found")
+
+func parsePEMKey(data []byte) (key interface{}, err error) {
+	var block *pem.Block
+	for len(data) > 0 {
+		block, data = pem.Decode(data)
+		if block == nil {
+			return nil, ErrNoPEMKey
+		}
+		switch block.Type {
+		case "RSA PRIVATE KEY":
+			return x509.ParsePKCS1PrivateKey(block.Bytes)
+		case "EC PRIVATE KEY":
+			return x509.ParseECPrivateKey(block.Bytes)
+		case "PUBLIC KEY":
+			return x509.ParsePKIXPublicKey(block.Bytes)
+		}
+	}
+	return
+}
+
 // JwtMiddleware check if actual request have JWT
 func JwtMiddleware(key string, algo string) negroni.Handler {
+	var parsedKey interface{}
+	if strings.HasPrefix(algo, "HS") {
+		parsedKey = []byte(key)
+	} else if strings.HasPrefix(algo, "ES") || strings.HasPrefix(algo, "RS") {
+		var err error
+		parsedKey, err = parsePEMKey([]byte(key))
+		if err != nil {
+			panic(fmt.Sprintf("Cannot parse public key: %s", err))
+		}
+	} else {
+		panic(fmt.Sprintf("Do not know how to parse key for algo %#v", algo))
+	}
 	jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
 		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
-			return []byte(key), nil
+			return parsedKey, nil
 		},
 		SigningMethod: jwt.GetSigningMethod(algo),
 	})
