@@ -105,6 +105,7 @@ func AccessControl() negroni.Handler {
 	})
 }
 
+// ErrNoPEMKey if jwt.key should contain PEM data, but no valid blocks were found
 var ErrNoPEMKey = errors.New("no RSA/EC/PUBLIC PEM data found")
 
 func parsePEMKey(data []byte) (key interface{}, err error) {
