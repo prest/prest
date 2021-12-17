@@ -136,10 +136,10 @@ func JwtMiddleware(key string, algo string) negroni.Handler {
 		var err error
 		parsedKey, err = parsePEMKey([]byte(key))
 		if err != nil {
-			panic(fmt.Sprintf("Cannot parse public key: %s", err))
+			log.Fatalf("Cannot parse %#v key: %s", algo, err)
 		}
 	} else {
-		panic(fmt.Sprintf("Do not know how to parse key for algo %#v", algo))
+		log.Fatalf("Do not know how to parse key for %#v algorithm", algo)
 	}
 	jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
 		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
