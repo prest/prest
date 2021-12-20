@@ -10,7 +10,7 @@ This guide assumes that you already have Postgres running and helps you set up t
 
 In case you’d like to run pREST with a fresh Postgres database, follow this guide to deploy the pREST along with a Postgres instance using _Docker Compose_.
 
-## Deploying pREST using Docker
+## Deploying prestd using Docker
 
 **Prerequisites:**
 
@@ -61,3 +61,9 @@ Example using **curl:**
 ```shell
 curl -i -X GET http://127.0.0.1:3000/databases -H "Content-Type: application/json"
 ```
+
+## Docker Compose
+
+> Compose is a tool for defining and running multi-container Docker applications. With Compose, you use a YAML file to configure your application’s services. Then, with a single command, you create and start all the services from your configuration. To learn more about all the features of Compose, see the [list of features](https://docs.docker.com/compose/#features).
+
+{{< emgithub 'https://github.com/prest/prest/blob/main/docker-compose-prod.yml' >}}
