@@ -116,7 +116,7 @@ func JwtMiddleware(key string, algo string) negroni.Handler {
 		}
 		out := auth.Claims{}
 		if err := tok.Claims([]byte(key), &out); err != nil {
-			http.Error(w, fmt.Errorf("Failed JWT claims validade").Error(), http.StatusUnauthorized)
+			http.Error(w, fmt.Errorf("Failed JWT claims validated").Error(), http.StatusUnauthorized)
 			return
 		}
 		next(w, r)
