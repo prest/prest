@@ -3,21 +3,15 @@ package middlewares
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
-	jwtmiddleware "github.com/auth0/go-jwt-middleware/v2"
-	"github.com/auth0/go-jwt-middleware/v2/jwks"
-	"github.com/auth0/go-jwt-middleware/v2/validator"
-	"github.com/form3tech-oss/jwt-go"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/controllers/auth"
 	"github.com/urfave/negroni"
+	"gopkg.in/square/go-jose.v2/jwt"
 )
 
 // HandlerSet add content type header
@@ -41,39 +35,28 @@ func AuthMiddleware() negroni.Handler {
 		}
 		if config.PrestConf.AuthEnabled && !match {
 			// extract authorization token
-			ts := strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1)
-			if ts == "" {
+			token := strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1)
+			if token == "" {
 				err := fmt.Errorf("authorization token is empty")
-				http.Error(rw, err.Error(), http.StatusForbidden)
+				http.Error(rw, err.Error(), http.StatusUnauthorized)
 				return
 			}
 
-			_, err := jwt.ParseWithClaims(ts, &auth.Claims{}, func(token *jwt.Token) (interface{}, error) {
-				// verify token sign method
-				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-				}
-
-				// parse token claims
-				var claims *auth.Claims
-				if v, ok := token.Claims.(*auth.Claims); ok {
-					claims = v
-				} else {
-					return nil, fmt.Errorf("token invalid")
-				}
-
-				// pass user_info to the next handler
-				ctx := r.Context()
-				ctx = context.WithValue(ctx, "user_info", claims.UserInfo)
-				r = r.WithContext(ctx)
-
-				return []byte(config.PrestConf.JWTKey), nil
-			})
-
+			tok, err := jwt.ParseSigned(token)
 			if err != nil {
-				http.Error(rw, err.Error(), http.StatusBadRequest)
+				http.Error(rw, fmt.Errorf("Failed JWT token parser").Error(), http.StatusUnauthorized)
 				return
 			}
+			claims := auth.Claims{}
+			if err := tok.Claims([]byte(config.PrestConf.JWTKey), &claims); err != nil {
+				http.Error(rw, err.Error(), http.StatusUnauthorized)
+				return
+			}
+
+			// pass user_info to the next handler
+			ctx := r.Context()
+			ctx = context.WithValue(ctx, "user_info", claims.UserInfo)
+			r = r.WithContext(ctx)
 		}
 
 		// if auth isn't enabled
@@ -108,34 +91,6 @@ func AccessControl() negroni.Handler {
 
 // JwtMiddleware check if actual request have JWT
 func JwtMiddleware(key string, algo string) negroni.Handler {
-	issuerURL, err := url.Parse("https://127.0.0.1/")
-	if err != nil {
-		log.Fatalf("Failed to parse the issuer url: %v", err)
-	}
-	provider := jwks.NewCachingProvider(issuerURL, 5*time.Minute)
-	customClaims := &auth.Claims{}
-	jwtValidator, err := validator.New(
-		provider.KeyFunc,
-		validator.SignatureAlgorithm(algo),
-		issuerURL.String(),
-		[]string{key},
-		validator.WithCustomClaims(customClaims),
-		validator.WithAllowedClockSkew(time.Minute),
-	)
-	if err != nil {
-		log.Fatalf("Failed to set up the jwt validator")
-	}
-
-	errorHandler := func(w http.ResponseWriter, r *http.Request, err error) {
-		fmt.Println("error:", err)
-		log.Printf("Encountered error while validating JWT: %v", err)
-	}
-
-	middleware := jwtmiddleware.New(
-		jwtValidator.ValidateToken,
-		jwtmiddleware.WithErrorHandler(errorHandler),
-	)
-
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		match, err := MatchURL(r.URL.String())
 		if err != nil {
@@ -147,17 +102,21 @@ func JwtMiddleware(key string, algo string) negroni.Handler {
 			return
 		}
 
-		encounteredError := true
-		var handler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
-			encounteredError = false
-			user := r.Context().Value(jwtmiddleware.ContextKey{})
-			fmt.Println("user:", user)
+		// extract authorization token
+		token := strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1)
+		if token == "" {
+			err := fmt.Errorf("authorization token is empty")
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
 		}
-		middleware.CheckJWT(handler).ServeHTTP(w, r)
-
-		if encounteredError {
-			log.Println("check jwt error")
-			w.Write([]byte(`{"error": "Failed to validate JWT"}`))
+		tok, err := jwt.ParseSigned(token)
+		if err != nil {
+			http.Error(w, fmt.Errorf("Failed JWT token parser").Error(), http.StatusUnauthorized)
+			return
+		}
+		out := auth.Claims{}
+		if err := tok.Claims([]byte(key), &out); err != nil {
+			http.Error(w, fmt.Errorf("Failed JWT claims validade").Error(), http.StatusUnauthorized)
 			return
 		}
 		next(w, r)

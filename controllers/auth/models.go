@@ -1,9 +1,7 @@
 package auth
 
 import (
-	"context"
-
-	jwt "github.com/form3tech-oss/jwt-go"
+	"gopkg.in/square/go-jose.v2/jwt"
 )
 
 // User logged in user representation
@@ -16,16 +14,7 @@ type User struct {
 
 // Claims JWT
 type Claims struct {
-	UserInfo User
-	jwt.StandardClaims
-}
-
-// Validate does nothing for this example.
-func (c *Claims) Validate(ctx context.Context) error {
-	/**
-	if c.ShouldReject {
-		return errors.New("should reject was set to true")
-	}
-	*/
-	return nil
+	UserInfo  User
+	Expiry    *jwt.NumericDate `json:"exp,omitempty"`
+	NotBefore *jwt.NumericDate `json:"nbf,omitempty"`
 }

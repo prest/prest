@@ -6,13 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
-	jwt "github.com/form3tech-oss/jwt-go"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/controllers/auth"
+	"gopkg.in/square/go-jose.v2"
+	jwt "gopkg.in/square/go-jose.v2/jwt"
 )
 
 // Response representation
@@ -40,18 +40,24 @@ type Login struct {
 // Token for user
 func Token(u auth.User) (t string, err error) {
 	// add expiry time in configuration (in minute format, so we support the maximum need)
-	expireToken := time.Now().Add(time.Hour * 6).Unix()
-	claims := auth.Claims{
-		UserInfo: u,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: expireToken,
-			Id:        strconv.Itoa(u.ID),
-			IssuedAt:  time.Now().Unix(),
-			Issuer:    strconv.Itoa(u.ID),
-		},
+	expireToken := time.Now().Add(time.Hour * 6)
+
+	// TODO: JWT any Algorithm support
+	sig, err := jose.NewSigner(
+		jose.SigningKey{
+			Algorithm: jose.HS256,
+			Key:       []byte(config.PrestConf.JWTKey)},
+		(&jose.SignerOptions{}).WithType("JWT"))
+	if err != nil {
+		return
 	}
-	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return tok.SignedString([]byte(config.PrestConf.JWTKey))
+
+	cl := auth.Claims{
+		UserInfo:  u,
+		NotBefore: jwt.NewNumericDate(expireToken),
+		Expiry:    jwt.NewNumericDate(expireToken),
+	}
+	return jwt.Signed(sig).Claims(cl).CompactSerialize()
 }
 
 const unf = "user not found"
