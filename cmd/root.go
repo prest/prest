@@ -17,7 +17,7 @@ import (
 var RootCmd = &cobra.Command{
 	Use:   "prestd",
 	Short: "Serve a RESTful API from any PostgreSQL database",
-	Long:  `pREST (PostgreSQL REST), simplify and accelerate development, ⚡ instant, realtime, high-performance on any Postgres application, existing or new`,
+	Long:  `prestd (PostgreSQL REST), simplify and accelerate development, ⚡ instant, realtime, high-performance on any Postgres application, existing or new`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if config.PrestConf.Adapter == nil {
 			nlog.Warningln("adapter is not set. Using the default (postgres)")
@@ -52,15 +52,15 @@ func Execute() {
 // startServer starts the server
 func startServer() {
 	http.Handle(config.PrestConf.ContextPath, router.Routes())
-	l := log.New(os.Stdout, "[prest] ", 0)
+	l := log.New(os.Stdout, "[prestd] ", 0)
 
 	if !config.PrestConf.AccessConf.Restrict {
-		nlog.Warningln("You are running pREST in public mode.")
+		nlog.Warningln("You are running prestd in public mode.")
 	}
 
 	if config.PrestConf.Debug {
 		nlog.DebugMode = config.PrestConf.Debug
-		nlog.Warningln("You are running pREST in debug mode.")
+		nlog.Warningln("You are running prestd in debug mode.")
 	}
 	addr := fmt.Sprintf("%s:%d", config.PrestConf.HTTPHost, config.PrestConf.HTTPPort)
 	l.Printf("listening on %s and serving on %s", addr, config.PrestConf.ContextPath)
