@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/nuveo/log"
 	"github.com/prest/prest/adapters"
+	"github.com/prest/prest/cache"
 	"github.com/prest/prest/config"
 )
 
@@ -223,6 +224,9 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
+
+	// Cache arrow if enabled
+	cache.BuntSet(r.URL.String(), string(sc.Bytes()))
 	w.Write(sc.Bytes())
 }
 
