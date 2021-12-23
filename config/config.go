@@ -69,14 +69,16 @@ type Prest struct {
 	HTTPSMode        bool
 	HTTPSCert        string
 	HTTPSKey         string
+	Cache            bool
+	CacheTime        int
+	CacheStoragePath string
+	CacheSufixFile   string
 }
 
 var (
 	// PrestConf config variable
-	PrestConf *Prest
-
-	configFile string
-
+	PrestConf   *Prest
+	configFile  string
 	defaultFile = "./prest.toml"
 )
 
@@ -117,6 +119,10 @@ func viperCfg() {
 	viper.SetDefault("https.mode", false)
 	viper.SetDefault("https.cert", "/etc/certs/cert.crt")
 	viper.SetDefault("https.key", "/etc/certs/cert.key")
+	viper.SetDefault("cache", false)
+	viper.SetDefault("cache.time", 10)
+	viper.SetDefault("cache.storagepath", "./")
+	viper.SetDefault("cache.sufixfile", ".cache.prestd.db")
 	hDir, err := homedir.Dir()
 	if err != nil {
 		log.Fatal(err)
@@ -197,6 +203,10 @@ func Parse(cfg *Prest) (err error) {
 	cfg.HTTPSMode = viper.GetBool("https.mode")
 	cfg.HTTPSCert = viper.GetString("https.cert")
 	cfg.HTTPSKey = viper.GetString("https.key")
+	cfg.Cache = viper.GetBool("cache")
+	cfg.CacheTime = viper.GetInt("cache.time")
+	cfg.CacheStoragePath = viper.GetString("cache.storagepath")
+	cfg.CacheSufixFile = viper.GetString("cache.sufixfile")
 	var t []TablesConf
 	err = viper.UnmarshalKey("access.tables", &t)
 	if err != nil {
