@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/prest/prest/cache"
 	"github.com/prest/prest/config"
 )
 
@@ -48,6 +49,10 @@ func ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Method == "GET" {
+		// Cache arrow if enabled
+		cache.BuntSet(r.URL.String(), string(result))
+	}
 	w.Write(result)
 }
 
