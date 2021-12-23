@@ -1133,7 +1133,7 @@ func BenchmarkPrepare(b *testing.B) {
 }
 
 func TestDisableCache(t *testing.T) {
-	os.Setenv("PREST_CACHE_ENABLE", "false")
+	os.Setenv("PREST_PG_CACHE", "false")
 	config.Load()
 	Load()
 	ClearStmt()
@@ -1145,7 +1145,7 @@ func TestDisableCache(t *testing.T) {
 	if ok {
 		t.Error("has query in cache")
 	}
-	os.Setenv("PREST_CACHE_ENABLE", "true")
+	os.Setenv("PREST_PG_CACHE", "true")
 }
 
 func TestParseBatchInsertRequest(t *testing.T) {
