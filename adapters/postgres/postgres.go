@@ -57,7 +57,7 @@ type Stmt struct {
 
 // Prepare statement
 func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt, err error) {
-	if config.PrestConf.EnableCache && (tx == nil) {
+	if config.PrestConf.PGCache && (tx == nil) {
 		var exists bool
 		s.Mtx.Lock()
 		statement, exists = s.PrepareMap[SQL]
@@ -76,7 +76,7 @@ func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt
 	if err != nil {
 		return
 	}
-	if config.PrestConf.EnableCache && (tx == nil) {
+	if config.PrestConf.PGCache && (tx == nil) {
 		s.Mtx.Lock()
 		s.PrepareMap[SQL] = statement
 		s.Mtx.Unlock()
