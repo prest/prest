@@ -22,6 +22,10 @@ Via environment variables or via toml file.
 | PREST\_PG_DATABASE | | |
 | PREST\_PG_PORT | 5432 | |
 | PREST\_PG_URL or **DATABASE\_URL** | | cloud factor, _when declaring this variable all the previous connection fields are overwritten_ |
+| PREST\_CACHE | false | embded cache system |
+| PREST\_CACHE_TIME | 10 | TTL in minute (time to live) |
+| PREST\_CACHE_STORAGEPATH | ./ | path where the cache file will be created |
+| PREST\_CACHE_SUFIXFILE | .cache.prestd.db | |
 | PREST\_JWT_KEY | | |
 | PREST\_JWT_ALGO | HS256 | |
 | PREST\_JWT_WHITELIST | [/auth] | |
