@@ -39,6 +39,7 @@ func GetRouter() *mux.Router {
 	router.PathPrefix("/").Handler(negroni.New(
 		middlewares.AccessControl(),
 		middlewares.AuthMiddleware(),
+		middlewares.CacheMiddleware(),
 		negroni.Wrap(crudRoutes),
 	))
 
