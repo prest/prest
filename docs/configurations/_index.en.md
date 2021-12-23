@@ -25,7 +25,7 @@ Via environment variables or via toml file.
 | PREST\_CACHE | false | embedded cache system |
 | PREST\_CACHE_TIME | 10 | TTL in minute (time to live) |
 | PREST\_CACHE_STORAGEPATH | ./ | path where the cache file will be created |
-| PREST\_CACHE_SUFIXFILE | .cache.prestd.db | |
+| PREST\_CACHE_SUFIXFILE | .cache.prestd.db | suffix of the name of the file that is created |
 | PREST\_JWT_KEY | | |
 | PREST\_JWT_ALGO | HS256 | |
 | PREST\_JWT_WHITELIST | [/auth] | |
@@ -44,7 +44,7 @@ Via environment variables or via toml file.
 
 Optionally the pREST can be configured by TOML file.
 
-You can follow this sample and create your own `prest.toml` file and put this on the same folder that you run `prest` command.
+You can follow this sample and create your own `prest.toml` file and put this on the same folder that you run `prestd` command.
 
 ```toml
 migrations = "./migrations"
