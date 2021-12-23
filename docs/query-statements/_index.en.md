@@ -73,13 +73,11 @@ GET /DATABASE/SCHEMA/TABLE?FIELD=$eq.VALUE
 
 | Query String                             | Description                                                                                                                                                    |
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `_page=` | the api return is paged, this parameter sets which page you want |
-| `_page_size=` | delimits the number of records per page, default `10` |
+| `_page={set page number}` | the api return is paged, this parameter sets which page you want |
+| `_page_size={number to return by pages}` | delimits the number of records per page, default `10` |
 | `?_select={field name 1},{fiel name 2}`  | Limit fields list on result - sql ansii standard                                                                                                               |
 | `?_count={field name}`                   | Count per field - `*` representation all fields                                                                                                                |
 | `?_renderer=xml`                         | Set API render syntax, supported: `json` (default), `xml`                                                                                                            |
-| `?page={set page number}`                | Navigation on return pages with large volume of data                                                                                                           |
-| `?page_size={number to return by pages}` | 10 is default number                                                                                                                                           |
 | `?_distinct=true`                         | `DISTINCT` clause with SELECT                                                                                                                                  |
 | `?_order={FIELD}`                        | `ORDER BY` in sql query. For `DESC` order, use the prefix `-`. For *multiple* orders, the fields are separated by comma `fieldname01,-fieldname02,fieldname03` |
 | `?_groupby={FIELD}`                      | `GROUP BY` in sql query, The grouper is more complicated, a topic has been created to describe how to use                                                      |
