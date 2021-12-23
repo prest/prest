@@ -25,7 +25,7 @@ func BuntConnect(key string) (db *buntdb.DB, err error) {
 	return
 }
 
-// BuntGet downloads the data - if any - that is in the buntdb (embeded cache database)
+// BuntGet downloads the data - if any - that is in the buntdb (embedded cache database)
 // using response.URL as key
 func BuntGet(key string, w http.ResponseWriter) (cacheExist bool) {
 	db, _ := BuntConnect(key)
@@ -43,7 +43,7 @@ func BuntGet(key string, w http.ResponseWriter) (cacheExist bool) {
 	return
 }
 
-// BuntSet sets data as cache in buntdb (embeded cache database)
+// BuntSet sets data as cache in buntdb (embedded cache database)
 // using response.URL as key
 func BuntSet(key, value string) {
 	if !config.PrestConf.Cache {
