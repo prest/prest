@@ -18,8 +18,8 @@ For each URI (with its parameters) a _BuntDB_ database cache file is created.
 
 > It was implemented this way with performance in mind - there is no point in putting in a caching system that is slower than the SQL query in PostgreSQL.
 
-**key:** URI with all string query parameters
-**value:** json return (http body)
+- **key:** URI with all string query parameters
+- **value:** json return (http body)
 
 ### Because BuntDB
 
