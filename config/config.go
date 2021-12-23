@@ -53,6 +53,7 @@ type Prest struct {
 	PGMaxIdleConn    int
 	PGMAxOpenConn    int
 	PGConnTimeout    int
+	PGCache          bool
 	JWTKey           string
 	JWTAlgo          string
 	JWTWhiteList     []string
@@ -65,7 +66,6 @@ type Prest struct {
 	Adapter          adapters.Adapter
 	EnableDefaultJWT bool
 	SingleDB         bool
-	EnableCache      bool
 	HTTPSMode        bool
 	HTTPSCert        string
 	HTTPSKey         string
@@ -107,12 +107,12 @@ func viperCfg() {
 	viper.SetDefault("pg.maxopenconn", 10)
 	viper.SetDefault("pg.conntimeout", 10)
 	viper.SetDefault("pg.single", true)
+	viper.SetDefault("pg.cache", true)
 	viper.SetDefault("debug", false)
 	viper.SetDefault("jwt.default", true)
 	viper.SetDefault("jwt.algo", "HS256")
 	viper.SetDefault("jwt.whitelist", []string{"/auth"})
 	viper.SetDefault("cors.allowheaders", []string{"*"})
-	viper.SetDefault("cache.enable", true)
 	viper.SetDefault("context", "/")
 	viper.SetDefault("https.mode", false)
 	viper.SetDefault("https.cert", "/etc/certs/cert.crt")
@@ -180,6 +180,7 @@ func Parse(cfg *Prest) (err error) {
 	cfg.PGMaxIdleConn = viper.GetInt("pg.maxidleconn")
 	cfg.PGMAxOpenConn = viper.GetInt("pg.maxopenconn")
 	cfg.PGConnTimeout = viper.GetInt("pg.conntimeout")
+	cfg.PGCache = viper.GetBool("pg.cache")
 	cfg.SingleDB = viper.GetBool("pg.single")
 	cfg.JWTKey = viper.GetString("jwt.key")
 	cfg.JWTAlgo = viper.GetString("jwt.algo")
@@ -192,7 +193,6 @@ func Parse(cfg *Prest) (err error) {
 	cfg.CORSAllowHeaders = viper.GetStringSlice("cors.allowheaders")
 	cfg.Debug = viper.GetBool("debug")
 	cfg.EnableDefaultJWT = viper.GetBool("jwt.default")
-	cfg.EnableCache = viper.GetBool("cache.enable")
 	cfg.ContextPath = viper.GetString("context")
 	cfg.HTTPSMode = viper.GetBool("https.mode")
 	cfg.HTTPSCert = viper.GetString("https.cert")
