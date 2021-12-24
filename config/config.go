@@ -21,6 +21,13 @@ type TablesConf struct {
 	Fields      []string `mapstructure:"fields"`
 }
 
+// CacheEndpoint specific configuration for specific endpoint
+type CacheEndpoint struct {
+	Enable    bool
+	Endpoint  string
+	CacheTime int
+}
+
 // AccessConf informations
 type AccessConf struct {
 	Restrict    bool
@@ -73,6 +80,7 @@ type Prest struct {
 	CacheTime        int
 	CacheStoragePath string
 	CacheSufixFile   string
+	CacheEndpoints   []CacheEndpoint
 }
 
 var (
@@ -207,12 +215,18 @@ func Parse(cfg *Prest) (err error) {
 	cfg.CacheTime = viper.GetInt("cache.time")
 	cfg.CacheStoragePath = viper.GetString("cache.storagepath")
 	cfg.CacheSufixFile = viper.GetString("cache.sufixfile")
-	var t []TablesConf
-	err = viper.UnmarshalKey("access.tables", &t)
+	var cacheendpoints []CacheEndpoint
+	err = viper.UnmarshalKey("cache.endpoints", &cacheendpoints)
 	if err != nil {
 		return
 	}
-	cfg.AccessConf.Tables = t
+	cfg.CacheEndpoints = cacheendpoints
+	var tablesconf []TablesConf
+	err = viper.UnmarshalKey("access.tables", &tablesconf)
+	if err != nil {
+		return
+	}
+	cfg.AccessConf.Tables = tablesconf
 	return
 }
 
