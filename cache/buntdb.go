@@ -2,6 +2,7 @@ package cache
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/avelino/slugify"
@@ -26,7 +27,7 @@ func BuntConnect(key string) (db *buntdb.DB, err error) {
 }
 
 // BuntGet downloads the data - if any - that is in the buntdb (embedded cache database)
-// using response.URL as key
+// using response.URL.String() as key
 func BuntGet(key string, w http.ResponseWriter) (cacheExist bool) {
 	db, _ := BuntConnect(key)
 	cacheExist = false
@@ -45,9 +46,11 @@ func BuntGet(key string, w http.ResponseWriter) (cacheExist bool) {
 }
 
 // BuntSet sets data as cache in buntdb (embedded cache database)
-// using response.URL as key
+// using response.URL.String() as key
 func BuntSet(key, value string) {
-	if !config.PrestConf.Cache {
+	uri := strings.Split(key, "?")
+	cacheRule, cacheTime := CacheEndpointRules(uri[0])
+	if !config.PrestConf.Cache || !cacheRule {
 		return
 	}
 	db, _ := BuntConnect(key)
@@ -55,7 +58,7 @@ func BuntSet(key, value string) {
 		tx.Set(key, value,
 			&buntdb.SetOptions{
 				Expires: true,
-				TTL:     time.Duration(config.PrestConf.CacheTime) * time.Minute})
+				TTL:     time.Duration(cacheTime) * time.Minute})
 		return nil
 	})
 	defer db.Close()
