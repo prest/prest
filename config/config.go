@@ -21,6 +21,7 @@ type TablesConf struct {
 	Fields      []string `mapstructure:"fields"`
 }
 
+// Cache structure for storing cache system configuration
 type Cache struct {
 	Enabled     bool            `mapstructure:"enabled"`
 	Time        int             `mapstructure:"time"`
