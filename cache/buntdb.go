@@ -49,7 +49,7 @@ func BuntGet(key string, w http.ResponseWriter) (cacheExist bool) {
 // using response.URL.String() as key
 func BuntSet(key, value string) {
 	uri := strings.Split(key, "?")
-	cacheRule, cacheTime := CacheEndpointRules(uri[0])
+	cacheRule, cacheTime := EndpointRules(uri[0])
 	if !config.PrestConf.Cache || !cacheRule {
 		return
 	}

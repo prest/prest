@@ -7,11 +7,11 @@ import (
 	"github.com/prest/prest/config"
 )
 
-func TestCacheEndpointRulesEnable(t *testing.T) {
+func TestEndpointRulesEnable(t *testing.T) {
 	os.Setenv("PREST_CONF", "./testdata/prest.toml")
 	os.Setenv("PREST_CACHE", "true")
 	config.Load()
-	cacheEnable, cacheTime := CacheEndpointRules("/prest/public/test")
+	cacheEnable, cacheTime := EndpointRules("/prest/public/test")
 	if !cacheEnable {
 		t.Errorf("expected cache endpoint rule true, but got %t", cacheEnable)
 	}
@@ -20,10 +20,10 @@ func TestCacheEndpointRulesEnable(t *testing.T) {
 	}
 }
 
-func TestCacheEndpointRulesDisable(t *testing.T) {
+func TestEndpointRulesDisable(t *testing.T) {
 	os.Setenv("PREST_CACHE", "true")
 	config.Load()
-	cacheEnable, _ := CacheEndpointRules("/prest/public/test-disable")
+	cacheEnable, _ := EndpointRules("/prest/public/test-disable")
 	if cacheEnable {
 		t.Errorf("expected cache endpoint rule false, but got %t", cacheEnable)
 	}
