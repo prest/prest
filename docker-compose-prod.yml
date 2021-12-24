@@ -28,6 +28,7 @@ services:
       - PREST_PG_DATABASE=prest
       - PREST_PG_PORT=5432
       - PREST_SSL_MODE=disable
+      - PREST_CACHE=true
     depends_on:
       postgres:
         condition: service_healthy
