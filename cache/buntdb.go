@@ -18,10 +18,10 @@ func BuntConnect(key string) (db *buntdb.DB, err error) {
 		// it is saved in a file on the file system
 		key = slugify.Slugify(key)
 	}
-	db, err = buntdb.Open(config.PrestConf.CacheStoragePath + key + config.PrestConf.CacheSufixFile)
+	db, err = buntdb.Open(config.PrestConf.Cache.StoragePath + key + config.PrestConf.Cache.SufixFile)
 	if err != nil {
 		// in case of an error to open buntdb the prestd cache is forced to false
-		config.PrestConf.Cache = false
+		config.PrestConf.Cache.Enabled = false
 	}
 	return
 }
@@ -50,7 +50,7 @@ func BuntGet(key string, w http.ResponseWriter) (cacheExist bool) {
 func BuntSet(key, value string) {
 	uri := strings.Split(key, "?")
 	cacheRule, cacheTime := EndpointRules(uri[0])
-	if !config.PrestConf.Cache || !cacheRule {
+	if !config.PrestConf.Cache.Enabled || !cacheRule {
 		return
 	}
 	db, _ := BuntConnect(key)

@@ -28,7 +28,7 @@ func initApp() {
 		if config.PrestConf.CORSAllowOrigin != nil {
 			MiddlewareStack = append(MiddlewareStack, Cors(config.PrestConf.CORSAllowOrigin, config.PrestConf.CORSAllowHeaders))
 		}
-		if config.PrestConf.Cache != false {
+		if config.PrestConf.Cache.Enabled != false {
 			MiddlewareStack = append(MiddlewareStack, CacheMiddleware())
 		}
 	}
