@@ -27,7 +27,7 @@ services:
       - PREST_PG_PORT=5432
       - PREST_JWT_DEFAULT=false # remove if need jwt
       - PREST_SSL_MODE=disable
-      - PREST_CACHE=true
+      - PREST_CACHE_ENABLED=true
     depends_on:
       postgres:
         condition: service_healthy

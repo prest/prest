@@ -21,11 +21,19 @@ type TablesConf struct {
 	Fields      []string `mapstructure:"fields"`
 }
 
+type Cache struct {
+	Enabled     bool            `mapstructure:"enabled"`
+	Time        int             `mapstructure:"time"`
+	StoragePath string          `mapstructure:"storagepath"`
+	SufixFile   string          `mapstructure:"sufixfile"`
+	Endpoints   []CacheEndpoint `mapstructure:"endpoints"`
+}
+
 // CacheEndpoint specific configuration for specific endpoint
 type CacheEndpoint struct {
-	Enable    bool
-	Endpoint  string
-	CacheTime int
+	Enabled  bool   `mapstructure:"enabled"`
+	Endpoint string `mapstructure:"endpoint"`
+	Time     int    `mapstructure:"time"`
 }
 
 // AccessConf informations
@@ -76,11 +84,7 @@ type Prest struct {
 	HTTPSMode        bool
 	HTTPSCert        string
 	HTTPSKey         string
-	Cache            bool
-	CacheTime        int
-	CacheStoragePath string
-	CacheSufixFile   string
-	CacheEndpoints   []CacheEndpoint
+	Cache            Cache
 }
 
 var (
@@ -127,7 +131,7 @@ func viperCfg() {
 	viper.SetDefault("https.mode", false)
 	viper.SetDefault("https.cert", "/etc/certs/cert.crt")
 	viper.SetDefault("https.key", "/etc/certs/cert.key")
-	viper.SetDefault("cache", false)
+	viper.SetDefault("cache.enabled", false)
 	viper.SetDefault("cache.time", 10)
 	viper.SetDefault("cache.storagepath", "./")
 	viper.SetDefault("cache.sufixfile", ".cache.prestd.db")
@@ -211,16 +215,16 @@ func Parse(cfg *Prest) (err error) {
 	cfg.HTTPSMode = viper.GetBool("https.mode")
 	cfg.HTTPSCert = viper.GetString("https.cert")
 	cfg.HTTPSKey = viper.GetString("https.key")
-	cfg.Cache = viper.GetBool("cache")
-	cfg.CacheTime = viper.GetInt("cache.time")
-	cfg.CacheStoragePath = viper.GetString("cache.storagepath")
-	cfg.CacheSufixFile = viper.GetString("cache.sufixfile")
+	cfg.Cache.Enabled = viper.GetBool("cache.enabled")
+	cfg.Cache.Time = viper.GetInt("cache.time")
+	cfg.Cache.StoragePath = viper.GetString("cache.storagepath")
+	cfg.Cache.SufixFile = viper.GetString("cache.sufixfile")
 	var cacheendpoints []CacheEndpoint
 	err = viper.UnmarshalKey("cache.endpoints", &cacheendpoints)
 	if err != nil {
 		return
 	}
-	cfg.CacheEndpoints = cacheendpoints
+	cfg.Cache.Endpoints = cacheendpoints
 	var tablesconf []TablesConf
 	err = viper.UnmarshalKey("access.tables", &tablesconf)
 	if err != nil {
