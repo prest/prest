@@ -1,19 +1,16 @@
 package cache
 
 import (
-	"log"
-
 	"github.com/prest/prest/config"
 )
 
-// CacheEndpointRules ...
-func CacheEndpointRules(uri string) (cacheEnable bool, time int) {
+// EndpointRules checks if there is a custom caching rule for the endpoint
+func EndpointRules(uri string) (cacheEnable bool, time int) {
 	cacheEnable = false
 	if config.PrestConf.Cache && len(config.PrestConf.CacheEndpoints) == 0 {
 		cacheEnable = true
 	}
 	time = config.PrestConf.CacheTime
-	log.Println("cache len:", cacheEnable, config.PrestConf.CacheEndpoints, len(config.PrestConf.CacheEndpoints))
 	for _, endpoint := range config.PrestConf.CacheEndpoints {
 		if endpoint.Endpoint == uri {
 			cacheEnable = true
