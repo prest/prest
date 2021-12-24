@@ -7,10 +7,20 @@ import (
 	"github.com/prest/prest/config"
 )
 
+func init() {
+	os.Setenv("PREST_CONF", "./testdata/prest.toml")
+	os.Setenv("PREST_CACHE_ENABLED", "true")
+	config.Load()
+}
 func TestEndpointRulesEnable(t *testing.T) {
 	os.Setenv("PREST_CONF", "./testdata/prest.toml")
-	os.Setenv("PREST_CACHE", "true")
+	os.Setenv("PREST_CACHE_ENABLED", "true")
 	config.Load()
+	config.PrestConf.Cache.Endpoints = append(config.PrestConf.Cache.Endpoints, config.CacheEndpoint{
+		Time:     5,
+		Endpoint: "/prest/public/test",
+		Enabled:  true,
+	})
 	cacheEnable, cacheTime := EndpointRules("/prest/public/test")
 	if !cacheEnable {
 		t.Errorf("expected cache endpoint rule true, but got %t", cacheEnable)
@@ -20,11 +30,26 @@ func TestEndpointRulesEnable(t *testing.T) {
 	}
 }
 
-func TestEndpointRulesDisable(t *testing.T) {
-	os.Setenv("PREST_CACHE", "true")
-	config.Load()
-	cacheEnable, _ := EndpointRules("/prest/public/test-disable")
+func TestEndpointRulesNotExist(t *testing.T) {
+	cacheEnable, _ := EndpointRules("/prest/public/test-notexist")
 	if cacheEnable {
 		t.Errorf("expected cache endpoint rule false, but got %t", cacheEnable)
+	}
+}
+
+func TestEndpointRulesDisable(t *testing.T) {
+	os.Setenv("PREST_CONF", "./testdata/prest.toml")
+	os.Setenv("PREST_CACHE_ENABLED", "true")
+	config.Load()
+	config.PrestConf.Cache.Endpoints = append(config.PrestConf.Cache.Endpoints, config.CacheEndpoint{
+		Endpoint: "/prest/public/test-disable",
+		Enabled:  false,
+	})
+	cacheEnable, cacheTime := EndpointRules("/prest/public/test-diable")
+	if cacheEnable {
+		t.Errorf("expected cache endpoint rule false, but got %t", cacheEnable)
+	}
+	if cacheTime == 10 {
+		t.Errorf("expected cache endpoint time is nil, but got %d", cacheTime)
 	}
 }
