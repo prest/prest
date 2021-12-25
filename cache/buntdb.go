@@ -2,6 +2,7 @@ package cache
 
 import (
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -18,7 +19,7 @@ func BuntConnect(key string) (db *buntdb.DB, err error) {
 		// it is saved in a file on the file system
 		key = slugify.Slugify(key)
 	}
-	db, err = buntdb.Open(config.PrestConf.Cache.StoragePath + key + config.PrestConf.Cache.SufixFile)
+	db, err = buntdb.Open(filepath.Join(config.PrestConf.Cache.StoragePath, key, config.PrestConf.Cache.SufixFile))
 	if err != nil {
 		// in case of an error to open buntdb the prestd cache is forced to false
 		config.PrestConf.Cache.Enabled = false
