@@ -11,6 +11,7 @@ weight: 1
 Simplify and accelerate development, instant, realtime, high-performance on any **Postgres** application, **existing or new**.
 
 It started with **PostgreSQL** and we'll stop there, we want to provide quality support on Postgres features. At first we wanted to embrace the world by supporting other databases, but as time went by (gaining experience) we realized that we would not do a good job in even one database.
+
 > For this reason we decided to focus on Postgres, if you want to use it with another database (besides postgres) we recommend you to look at [postgres_fdw](https://www.postgresql.org/docs/9.5/postgres-fdw.html).
 
 <a href="https://www.producthunt.com/posts/prest?utm_source=badge-featured&utm_medium=badge&utm_souce=badge-prest" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=303506&theme=light" alt="pREST - instant, realtime, high-performance on PostgreSQL | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
