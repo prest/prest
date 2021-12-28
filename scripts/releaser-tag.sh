@@ -15,4 +15,5 @@ git checkout . && \
     docker push prest/prest:v1 && \
     docker push prest/prest:$DOCKER_TAG && \
     git checkout . && \
+    rm cache/test && \
     curl -sL https://git.io/goreleaser | bash
