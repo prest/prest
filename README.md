@@ -12,7 +12,7 @@ _p_**REST** (**P**_ostgreSQL_ **REST**), simplify and accelerate development, in
 
 > PostgreSQL version 9.4 or higher
 
-[CLA assistant](https://cla-assistant.io/prest/prest)
+Contributor License Agreement - [![CLA assistant](https://cla-assistant.io/readme/badge/prest/prest)](https://cla-assistant.io/prest/prest)
 
 <a href="https://www.producthunt.com/posts/prest?utm_source=badge-featured&utm_medium=badge&utm_souce=badge-prest" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=303506&theme=light" alt="pREST - instant, realtime, high-performance on PostgreSQL | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
 
