@@ -8,8 +8,6 @@ cd docbuild && \
     git fetch && \
     git pull --force && \
     rm -rf content && \
-    cp -rf ../docs content && \
-    rm -rf static/content && \
-    mv content/assets static/content && \
+    cp -rf ../docs content/prestd && \
     hugo "$@"
 
