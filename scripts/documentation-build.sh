@@ -7,7 +7,6 @@
 cd docbuild && \
     git fetch && \
     git pull --force && \
-    rm -rf content && \
     cp -rf ../docs content/prestd && \
     hugo "$@"
 
