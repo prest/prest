@@ -123,4 +123,4 @@ HTTP verb `POST`, you can insert many rows at once using batch endpoint `/batch/
 
 The default insert method is using multiple tuple values like `insert into table values ("value", 123), ("other", 456)`. Returns inserted rows.
 
-You can change this behaviour using the header `Prest-Batch-Method` with value `copy`. It's useful for large insertions, but the return is empty.
+You can change this behavior using the header `Prest-Batch-Method` with value `copy`. It's useful for large insertions, but the return is empty.
