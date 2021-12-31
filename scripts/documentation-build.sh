@@ -5,6 +5,7 @@
 
 # Update local template repo and build documentation
 cd docbuild && \
+	git submodule update --rebase --remote && \
     cp -rf ../docs content/prestd && \
     hugo "$@"
 
