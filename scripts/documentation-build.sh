@@ -5,8 +5,6 @@
 
 # Update local template repo and build documentation
 cd docbuild && \
-    git fetch && \
-    git pull --force && \
     cp -rf ../docs content/prestd && \
     hugo "$@"
 
