@@ -7,6 +7,9 @@ psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -d $PREST_PG_DATABASE
 echo "\n\n.:: GOLANG: DOWNLOAD MODULES"
 go mod download
 
+echo "\n\n.:: PRESTD: PLUGIN BUILD"
+go build -o ./lib/hello.so -buildmode=plugin ./lib/src/hello.go;
+
 echo "\n\n.:: PRESTD: MIGRATE UP"
 go run ./cmd/prestd/main.go migrate up
 
