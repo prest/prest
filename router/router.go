@@ -34,7 +34,7 @@ func GetRouter() *mux.Router {
 	// if it is windows it should not register the plugin endpoint
 	// we use go plugin system that does not support windows
 	// https://github.com/golang/go/issues/19282
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS != "windows" {
 		router.HandleFunc("/_PLUGIN/{file}/{func}", plugins.HandlerPlugin)
 	}
 	router.HandleFunc("/{database}/{schema}", controllers.GetTablesByDatabaseAndSchema).Methods("GET")
