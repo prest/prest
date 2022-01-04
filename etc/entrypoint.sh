@@ -29,6 +29,9 @@ do
     sleep 1;
 done
 
+# prestd/plugin build
+sh ./plugin/go-build.sh
+
 sleep 5;
 echo "[prestd] Ready hosting $PREST_PG_HOST to port $PREST_PG_PORT !"
 /bin/prestd $@
