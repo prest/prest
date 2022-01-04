@@ -28,9 +28,10 @@ data/
 .idea
 *.iml
 
-# pREST
+# prestd
 prest-*
 prestd
+main
 /dist
 bin/
 prest.toml
