@@ -86,6 +86,7 @@ type Prest struct {
 	HTTPSCert        string
 	HTTPSKey         string
 	Cache            Cache
+	PluginPath       string
 }
 
 var (
@@ -136,6 +137,7 @@ func viperCfg() {
 	viper.SetDefault("cache.time", 10)
 	viper.SetDefault("cache.storagepath", "./")
 	viper.SetDefault("cache.sufixfile", ".cache.prestd.db")
+	viper.SetDefault("pluginpath", "./lib")
 	hDir, err := homedir.Dir()
 	if err != nil {
 		log.Fatal(err)
@@ -216,6 +218,7 @@ func Parse(cfg *Prest) (err error) {
 	cfg.HTTPSMode = viper.GetBool("https.mode")
 	cfg.HTTPSCert = viper.GetString("https.cert")
 	cfg.HTTPSKey = viper.GetString("https.key")
+	cfg.PluginPath = viper.GetString("pluginpath")
 	cfg.Cache.Enabled = viper.GetBool("cache.enabled")
 	cfg.Cache.Time = viper.GetInt("cache.time")
 	cfg.Cache.StoragePath = viper.GetString("cache.storagepath")
