@@ -1,11 +1,17 @@
+// all plugins must have their package name as `main`
+// each plugin is isolated at compile time
 package main
 
 import (
 	"fmt"
 )
 
-var HttpVars map[string]string
-var URLQuery map[string][]string
+var (
+	// HttpVars route variables for the current request
+	HttpVars map[string]string
+	// URLQuery parses RawQuery and returns the corresponding values
+	URLQuery map[string][]string
+)
 
 // GETHelloHandler plugin
 // function is invoked via [go language plugin](https://pkg.go.dev/plugin),
