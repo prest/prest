@@ -5,6 +5,6 @@ for fullpath in ./lib/src/*.go; do
 		filename=${fullpath##*/}
 		filename_outext=${filename%%.*}
 		echo "go build: $filename_outext plugin..." && \
-			go build -o lib/${filename_outext}.so -buildmode=plugin lib/src/${filename_outext}.go;
+			go build -o ./lib/${filename_outext}.so -buildmode=plugin ./lib/src/${filename_outext}.go;
     fi
 done
