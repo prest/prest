@@ -9,11 +9,12 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/cache"
+	"github.com/prest/prest/config"
 )
 
 // loadFunc private func to load and exec OS Library
 func loadFunc(fileName, funcName string, r *http.Request) (ret string, err error) {
-	p, err := plugin.Open(filepath.Join("./lib", fmt.Sprintf("%s.so", fileName)))
+	p, err := plugin.Open(filepath.Join(config.PrestConf.PluginPath, fmt.Sprintf("%s.so", fileName)))
 	if err != nil {
 		return
 	}
