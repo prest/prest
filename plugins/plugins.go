@@ -18,9 +18,9 @@ func loadFunc(fileName, funcName string, r *http.Request) (ret string, err error
 		return
 	}
 
-	// HttpVars populate
+	// HTTPVars populate
 	vars := mux.Vars(r)
-	httpVars, err := p.Lookup("HttpVars")
+	httpVars, err := p.Lookup("HTTPVars")
 	if err != nil {
 		return
 	}

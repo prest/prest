@@ -8,7 +8,7 @@ import (
 
 var (
 	// HttpVars route variables for the current request
-	HttpVars map[string]string
+	HTTPVars map[string]string
 	// URLQuery parses RawQuery and returns the corresponding values
 	URLQuery map[string][]string
 )
@@ -21,7 +21,7 @@ var (
 // BUILD:
 // go build -o lib/hello.so -buildmode=plugin lib/src/hello.go
 func GETHelloHandler() (ret string) {
-	for k, v := range HttpVars {
+	for k, v := range HTTPVars {
 		ret += fmt.Sprintf("http var: %s / %s\n", k, v)
 	}
 	for k, v := range URLQuery {
