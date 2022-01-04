@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	// HttpVars route variables for the current request
+	// HTTPVars route variables for the current request
 	HTTPVars map[string]string
 	// URLQuery parses RawQuery and returns the corresponding values
 	URLQuery map[string][]string
