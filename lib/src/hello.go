@@ -32,10 +32,10 @@ func GETHelloHandler() (ret string) {
 		URLQuery: URLQuery,
 		MSG:      "Hello plugin caller!",
 	}
-	respJson, err := json.Marshal(resp)
+	respJSON, err := json.Marshal(resp)
 	if err != nil {
 		return
 	}
-	ret = string(respJson)
+	ret = string(respJSON)
 	return
 }
