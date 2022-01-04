@@ -1,6 +1,8 @@
 package router
 
 import (
+	"runtime"
+
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/controllers"
@@ -29,7 +31,12 @@ func GetRouter() *mux.Router {
 	router.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
 	router.HandleFunc("/tables", controllers.GetTables).Methods("GET")
 	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", controllers.ExecuteFromScripts)
-	router.HandleFunc("/_PLUGIN/{file}/{func}", plugins.HandlerPlugin)
+	// if it is windows it should not register the plugin endpoint
+	// we use go plugin system that does not support windows
+	// https://github.com/golang/go/issues/19282
+	if runtime.GOOS == "windows" {
+		router.HandleFunc("/_PLUGIN/{file}/{func}", plugins.HandlerPlugin)
+	}
 	router.HandleFunc("/{database}/{schema}", controllers.GetTablesByDatabaseAndSchema).Methods("GET")
 	router.HandleFunc("/show/{database}/{schema}/{table}", controllers.ShowTable).Methods("GET")
 	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
