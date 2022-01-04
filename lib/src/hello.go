@@ -3,7 +3,7 @@
 package main
 
 import (
-	"fmt"
+	"encoding/json"
 )
 
 var (
@@ -13,6 +13,12 @@ var (
 	URLQuery map[string][]string
 )
 
+type Response struct {
+	HTTPVars map[string]string   `json:"http_vars"`
+	URLQuery map[string][]string `json:"url_query"`
+	MSG      string              `json:"msg"`
+}
+
 // GETHelloHandler plugin
 // function is invoked via [go language plugin](https://pkg.go.dev/plugin),
 // it is not possible to pass parameters, that's why there are global
@@ -21,12 +27,15 @@ var (
 // BUILD:
 // go build -o lib/hello.so -buildmode=plugin lib/src/hello.go
 func GETHelloHandler() (ret string) {
-	for k, v := range HTTPVars {
-		ret += fmt.Sprintf("http var: %s / %s\n", k, v)
+	resp := Response{
+		HTTPVars: HTTPVars,
+		URLQuery: URLQuery,
+		MSG:      "Hello plugin caller!",
 	}
-	for k, v := range URLQuery {
-		ret += fmt.Sprintf("url query: %s / %s\n", k, v)
+	respJson, err := json.Marshal(resp)
+	if err != nil {
+		return
 	}
-	ret += "Hello plugin caller!"
+	ret = string(respJson)
 	return
 }
