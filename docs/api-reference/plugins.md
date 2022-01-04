@@ -10,7 +10,7 @@ We use the [plugin system of the Go language](https://pkg.go.dev/plugin) to load
 
 The plugin endpoint has the following default: `/_PLUGIN/{file}/{func}`
 
-When starting the _**prestd**_ server and there is a plugin in the `./lib` folder they are automatically compiled (generating `.so`) and loaded when accessing their respective endpoint for the first time.
+When starting the _**prestd**_ server and there is a plugin in the `./lib` folder they are automatically compiled and loaded when accessing their respective endpoint for the first time.
 
 ## Naming patterns
 
@@ -31,7 +31,7 @@ When talking about a compiled _library_ we have no way of identifying its functi
 
 **function name:** `{HTTP Method}{Function Name}Handler`
 
-- `{HTTP Method}`: The HTTP method that the function will be called for
+- `{HTTP Method}`: The HTTP method that the function will be called for (in upper case letters)
 - `{Function Name}`: The name of the function that will be called
 - `Handler`: The suffix of the function name - it is always `Handler`
 
