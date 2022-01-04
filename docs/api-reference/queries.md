@@ -1,7 +1,7 @@
 ---
 title: "Custom Queries"
 date: 2017-08-30T19:06:24-03:00
-weight: 13
+weight: 6
 ---
 
 If need perform an advanced SQL, you can write some scripts SQL and access them by REST. These scripts are templates where you can pass by URL, values to them.
