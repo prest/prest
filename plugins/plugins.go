@@ -46,6 +46,7 @@ func loadFunc(fileName, funcName string, r *http.Request) (ret string, err error
 	return
 }
 
+// HandlerPlugin responsible for processing the `.so` function via http protocol
 func HandlerPlugin(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	fileName := vars["file"]
