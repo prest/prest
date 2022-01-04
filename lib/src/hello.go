@@ -13,6 +13,7 @@ var (
 	URLQuery map[string][]string
 )
 
+// Response return structure of the get method
 type Response struct {
 	HTTPVars map[string]string   `json:"http_vars"`
 	URLQuery map[string][]string `json:"url_query"`
