@@ -1,6 +1,5 @@
 #!/bin/sh
 
-
 if [ "$DATABASE_URL" ];
 then
     ## Parse DATABASE URL

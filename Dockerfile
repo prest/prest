@@ -6,7 +6,8 @@ ENV GOOS linux
 ENV CGO_ENABLED 1
 RUN go mod vendor && \
     go build -ldflags "-s -w" -o prestd cmd/prestd/main.go && \
-    apt-get update && apt-get install --no-install-recommends -yq netcat
+    apt-get update && apt-get install --no-install-recommends -yq netcat && \
+	sh etc/plugin/go-build.sh
 
 # Use Distroless Docker Images
 # tag "debug" because we need a shell (busybox)
@@ -15,6 +16,7 @@ COPY --from=builder /bin/nc /bin/nc
 COPY --from=builder /workspace/prestd /bin/prestd
 COPY --from=builder --chown=nonroot:nonroot /workspace/etc/prest.toml /app/prest.toml
 COPY --from=builder --chown=nonroot:nonroot /workspace/etc/entrypoint.sh /app/entrypoint.sh
+COPY --from=builder --chown=nonroot:nonroot /workspace/lib /app/lib
 USER nonroot:nonroot
 WORKDIR /app
 ENTRYPOINT ["sh", "/app/entrypoint.sh"]
