@@ -30,7 +30,9 @@ do
 done
 
 # prestd/plugin build
-sh ./plugin/go-build.sh
+echo "[prestd] Plugin/build: starting..."
+./plugin/go-build.sh
+echo "[prestd] Plugin/build: ending"
 
 sleep 5;
 echo "[prestd] Ready hosting $PREST_PG_HOST to port $PREST_PG_PORT !"
