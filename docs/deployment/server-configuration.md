@@ -38,6 +38,7 @@ The _**prestd**_ configuration is via an _environment variable_ or _toml_ file.
 | PREST\_SSL_CERT | | |
 | PREST\_SSL_KEY | | |
 | PREST\_SSL_ROOTCERT | | |
+| PREST\_PLUGINPATH | ./lib | path to plugin storage `.so`  |
 
 ## TOML
 
