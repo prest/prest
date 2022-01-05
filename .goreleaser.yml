@@ -34,9 +34,11 @@ checksum:
   name_template: '{{ .ProjectName }}_checksums.txt'
 changelog:
   sort: asc
+  use: github
   filters:
     exclude:
     - '^test:'
+    - (?i)typo
     - Merge pull request
     - Merge branch
     - go mod tidy
