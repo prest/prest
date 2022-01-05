@@ -12,6 +12,15 @@ The plugin endpoint has the following default: `/_PLUGIN/{file}/{func}`
 
 When starting the _**prestd**_ server and there is a plugin in the `./lib` folder they are automatically compiled and loaded when accessing their respective endpoint for the first time.
 
+**Change where the libraries will be:**
+`PREST_PLUGINPATH` is the name of the _environment variable_ that has this purpose, by default it comes with the value `./lib`.
+
+or via `toml`:
+
+```
+pluginpath = ./lib
+```
+
 ## Naming patterns
 
 The plugin endpoint (`/_PLUGIN/{file}/{func}`) receives two parameters:
