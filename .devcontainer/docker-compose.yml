@@ -1,0 +1,47 @@
+version: "3"
+services:
+
+  prestd:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspace:cached
+    links:
+      - "postgres:postgres"
+    environment:
+      - PREST_DEBUG=true # remove comment for enable DEBUG mode (disable JWT)
+      - PREST_PG_HOST=postgres
+      - PREST_PG_USER=prest
+      - PREST_PG_PASS=prest
+      - PREST_PG_DATABASE=prest
+      - PREST_PG_PORT=5432
+      - PREST_JWT_DEFAULT=false # remove if need jwt
+      - PREST_SSL_MODE=disable
+      - PREST_CACHE_ENABLED=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    network_mode: service:postgres
+    ports:
+      - "3000:3000"
+
+  postgres:
+    image: postgres
+    restart: unless-stopped
+    volumes:
+      - "postgres_data:/var/lib/postgresql/data"
+    environment:
+      - POSTGRES_USER=prest
+      - POSTGRES_DB=prest
+      - POSTGRES_PASSWORD=prest
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-U", "prest"]
+      interval: 30s
+      retries: 3
+
+# Persist database information after your VM shuts down (just these two lines!)
+volumes:
+  postgres_data:

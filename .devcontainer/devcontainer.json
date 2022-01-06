@@ -1,0 +1,36 @@
+{
+	"name": "prestd",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "prestd",
+	"workspaceFolder": "/project-name",
+	"forwardPorts": [3000],
+	"settings": {
+		"sqltools.connections": [
+			{
+				"name": "Container database",
+				"driver": "PostgreSQL",
+				"previewLimit": 50,
+				"server": "localhost",
+				"port": 5432,
+				"database": "postgres",
+				"username": "postgres",
+				"password": "postgres"
+			}
+		],
+		"files.eol": "\n",
+		"files.insertFinalNewline": true,
+		"files.trimFinalNewlines": true,
+		"files.trimTrailingWhitespace": true,
+		"editor.formatOnSave": true,
+		"editor.codeActionsOnSave": {
+			"source.organizeImports": true
+		}
+	},
+	"extensions": [
+		"dbaeumer.vscode-eslint",
+		"mtxr.sqltools",
+		"mtxr.sqltools-driver-pg",
+		"wix.vscode-import-cost",
+		"esbenp.prettier-vscode"
+	]
+}
