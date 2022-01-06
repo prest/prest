@@ -2,8 +2,25 @@
 	"name": "prestd",
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "prestd",
+	"runServices": [
+		"prestd",
+		"postgres"
+	],
+	"shutdownAction": "stopCompose",
+	"postCreateCommand": ["go mod vendor"],
 	"workspaceFolder": "/workspace",
 	"forwardPorts": [3000],
+	"extensions": [
+		"golang.go",
+		// "mtxr.sqltools",
+		// "mtxr.sqltools-driver-pg",
+		"ms-azuretools.vscode-docker",
+		"esbenp.prettier-vscode",
+		"editorconfig.editorconfig",
+		"jinliming2.vscode-go-template",
+		"yzhang.markdown-all-in-one",
+		"redhat.vscode-yaml"
+	],
 	"settings": {
 		"sqltools.connections": [
 			{
@@ -24,16 +41,53 @@
 		"editor.formatOnSave": true,
 		"editor.codeActionsOnSave": {
 			"source.organizeImports": true
-		}
-	},
-	"extensions": [
-		"golang.go",
-		// "mtxr.sqltools",
-		// "mtxr.sqltools-driver-pg",
-		"esbenp.prettier-vscode",
-		"editorconfig.editorconfig",
-		"jinliming2.vscode-go-template",
-		"yzhang.markdown-all-in-one",
-		"redhat.vscode-yaml"
-	]
+		},
+		"remote.extensionKind": {
+            "ms-azuretools.vscode-docker": "workspace"
+        },
+		"editor.codeActionsOnSaveTimeout": 3000,
+        "go.useLanguageServer": true,
+        "[go]": {
+            "editor.formatOnSave": true,
+            "editor.codeActionsOnSave": {
+                "source.organizeImports": true,
+            }
+        },
+        "[go.mod]": {
+            "editor.formatOnSave": true,
+            "editor.codeActionsOnSave": {
+                "source.organizeImports": true,
+            },
+        },
+        "gopls": {
+            "usePlaceholders": false,
+            "staticcheck": true
+        },
+        "go.autocompleteUnimportedPackages": true,
+        "go.gotoSymbol.includeImports": true,
+        "go.gotoSymbol.includeGoroot": true,
+        "go.lintTool": "golangci-lint",
+        "go.buildOnSave": "workspace",
+        "go.lintOnSave": "workspace",
+        "go.vetOnSave": "workspace",
+        "editor.formatOnSave": true,
+        "go.toolsEnvVars": {
+            "GOFLAGS": "-tags=",
+            "CGO_ENABLED": 1 // for the race detector
+        },
+        "gopls.env": {
+            "GOFLAGS": "-tags="
+        },
+        "go.testEnvVars": {
+            "": "",
+        },
+        "go.testFlags": [
+            "-v",
+            "-race"
+        ],
+        "go.testTimeout": "10s",
+        "go.coverOnSingleTest": true,
+        "go.coverOnSingleTestFile": true,
+        "go.coverOnTestPackage": true
+	}
 }
