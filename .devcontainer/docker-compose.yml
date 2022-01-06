@@ -23,8 +23,6 @@ services:
       postgres:
         condition: service_healthy
     network_mode: service:postgres
-    ports:
-      - "3000:3000"
 
   postgres:
     image: postgres

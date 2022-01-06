@@ -2,7 +2,7 @@
 	"name": "prestd",
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "prestd",
-	"workspaceFolder": "/project-name",
+	"workspaceFolder": "/workspace",
 	"forwardPorts": [3000],
 	"settings": {
 		"sqltools.connections": [
@@ -12,9 +12,9 @@
 				"previewLimit": 50,
 				"server": "localhost",
 				"port": 5432,
-				"database": "postgres",
-				"username": "postgres",
-				"password": "postgres"
+				"database": "prest",
+				"username": "prest",
+				"password": "prest"
 			}
 		],
 		"files.eol": "\n",
@@ -31,6 +31,7 @@
 		"mtxr.sqltools",
 		"mtxr.sqltools-driver-pg",
 		"wix.vscode-import-cost",
-		"esbenp.prettier-vscode"
+		"esbenp.prettier-vscode",
+		"ms-vscode-remote.vscode-remote-extensionpack"
 	]
 }
