@@ -7,13 +7,13 @@
 		"postgres"
 	],
 	"shutdownAction": "stopCompose",
-	"postCreateCommand": ["go mod vendor"],
+	// "postCreateCommand": ["go mod vendor"],
 	"workspaceFolder": "/workspace",
-	"forwardPorts": [3000],
+	"forwardPorts": [3000, 5432],
 	"extensions": [
 		"golang.go",
-		// "mtxr.sqltools",
-		// "mtxr.sqltools-driver-pg",
+		"mtxr.sqltools",
+		"mtxr.sqltools-driver-pg",
 		"ms-azuretools.vscode-docker",
 		"esbenp.prettier-vscode",
 		"editorconfig.editorconfig",
