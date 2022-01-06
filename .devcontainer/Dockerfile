@@ -13,5 +13,3 @@ ENV CGO_ENABLED 1
 RUN apt-get update && \
 	apt-get install --no-install-recommends -yq netcat && \
 	apt-get autoremove -y && apt-get clean -y
-
-ENTRYPOINT ["sh", "/tmp/entrypoint.sh"]
