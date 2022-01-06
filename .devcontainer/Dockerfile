@@ -15,6 +15,6 @@ RUN go mod vendor && \
 	ln -s /workspace/prestd /bin/prestd && \
     apt-get update && \
 	apt-get install --no-install-recommends -yq netcat && \
-	&& apt-get autoremove -y && apt-get clean -y
+	apt-get autoremove -y && apt-get clean -y
 
 ENTRYPOINT ["sh", "/app/entrypoint.sh"]
