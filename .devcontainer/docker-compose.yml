@@ -22,6 +22,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # Runs app on the same network as the database container, allows "forwardPorts" in devcontainer.json function.
     network_mode: service:postgres
 
   postgres:
@@ -33,8 +34,6 @@ services:
       - POSTGRES_USER=prest
       - POSTGRES_DB=prest
       - POSTGRES_PASSWORD=prest
-    ports:
-      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready", "-U", "prest"]
       interval: 30s

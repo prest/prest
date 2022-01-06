@@ -27,11 +27,13 @@
 		}
 	},
 	"extensions": [
-		"dbaeumer.vscode-eslint",
-		"mtxr.sqltools",
-		"mtxr.sqltools-driver-pg",
-		"wix.vscode-import-cost",
+		"golang.go",
+		// "mtxr.sqltools",
+		// "mtxr.sqltools-driver-pg",
 		"esbenp.prettier-vscode",
-		"ms-vscode-remote.vscode-remote-extensionpack"
+		"editorconfig.editorconfig",
+		"jinliming2.vscode-go-template",
+		"yzhang.markdown-all-in-one",
+		"redhat.vscode-yaml"
 	]
 }
