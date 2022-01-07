@@ -21,6 +21,10 @@
 		"yzhang.markdown-all-in-one",
 		"redhat.vscode-yaml"
 	],
+	"features": {
+		"github-cli": "latest",
+		"go": "latest",
+	},
 	"settings": {
 		"sqltools.connections": [
 			{
