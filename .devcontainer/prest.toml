@@ -1,0 +1,4 @@
+[auth]
+table = "prest_users"
+username = "username"
+password = "password"
