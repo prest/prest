@@ -66,17 +66,17 @@ Codespaces run on a variety of VM-based compute options hosted by GitHub.com, wh
 
 1. Access the address to create prestd codespace [here](https://github.com/prest/prest/codespaces)
 2. Select the **branch** (we recommend using `main`) and click **create codespace**
-  ![codespace: screenshot of select branch and create codespace button to click](/assets/setup/development-guide/codespace-step-2.png)
+  ![codespace: screenshot of select branch and create codespace button to click](/prestd-assets/setup/development-guide/codespace-step-2.png)
 3. wait for the setup... it may take a few minutes
-  ![codespace: screenshot of codespace build process](/assets/setup/development-guide/codespace-step-3.png)
+  ![codespace: screenshot of codespace build process](/prestd-assets/setup/development-guide/codespace-step-3.png)
 
 **Done** (_#congrats_), you have a development environment for `prestd` with **PostgreSQL** (configured and integrated with `prestd`), vscode plugins (for golang), database viewer, etc.
 
-![codespace: screenshot of prestd development environment using codespace](/assets/setup/development-guide/codespace-step-4.png)
+![codespace: screenshot of prestd development environment using codespace](/prestd-assets/setup/development-guide/codespace-step-4.png)
 
 **Database viewer:**
 
-![codespace: screenshot of prestd development environment using codespace](/assets/setup/development-guide/codespace-database-viewer.png)
+![codespace: screenshot of prestd development environment using codespace](/prestd-assets/setup/development-guide/codespace-database-viewer.png)
 
 ## Next step in development
 
