@@ -7,6 +7,6 @@
 cd docbuild && \
 	git submodule update --rebase --remote && \
     cp -rf ../docs content/prestd && \
-	cp -rf content/prestd/assets static/prestd-assets && \
+	cp -rf ../docs/assets static/prestd-assets && \
     hugo "$@"
 
