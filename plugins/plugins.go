@@ -12,11 +12,31 @@ import (
 	"github.com/prest/prest/config"
 )
 
+// LoadedPlugin structure for controlling the loaded plugin
+type LoadedPlugin struct {
+	Loaded bool
+	Plugin *plugin.Plugin
+}
+
+// loadedFunc global variable to control plugins loaded, blocking duplicate loading
+var loadedFunc = map[string]LoadedPlugin{}
+
 // loadFunc private func to load and exec OS Library
 func loadFunc(fileName, funcName string, r *http.Request) (ret string, err error) {
-	p, err := plugin.Open(filepath.Join(config.PrestConf.PluginPath, fmt.Sprintf("%s.so", fileName)))
-	if err != nil {
-		return
+	libPath := filepath.Join(config.PrestConf.PluginPath, fmt.Sprintf("%s.so", fileName))
+	loadedPlugin := loadedFunc[libPath]
+	p := loadedPlugin.Plugin
+	// plugin will be loaded only on the first call to the endpoint
+	if !loadedPlugin.Loaded {
+		p, err = plugin.Open(libPath)
+		if err != nil {
+			return
+		}
+		loadedPlugin = LoadedPlugin{
+			Loaded: true,
+			Plugin: p,
+		}
+		loadedFunc[libPath] = loadedPlugin
 	}
 
 	// HTTPVars populate
@@ -43,7 +63,7 @@ func loadFunc(fileName, funcName string, r *http.Request) (ret string, err error
 	}
 	// Exec (call) function name, return string
 	ret = f.(func() string)()
-	fmt.Println("ret plugin:", ret)
+	log.Println("ret plugin:", ret)
 	return
 }
 
