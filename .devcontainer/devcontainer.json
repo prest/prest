@@ -19,7 +19,9 @@
 		"editorconfig.editorconfig",
 		"jinliming2.vscode-go-template",
 		"yzhang.markdown-all-in-one",
-		"redhat.vscode-yaml"
+		"davidanson.vscode-markdownlint",
+		"redhat.vscode-yaml",
+		"bungcip.better-toml"
 	],
 	"features": {
 		"github-cli": "latest",
