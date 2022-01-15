@@ -8,6 +8,26 @@ description: >
 
 _**prestd**_ allows you to do some advanced queries, but with some limitations in order not to "dirty" the URL and parameters.
 
+## Filter range
+
+It is common to have to query a database in a range of time, e.g:
+
+> I need all records that were created from `1997-11-03-03` to `1997-12-05`.
+
+`created_at` field is a timestamp field, so you can use the `$gte` and `$lte` operators to filter by date range.
+
+```sql
+SELECT * FROM {SCHEMA}.{TABLE} WHERE created_at >= '1997-11-03-03' AND created_at <= '1997-12-05'
+```
+
+**How to do it in prestd?**
+
+```http
+GET /{DATABASE}/{SCHEMA}/{TABLE}?created_at='$gte.1997-11-03'&created_at='$lte.1997-12-0'
+```
+
+There are other types of operators, see them all [here](/prestd/api-reference/parameters/#operators).
+
 ## JOIN
 
 HTTP verb `GET`, allows you to join tables, with 1 level of depth - unfortunately the syntax is not so friendly so we limited it to 1 level only.
