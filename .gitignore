@@ -25,6 +25,7 @@ _testmain.go
 *.prof
 
 data/
+cache/test
 .idea
 *.iml
 
