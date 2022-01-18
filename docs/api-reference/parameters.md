@@ -18,6 +18,7 @@ HTTP method `GET`
 | `_page_size={number to return by pages}` | delimits the number of records per page, default `10` |
 | `?_select={field name 1},{fiel name 2}` | Limit fields list on result - sql ansii standard |
 | `?_count={field name}` | Count per field - `*` representation all fields |
+| `?_count_first=true` | Query string `_count` returns a list, passing this parameter will return the first record as a non-list object, **by default** this parameter is set to `false` (_return list non-object_) |
 | `?_renderer=xml` | Set API render syntax, supported: `json` (by default), `xml` |
 | `?_distinct=true` | `DISTINCT` clause with SELECT |
 | `?_order={FIELD}` | `ORDER BY` in sql query. For `DESC` order, use the prefix `-`. For *multiple* orders, the fields are separated by comma `fieldname01,-fieldname02,fieldname03` |

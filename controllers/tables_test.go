@@ -117,6 +117,8 @@ func TestSelectFromTables(t *testing.T) {
 		{"execute select in a view without custom where clause", "/prest-test/public/view_test", "GET", http.StatusOK, ""},
 		{"execute select in a view with count all fields *", "/prest-test/public/view_test?_count=*", "GET", http.StatusOK, ""},
 		{"execute select in a view with count function", "/prest-test/public/view_test?_count=player", "GET", http.StatusOK, ""},
+		{"execute select in a view with count function check return list", "/prest-test/public/view_test?_count=player", "GET", http.StatusOK, "[{\"count\":1}]"},
+		{"execute select in a view with count function check return object (_count_first)", "/prest-test/public/view_test?_count=player&_count_first=true", "GET", http.StatusOK, "{\"count\":1}"},
 		{"execute select in a view with order function", "/prest-test/public/view_test?_order=-player", "GET", http.StatusOK, ""},
 		{"execute select in a view with custom where clause", "/prest-test/public/view_test?player=$eq.gopher", "GET", http.StatusOK, ""},
 		{"execute select in a view with custom join clause", "/prest-test/public/view_test?_join=inner:test2:test2.name:eq:view_test.player", "GET", http.StatusOK, ""},
