@@ -139,6 +139,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 	query := config.PrestConf.Adapter.SelectSQL(selectStr, database, schema, table)
 
+	// sql query formatting if there is a distinct rule
 	distinct, err := config.PrestConf.Adapter.DistinctClause(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform Distinct: %v", err)
@@ -149,12 +150,14 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		query = strings.Replace(query, "SELECT", distinct, 1)
 	}
 
+	// sql query formatting if there is a count rule
 	countQuery, err := config.PrestConf.Adapter.CountByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform CountByRequest: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	// _count_first: query string
 	countFirst := false
 	if countQuery != "" {
 		query = config.PrestConf.Adapter.SelectSQL(countQuery, database, schema, table)
@@ -165,6 +168,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// sql query formatting if there is a join (inner, left, ...) rule
 	joinValues, err := config.PrestConf.Adapter.JoinByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform JoinByRequest: %v", err)
@@ -176,13 +180,13 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		query = fmt.Sprint(query, j)
 	}
 
+	// sql query formatting if there is a where rule
 	requestWhere, values, err := config.PrestConf.Adapter.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	sqlSelect := query
 	if requestWhere != "" {
 		sqlSelect = fmt.Sprint(
@@ -191,11 +195,13 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 			requestWhere)
 	}
 
+	// sql query formatting if there is a groupby rule
 	groupBySQL := config.PrestConf.Adapter.GroupByClause(r)
 	if groupBySQL != "" {
 		sqlSelect = fmt.Sprintf("%s %s", sqlSelect, groupBySQL)
 	}
 
+	// sql query formatting if there is a orderby rule
 	order, err := config.PrestConf.Adapter.OrderByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform OrderByRequest: %v", err)
@@ -206,6 +212,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		sqlSelect = fmt.Sprintf("%s %s", sqlSelect, order)
 	}
 
+	// sql query formatting if there is a paganate rule
 	page, err := config.PrestConf.Adapter.PaginateIfPossible(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform PaginateIfPossible: %v", err)
