@@ -667,10 +667,15 @@ func TestCountFields(t *testing.T) {
 		expectedSQL string
 		testError   bool
 	}{
-		{"Count fields from table", "/prest-test/public/test5?_count=celphone", `SELECT COUNT("celphone") FROM`, false},
+		{"Count fields from table", "/prest-test/public/test5?_count=celphone",
+			`SELECT COUNT("celphone") FROM`, false},
 		{"Count all from table", "/prest-test/public/test5?_count=*", "SELECT COUNT(*) FROM", false},
 		{"Count with empty params", "/prest-test/public/test5?_count=", "", false},
 		{"Count with invalid columns", "/prest-test/public/test5?_count=celphone,0name", "", true},
+		{"Count with `_groupby`", "/prest-test/public/test5?_count=celphone&_groupby=celphone",
+			`SELECT COUNT("celphone") FROM`, false},
+		{"Count with `_groupby` and `_select`", "/prest-test/public/test5?_count=celphone&_groupby=celphone&_select=celphone",
+			`SELECT COUNT("celphone"), celphone FROM`, false},
 	}
 
 	for _, tc := range testCases {
