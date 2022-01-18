@@ -109,6 +109,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 	schema := vars["schema"]
 	table := vars["table"]
+	queries := r.URL.Query()
 
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
@@ -154,8 +155,14 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	countFirst := false
 	if countQuery != "" {
 		query = config.PrestConf.Adapter.SelectSQL(countQuery, database, schema, table)
+		// count returns a list, passing this parameter will return the first
+		// record as a non-list object
+		if queries.Get("_count_first") != "" {
+			countFirst = true
+		}
 	}
 
 	joinValues, err := config.PrestConf.Adapter.JoinByRequest(r)
@@ -185,7 +192,6 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 
 	groupBySQL := config.PrestConf.Adapter.GroupByClause(r)
-
 	if groupBySQL != "" {
 		sqlSelect = fmt.Sprintf("%s %s", sqlSelect, groupBySQL)
 	}
@@ -209,10 +215,10 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	sqlSelect = fmt.Sprint(sqlSelect, " ", page)
 
 	runQuery := config.PrestConf.Adapter.Query
-	if countQuery != "" {
+	// QueryCount returns the first record of the postgresql return as a non-list object
+	if countFirst {
 		runQuery = config.PrestConf.Adapter.QueryCount
 	}
-
 	sc := runQuery(sqlSelect, values...)
 	if err = sc.Err(); err != nil {
 		errorMessage := sc.Err().Error()
