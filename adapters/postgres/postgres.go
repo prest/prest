@@ -573,8 +573,12 @@ func (adapter *Postgres) OrderByRequest(r *http.Request) (values string, err err
 func (adapter *Postgres) CountByRequest(req *http.Request) (countQuery string, err error) {
 	queries := req.URL.Query()
 	countFields := queries.Get("_count")
+	selectFields := queries.Get("_select")
 	if countFields == "" {
 		return
+	}
+	if selectFields != "" {
+		selectFields = fmt.Sprintf(", %s", selectFields)
 	}
 	fields := strings.Split(countFields, ",")
 	for i, field := range fields {
@@ -587,7 +591,7 @@ func (adapter *Postgres) CountByRequest(req *http.Request) (countQuery string, e
 			fields[i] = fmt.Sprintf(`"%s"`, strings.Join(f, `"."`))
 		}
 	}
-	countQuery = fmt.Sprintf("SELECT COUNT(%s) FROM", strings.Join(fields, ","))
+	countQuery = fmt.Sprintf("SELECT COUNT(%s)%s FROM", strings.Join(fields, ","), selectFields)
 	return
 }
 
