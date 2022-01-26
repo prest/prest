@@ -18,7 +18,6 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/nuveo/log"
 	"github.com/prest/prest/adapters"
 	"github.com/prest/prest/adapters/postgres/formatters"
 	"github.com/prest/prest/adapters/postgres/internal/connection"
@@ -26,6 +25,7 @@ import (
 	"github.com/prest/prest/adapters/scanner"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/template"
+	"github.com/structy/log"
 )
 
 //Postgres adapter postgresql
