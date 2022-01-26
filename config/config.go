@@ -78,6 +78,7 @@ type Prest struct {
 	AccessConf       AccessConf
 	CORSAllowOrigin  []string
 	CORSAllowHeaders []string
+	CORSAllowMethods []string
 	Debug            bool
 	Adapter          adapters.Adapter
 	EnableDefaultJWT bool
@@ -128,7 +129,8 @@ func viperCfg() {
 	viper.SetDefault("jwt.default", true)
 	viper.SetDefault("jwt.algo", "HS256")
 	viper.SetDefault("jwt.whitelist", []string{"/auth"})
-	viper.SetDefault("cors.allowheaders", []string{"*"})
+	viper.SetDefault("cors.allowheaders", []string{"Content-Type"})
+	viper.SetDefault("cors.allowmethods", []string{"GET"})
 	viper.SetDefault("context", "/")
 	viper.SetDefault("https.mode", false)
 	viper.SetDefault("https.cert", "/etc/certs/cert.crt")
@@ -138,6 +140,7 @@ func viperCfg() {
 	viper.SetDefault("cache.storagepath", "./")
 	viper.SetDefault("cache.sufixfile", ".cache.prestd.db")
 	viper.SetDefault("pluginpath", "./lib")
+
 	hDir, err := homedir.Dir()
 	if err != nil {
 		log.Fatal(err)
@@ -212,6 +215,7 @@ func Parse(cfg *Prest) (err error) {
 	cfg.QueriesPath = viper.GetString("queries.location")
 	cfg.CORSAllowOrigin = viper.GetStringSlice("cors.alloworigin")
 	cfg.CORSAllowHeaders = viper.GetStringSlice("cors.allowheaders")
+	cfg.CORSAllowMethods = viper.GetStringSlice("cors.allowmethods")
 	cfg.Debug = viper.GetBool("debug")
 	cfg.EnableDefaultJWT = viper.GetBool("jwt.default")
 	cfg.ContextPath = viper.GetString("context")
