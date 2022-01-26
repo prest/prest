@@ -1,7 +1,6 @@
 FROM registry.hub.docker.com/library/golang:1.17 as builder
 WORKDIR /workspace
 COPY . .
-ENV GOARCH amd64
 ENV GOOS linux
 ENV CGO_ENABLED 1
 RUN go mod vendor && \
