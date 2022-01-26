@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/structy/log"
 	"github.com/prest/prest/adapters"
 	"github.com/prest/prest/cache"
 	"github.com/prest/prest/config"
+	"github.com/structy/log"
 )
 
 // GetTables list all (or filter) tables
