@@ -330,6 +330,10 @@ func TestCors(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected HTTP status code 200, but got %v", resp.StatusCode)
 	}
+
+	if resp.Header.Get(headerAllowHeaders) != "Content-Type" {
+		t.Errorf("expected HTTP header allow 'Content-Type', but got %v", resp.Header.Get(headerAllowHeaders))
+	}
 	var body []byte
 	body, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
