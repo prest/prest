@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"os"
 
-	nlog "github.com/nuveo/log"
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/router"
 	"github.com/spf13/cobra"
+	slog "github.com/structy/log"
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -20,7 +20,7 @@ var RootCmd = &cobra.Command{
 	Long:  `prestd (PostgreSQL REST), simplify and accelerate development, ⚡ instant, realtime, high-performance on any Postgres application, existing or new`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if config.PrestConf.Adapter == nil {
-			nlog.Warningln("adapter is not set. Using the default (postgres)")
+			slog.Warningln("adapter is not set. Using the default (postgres)")
 			postgres.Load()
 		}
 		startServer()
@@ -55,12 +55,12 @@ func startServer() {
 	l := log.New(os.Stdout, "[prestd] ", 0)
 
 	if !config.PrestConf.AccessConf.Restrict {
-		nlog.Warningln("You are running prestd in public mode.")
+		slog.Warningln("You are running prestd in public mode.")
 	}
 
 	if config.PrestConf.Debug {
-		nlog.DebugMode = config.PrestConf.Debug
-		nlog.Warningln("You are running prestd in debug mode.")
+		slog.DebugMode = config.PrestConf.Debug
+		slog.Warningln("You are running prestd in debug mode.")
 	}
 	addr := fmt.Sprintf("%s:%d", config.PrestConf.HTTPHost, config.PrestConf.HTTPPort)
 	l.Printf("listening on %s and serving on %s", addr, config.PrestConf.ContextPath)

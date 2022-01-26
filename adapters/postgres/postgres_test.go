@@ -11,13 +11,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nuveo/log"
 	"github.com/prest/prest/adapters"
 	"github.com/prest/prest/adapters/postgres/internal/connection"
 	"github.com/prest/prest/adapters/postgres/statements"
 	"github.com/prest/prest/adapters/scanner"
 	"github.com/prest/prest/config"
 	"github.com/stretchr/testify/require"
+	"github.com/structy/log"
 )
 
 func init() {

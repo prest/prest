@@ -6,7 +6,7 @@ import (
 	"errors"
 	"reflect"
 
-	"github.com/nuveo/log"
+	"github.com/structy/log"
 )
 
 var (
