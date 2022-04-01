@@ -46,7 +46,7 @@ curl -i -X POST http://127.0.0.1:3000/auth -H "Content-Type: application/json" -
 curl -i -X GET http://127.0.0.1:3000/prest/public/prest_users -H "Accept: application/json" -H "Authorization: Bearer {TOKEN}"
 ```
 
-Want to contribute to the project and don't know where to start? See our contribution guide [here](https://docs.prestd.com/contribute/).
+Want to contribute to the project and don't know where to start? See our contribution guide [here](https://docs.prestd.com/contribution/).
 
 ## 1-Click Deploy
 
