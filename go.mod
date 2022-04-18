@@ -7,7 +7,7 @@ require (
 	github.com/clbanning/mxj v1.8.4
 	github.com/gorilla/mux v1.8.0
 	github.com/gosidekick/migration/v3 v3.0.0
-	github.com/jmoiron/sqlx v1.3.4
+	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.5
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/spf13/cobra v1.4.0
