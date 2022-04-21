@@ -39,8 +39,14 @@ func TestParse(t *testing.T) {
 	if cfg.HTTPPort != 6000 {
 		t.Errorf("expected port: 6000, got: %d", cfg.HTTPPort)
 	}
-	if cfg.PGDatabase != "prest" {
-		t.Errorf("expected database: prest, got: %s", cfg.PGDatabase)
+
+	var expected string
+	expected = os.Getenv("PREST_PG_DATABASE")
+	if len(expected) == 0 {
+		expected = "prest"
+	}
+	if cfg.PGDatabase != expected {
+		t.Errorf("expected database: %s, got: %s", expected, cfg.PGDatabase)
 	}
 
 	os.Unsetenv("PREST_CONF")
