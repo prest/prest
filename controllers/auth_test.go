@@ -36,7 +36,7 @@ func Test_basicPasswordCheck(t *testing.T) {
 func Test_getSelectQuery(t *testing.T) {
 	config.Load()
 
-	expected := "SELECT * FROM prest_users WHERE username=$1 AND password=$2 LIMIT 1"
+	expected := "SELECT * FROM public.prest_users WHERE username=$1 AND password=$2 LIMIT 1"
 	query := getSelectQuery()
 
 	if query != expected {
