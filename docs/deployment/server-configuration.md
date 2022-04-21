@@ -31,6 +31,7 @@ The _**prestd**_ configuration is via an _environment variable_ or _toml_ file.
 | PREST\_AUTH_ENABLED | false | |
 | PREST\_AUTH_ENCRYPT | MD5 | |
 | PREST\_AUTH_TYPE | body | |
+| PREST\_AUTH_SCHEMA | public | |
 | PREST\_AUTH_TABLE | prest_users | |
 | PREST\_AUTH_USERNAME | username | |
 | PREST\_AUTH_PASSWORD | password | |

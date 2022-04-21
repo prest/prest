@@ -131,7 +131,7 @@ func basicPasswordCheck(user, password string) (obj auth.User, err error) {
 
 // getSelectQuery create the query to authenticate the user
 func getSelectQuery() (query string) {
-	query = fmt.Sprintf(`SELECT * FROM %s WHERE %s=$1 AND %s=$2 LIMIT 1`, config.PrestConf.AuthTable, config.PrestConf.AuthUsername, config.PrestConf.AuthPassword)
+	query = fmt.Sprintf(`SELECT * FROM %s.%s WHERE %s=$1 AND %s=$2 LIMIT 1`, config.PrestConf.AuthSchema, config.PrestConf.AuthTable, config.PrestConf.AuthUsername, config.PrestConf.AuthPassword)
 	return
 }
 
