@@ -6,6 +6,7 @@ import (
 )
 
 func TestLoad(t *testing.T) {
+	os.Setenv("PREST_CONF", "../testdata/prest.toml")
 	Load()
 	if len(PrestConf.AccessConf.Tables) < 2 {
 		t.Errorf("expected > 2, got: %d", len(PrestConf.AccessConf.Tables))
@@ -28,6 +29,7 @@ func TestLoad(t *testing.T) {
 }
 
 func TestParse(t *testing.T) {
+	os.Setenv("PREST_CONF", "../testdata/prest.toml")
 	viperCfg()
 	cfg := &Prest{}
 	err := Parse(cfg)
@@ -37,11 +39,12 @@ func TestParse(t *testing.T) {
 	if cfg.HTTPPort != 6000 {
 		t.Errorf("expected port: 6000, got: %d", cfg.HTTPPort)
 	}
-	if cfg.PGDatabase != "prest-test" {
+	if cfg.PGDatabase != "prest" {
 		t.Errorf("expected database: prest, got: %s", cfg.PGDatabase)
 	}
 
 	os.Unsetenv("PREST_CONF")
+	os.Unsetenv("PREST_JWT_DEFAULT")
 	os.Setenv("PREST_HTTP_PORT", "4000")
 
 	viperCfg()
@@ -280,7 +283,7 @@ func Test_portFromEnv(t *testing.T) {
 }
 
 func Test_Auth(t *testing.T) {
-	os.Setenv("PREST_CONF", "./testdata/prest.toml")
+	os.Setenv("PREST_CONF", "../testdata/prest.toml")
 
 	viperCfg()
 	cfg := &Prest{}
@@ -291,6 +294,10 @@ func Test_Auth(t *testing.T) {
 
 	if cfg.AuthEnabled != false {
 		t.Errorf("expected auth.enabled to be: false, got: %v", cfg.AuthEnabled)
+	}
+
+	if cfg.AuthSchema != "public" {
+		t.Errorf("expected auth.schema to be: public, got: %s", cfg.AuthSchema)
 	}
 
 	if cfg.AuthTable != "prest_users" {
@@ -311,12 +318,12 @@ func Test_Auth(t *testing.T) {
 
 	metadata := []string{"first_name", "last_name", "last_login"}
 	if len(cfg.AuthMetadata) != len(metadata) {
-		t.Errorf("expected auth.metadata to be: %d, got: %d", len(cfg.AuthMetadata), len(metadata))
+		t.Errorf("expected auth.metadata to be: %d, got: %d", len(metadata), len(cfg.AuthMetadata))
 	}
 
 	for i, v := range cfg.AuthMetadata {
 		if v != metadata[i] {
-			t.Errorf("expected auth.metadata field %d to be: %s, got: %s", i, v, metadata[i])
+			t.Errorf("expected auth.metadata field %d to be: %s, got: %s", i, metadata[i], v)
 		}
 	}
 }
