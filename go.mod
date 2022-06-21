@@ -12,7 +12,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/viper v1.12.0
-	github.com/stretchr/testify v1.7.2
+	github.com/stretchr/testify v1.7.4
 	github.com/structy/log v0.0.0-20220126185905-65895d7017d5
 	github.com/tidwall/buntdb v1.2.9
 	github.com/urfave/negroni v1.0.0
