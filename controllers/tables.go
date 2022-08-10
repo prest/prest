@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -63,6 +64,13 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// set db name on ctx
+	ctx := context.WithValue(r.Context(), "db_name", database)
+
+	// allow setting request query timeout
+	// ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	// defer cancel()
+
 	config.PrestConf.Adapter.SetDatabase(database)
 
 	requestWhere, values, err := config.PrestConf.Adapter.WhereByRequest(r, 3)
@@ -95,7 +103,9 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	valuesAux := make([]interface{}, 0)
 	valuesAux = append(valuesAux, database, schema)
 	valuesAux = append(valuesAux, values...)
-	sc := config.PrestConf.Adapter.Query(sqlSchemaTables, valuesAux...)
+
+	// send ctx to query the proper DB
+	sc := config.PrestConf.Adapter.QueryCtx(ctx, sqlSchemaTables, valuesAux...)
 	if sc.Err() != nil {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return

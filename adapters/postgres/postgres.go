@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -595,7 +596,36 @@ func (adapter *Postgres) CountByRequest(req *http.Request) (countQuery string, e
 	return
 }
 
-// Query process queries
+// Query process queries using the DB name from Context
+//
+// allows setting timeout
+func (adapter *Postgres) QueryCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	// use the db_name that was set on request to avoid runtime collisions
+	db, err := connection.GetFromPool(ctx.Value("db_name").(string))
+	if err != nil {
+		log.Errorln(err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+	SQL = fmt.Sprintf("SELECT json_agg(s) FROM (%s) s", SQL)
+	log.Debugln("generated SQL:", SQL, " parameters: ", params)
+	p, err := Prepare(&db, SQL)
+	if err != nil {
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+	var jsonData []byte
+	err = p.QueryRowContext(ctx, params...).Scan(&jsonData)
+	if len(jsonData) == 0 {
+		jsonData = []byte("[]")
+	}
+	return &scanner.PrestScanner{
+		Error:   err,
+		Buff:    bytes.NewBuffer(jsonData),
+		IsQuery: true,
+	}
+}
+
 func (adapter *Postgres) Query(SQL string, params ...interface{}) (sc adapters.Scanner) {
 	db, err := connection.Get()
 	if err != nil {
