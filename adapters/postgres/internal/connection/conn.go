@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -73,6 +74,14 @@ func Get() (*sqlx.DB, error) {
 	AddDatabaseToPool(GetDatabase(), DB)
 
 	return DB, nil
+}
+
+func GetFromPool(dbName string) (sqlx.DB, error) {
+	DB := getDatabaseFromPool(dbName)
+	if DB == nil {
+		return *DB, errors.New("db not found in pool")
+	}
+	return *DB, nil
 }
 
 // GetPool of connection

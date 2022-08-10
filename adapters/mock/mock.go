@@ -2,6 +2,7 @@ package mock
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
@@ -158,6 +159,13 @@ func (m *Mock) GetTransaction() (tx *sql.Tx, err error) {
 
 // Query mock
 func (m *Mock) Query(SQL string, params ...interface{}) (sc adapters.Scanner) {
+	m.t.Helper()
+	sc = m.perform(true)
+	return
+}
+
+// Query mock
+func (m *Mock) QueryCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	m.t.Helper()
 	sc = m.perform(true)
 	return

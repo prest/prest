@@ -1,6 +1,7 @@
 package adapters
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 )
@@ -51,6 +52,7 @@ type Adapter interface {
 	ParseInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error)
 	ParseScript(scriptPath string, templateData map[string]interface{}) (sqlQuery string, values []interface{}, err error)
 	Query(SQL string, params ...interface{}) (sc Scanner)
+	QueryCtx(ctx context.Context, SQL string, params ...interface{}) (sc Scanner)
 	QueryCount(SQL string, params ...interface{}) (sc Scanner)
 	ReturningByRequest(r *http.Request) (returningSyntax string, err error)
 	SchemaClause(req *http.Request) (query string, hasCount bool)

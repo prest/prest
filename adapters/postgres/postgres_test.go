@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -348,6 +349,41 @@ func TestQuery(t *testing.T) {
 			sc = config.PrestConf.Adapter.Query(tc.sql, "public")
 		} else {
 			sc = config.PrestConf.Adapter.Query(tc.sql)
+		}
+		if sc.Err() != tc.err {
+			t.Errorf("expected no errors, but got %s", sc.Err())
+		}
+
+		if len(sc.Bytes()) < tc.jsonMinLen {
+			t.Errorf("expected valid json response, but got %v", string(sc.Bytes()))
+		}
+	}
+}
+
+func TestQueryCtx(t *testing.T) {
+	var sc adapters.Scanner
+
+	ctx := context.Background()
+
+	var testCases = []struct {
+		description string
+		sql         string
+		param       bool
+		jsonMinLen  int
+		err         error
+	}{
+		{"Query execution", "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name ASC", false, 1, nil},
+		{"Query execution 2", `SELECT number FROM "prest-test"."public"."test2" ORDER BY number ASC`, false, 1, nil},
+		{"Query execution with quotes", `SELECT "number" FROM "prest-test"."public"."test2" ORDER BY "number" ASC`, false, 1, nil},
+		{"Query execution with params", "SELECT schema_name FROM information_schema.schemata WHERE schema_name = $1 ORDER BY schema_name ASC", true, 1, nil},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		if tc.param {
+			sc = config.PrestConf.Adapter.QueryCtx(ctx, tc.sql, "public")
+		} else {
+			sc = config.PrestConf.Adapter.QueryCtx(ctx, tc.sql)
 		}
 		if sc.Err() != tc.err {
 			t.Errorf("expected no errors, but got %s", sc.Err())
