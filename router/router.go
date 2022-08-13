@@ -24,8 +24,15 @@ func GetRouter() *mux.Router {
 	}
 
 	// if auth is enabled
+	// if config.PrestConf.AuthEnabled && config.PrestConf.SingleDB {
+	// /\ disables it
 	if config.PrestConf.AuthEnabled {
+		// shouldnt this be db specific?
+		// or maybe disabled on multiple databases
 		router.HandleFunc("/auth", controllers.Auth).Methods("POST")
+		// this should be tested, bc it can conflict with other routes
+		// multiple DB suggestion:
+		// router.HandleFunc("/{database}/auth", controllers.Auth).Methods("POST")
 	}
 	router.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
 	router.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
