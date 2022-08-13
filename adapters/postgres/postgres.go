@@ -601,7 +601,7 @@ func (adapter *Postgres) CountByRequest(req *http.Request) (countQuery string, e
 // allows setting timeout
 func (adapter *Postgres) QueryCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	// use the db_name that was set on request to avoid runtime collisions
-	db, err := connection.GetFromPool(ctx.Value("db_name").(string))
+	db, err := getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -611,6 +611,7 @@ func (adapter *Postgres) QueryCtx(ctx context.Context, SQL string, params ...int
 	log.Debugln("generated SQL:", SQL, " parameters: ", params)
 	p, err := Prepare(&db, SQL)
 	if err != nil {
+		log.Errorln(err)
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
@@ -1469,4 +1470,15 @@ func (adapter *Postgres) ShowTable(schema, table string) adapters.Scanner {
 // GetDatabase returns the current DB name
 func (adapter *Postgres) GetDatabase() string {
 	return connection.GetDatabase()
+}
+
+// getDBFromCtx tries to get the db from context if not present it will
+// fallback to the current setted db
+func getDBFromCtx(ctx context.Context) (db sqlx.DB, err error) {
+	dbName, ok := ctx.Value("db_name").(string)
+	if ok {
+		return connection.GetFromPool(dbName)
+	}
+	dbPtr, err := connection.Get()
+	return *dbPtr, err
 }
