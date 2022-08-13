@@ -234,6 +234,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	sqlSelect = fmt.Sprint(sqlSelect, " ", page)
 
 	runQuery := config.PrestConf.Adapter.Query
+	// runQuery := config.PrestConf.Adapter.QueryCtx
 	// QueryCount returns the first record of the postgresql return as a non-list object
 	if countFirst {
 		runQuery = config.PrestConf.Adapter.QueryCount
@@ -473,9 +474,14 @@ func ShowTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config.PrestConf.Adapter.SetDatabase(database)
+	// set db name on ctx
+	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
-	sc := config.PrestConf.Adapter.ShowTable(schema, table)
+	// allow setting request query timeout
+	// ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	// defer cancel()
+
+	sc := config.PrestConf.Adapter.ShowTableCtx(ctx, schema, table)
 	if sc.Err() != nil {
 		log.Println(fmt.Sprintf(" There error to excute the query. schema %s error %s", schema, sc.Err()))
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
