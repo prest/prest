@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/adapters"
+	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/cache"
 	"github.com/prest/prest/config"
 	"github.com/structy/log"
@@ -99,7 +100,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	valuesAux = append(valuesAux, values...)
 
 	// set db name on ctx
-	ctx := context.WithValue(r.Context(), "db_name", database)
+	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
 	// allow setting request query timeout
 	// ctx, cancel := context.WithTimeout(ctx, time.Minute)

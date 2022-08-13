@@ -50,6 +50,11 @@ var ErrBodyEmpty = errors.New("body is empty")
 
 var stmts *Stmt
 
+const (
+	_ = iota
+	DBNameKey
+)
+
 // Stmt statement representation
 type Stmt struct {
 	Mtx        *sync.Mutex
@@ -596,7 +601,7 @@ func (adapter *Postgres) CountByRequest(req *http.Request) (countQuery string, e
 	return
 }
 
-// Query process queries using the DB name from Context
+// QueryCtx process queries using the DB name from Context
 //
 // allows setting timeout
 func (adapter *Postgres) QueryCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
@@ -1475,7 +1480,7 @@ func (adapter *Postgres) GetDatabase() string {
 // getDBFromCtx tries to get the db from context if not present it will
 // fallback to the current setted db
 func getDBFromCtx(ctx context.Context) (db sqlx.DB, err error) {
-	dbName, ok := ctx.Value("db_name").(string)
+	dbName, ok := ctx.Value(DBNameKey).(string)
 	if ok {
 		return connection.GetFromPool(dbName)
 	}

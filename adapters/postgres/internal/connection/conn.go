@@ -76,6 +76,8 @@ func Get() (*sqlx.DB, error) {
 	return DB, nil
 }
 
+// GetFromPool tries to get the db name from the db pool
+// will return error if not found
 func GetFromPool(dbName string) (sqlx.DB, error) {
 	DB := getDatabaseFromPool(dbName)
 	if DB == nil {
