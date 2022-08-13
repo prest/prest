@@ -583,6 +583,7 @@ func TestDelete(t *testing.T) {
 
 func TestDeleteCtx(t *testing.T) {
 	ctx := context.Background()
+
 	var testCases = []struct {
 		description string
 		sql         string
@@ -640,6 +641,42 @@ func TestUpdate(t *testing.T) {
 	for _, tc := range testCases {
 		t.Log(tc.description)
 		sc := config.PrestConf.Adapter.Update(tc.sql, tc.values...)
+		if sc.Err() == nil {
+			t.Errorf("expected error, but got: %s", sc.Err())
+		}
+
+		if len(sc.Bytes()) > 0 {
+			t.Errorf("expected empty response body, but got %s", string(sc.Bytes()))
+		}
+	}
+}
+
+func TestUpdateCtx(t *testing.T) {
+	ctx := context.Background()
+
+	var testCases = []struct {
+		description string
+		sql         string
+		values      []interface{}
+	}{
+		{"Update data into an invalid database", `UPDATE "0prest-test"."public"."test3" SET name=$1`, []interface{}{"prest tester"}},
+		{"Update data into an invalid schema", `UPDATE "prest-test"."0public"."test3" SET name=$1`, []interface{}{"prest tester"}},
+		{"Update data into an invalid table", `UPDATE "prest-test"."public"."0test3" SET name=$1`, []interface{}{"prest tester"}},
+	}
+
+	t.Log("Update data into a table")
+	sc := config.PrestConf.Adapter.UpdateCtx(ctx, `UPDATE "prest-test"."public"."test" SET "name"=$2 WHERE "name"=$1`, "prest tester", "prest")
+	if sc.Err() != nil {
+		t.Errorf("expected no errors, but got: %s", sc.Err())
+	}
+
+	if len(sc.Bytes()) < 1 {
+		t.Errorf("expected a valid response body, but got %s", string(sc.Bytes()))
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		sc := config.PrestConf.Adapter.UpdateCtx(ctx, tc.sql, tc.values...)
 		if sc.Err() == nil {
 			t.Errorf("expected error, but got: %s", sc.Err())
 		}
