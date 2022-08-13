@@ -899,8 +899,18 @@ func (adapter *Postgres) Insert(SQL string, params ...interface{}) (sc adapters.
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	sc = adapter.insert(db, nil, SQL, params...)
-	return
+	return adapter.insert(db, nil, SQL, params...)
+}
+
+// Insert execute insert sql into a table
+func (adapter *Postgres) InsertCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	db, err := getDBFromCtx(ctx)
+	if err != nil {
+		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+	return adapter.insert(&db, nil, SQL, params...)
 }
 
 // InsertWithTransaction execute insert sql into a table

@@ -42,7 +42,10 @@ type Adapter interface {
 	FieldsPermissions(r *http.Request, table string, op string) (fields []string, err error)
 	GetScript(verb, folder, scriptName string) (script string, err error)
 	GroupByClause(r *http.Request) (groupBySQL string)
+
 	Insert(SQL string, params ...interface{}) (sc Scanner)
+	InsertCtx(ctx context.Context, SQL string, params ...interface{}) (sc Scanner)
+
 	InsertWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc Scanner)
 	InsertSQL(database string, schema string, table string, names string, placeholders string) string
 	JoinByRequest(r *http.Request) (values []string, err error)
