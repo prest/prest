@@ -316,21 +316,27 @@ func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config.PrestConf.Adapter.SetDatabase(database)
-
 	names, placeholders, values, err := config.PrestConf.Adapter.ParseBatchInsertRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform BatchInsertInTables: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	// set db name on ctx
+	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
+
+	// allow setting request query timeout
+	// ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	// defer cancel()
+
 	var sc adapters.Scanner
 	method := r.Header.Get("Prest-Batch-Method")
 	if strings.ToLower(method) != "copy" {
 		sql := config.PrestConf.Adapter.InsertSQL(database, schema, table, names, placeholders)
-		sc = config.PrestConf.Adapter.BatchInsertValues(sql, values...)
+		sc = config.PrestConf.Adapter.BatchInsertValuesCtx(ctx, sql, values...)
 	} else {
-		sc = config.PrestConf.Adapter.BatchInsertCopy(database, schema, table, strings.Split(names, ","), values...)
+		sc = config.PrestConf.Adapter.BatchInsertCopyCtx(ctx, database, schema, table, strings.Split(names, ","), values...)
 	}
 	if err = sc.Err(); err != nil {
 		errorMessage := sc.Err().Error()
