@@ -118,6 +118,11 @@ func (m *Mock) ExecuteScripts(method string, sql string, values []interface{}) (
 	return
 }
 
+// ExecuteScripts mock
+func (m *Mock) ExecuteScriptsCtx(ctx context.Context, method string, sql string, values []interface{}) (sc adapters.Scanner) {
+	return
+}
+
 // WhereByRequest mock
 func (m *Mock) WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []interface{}, err error) {
 	return
@@ -150,6 +155,15 @@ func (m *Mock) PaginateIfPossible(r *http.Request) (paginatedQuery string, err e
 
 // GetTransaction mock
 func (m *Mock) GetTransaction() (tx *sql.Tx, err error) {
+	db, err := sql.Open("mock", "prest")
+	if err != nil {
+		return
+	}
+	return db.Begin()
+}
+
+// GetTransactionCtx mock
+func (m *Mock) GetTransactionCtx(ctx context.Context) (tx *sql.Tx, err error) {
 	db, err := sql.Open("mock", "prest")
 	if err != nil {
 		return

@@ -1,10 +1,12 @@
 package controllers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/cache"
 	"github.com/prest/prest/config"
 )
@@ -28,7 +30,7 @@ func ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]
 		return nil, err
 	}
 
-	sc := config.PrestConf.Adapter.ExecuteScripts(rq.Method, sql, values)
+	sc := config.PrestConf.Adapter.ExecuteScriptsCtx(rq.Context(), rq.Method, sql, values)
 	if sc.Err() != nil {
 		err = fmt.Errorf("could not execute sql %+v, %s", sc.Err(), sql)
 		return nil, err
@@ -42,8 +44,16 @@ func ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	queriesPath := vars["queriesLocation"]
 	script := vars["script"]
+	database := vars["database"]
 
-	result, err := ExecuteScriptQuery(r, queriesPath, script)
+	// set db name on ctx
+	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
+
+	// allow setting request query timeout
+	// ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	// defer cancel()
+
+	result, err := ExecuteScriptQuery(r.WithContext(ctx), queriesPath, script)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

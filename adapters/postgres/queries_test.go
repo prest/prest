@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -127,6 +128,31 @@ func TestWriteSQL(t *testing.T) {
 	}
 }
 
+func TestWriteSQLCtx(t *testing.T) {
+	ctx := context.Background()
+
+	var testValidCases = []struct {
+		description string
+		sql         string
+		values      []interface{}
+		pass        bool
+	}{
+		{"Execute a valid INSERT sql", "INSERT INTO test7(name) values ('lulu')", []interface{}{}, true},
+		{"Execute a valid UPDATE sql", "UPDATE test7 SET name = 'lulu' WHERE surname = 'temer'", []interface{}{}, true},
+		{"Execute a valid DELETE sql", "DELETE FROM test7 WHERE name = 'lulu'", []interface{}{}, true},
+		{"Execute a valid DELETE sql", "DELETE FROM test7 WHERE name = 'lulu'", []interface{}{1, 2}, false},
+	}
+	for _, tc := range testValidCases {
+		t.Log(tc.description)
+		sc := WriteSQLCtx(ctx, tc.sql, tc.values)
+		if sc.Err() != nil && tc.pass {
+			t.Errorf("pass true, got: %s", sc.Err())
+		} else if sc.Err() == nil && !tc.pass {
+			t.Errorf("pass false, got: %s", sc.Err())
+		}
+	}
+}
+
 func TestExecuteScripts(t *testing.T) {
 	var testCases = []struct {
 		description string
@@ -153,6 +179,43 @@ func TestExecuteScripts(t *testing.T) {
 	t.Log("Get errors with invalid HTTP Method")
 	values := make([]interface{}, 0)
 	sc := config.PrestConf.Adapter.ExecuteScripts("ANY", "SELECT * FROM test7", values)
+	if len(sc.Bytes()) > 0 {
+		t.Errorf("expected empty result, but got %s", sc.Bytes())
+	}
+
+	if sc.Err() == nil {
+		t.Errorf("expected errors, but got %s", sc.Err())
+	}
+}
+
+func TestExecuteScriptsCtx(t *testing.T) {
+	ctx := context.Background()
+
+	var testCases = []struct {
+		description string
+		method      string
+		sql         string
+		values      []interface{}
+		err         error
+	}{
+		{"Get result with GET HTTP Method", "GET", "SELECT * FROM test7", []interface{}{}, nil},
+		{"Get result with POST HTTP Method", "POST", "INSERT INTO test7 (name) VALUES ('lala')", []interface{}{}, nil},
+		{"Get result with PUT HTTP Method", "PUT", "UPDATE test7 SET name = 'lala' WHERE surname = 'temer'", []interface{}{}, nil},
+		{"Get result with PATCH HTTP Method", "PATCH", "UPDATE test7 SET surname = 'temer' WHERE name = 'lala'", []interface{}{}, nil},
+		{"Get result with DELETE HTTP Method", "DELETE", "DELETE FROM test7 WHERE surname = 'lala'", []interface{}{}, nil},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		sc := config.PrestConf.Adapter.ExecuteScriptsCtx(ctx, tc.method, tc.sql, tc.values)
+		if tc.err != sc.Err() {
+			t.Errorf("expected no errors, but got %s", sc.Err())
+		}
+	}
+
+	t.Log("Get errors with invalid HTTP Method")
+	values := make([]interface{}, 0)
+	sc := config.PrestConf.Adapter.ExecuteScriptsCtx(ctx, "ANY", "SELECT * FROM test7", values)
 	if len(sc.Bytes()) > 0 {
 		t.Errorf("expected empty result, but got %s", sc.Bytes())
 	}

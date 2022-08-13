@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -112,16 +113,70 @@ func WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
 	return
 }
 
+// WriteSQLCtx perform INSERT's, UPDATE's, DELETE's operations
+func WriteSQLCtx(ctx context.Context, sql string, values []interface{}) (sc adapters.Scanner) {
+	db, err := getDBFromCtx(ctx)
+	if err != nil {
+		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+	stmt, err := Prepare(&db, sql)
+	if err != nil {
+		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+
+	valuesAux := make([]interface{}, 0, len(values))
+	for i := 0; i < len(values); i++ {
+		valuesAux = append(valuesAux, values[i])
+	}
+
+	result, err := stmt.Exec(valuesAux...)
+	if err != nil {
+		log.Printf("sql = %+v\n", sql)
+		err = fmt.Errorf("could not peform sql: %v", err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		err = fmt.Errorf("could not rows affected: %v", err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+
+	data := make(map[string]interface{})
+	data["rows_affected"] = rowsAffected
+	var resultByte []byte
+	resultByte, err = json.Marshal(data)
+	sc = &scanner.PrestScanner{
+		Error: err,
+		Buff:  bytes.NewBuffer(resultByte),
+	}
+	return
+}
+
 // ExecuteScripts run sql templates created by users
 func (adapter *Postgres) ExecuteScripts(method, sql string, values []interface{}) (sc adapters.Scanner) {
 	switch method {
 	case "GET":
-		sc = adapter.Query(sql, values...)
+		return adapter.Query(sql, values...)
 	case "POST", "PUT", "PATCH", "DELETE":
-		sc = WriteSQL(sql, values)
-	default:
-		sc = &scanner.PrestScanner{Error: fmt.Errorf("invalid method %s", method)}
+		return WriteSQL(sql, values)
 	}
+	return &scanner.PrestScanner{Error: fmt.Errorf("invalid method %s", method)}
+}
 
-	return
+// ExecuteScriptsCtx run sql templates created by users
+func (adapter *Postgres) ExecuteScriptsCtx(ctx context.Context, method, sql string, values []interface{}) (sc adapters.Scanner) {
+	switch method {
+	case "GET":
+		return adapter.QueryCtx(ctx, sql, values...)
+	case "POST", "PUT", "PATCH", "DELETE":
+		return WriteSQL(sql, values)
+	}
+	return &scanner.PrestScanner{Error: fmt.Errorf("invalid method %s", method)}
 }
