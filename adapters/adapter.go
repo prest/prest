@@ -51,9 +51,12 @@ type Adapter interface {
 	ParseBatchInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error)
 	ParseInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error)
 	ParseScript(scriptPath string, templateData map[string]interface{}) (sqlQuery string, values []interface{}, err error)
+
 	Query(SQL string, params ...interface{}) (sc Scanner)
 	QueryCtx(ctx context.Context, SQL string, params ...interface{}) (sc Scanner)
 	QueryCount(SQL string, params ...interface{}) (sc Scanner)
+	QueryCountCtx(ctx context.Context, SQL string, params ...interface{}) (sc Scanner)
+
 	ReturningByRequest(r *http.Request) (returningSyntax string, err error)
 	SchemaClause(req *http.Request) (query string, hasCount bool)
 	SchemaOrderBy(order string, hasCount bool) (orderBy string)
@@ -73,6 +76,7 @@ type Adapter interface {
 	UpdateWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc Scanner)
 	UpdateSQL(database string, schema string, table string, setSyntax string) string
 	WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []interface{}, err error)
+
 	ShowTable(schema, table string) (sc Scanner)
 	ShowTableCtx(ctx context.Context, schema, table string) (sc Scanner)
 }

@@ -214,6 +214,13 @@ func (m *Mock) QueryCount(SQL string, params ...interface{}) (sc adapters.Scanne
 	return
 }
 
+// QueryCountCtx mock
+func (m *Mock) QueryCountCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	m.t.Helper()
+	sc = m.perform(false)
+	return
+}
+
 // ParseInsertRequest mock
 func (m *Mock) ParseInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error) {
 	return

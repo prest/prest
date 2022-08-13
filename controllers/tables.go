@@ -129,8 +129,6 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config.PrestConf.Adapter.SetDatabase(database)
-
 	// get selected columns, "*" if empty "_columns"
 	cols, err := config.PrestConf.Adapter.FieldsPermissions(r, table, "read")
 	if err != nil {
@@ -233,13 +231,18 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 	sqlSelect = fmt.Sprint(sqlSelect, " ", page)
 
-	runQuery := config.PrestConf.Adapter.Query
-	// runQuery := config.PrestConf.Adapter.QueryCtx
+	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
+
+	// allow setting request query timeout
+	// ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	// defer cancel()
+
+	runQuery := config.PrestConf.Adapter.QueryCtx
 	// QueryCount returns the first record of the postgresql return as a non-list object
 	if countFirst {
-		runQuery = config.PrestConf.Adapter.QueryCount
+		runQuery = config.PrestConf.Adapter.QueryCountCtx
 	}
-	sc := runQuery(sqlSelect, values...)
+	sc := runQuery(ctx, sqlSelect, values...)
 	if err = sc.Err(); err != nil {
 		errorMessage := sc.Err().Error()
 		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {

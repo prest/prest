@@ -691,6 +691,41 @@ func (adapter *Postgres) QueryCount(SQL string, params ...interface{}) (sc adapt
 	return
 }
 
+// QueryCount process queries with count
+func (adapter *Postgres) QueryCountCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	db, err := getDBFromCtx(ctx)
+	if err != nil {
+		log.Errorln(err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+	log.Debugln("generated SQL:", SQL, " parameters: ", params)
+	p, err := Prepare(&db, SQL)
+	if err != nil {
+		log.Errorln(err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+
+	var result struct {
+		Count int64 `json:"count"`
+	}
+
+	row := p.QueryRow(params...)
+	if err = row.Scan(&result.Count); err != nil {
+		log.Errorln(err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+	var byt []byte
+	byt, err = json.Marshal(result)
+	sc = &scanner.PrestScanner{
+		Error: err,
+		Buff:  bytes.NewBuffer(byt),
+	}
+	return
+}
+
 // PaginateIfPossible when passing non-valid paging parameters (conversion to integer) the query will be made with default value
 func (adapter *Postgres) PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 	values := r.URL.Query()
