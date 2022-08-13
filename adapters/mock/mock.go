@@ -364,6 +364,11 @@ func (m *Mock) ShowTable(schema, table string) (sc adapters.Scanner) {
 	return
 }
 
+// ShowTableCtx shows table structure
+func (m *Mock) ShowTableCtx(ctx context.Context, schema, table string) (sc adapters.Scanner) {
+	return
+}
+
 // AddItem on mock object
 func (m *Mock) AddItem(body []byte, err error, isCount bool) {
 	i := Item{

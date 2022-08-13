@@ -1472,6 +1472,22 @@ func (adapter *Postgres) ShowTable(schema, table string) adapters.Scanner {
 	return adapter.Query(query, table, schema)
 }
 
+// ShowTableCtx shows table structure
+func (adapter *Postgres) ShowTableCtx(ctx context.Context, schema, table string) adapters.Scanner {
+	query := `SELECT table_schema, table_name, ordinal_position as position, column_name,data_type,
+			  	CASE WHEN character_maximum_length is not null
+					THEN character_maximum_length
+					ELSE numeric_precision end as max_length,
+			  	is_nullable,
+			  	is_generated,
+			  	is_updatable,
+			  	column_default as default_value
+			 FROM information_schema.columns
+			 WHERE table_name=$1 AND table_schema=$2
+			 ORDER BY table_schema, table_name, ordinal_position`
+	return adapter.QueryCtx(ctx, query, table, schema)
+}
+
 // GetDatabase returns the current DB name
 func (adapter *Postgres) GetDatabase() string {
 	return connection.GetDatabase()
