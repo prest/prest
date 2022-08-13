@@ -86,7 +86,10 @@ type Adapter interface {
 	TableOrderBy(order string) (orderBy string)
 	TablePermissions(table string, op string) bool
 	TableWhere(requestWhere string) (whereSyntax string)
+
 	Update(SQL string, params ...interface{}) (sc Scanner)
+	UpdateCtx(ctx context.Context, SQL string, params ...interface{}) (sc Scanner)
+
 	UpdateWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc Scanner)
 	UpdateSQL(database string, schema string, table string, setSyntax string) string
 	WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []interface{}, err error)

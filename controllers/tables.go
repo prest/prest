@@ -65,9 +65,6 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// with this functionality this gets dated
-	// config.PrestConf.Adapter.SetDatabase(database)
-
 	requestWhere, values, err := config.PrestConf.Adapter.WhereByRequest(r, 3)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
@@ -424,8 +421,6 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config.PrestConf.Adapter.SetDatabase(database)
-
 	setSyntax, values, err := config.PrestConf.Adapter.SetByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform UPDATE: %v", err)
@@ -464,8 +459,13 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 			" RETURNING ",
 			returningSyntax)
 	}
+	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
-	sc := config.PrestConf.Adapter.Update(sql, values...)
+	// allow setting request query timeout
+	// ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	// defer cancel()
+
+	sc := config.PrestConf.Adapter.UpdateCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
 		errorMessage := sc.Err().Error()
 		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {

@@ -280,6 +280,13 @@ func (m *Mock) Update(SQL string, params ...interface{}) (sc adapters.Scanner) {
 	return
 }
 
+// UpdateCtx mock
+func (m *Mock) UpdateCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	m.t.Helper()
+	sc = m.perform(false)
+	return
+}
+
 // UpdateWithTransaction mock
 func (m *Mock) UpdateWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	m.t.Helper()

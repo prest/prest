@@ -1170,6 +1170,17 @@ func (adapter *Postgres) Update(SQL string, params ...interface{}) (sc adapters.
 	return
 }
 
+// Update execute update sql into a table
+func (adapter *Postgres) UpdateCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	db, err := getDBFromCtx(ctx)
+	if err != nil {
+		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+	return adapter.update(&db, nil, SQL, params...)
+}
+
 // UpdateWithTransaction execute update sql into a table
 func (adapter *Postgres) UpdateWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	sc = adapter.update(nil, tx, SQL, params...)
