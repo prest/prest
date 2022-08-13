@@ -10,6 +10,11 @@ import (
 type Adapter interface {
 	// GetTransaction attempts to get a transaction from the db connection
 	GetTransaction() (tx *sql.Tx, err error)
+	// GetTransactionCtx attempts to get a transaction from the
+	// context setted db name
+	//
+	// use the adapter.DBNameKey for setting
+	GetTransactionCtx(ctx context.Context) (tx *sql.Tx, err error)
 
 	// BatchInsertValues execute batch insert sql into a table unsing params values
 	BatchInsertValues(SQL string, params ...interface{}) (sc Scanner)
@@ -49,7 +54,10 @@ type Adapter interface {
 	DeleteWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc Scanner)
 	DeleteSQL(database string, schema string, table string) string
 	DistinctClause(r *http.Request) (distinctQuery string, err error)
+
 	ExecuteScripts(method, sql string, values []interface{}) (sc Scanner)
+	ExecuteScriptsCtx(ctx context.Context, method, sql string, values []interface{}) (sc Scanner)
+
 	FieldsPermissions(r *http.Request, table string, op string) (fields []string, err error)
 	GetScript(verb, folder, scriptName string) (script string, err error)
 	GroupByClause(r *http.Request) (groupBySQL string)

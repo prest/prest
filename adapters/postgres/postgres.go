@@ -141,6 +141,17 @@ func (adapter *Postgres) GetTransaction() (tx *sql.Tx, err error) {
 	return
 }
 
+// GetTransactionCtx get transaction
+func (adapter *Postgres) GetTransactionCtx(ctx context.Context) (tx *sql.Tx, err error) {
+	db, err := getDBFromCtx(ctx)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	tx, err = db.Begin()
+	return
+}
+
 // Prepare statement func
 func Prepare(db *sqlx.DB, SQL string) (stmt *sql.Stmt, err error) {
 	stmt, err = GetStmt().Prepare(db, nil, SQL)
