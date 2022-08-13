@@ -106,9 +106,11 @@ jobs:
           file: ./coverage.out
 
       - name: goreleaser check
+        if: ${{ github.ref == 'refs/heads/main' }}
         run: curl -sfL https://git.io/goreleaser | sh -s -- check
 
       - name: Login to GitHub Container Registry
+        if: ${{ github.ref == 'refs/heads/main' }}
         uses: docker/login-action@v1
         with:
           registry: ghcr.io
@@ -116,6 +118,7 @@ jobs:
           password: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
 
       - name: ghcr.io/prest/prest:beta
+        if: ${{ github.ref == 'refs/heads/main' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
