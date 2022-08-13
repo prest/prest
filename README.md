@@ -1,4 +1,4 @@
-# <img align="right" src="https://docs.prestd.com/logo.png" alt="RESTful API" title="RESTful API"> pREST
+# <img align="right" src="https://docs.prestd.com/logo.png" alt="RESTful API" title="RESTful API"> prestd
 
 [![Build Status](https://travis-ci.com/prest/prest.svg?branch=main)](https://travis-ci.com/prest/prest)
 [![GoDoc](https://godoc.org/github.com/prest/prest?status.png)](https://godoc.org/github.com/prest/prest)
@@ -18,7 +18,7 @@ Contributor License Agreement - [![CLA assistant](https://cla-assistant.io/readm
 
 ## Problem
 
-There is PostgREST written in Haskell, but keeping Haskell software in production is not an easy job. With this need pREST was born. [Read more](https://github.com/prest/prest/issues/41).
+There is PostgREST written in Haskell, but keeping Haskell software in production is not an easy job. With this need prestd was born. [Read more](https://github.com/prest/prest/issues/41).
 
 ## Test using Docker
 
