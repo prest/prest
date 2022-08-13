@@ -1065,12 +1065,22 @@ func (adapter *Postgres) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 func (adapter *Postgres) Delete(SQL string, params ...interface{}) (sc adapters.Scanner) {
 	db, err := connection.Get()
 	if err != nil {
-		log.Println(err)
+		log.Errorln(err)
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	sc = adapter.delete(db, nil, SQL, params...)
-	return
+	return adapter.delete(db, nil, SQL, params...)
+}
+
+// Delete execute delete sql into a table
+func (adapter *Postgres) DeleteCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	db, err := getDBFromCtx(ctx)
+	if err != nil {
+		log.Errorln(err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+	return adapter.delete(&db, nil, SQL, params...)
 }
 
 // DeleteWithTransaction execute delete sql into a table

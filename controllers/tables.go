@@ -365,8 +365,6 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config.PrestConf.Adapter.SetDatabase(database)
-
 	where, values, err := config.PrestConf.Adapter.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
@@ -393,7 +391,13 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 			returningSyntax)
 	}
 
-	sc := config.PrestConf.Adapter.Delete(sql, values...)
+	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
+
+	// allow setting request query timeout
+	// ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	// defer cancel()
+
+	sc := config.PrestConf.Adapter.DeleteCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
 		errorMessage := sc.Err().Error()
 		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
