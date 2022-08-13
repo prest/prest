@@ -31,6 +31,7 @@ func MustGet() *sqlx.DB {
 }
 
 // SetDatabase set current database in use
+// todo: remove when ctx is fully implemented
 func SetDatabase(name string) {
 	connection.SetDatabase(name)
 }
