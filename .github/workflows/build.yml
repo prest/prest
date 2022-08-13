@@ -89,8 +89,6 @@ jobs:
           sed -i 's/azure\.//' /etc/apt/sources.list
           apt-get update
           curl https://deepsource.io/cli | sh
-          echo "Installing GolangCI Lint"
-          curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b $GOPATH/bin v1.15.0
           apt -y install gcc-multilib
           git config --global --add url."git@github.com:prest".insteadOf "https://github.com/prest"
           go get -v -d ./...
