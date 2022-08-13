@@ -64,7 +64,8 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config.PrestConf.Adapter.SetDatabase(database)
+	// with this functionality this gets dated
+	// config.PrestConf.Adapter.SetDatabase(database)
 
 	requestWhere, values, err := config.PrestConf.Adapter.WhereByRequest(r, 3)
 	if err != nil {
