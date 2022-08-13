@@ -366,8 +366,22 @@ func (m *Mock) BatchInsertValues(SQL string, params ...interface{}) (sc adapters
 	return
 }
 
+// BatchInsertValuesCtx mock
+func (m *Mock) BatchInsertValuesCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	m.t.Helper()
+	sc = m.perform(true)
+	return
+}
+
 // BatchInsertCopy mock
 func (m *Mock) BatchInsertCopy(dbname, schema, table string, keys []string, values ...interface{}) (sc adapters.Scanner) {
+	m.t.Helper()
+	sc = m.perform(false)
+	return
+}
+
+// BatchInsertCopyCtx mock
+func (m *Mock) BatchInsertCopyCtx(ctx context.Context, dbname, schema, table string, keys []string, values ...interface{}) (sc adapters.Scanner) {
 	m.t.Helper()
 	sc = m.perform(false)
 	return

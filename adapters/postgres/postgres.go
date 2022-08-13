@@ -822,6 +822,80 @@ func (adapter *Postgres) BatchInsertCopy(dbname, schema, table string, keys []st
 	return
 }
 
+// BatchInsertCopyCtx execute batch insert sql into a table unsing copy
+func (adapter *Postgres) BatchInsertCopyCtx(ctx context.Context, dbname, schema, table string, keys []string, values ...interface{}) (sc adapters.Scanner) {
+	db, err := getDBFromCtx(ctx)
+	if err != nil {
+		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+	defer func() {
+		var txerr error
+		if err != nil {
+			txerr = tx.Rollback()
+			if txerr != nil {
+				log.Errorln(txerr)
+				return
+			}
+			return
+		}
+		txerr = tx.Commit()
+		if txerr != nil {
+			log.Errorln(txerr)
+			return
+		}
+	}()
+	for i := range keys {
+		if strings.HasPrefix(keys[i], `"`) {
+			keys[i], err = strconv.Unquote(keys[i])
+			if err != nil {
+				log.Println(err)
+				sc = &scanner.PrestScanner{Error: err}
+				return
+			}
+		}
+	}
+	stmt, err := tx.Prepare(pq.CopyInSchema(schema, table, keys...))
+	if err != nil {
+		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+	initOffSet := 0
+	limitOffset := len(keys)
+	for limitOffset <= len(values) {
+		_, err = stmt.Exec(values[initOffSet:limitOffset]...)
+		if err != nil {
+			log.Println(err)
+			sc = &scanner.PrestScanner{Error: err}
+			return
+		}
+		initOffSet = limitOffset
+		limitOffset += len(keys)
+	}
+	_, err = stmt.Exec()
+	if err != nil {
+		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+	err = stmt.Close()
+	if err != nil {
+		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+	sc = &scanner.PrestScanner{}
+	return
+}
+
 // BatchInsertValues execute batch insert sql into a table unsing multi values
 func (adapter *Postgres) BatchInsertValues(SQL string, values ...interface{}) (sc adapters.Scanner) {
 	db, err := connection.Get()
@@ -831,6 +905,57 @@ func (adapter *Postgres) BatchInsertValues(SQL string, values ...interface{}) (s
 		return
 	}
 	stmt, err := adapter.fullInsert(db, nil, SQL)
+	if err != nil {
+		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+	jsonData := []byte("[")
+	rows, err := stmt.Query(values...)
+	if err != nil {
+		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+	for rows.Next() {
+		if err = rows.Err(); err != nil {
+			if err != nil {
+				log.Println(err)
+				sc = &scanner.PrestScanner{Error: err}
+				return
+			}
+		}
+		var data []byte
+		err = rows.Scan(&data)
+		if err != nil {
+			log.Println(err)
+			sc = &scanner.PrestScanner{Error: err}
+			return
+		}
+		if !bytes.Equal(jsonData, []byte("[")) {
+			obj := fmt.Sprintf("%s,%s", jsonData, data)
+			jsonData = []byte(obj)
+			continue
+		}
+		jsonData = append(jsonData, data...)
+	}
+	jsonData = append(jsonData, byte(']'))
+	sc = &scanner.PrestScanner{
+		Buff:    bytes.NewBuffer(jsonData),
+		IsQuery: true,
+	}
+	return
+}
+
+// BatchInsertValuesCtx execute batch insert sql into a table unsing multi values
+func (adapter *Postgres) BatchInsertValuesCtx(ctx context.Context, SQL string, values ...interface{}) (sc adapters.Scanner) {
+	db, err := getDBFromCtx(ctx)
+	if err != nil {
+		log.Println(err)
+		sc = &scanner.PrestScanner{Error: err}
+		return
+	}
+	stmt, err := adapter.fullInsert(&db, nil, SQL)
 	if err != nil {
 		log.Println(err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -902,7 +1027,7 @@ func (adapter *Postgres) Insert(SQL string, params ...interface{}) (sc adapters.
 	return adapter.insert(db, nil, SQL, params...)
 }
 
-// Insert execute insert sql into a table
+// InsertCtx execute insert sql into a table
 func (adapter *Postgres) InsertCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	db, err := getDBFromCtx(ctx)
 	if err != nil {
