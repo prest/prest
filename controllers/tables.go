@@ -272,8 +272,6 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config.PrestConf.Adapter.SetDatabase(database)
-
 	names, placeholders, values, err := config.PrestConf.Adapter.ParseInsertRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform InsertInTables: %v", err)
@@ -283,7 +281,14 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 
 	sql := config.PrestConf.Adapter.InsertSQL(database, schema, table, names, placeholders)
 
-	sc := config.PrestConf.Adapter.Insert(sql, values...)
+	// set db name on ctx
+	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
+
+	// allow setting request query timeout
+	// ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	// defer cancel()
+
+	sc := config.PrestConf.Adapter.InsertCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
 		errorMessage := sc.Err().Error()
 		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {

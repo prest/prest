@@ -498,6 +498,31 @@ func TestInsert(t *testing.T) {
 	}
 }
 
+func TestInsertCtx(t *testing.T) {
+	ctx := context.Background()
+
+	var testCases = []struct {
+		description string
+		sql         string
+		values      []interface{}
+	}{
+		{"Insert data into a table with one field", `INSERT INTO "prest-test"."public"."test4"("name") VALUES($1)`, []interface{}{"prest-test-insert"}},
+		{"Insert data into a table with more than one field", `INSERT INTO "prest-test"."public"."test5"("name", "celphone") VALUES($1, $2)`, []interface{}{"prest-test-insert", "88888888"}},
+		{"Insert data into a table with more than one field and with quotes case sensitive", `INSERT INTO "prest-test"."public"."Reply"("name") VALUES($1)`, []interface{}{"prest-test-insert"}},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		sc := config.PrestConf.Adapter.InsertCtx(ctx, tc.sql, tc.values...)
+		if sc.Err() != nil {
+			t.Errorf("expected no errors, but got %s", sc.Err())
+		}
+		if len(sc.Bytes()) < 1 {
+			t.Errorf("expected valid response body, but got %s", string(sc.Bytes()))
+		}
+	}
+}
+
 func TestInsertInvalid(t *testing.T) {
 	var testCases = []struct {
 		description string

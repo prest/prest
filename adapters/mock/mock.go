@@ -233,6 +233,13 @@ func (m *Mock) Insert(SQL string, params ...interface{}) (sc adapters.Scanner) {
 	return
 }
 
+// Insert mock
+func (m *Mock) InsertCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	m.t.Helper()
+	sc = m.perform(false)
+	return
+}
+
 // InsertWithTransaction mock
 func (m *Mock) InsertWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	m.t.Helper()
