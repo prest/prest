@@ -21,7 +21,6 @@ jobs:
         continue-on-error: true
         with:
           version: v1.48.0
-          skip-go-installation: true
           skip-pkg-cache: true
           skip-build-cache: true
           args: --timeout=5m

@@ -1480,5 +1480,8 @@ func getDBFromCtx(ctx context.Context) (db sqlx.DB, err error) {
 		return connection.GetFromPool(dbName)
 	}
 	dbPtr, err := connection.Get()
+	if err != nil {
+		return db, err
+	}
 	return *dbPtr, err
 }
