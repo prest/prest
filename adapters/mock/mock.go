@@ -254,6 +254,13 @@ func (m *Mock) Delete(SQL string, params ...interface{}) (sc adapters.Scanner) {
 	return
 }
 
+// DeleteCtx mock
+func (m *Mock) DeleteCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	m.t.Helper()
+	sc = m.perform(false)
+	return
+}
+
 // DeleteWithTransaction mock
 func (m *Mock) DeleteWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	m.t.Helper()

@@ -42,7 +42,10 @@ type Adapter interface {
 	//
 	// returns 'WHERE NOT datistemplate AND <requestWhere>' if provided
 	DatabaseWhere(requestWhere string) (whereSyntax string)
+
 	Delete(SQL string, params ...interface{}) (sc Scanner)
+	DeleteCtx(ctx context.Context, SQL string, params ...interface{}) (sc Scanner)
+
 	DeleteWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc Scanner)
 	DeleteSQL(database string, schema string, table string) string
 	DistinctClause(r *http.Request) (distinctQuery string, err error)

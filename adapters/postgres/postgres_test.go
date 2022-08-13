@@ -581,6 +581,41 @@ func TestDelete(t *testing.T) {
 	}
 }
 
+func TestDeleteCtx(t *testing.T) {
+	ctx := context.Background()
+	var testCases = []struct {
+		description string
+		sql         string
+		values      []interface{}
+	}{
+		{"Try Delete data from invalid database", `DELETE FROM "0prest-test"."public"."test" WHERE name=$1`, []interface{}{"test"}},
+		{"Try Delete data from invalid schema", `DELETE FROM "prest-test"."0public"."test" WHERE name=$1`, []interface{}{"test"}},
+		{"Try Delete data from invalid table", `DELETE FROM "prest-test."public"."0test" WHERE name=$1`, []interface{}{"test"}},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		sc := config.PrestConf.Adapter.DeleteCtx(ctx, tc.sql, tc.values)
+		if sc.Err() == nil {
+			t.Errorf("expected error, but got: %s", sc.Err())
+		}
+
+		if len(sc.Bytes()) > 0 {
+			t.Errorf("expected empty response body, but got %s", string(sc.Bytes()))
+		}
+	}
+
+	t.Log("Delete data from table")
+	sc := config.PrestConf.Adapter.DeleteCtx(ctx, `DELETE FROM "prest-test"."public"."test" WHERE "name"=$1`, "test")
+	if sc.Err() != nil {
+		t.Errorf("expected no error, but got: %s", sc.Err())
+	}
+
+	if len(sc.Bytes()) < 1 {
+		t.Errorf("expected response body, but got %s", string(sc.Bytes()))
+	}
+}
+
 func TestUpdate(t *testing.T) {
 	var testCases = []struct {
 		description string
