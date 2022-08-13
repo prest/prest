@@ -164,7 +164,7 @@ func (m *Mock) Query(SQL string, params ...interface{}) (sc adapters.Scanner) {
 	return
 }
 
-// Query mock
+// QueryCtx mock
 func (m *Mock) QueryCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	m.t.Helper()
 	sc = m.perform(true)
