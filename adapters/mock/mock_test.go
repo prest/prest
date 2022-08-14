@@ -24,7 +24,7 @@ func TestMock_validate(t *testing.T) {
 		name   string
 		fields fields
 	}{
-		{"validate", fields{&sync.RWMutex{}, t, []Item{Item{}}}},
+		{"validate", fields{&sync.RWMutex{}, t, []Item{{}}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
