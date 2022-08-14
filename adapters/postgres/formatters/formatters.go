@@ -17,37 +17,36 @@ func FormatArray(value interface{}) string {
 		ret = aux + FormatArray(value)
 		return
 	}
-	switch value.(type) {
+	switch value := value.(type) {
 	case []fmt.Stringer:
-		for _, v := range value.([]fmt.Stringer) {
+		for _, v := range value {
 			aux = check(aux, v)
 		}
 		return "{" + aux + "}"
 	case []interface{}:
-		for _, v := range value.([]interface{}) {
+		for _, v := range value {
 			aux = check(aux, v)
 		}
 		return "{" + aux + "}"
 	case []string:
-		for _, v := range value.([]string) {
+		for _, v := range value {
 			aux = check(aux, v)
 		}
 		return "{" + aux + "}"
 	case []int:
-		for _, v := range value.([]int) {
+		for _, v := range value {
 			aux = check(aux, v)
 		}
 		return "{" + aux + "}"
 	case string:
-		aux := value.(string)
+		aux := value
 		aux = strings.Replace(aux, `\`, `\\`, -1)
 		aux = strings.Replace(aux, `"`, `\"`, -1)
 		return `"` + aux + `"`
 	case int:
-		return strconv.Itoa(value.(int))
+		return strconv.Itoa(value)
 	case fmt.Stringer:
-		v := value.(fmt.Stringer)
-		return FormatArray(v.String())
+		return FormatArray(value.String())
 	}
 	return ""
 }
