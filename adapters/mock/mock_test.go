@@ -433,19 +433,14 @@ func TestMock_Query(t *testing.T) {
 }
 
 func TestMock_GetTransaction(t *testing.T) {
-	type fields struct {
-		mtx *sync.RWMutex
-		t   *testing.T
-	}
 	tests := []struct {
+		t       *testing.T
 		name    string
-		fields  fields
 		wantTx  *sql.Tx
 		wantErr bool
 	}{
 		{
 			name:    "transaction not nil",
-			fields:  fields{},
 			wantErr: false,
 			wantTx:  &sql.Tx{},
 		},
@@ -473,7 +468,7 @@ func TestMockEmptyMethods(t *testing.T) {
 	mock := Mock{
 		mtx:   &sync.RWMutex{},
 		t:     t,
-		Items: []Item{Item{}},
+		Items: []Item{{}},
 	}
 
 	var err error
@@ -572,7 +567,7 @@ func TestMockEmptyMethods(t *testing.T) {
 	}
 
 	// DeleteWithTransaction
-	mock.Items = []Item{Item{}}
+	mock.Items = []Item{{}}
 	sc = mock.DeleteWithTransaction(&sql.Tx{}, "select 1", "test1", "test2")
 	if sc == nil {
 		t.Errorf("expected empty return, got: %x", sc)
@@ -585,7 +580,7 @@ func TestMockEmptyMethods(t *testing.T) {
 	}
 
 	// UpdateWithTransaction
-	mock.Items = []Item{Item{}}
+	mock.Items = []Item{{}}
 	sc = mock.UpdateWithTransaction(&sql.Tx{}, "select 1", "test1", "test2")
 	if sc == nil {
 		t.Errorf("expected empty return, got: %x", sc)
@@ -685,7 +680,7 @@ func TestMockEmptyMethods(t *testing.T) {
 	}
 
 	// BatchInsertCopy
-	mock.Items = []Item{Item{}}
+	mock.Items = []Item{{}}
 	sc = mock.BatchInsertCopy("prest", "public", "test1", []string{"key1", "key2", "key3"}, "val1", "val2", "val3")
 	if sc == nil {
 		t.Errorf("expected empty return, got: %x", sc)
