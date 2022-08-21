@@ -14,22 +14,22 @@ services:
       test: ["CMD-SHELL", "pg_isready", "-U", "prest"]
       interval: 30s
       retries: 3
-  prest:
-    build: .
-    links:
-      - "postgres:postgres"
-    environment:
-      - PREST_DEBUG=true # remove comment for enable DEBUG mode (disable JWT)
-      - PREST_PG_HOST=postgres
-      - PREST_PG_USER=prest
-      - PREST_PG_PASS=prest
-      - PREST_PG_DATABASE=prest
-      - PREST_PG_PORT=5432
-      - PREST_JWT_DEFAULT=false # remove if need jwt
-      - PREST_SSL_MODE=disable
-      - PREST_CACHE_ENABLED=true
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "3000:3000"
+  # prest:
+  #   build: .
+  #   links:
+  #     - "postgres:postgres"
+  #   environment:
+  #     - PREST_DEBUG=true # remove comment for enable DEBUG mode (disable JWT)
+  #     - PREST_PG_HOST=postgres
+  #     - PREST_PG_USER=prest
+  #     - PREST_PG_PASS=prest
+  #     - PREST_PG_DATABASE=prest
+  #     - PREST_PG_PORT=5432
+  #     - PREST_JWT_DEFAULT=false # remove if need jwt
+  #     - PREST_SSL_MODE=disable
+  #     - PREST_CACHE_ENABLED=true
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   ports:
+  #     - "3000:3000"

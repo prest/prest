@@ -33,9 +33,10 @@ import (
 type Postgres struct{}
 
 const (
-	pageNumberKey     = "_page"
-	pageSizeKey       = "_page_size"
-	defaultPageSize   = 10
+	pageNumberKey   = "_page"
+	pageSizeKey     = "_page_size"
+	defaultPageSize = 10
+	//nolint
 	defaultPageNumber = 1
 )
 
@@ -144,7 +145,7 @@ func (adapter *Postgres) GetTransaction() (tx *sql.Tx, err error) {
 func (adapter *Postgres) GetTransactionCtx(ctx context.Context) (tx *sql.Tx, err error) {
 	db, err := getDBFromCtx(ctx)
 	if err != nil {
-		log.Println(err)
+		log.Errorln(err)
 		return
 	}
 	tx, err = db.Begin()
@@ -836,7 +837,7 @@ func (adapter *Postgres) BatchInsertCopy(dbname, schema, table string, keys []st
 func (adapter *Postgres) BatchInsertCopyCtx(ctx context.Context, dbname, schema, table string, keys []string, values ...interface{}) (sc adapters.Scanner) {
 	db, err := getDBFromCtx(ctx)
 	if err != nil {
-		log.Println(err)
+		log.Errorln(err)
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
@@ -1184,7 +1185,7 @@ func (adapter *Postgres) Update(SQL string, params ...interface{}) (sc adapters.
 func (adapter *Postgres) UpdateCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	db, err := getDBFromCtx(ctx)
 	if err != nil {
-		log.Println(err)
+		log.Errorln(err)
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}

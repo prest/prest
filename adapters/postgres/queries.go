@@ -121,7 +121,7 @@ func WriteSQLCtx(ctx context.Context, sql string, values []interface{}) (sc adap
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	stmt, err := Prepare(&db, sql)
+	stmt, err := Prepare(db, sql)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
 		sc = &scanner.PrestScanner{Error: err}
