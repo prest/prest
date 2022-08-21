@@ -176,7 +176,7 @@ func (adapter *Postgres) ExecuteScriptsCtx(ctx context.Context, method, sql stri
 	case "GET":
 		return adapter.QueryCtx(ctx, sql, values...)
 	case "POST", "PUT", "PATCH", "DELETE":
-		return WriteSQL(sql, values)
+		return WriteSQLCtx(ctx, sql, values)
 	}
 	return &scanner.PrestScanner{Error: fmt.Errorf("invalid method %s", method)}
 }
