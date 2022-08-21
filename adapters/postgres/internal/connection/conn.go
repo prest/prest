@@ -78,12 +78,12 @@ func Get() (*sqlx.DB, error) {
 
 // GetFromPool tries to get the db name from the db pool
 // will return error if not found
-func GetFromPool(dbName string) (sqlx.DB, error) {
+func GetFromPool(dbName string) (*sqlx.DB, error) {
 	DB := getDatabaseFromPool(dbName)
 	if DB == nil {
-		return *DB, errors.New("db not found in pool")
+		return nil, errors.New("db not found in pool")
 	}
-	return *DB, nil
+	return DB, nil
 }
 
 // GetPool of connection

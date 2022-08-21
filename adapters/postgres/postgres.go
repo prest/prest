@@ -29,9 +29,8 @@ import (
 	"github.com/structy/log"
 )
 
-//Postgres adapter postgresql
-type Postgres struct {
-}
+// Postgres adapter postgresql
+type Postgres struct{}
 
 const (
 	pageNumberKey     = "_page"
@@ -625,7 +624,7 @@ func (adapter *Postgres) QueryCtx(ctx context.Context, SQL string, params ...int
 	}
 	SQL = fmt.Sprintf("SELECT json_agg(s) FROM (%s) s", SQL)
 	log.Debugln("generated SQL:", SQL, " parameters: ", params)
-	p, err := Prepare(&db, SQL)
+	p, err := Prepare(db, SQL)
 	if err != nil {
 		log.Errorln(err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -711,7 +710,7 @@ func (adapter *Postgres) QueryCountCtx(ctx context.Context, SQL string, params .
 		return
 	}
 	log.Debugln("generated SQL:", SQL, " parameters: ", params)
-	p, err := Prepare(&db, SQL)
+	p, err := Prepare(db, SQL)
 	if err != nil {
 		log.Errorln(err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -962,20 +961,20 @@ func (adapter *Postgres) BatchInsertValues(SQL string, values ...interface{}) (s
 func (adapter *Postgres) BatchInsertValuesCtx(ctx context.Context, SQL string, values ...interface{}) (sc adapters.Scanner) {
 	db, err := getDBFromCtx(ctx)
 	if err != nil {
-		log.Println(err)
+		log.Errorln(err)
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	stmt, err := adapter.fullInsert(&db, nil, SQL)
+	stmt, err := adapter.fullInsert(db, nil, SQL)
 	if err != nil {
-		log.Println(err)
+		log.Errorln(err)
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
 	jsonData := []byte("[")
 	rows, err := stmt.Query(values...)
 	if err != nil {
-		log.Println(err)
+		log.Errorln(err)
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
@@ -1042,11 +1041,11 @@ func (adapter *Postgres) Insert(SQL string, params ...interface{}) (sc adapters.
 func (adapter *Postgres) InsertCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	db, err := getDBFromCtx(ctx)
 	if err != nil {
-		log.Println(err)
+		log.Errorln(err)
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	return adapter.insert(&db, nil, SQL, params...)
+	return adapter.insert(db, nil, SQL, params...)
 }
 
 // InsertWithTransaction execute insert sql into a table
@@ -1091,7 +1090,7 @@ func (adapter *Postgres) DeleteCtx(ctx context.Context, SQL string, params ...in
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	return adapter.delete(&db, nil, SQL, params...)
+	return adapter.delete(db, nil, SQL, params...)
 }
 
 // DeleteWithTransaction execute delete sql into a table
@@ -1189,7 +1188,7 @@ func (adapter *Postgres) UpdateCtx(ctx context.Context, SQL string, params ...in
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	return adapter.update(&db, nil, SQL, params...)
+	return adapter.update(db, nil, SQL, params...)
 }
 
 // UpdateWithTransaction execute update sql into a table
@@ -1697,14 +1696,10 @@ func (adapter *Postgres) GetDatabase() string {
 
 // getDBFromCtx tries to get the db from context if not present it will
 // fallback to the current setted db
-func getDBFromCtx(ctx context.Context) (db sqlx.DB, err error) {
+func getDBFromCtx(ctx context.Context) (db *sqlx.DB, err error) {
 	dbName, ok := ctx.Value(DBNameKey).(string)
 	if ok {
 		return connection.GetFromPool(dbName)
 	}
-	dbPtr, err := connection.Get()
-	if err != nil {
-		return db, err
-	}
-	return *dbPtr, err
+	return connection.Get()
 }
