@@ -506,7 +506,7 @@ func TestInsertCtx(t *testing.T) {
 		sql         string
 		values      []interface{}
 	}{
-		{"Insert data into a table with one field", `INSERT INTO "prest-test"."public"."test4"("name") VALUES($1)`, []interface{}{"prest-test-insert"}},
+		{"Insert data into a table with one field", `INSERT INTO "prest-test"."public"."test4"("name") VALUES($1)`, []interface{}{"prest-test-insert-ctx"}},
 		{"Insert data into a table with more than one field", `INSERT INTO "prest-test"."public"."test5"("name", "celphone") VALUES($1, $2)`, []interface{}{"prest-test-insert", "88888888"}},
 		{"Insert data into a table with more than one field and with quotes case sensitive", `INSERT INTO "prest-test"."public"."Reply"("name") VALUES($1)`, []interface{}{"prest-test-insert"}},
 	}
@@ -1385,7 +1385,7 @@ func TestBatchInsertValuesCtx(t *testing.T) {
 		{
 			"Insert data into a table with one field",
 			`INSERT INTO "prest-test"."public"."test4"("name") VALUES($1),($2)`,
-			[]interface{}{"1prest-test-batch-insert", "1batch-prest-test-insert"},
+			[]interface{}{"1prest-test-batch-insert-ctx", "1batch-prest-test-insert-ctx"},
 		}, {
 			"Insert data into a table with more than one field",
 			`INSERT INTO "prest-test"."public"."test5"("name", "celphone") VALUES($1, $2),($3, $4)`,
