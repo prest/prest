@@ -3,9 +3,12 @@ package testutils
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
+	"io"
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 // DoRequest function used to test internal http requests
@@ -15,37 +18,26 @@ func DoRequest(t *testing.T, url string, r interface{}, method string, expectedS
 
 	if r != nil {
 		byt, err = json.Marshal(r)
-		if err != nil {
-			t.Error("error on json marshal", err)
-		}
+		require.Nil(t, err, "error on json marshal")
 	}
 
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(byt))
-	if err != nil {
-		t.Error("error on New Request", err)
-	}
+	require.Nil(t, err, "error on New Request")
 
 	req.Header.Add("X-Application", "prest")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Error("error on Do Request", err)
-	}
+	require.Nil(t, err, "error on Do Request")
 
-	if resp.StatusCode != expectedStatus {
-		t.Errorf("%s expected %d, got: %d", url, expectedStatus, resp.StatusCode)
-	}
+	require.Equal(t, expectedStatus, resp.StatusCode)
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Error("error on ioutil ReadAll", err)
-	}
+	body, err := io.ReadAll(resp.Body)
+	require.Nil(t, err, "error on io ReadAll")
 
 	if len(expectedBody) > 0 {
-		if !containsStringInSlice(expectedBody, string(body)) {
-			t.Errorf("expected %q, got: %q", expectedBody, string(body))
-		}
+		require.True(t, containsStringInSlice(expectedBody, string(body)),
+			fmt.Sprintf("expected %q, got: %q", expectedBody, string(body)))
 	}
 }
 

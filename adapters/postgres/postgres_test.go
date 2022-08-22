@@ -507,8 +507,8 @@ func TestInsertCtx(t *testing.T) {
 		values      []interface{}
 	}{
 		{"Insert data into a table with one field", `INSERT INTO "prest-test"."public"."test4"("name") VALUES($1)`, []interface{}{"prest-test-insert-ctx"}},
-		{"Insert data into a table with more than one field", `INSERT INTO "prest-test"."public"."test5"("name", "celphone") VALUES($1, $2)`, []interface{}{"prest-test-insert", "88888888"}},
-		{"Insert data into a table with more than one field and with quotes case sensitive", `INSERT INTO "prest-test"."public"."Reply"("name") VALUES($1)`, []interface{}{"prest-test-insert"}},
+		{"Insert data into a table with more than one field", `INSERT INTO "prest-test"."public"."test5"("name", "celphone") VALUES($1, $2)`, []interface{}{"prest-test-insert-ctx", "88888888"}},
+		{"Insert data into a table with more than one field and with quotes case sensitive", `INSERT INTO "prest-test"."public"."Reply"("name") VALUES($1)`, []interface{}{"prest-test-insert-ctx"}},
 	}
 
 	for _, tc := range testCases {
@@ -1165,12 +1165,6 @@ func TestDistinctClause(t *testing.T) {
 	}
 }
 
-type str struct{}
-
-func (s str) String() string {
-	return "test"
-}
-
 func TestNormalizeGroupFunction(t *testing.T) {
 	var testCases = []struct {
 		description string
@@ -1393,7 +1387,7 @@ func TestBatchInsertValuesCtx(t *testing.T) {
 		}, {
 			"Insert data into a table with more than one field and with quotes case sensitive",
 			`INSERT INTO "prest-test"."public"."Reply"("name") VALUES($1),($2)`,
-			[]interface{}{"3prest-test-batch-insert", "3batch-prest-test-insert"},
+			[]interface{}{"3prest-test-batch-insert-ctx", "3batch-prest-test-insert-ctx"},
 		},
 	}
 
@@ -1434,7 +1428,7 @@ func TestPostgres_BatchInsertCopyCtx(t *testing.T) {
 				"public",
 				"Reply",
 				[]string{`"name"`},
-				[]interface{}{"copy"},
+				[]interface{}{"copy-ctx"},
 			},
 			false,
 		},
@@ -1445,7 +1439,7 @@ func TestPostgres_BatchInsertCopyCtx(t *testing.T) {
 				"public",
 				"Reply",
 				[]string{"name"},
-				[]interface{}{"copy"},
+				[]interface{}{"copy-ctx"},
 			},
 			false,
 		},
@@ -1456,7 +1450,7 @@ func TestPostgres_BatchInsertCopyCtx(t *testing.T) {
 				"public",
 				"Reply",
 				[]string{"na"},
-				[]interface{}{"copy"},
+				[]interface{}{"copy-ctx"},
 			},
 			true,
 		},
