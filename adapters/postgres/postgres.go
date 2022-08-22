@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,6 +16,7 @@ import (
 	"unicode"
 
 	"github.com/lib/pq"
+	"github.com/pkg/errors"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/prest/prest/adapters"
@@ -44,9 +44,6 @@ var removeOperatorRegex *regexp.Regexp
 var insertTableNameQuotesRegex *regexp.Regexp
 var insertTableNameRegex *regexp.Regexp
 var groupRegex *regexp.Regexp
-
-// ErrBodyEmpty err throw when body is empty
-var ErrBodyEmpty = errors.New("body is empty")
 
 var stmts *Stmt
 
@@ -222,7 +219,7 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 					case "jsonb":
 						jsonField := strings.Split(keyInfo[0], "->>")
 						if chkInvalidIdentifier(jsonField[0], jsonField[1]) {
-							err = fmt.Errorf("invalid identifier: %+v", jsonField)
+							err = errors.Wrapf(ErrInvalidIdentifier, "%+v", jsonField)
 							return
 						}
 						fields := strings.Split(jsonField[0], ".")
@@ -238,7 +235,7 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 						whereKey = append(whereKey, tsQuery)
 					default:
 						if chkInvalidIdentifier(keyInfo[0]) {
-							err = fmt.Errorf("invalid identifier: %s", keyInfo[0])
+							err = errors.Wrapf(ErrInvalidIdentifier, "%s", keyInfo[0])
 							return
 						}
 					}
@@ -247,7 +244,7 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 				}
 
 				if chkInvalidIdentifier(key) {
-					err = fmt.Errorf("invalid identifier: %s", key)
+					err = errors.Wrapf(ErrInvalidIdentifier, "%s", key)
 					return
 				}
 
@@ -327,7 +324,7 @@ func (adapter *Postgres) SetByRequest(r *http.Request, initialPlaceholderID int)
 	fields := make([]string, 0)
 	for key, value := range body {
 		if chkInvalidIdentifier(key) {
-			err = errors.New("Set: Invalid identifier")
+			err = ErrInvalidIdentifier
 			return
 		}
 		keys := strings.Split(key, ".")
@@ -431,7 +428,7 @@ func (adapter *Postgres) ParseInsertRequest(r *http.Request) (colsName string, c
 	fields := make([]string, 0)
 	for key, value := range body {
 		if chkInvalidIdentifier(key) {
-			err = errors.New("Insert: Invalid identifier")
+			err = ErrInvalidIdentifier
 			return
 		}
 		fields = append(fields, fmt.Sprintf(`"%s"`, key))
@@ -499,7 +496,7 @@ func (adapter *Postgres) JoinByRequest(r *http.Request) (values []string, err er
 	if err != nil {
 		return
 	}
-	errJoin := errors.New("invalid join clause")
+	errJoin := ErrInvalidJoinClause
 	if joinWith := strings.Split(joinArgs[1], "."); len(joinWith) == 2 {
 		joinArgs[1] = fmt.Sprintf(`%s"."%s`, joinWith[0], joinWith[1])
 	}
@@ -521,13 +518,13 @@ func (adapter *Postgres) JoinByRequest(r *http.Request) (values []string, err er
 // SelectFields query
 func (adapter *Postgres) SelectFields(fields []string) (sql string, err error) {
 	if len(fields) == 0 {
-		err = errors.New("you must select at least one field")
+		err = ErrMustSelectOneField
 		return
 	}
 	var aux []string
 	for _, field := range fields {
 		if field != "*" && chkInvalidIdentifier(field) {
-			err = fmt.Errorf("invalid identifier %s", field)
+			err = errors.Wrapf(ErrInvalidIdentifier, "%s", field)
 			return
 		}
 		if field != `*` {
@@ -967,7 +964,7 @@ func (adapter *Postgres) fullInsert(db *sqlx.DB, tx *sql.Tx, SQL string) (stmt *
 	if len(tableName) < 2 {
 		tableName = insertTableNameRegex.FindStringSubmatch(SQL)
 		if len(tableName) < 2 {
-			err = errors.New("unable to find table name")
+			err = ErrNoTableName
 			return
 		}
 	}
@@ -1248,8 +1245,7 @@ func GetQueryOperator(op string) (string, error) {
 		return "ILIKE", nil
 	}
 
-	err := errors.New("Invalid operator")
-	return "", err
+	return "", ErrInvalidOperator
 }
 
 // TablePermissions get tables permissions based in prest configuration
@@ -1484,7 +1480,7 @@ func NormalizeGroupFunction(paramValue string) (groupFuncSQL string, err error) 
 		}
 		return
 	default:
-		err = fmt.Errorf("this function %s is not a valid group function", groupFunc)
+		err = errors.Wrapf(ErrInvalidGroupFn, "%s", groupFunc)
 		return
 	}
 }
