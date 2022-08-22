@@ -1221,6 +1221,18 @@ func TestCacheQueryCount(t *testing.T) {
 	}
 }
 
+func TestCacheQueryCountCtx(t *testing.T) {
+	ctx := context.Background()
+	sc := config.PrestConf.Adapter.QueryCountCtx(ctx, `SELECT COUNT(*) FROM "Reply"`)
+	if err := sc.Err(); err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+	sc = config.PrestConf.Adapter.QueryCountCtx(ctx, `SELECT COUNT(*) FROM "Reply"`)
+	if err := sc.Err(); err != nil {
+		t.Errorf("expected no errors, but got %v", err)
+	}
+}
+
 func TestCacheInsert(t *testing.T) {
 	sc := config.PrestConf.Adapter.Insert("INSERT INTO test(name) VALUES('testcache')")
 	if err := sc.Err(); err != nil {
@@ -1943,6 +1955,18 @@ func Test_ShowTable(t *testing.T) {
 		t.Errorf("Should return a adpter Scanner with this structure: {[] <nil> true}; but got: %v", sc)
 	}
 }
+
+func Test_ShowTableCtx(t *testing.T) {
+	pg := Postgres{}
+
+	sc := pg.ShowTableCtx(context.Background(), "testschema", "testtable")
+
+	scMock := newScannerMock(t)
+	if !reflect.DeepEqual(sc, scMock) {
+		t.Errorf("Should return a adpter Scanner with this structure: {[] <nil> true}; but got: %v", sc)
+	}
+}
+
 func newScannerMock(t *testing.T) (sc adapters.Scanner) {
 	t.Helper()
 	sc = &scanner.PrestScanner{
