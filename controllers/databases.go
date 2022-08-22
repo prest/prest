@@ -50,5 +50,6 @@ func GetDatabases(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
 	}
+	//nolint
 	w.Write(sc.Bytes())
 }

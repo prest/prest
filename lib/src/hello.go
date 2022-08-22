@@ -1,3 +1,4 @@
+// nolint
 // all plugins must have their package name as `main`
 // each plugin is isolated at compile time
 package main

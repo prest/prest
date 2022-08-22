@@ -12,6 +12,7 @@ func TestDoRequest(t *testing.T) {
 	router := mux.NewRouter()
 	bodyResponse := `{"key": "value"}`
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		//nolint
 		w.Write([]byte(bodyResponse))
 	}).Methods("GET")
 	server := httptest.NewServer(router)

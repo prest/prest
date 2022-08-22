@@ -33,6 +33,7 @@ func BuntConnect(key string) (db *buntdb.DB, err error) {
 func BuntGet(key string, w http.ResponseWriter) (cacheExist bool) {
 	db, _ := BuntConnect(key)
 	cacheExist = false
+	//nolint:errcheck
 	db.View(func(tx *buntdb.Tx) error {
 		val, err := tx.Get(key)
 		if err == nil {
@@ -56,7 +57,9 @@ func BuntSet(key, value string) {
 		return
 	}
 	db, _ := BuntConnect(key)
+	//nolint:errcheck
 	db.Update(func(tx *buntdb.Tx) error {
+		//nolint:errcheck
 		tx.Set(key, value,
 			&buntdb.SetOptions{
 				Expires: true,

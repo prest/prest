@@ -71,8 +71,8 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 		// to use body field authentication
 		dec := json.NewDecoder(r.Body)
 		dec.DisallowUnknownFields()
+		//nolint
 		dec.Decode(&login)
-		break
 	case "basic":
 		// to use http basic authentication
 		var ok bool
@@ -81,7 +81,6 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, unf, http.StatusBadRequest)
 			return
 		}
-		break
 	}
 
 	loggedUser, err := basicPasswordCheck(strings.ToLower(login.Username), login.Password)
