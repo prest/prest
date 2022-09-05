@@ -1,6 +1,6 @@
 module github.com/prest/prest
 
-go 1.17
+go 1.18
 
 require (
 	github.com/avelino/slugify v0.0.0-20180501145920-855f152bd774

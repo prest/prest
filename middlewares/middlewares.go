@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,11 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
+var (
+	ErrJWTParseFail = errors.New("failed JWT token parser")
+	ErrJWTValidate  = errors.New("failed JWT claims validated")
+)
+
 // HandlerSet add content type header
 func HandlerSet() negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -22,6 +28,15 @@ func HandlerSet() negroni.Handler {
 		negroniResp := negroni.NewResponseWriter(recorder)
 		next(negroniResp, r)
 		renderFormat(w, recorder, format)
+	})
+}
+
+// SetTimeoutToContext adds the configured timeout in seconds to the request context
+//
+// By default it is 60 seconds, can be modified to a different value
+func SetTimeoutToContext() negroni.Handler {
+	return negroni.HandlerFunc(func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+		next(rw, r.WithContext(context.WithValue(r.Context(), "http.timeout", config.PrestConf.HTTPTimeout))) // nolint
 	})
 }
 
@@ -44,7 +59,7 @@ func AuthMiddleware() negroni.Handler {
 
 			tok, err := jwt.ParseSigned(token)
 			if err != nil {
-				http.Error(rw, fmt.Errorf("Failed JWT token parser").Error(), http.StatusUnauthorized)
+				http.Error(rw, ErrJWTParseFail.Error(), http.StatusUnauthorized)
 				return
 			}
 			claims := auth.Claims{}
@@ -111,12 +126,12 @@ func JwtMiddleware(key string, algo string) negroni.Handler {
 		}
 		tok, err := jwt.ParseSigned(token)
 		if err != nil {
-			http.Error(w, fmt.Errorf("Failed JWT token parser").Error(), http.StatusUnauthorized)
+			http.Error(w, ErrJWTParseFail.Error(), http.StatusUnauthorized)
 			return
 		}
 		out := auth.Claims{}
 		if err := tok.Claims([]byte(key), &out); err != nil {
-			http.Error(w, fmt.Errorf("Failed JWT claims validated").Error(), http.StatusUnauthorized)
+			http.Error(w, ErrJWTValidate.Error(), http.StatusUnauthorized)
 			return
 		}
 		next(w, r)

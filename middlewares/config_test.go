@@ -6,13 +6,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/controllers"
+	"github.com/stretchr/testify/require"
 	"github.com/urfave/negroni"
 )
 
@@ -24,18 +24,16 @@ func init() {
 func TestInitApp(t *testing.T) {
 	app = nil
 	initApp()
-	if app == nil {
-		t.Errorf("app should not be nil")
-	}
+	require.NotNil(t, app)
+
 	MiddlewareStack = []negroni.Handler{}
 }
 
 func TestGetApp(t *testing.T) {
 	app = nil
 	n := GetApp()
-	if n == nil {
-		t.Errorf("should return an app")
-	}
+	require.NotNil(t, n)
+
 	MiddlewareStack = []negroni.Handler{}
 }
 
@@ -51,20 +49,16 @@ func TestGetAppWithReorderedMiddleware(t *testing.T) {
 	server := httptest.NewServer(n)
 	defer server.Close()
 	resp, err := http.Get(server.URL)
-	if err != nil {
-		t.Fatal("expected run without errors but was", err.Error())
-	}
+	require.NoError(t, err)
+
 	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal("expected run without errors but was", err.Error())
-	}
+	require.NoError(t, err)
+
 	defer resp.Body.Close()
-	if !strings.Contains(string(body), "Calling custom middleware") {
-		t.Error("do not contains 'Calling custom middleware'")
-	}
-	if !strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
-		t.Error("content type should application/json but wasn't")
-	}
+	require.Contains(t, string(body), "Calling custom middleware")
+	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
 	MiddlewareStack = []negroni.Handler{}
 }
 
@@ -77,13 +71,9 @@ func TestGetAppWithoutReorderedMiddleware(t *testing.T) {
 	server := httptest.NewServer(n)
 	defer server.Close()
 	resp, err := http.Get(server.URL)
+	require.NoError(t, err)
+	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
 
-	if err != nil {
-		t.Fatal("Expected run without errors but was", err.Error())
-	}
-	if !strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
-		t.Error("content type should be application/json but not was", resp.Header.Get("Content-Type"))
-	}
 	MiddlewareStack = []negroni.Handler{}
 }
 
@@ -108,44 +98,33 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 	server := httptest.NewServer(n)
 	defer server.Close()
 	resp, err := http.Get(server.URL)
-	if err != nil {
-		t.Fatal("expected run without errors but was", err.Error())
-	}
+	require.NoError(t, err)
+
 	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal("expected run without errors but was", err.Error())
-	}
+	require.NoError(t, err)
+
 	defer resp.Body.Close()
-	if !strings.Contains(string(body), "custom route") {
-		t.Error("do not contains 'custom route'")
-	}
-	if !strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
-		t.Error("content type should be application/json but was", resp.Header.Get("Content-Type"))
-	}
+
+	require.Contains(t, string(body), "custom route")
+	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
+
 	resp, err = http.Get(server.URL + "/prest/public/test_write_and_delete_access")
-	if err != nil {
-		t.Fatal("expected run without errors but was", err.Error())
-	}
+	require.NoError(t, err)
+
 	body, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal("expected run without errors but was", err.Error())
-	}
+	require.NoError(t, err)
+
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Errorf("content type should be http.StatusUnauthorized but was %s", resp.Status)
-	}
-	if !strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
-		t.Error("content type should be application/json but wasn't")
-	}
-	if !strings.Contains(string(body), "required authorization to table") {
-		t.Error("do not contains 'required authorization to table'")
-	}
+
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
+	require.Contains(t, string(body), "required authorization to table")
+
 	MiddlewareStack = []negroni.Handler{}
 	os.Setenv("PREST_CONF", "")
 }
 
 func customMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-
 	m := make(map[string]string)
 	m["msg"] = "Calling custom middleware"
 	b, _ := json.Marshal(m)
@@ -162,13 +141,9 @@ func TestDebug(t *testing.T) {
 	nd := appTest()
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
-	respd, err := http.Get(serverd.URL)
-	if err != nil {
-		t.Errorf("expected no errors, but got %v", err)
-	}
-	if respd.StatusCode != http.StatusOK {
-		t.Errorf("expected status code 200, but got %d", respd.StatusCode)
-	}
+	resp, err := http.Get(serverd.URL)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
 func TestEnableDefaultJWT(t *testing.T) {
@@ -179,13 +154,9 @@ func TestEnableDefaultJWT(t *testing.T) {
 	nd := appTest()
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
-	respd, err := http.Get(serverd.URL)
-	if err != nil {
-		t.Errorf("expected no errors, but got %v", err)
-	}
-	if respd.StatusCode != http.StatusNotImplemented {
-		t.Errorf("expected status code 501, but got %d", respd.StatusCode)
-	}
+	resp, err := http.Get(serverd.URL)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
 }
 
 func TestJWTIsRequired(t *testing.T) {
@@ -198,13 +169,9 @@ func TestJWTIsRequired(t *testing.T) {
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
 
-	respd, err := http.Get(serverd.URL)
-	if err != nil {
-		t.Errorf("expected no errors, but got %v", err)
-	}
-	if respd.StatusCode != http.StatusUnauthorized {
-		t.Errorf("expected status code 401, but got %d", respd.StatusCode)
-	}
+	resp, err := http.Get(serverd.URL)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
 
 func TestJWTSignatureOk(t *testing.T) {
@@ -221,19 +188,14 @@ func TestJWTSignatureOk(t *testing.T) {
 	defer serverd.Close()
 
 	req, err := http.NewRequest("GET", serverd.URL, nil)
-	if err != nil {
-		t.Fatal("expected run without errors but was", err)
-	}
+	require.NoError(t, err)
+
 	req.Header.Add("authorization", bearer)
 
 	client := http.Client{}
 	respd, err := client.Do(req)
-	if err != nil {
-		t.Errorf("expected no errors, but got %v", err)
-	}
-	if respd.StatusCode != http.StatusOK {
-		t.Errorf("expected status code 200, but got %d", respd.StatusCode)
-	}
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, respd.StatusCode)
 }
 
 func TestJWTSignatureKo(t *testing.T) {
@@ -249,19 +211,14 @@ func TestJWTSignatureKo(t *testing.T) {
 	defer serverd.Close()
 
 	req, err := http.NewRequest("GET", serverd.URL, nil)
-	if err != nil {
-		t.Fatal("expected run without errors but was", err)
-	}
+	require.NoError(t, err)
+
 	req.Header.Add("authorization", bearer)
 
 	client := http.Client{}
 	respd, err := client.Do(req)
-	if err != nil {
-		t.Errorf("expected no errors, but got %v", err)
-	}
-	if respd.StatusCode != http.StatusUnauthorized {
-		t.Errorf("expected status code 401, but got %d", respd.StatusCode)
-	}
+	require.NoError(t, err)
+	require.Equal(t, http.StatusUnauthorized, respd.StatusCode)
 }
 
 func appTest() *negroni.Negroni {
@@ -306,40 +263,26 @@ func TestCors(t *testing.T) {
 	server := httptest.NewServer(n)
 	defer server.Close()
 	req, err := http.NewRequest("OPTIONS", server.URL, nil)
-	if err != nil {
-		t.Fatal("expected run without errors but was", err)
-	}
+	require.NoError(t, err)
+
 	req.Header.Set("Access-Control-Request-Method", "GET")
+
 	client := http.Client{}
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatal("expected run without errors but was", err)
-	}
-	if resp.Header.Get("Access-Control-Allow-Origin") != "*" {
-		t.Errorf("expected allow origin *, but got %q", resp.Header.Get("Access-Control-Allow-Origin"))
-	}
+	require.NoError(t, err)
+	require.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
+
 	methods := resp.Header.Get("Access-Control-Allow-Methods")
 	for _, method := range []string{"GET", "POST", "PUT", "PATCH", "DELETE"} {
-		if !strings.Contains(methods, method) {
-			t.Errorf("do not contain %s", method)
-		}
-	}
-	if resp.Request.Method != "OPTIONS" {
-		t.Errorf("expected method OPTIONS, but got %v", resp.Request.Method)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected HTTP status code 200, but got %v", resp.StatusCode)
+		require.Contains(t, methods, method)
 	}
 
-	if resp.Header.Get(headerAllowHeaders) != "Content-Type" {
-		t.Errorf("expected HTTP header allow 'Content-Type', but got %v", resp.Header.Get(headerAllowHeaders))
-	}
+	require.Equal(t, "OPTIONS", resp.Request.Method)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "Content-Type", resp.Header.Get(headerAllowHeaders))
+
 	var body []byte
 	body, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal("expected run without errors but was", err)
-	}
-	if len(body) != 0 {
-		t.Error("body is not empty")
-	}
+	require.NoError(t, err)
+	require.Zero(t, len(body))
 }

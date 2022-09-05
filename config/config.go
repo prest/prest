@@ -56,6 +56,7 @@ type Prest struct {
 	AuthType         string
 	HTTPHost         string // HTTPHost Declare which http address the PREST used
 	HTTPPort         int    // HTTPPort Declare which http port the PREST used
+	HTTPTimeout      int
 	PGHost           string
 	PGPort           int
 	PGUser           string
@@ -119,6 +120,7 @@ func viperCfg() {
 	viper.SetDefault("auth.type", "body")
 	viper.SetDefault("http.host", "0.0.0.0")
 	viper.SetDefault("http.port", 3000)
+	viper.SetDefault("http.timeout", 60)
 	viper.SetDefault("pg.host", "127.0.0.1")
 	viper.SetDefault("pg.port", 5432)
 	viper.SetDefault("ssl.mode", "require")
@@ -182,6 +184,7 @@ func Parse(cfg *Prest) (err error) {
 	cfg.AuthType = viper.GetString("auth.type")
 	cfg.HTTPHost = viper.GetString("http.host")
 	cfg.HTTPPort = viper.GetInt("http.port")
+	cfg.HTTPTimeout = viper.GetInt("http.timeout")
 	cfg.PGURL = viper.GetString("pg.url")
 	cfg.PGHost = viper.GetString("pg.host")
 	cfg.PGPort = viper.GetInt("pg.port")

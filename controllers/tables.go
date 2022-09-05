@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/adapters"
@@ -19,7 +20,8 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 	requestWhere, values, err := config.PrestConf.Adapter.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	requestWhere = config.PrestConf.Adapter.TableWhere(requestWhere)
@@ -27,7 +29,8 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 	order, err := config.PrestConf.Adapter.OrderByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform OrderByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	order = config.PrestConf.Adapter.TableOrderBy(order)
@@ -36,7 +39,8 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 
 	distinct, err := config.PrestConf.Adapter.DistinctClause(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	if distinct != "" {
@@ -47,7 +51,8 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 
 	sc := config.PrestConf.Adapter.Query(sqlTables, values...)
 	if sc.Err() != nil {
-		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, sc.Err().Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	w.Write(sc.Bytes())
@@ -61,14 +66,16 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 
 	requestWhere, values, err := config.PrestConf.Adapter.WhereByRequest(r, 3)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	requestWhere = config.PrestConf.Adapter.SchemaTablesWhere(requestWhere)
@@ -78,7 +85,8 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	order, err := config.PrestConf.Adapter.OrderByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform OrderByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	order = config.PrestConf.Adapter.SchemaTablesOrderBy(order)
@@ -86,7 +94,8 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	page, err := config.PrestConf.Adapter.PaginateIfPossible(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform PaginateIfPossible: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 
@@ -99,14 +108,18 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	// set db name on ctx
 	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
-	// allow setting request query timeout
-	// ctx, cancel := context.WithTimeout(ctx, time.Minute)
-	// defer cancel()
+	timeout, ok := ctx.Value("http.timeout").(int)
+	if !ok {
+		timeout = 60
+	}
+	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
+	defer cancel()
 
 	// send ctx to query the proper DB
 	sc := config.PrestConf.Adapter.QueryCtx(ctx, sqlSchemaTables, valuesAux...)
 	if sc.Err() != nil {
-		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, sc.Err().Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	w.Write(sc.Bytes())
@@ -122,26 +135,30 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 
 	// get selected columns, "*" if empty "_columns"
 	cols, err := config.PrestConf.Adapter.FieldsPermissions(r, table, "read")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 
 	if len(cols) == 0 {
 		err := fmt.Errorf("you don't have permission for this action, please check the permitted fields for this table")
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 
 	selectStr, err := config.PrestConf.Adapter.SelectFields(cols)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	query := config.PrestConf.Adapter.SelectSQL(selectStr, database, schema, table)
@@ -150,7 +167,8 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	distinct, err := config.PrestConf.Adapter.DistinctClause(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform Distinct: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	if distinct != "" {
@@ -161,7 +179,8 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	countQuery, err := config.PrestConf.Adapter.CountByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform CountByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	// _count_first: query string
@@ -179,7 +198,8 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	joinValues, err := config.PrestConf.Adapter.JoinByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform JoinByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 
@@ -191,7 +211,8 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	requestWhere, values, err := config.PrestConf.Adapter.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	sqlSelect := query
@@ -212,7 +233,8 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	order, err := config.PrestConf.Adapter.OrderByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform OrderByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	if order != "" {
@@ -223,16 +245,21 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	page, err := config.PrestConf.Adapter.PaginateIfPossible(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform PaginateIfPossible: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	sqlSelect = fmt.Sprint(sqlSelect, " ", page)
 
 	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
-	// allow setting request query timeout
-	// ctx, cancel := context.WithTimeout(ctx, time.Minute)
-	// defer cancel()
+	timeout, ok := ctx.Value("http.timeout").(int)
+	if !ok {
+		timeout = 60
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
+	defer cancel()
 
 	runQuery := config.PrestConf.Adapter.QueryCtx
 	// QueryCount returns the first record of the postgresql return as a non-list object
@@ -241,9 +268,9 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 	sc := runQuery(ctx, sqlSelect, values...)
 	if err = sc.Err(); err != nil {
-		errorMessage := sc.Err().Error()
-		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
-			log.Println(errorMessage)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, sc.Err().Error())
+		if strings.Contains(errorMessage, fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
+			log.Println(sc.Err().Error())
 			http.Error(w, errorMessage, http.StatusNotFound)
 			return
 		}
@@ -265,14 +292,16 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 
 	names, placeholders, values, err := config.PrestConf.Adapter.ParseInsertRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform InsertInTables: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 
@@ -281,15 +310,18 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	// set db name on ctx
 	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
-	// allow setting request query timeout
-	// ctx, cancel := context.WithTimeout(ctx, time.Minute)
-	// defer cancel()
+	timeout, ok := ctx.Value("http.timeout").(int)
+	if !ok {
+		timeout = 60
+	}
+	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
+	defer cancel()
 
 	sc := config.PrestConf.Adapter.InsertCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
-		errorMessage := sc.Err().Error()
-		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
-			log.Println(errorMessage)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, sc.Err().Error())
+		if strings.Contains(errorMessage, fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
+			log.Println(sc.Err().Error())
 			http.Error(w, errorMessage, http.StatusNotFound)
 			return
 		}
@@ -309,23 +341,28 @@ func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 
 	names, placeholders, values, err := config.PrestConf.Adapter.ParseBatchInsertRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform BatchInsertInTables: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 
 	// set db name on ctx
 	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
-	// allow setting request query timeout
-	// ctx, cancel := context.WithTimeout(ctx, time.Minute)
-	// defer cancel()
+	timeout, ok := ctx.Value("http.timeout").(int)
+	if !ok {
+		timeout = 60
+	}
+	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
+	defer cancel()
 
 	var sc adapters.Scanner
 	method := r.Header.Get("Prest-Batch-Method")
@@ -336,9 +373,9 @@ func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 		sc = config.PrestConf.Adapter.BatchInsertCopyCtx(ctx, database, schema, table, strings.Split(names, ","), values...)
 	}
 	if err = sc.Err(); err != nil {
-		errorMessage := sc.Err().Error()
-		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
-			log.Println(errorMessage)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, sc.Err().Error())
+		if strings.Contains(errorMessage, fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
+			log.Println(sc.Err().Error())
 			http.Error(w, errorMessage, http.StatusNotFound)
 			return
 		}
@@ -358,14 +395,16 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 
 	where, values, err := config.PrestConf.Adapter.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 
@@ -377,7 +416,8 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	returningSyntax, err := config.PrestConf.Adapter.ReturningByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform ReturningByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 
@@ -390,15 +430,18 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
-	// allow setting request query timeout
-	// ctx, cancel := context.WithTimeout(ctx, time.Minute)
-	// defer cancel()
+	timeout, ok := ctx.Value("http.timeout").(int)
+	if !ok {
+		timeout = 60
+	}
+	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
+	defer cancel()
 
 	sc := config.PrestConf.Adapter.DeleteCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
-		errorMessage := sc.Err().Error()
-		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
-			log.Println(errorMessage)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, sc.Err().Error())
+		if strings.Contains(errorMessage, fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
+			log.Println(sc.Err().Error())
 			http.Error(w, errorMessage, http.StatusNotFound)
 			return
 		}
@@ -417,14 +460,16 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 
 	setSyntax, values, err := config.PrestConf.Adapter.SetByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform UPDATE: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	sql := config.PrestConf.Adapter.UpdateSQL(database, schema, table, setSyntax)
@@ -434,7 +479,8 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	where, whereValues, err := config.PrestConf.Adapter.WhereByRequest(r, pid)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 
@@ -449,7 +495,8 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	returningSyntax, err := config.PrestConf.Adapter.ReturningByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform ReturningByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 
@@ -461,14 +508,18 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
-	// allow setting request query timeout
-	// ctx, cancel := context.WithTimeout(ctx, time.Minute)
-	// defer cancel()
+	timeout, ok := ctx.Value("http.timeout").(int)
+	if !ok {
+		timeout = 60
+	}
+	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
+	defer cancel()
 
 	sc := config.PrestConf.Adapter.UpdateCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
-		errorMessage := sc.Err().Error()
-		if errorMessage == fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table) {
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, sc.Err().Error())
+		if strings.Contains(errorMessage, fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
+			log.Println(sc.Err().Error())
 			log.Println(errorMessage)
 			http.Error(w, errorMessage, http.StatusNotFound)
 			return
@@ -495,14 +546,19 @@ func ShowTable(w http.ResponseWriter, r *http.Request) {
 	// set db name on ctx
 	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
-	// allow setting request query timeout
-	// ctx, cancel := context.WithTimeout(ctx, time.Minute)
-	// defer cancel()
+	timeout, ok := ctx.Value("http.timeout").(int)
+	if !ok {
+		timeout = 60
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
+	defer cancel()
 
 	sc := config.PrestConf.Adapter.ShowTableCtx(ctx, schema, table)
 	if sc.Err() != nil {
-		log.Println(fmt.Sprintf(" There error to excute the query. schema %s error %s", schema, sc.Err()))
-		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
+		errorMessage := fmt.Sprintf(`{"error":"%s"}`, sc.Err().Error())
+		log.Println(fmt.Sprintf("Error to excute query, schema %s error %s", schema, sc.Err()))
+		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	w.Write(sc.Bytes())

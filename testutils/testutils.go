@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -26,14 +27,17 @@ func DoRequest(t *testing.T, url string, r interface{}, method string, expectedS
 
 	req.Header.Add("X-Application", "prest")
 
+	req = req.WithContext(context.WithValue(req.Context(), "http.timeout", 600)) // nolint
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	require.Nil(t, err, "error on Do Request")
 
-	require.Equal(t, expectedStatus, resp.StatusCode)
-
 	body, err := io.ReadAll(resp.Body)
 	require.Nil(t, err, "error on io ReadAll")
+
+	fmt.Printf("test: %s body: %s\n", t.Name(), string(body))
+	require.Equal(t, expectedStatus, resp.StatusCode)
 
 	if len(expectedBody) > 0 {
 		require.True(t, containsStringInSlice(expectedBody, string(body)),
