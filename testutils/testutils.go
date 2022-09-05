@@ -2,7 +2,6 @@ package testutils
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -26,8 +25,6 @@ func DoRequest(t *testing.T, url string, r interface{}, method string, expectedS
 	require.Nil(t, err, "error on New Request")
 
 	req.Header.Add("X-Application", "prest")
-
-	req = req.WithContext(context.WithValue(req.Context(), "http.timeout", 600)) // nolint
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
