@@ -16,6 +16,7 @@ var (
 		negroni.Handler(negroni.NewRecovery()),
 		negroni.Handler(negroni.NewLogger()),
 		HandlerSet(),
+		SetTimeoutToContext(),
 	}
 )
 

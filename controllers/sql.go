@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/adapters/postgres"
@@ -49,9 +50,12 @@ func ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
 	// set db name on ctx
 	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
-	// allow setting request query timeout
-	// ctx, cancel := context.WithTimeout(ctx, time.Minute)
-	// defer cancel()
+	timeout, ok := ctx.Value("http.timeout").(int)
+	if !ok {
+		timeout = 60
+	}
+	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
+	defer cancel()
 
 	result, err := ExecuteScriptQuery(r.WithContext(ctx), queriesPath, script)
 	if err != nil {
