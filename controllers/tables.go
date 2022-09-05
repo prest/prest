@@ -108,10 +108,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	// set db name on ctx
 	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
-	timeout, ok := ctx.Value("http.timeout").(int)
-	if !ok {
-		timeout = 60
-	}
+	timeout, _ := ctx.Value("http.timeout").(int)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
 	defer cancel()
 
@@ -253,11 +250,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
-	timeout, ok := ctx.Value("http.timeout").(int)
-	if !ok {
-		timeout = 60
-	}
-
+	timeout, _ := ctx.Value("http.timeout").(int)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
 	defer cancel()
 
@@ -310,10 +303,7 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	// set db name on ctx
 	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
-	timeout, ok := ctx.Value("http.timeout").(int)
-	if !ok {
-		timeout = 60
-	}
+	timeout, _ := ctx.Value("http.timeout").(int)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
 	defer cancel()
 
@@ -357,10 +347,7 @@ func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 	// set db name on ctx
 	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
-	timeout, ok := ctx.Value("http.timeout").(int)
-	if !ok {
-		timeout = 60
-	}
+	timeout, _ := ctx.Value("http.timeout").(int)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
 	defer cancel()
 
@@ -430,10 +417,7 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
-	timeout, ok := ctx.Value("http.timeout").(int)
-	if !ok {
-		timeout = 60
-	}
+	timeout, _ := ctx.Value("http.timeout").(int)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
 	defer cancel()
 
@@ -508,10 +492,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
-	timeout, ok := ctx.Value("http.timeout").(int)
-	if !ok {
-		timeout = 60
-	}
+	timeout, _ := ctx.Value("http.timeout").(int)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
 	defer cancel()
 
@@ -546,11 +527,7 @@ func ShowTable(w http.ResponseWriter, r *http.Request) {
 	// set db name on ctx
 	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
-	timeout, ok := ctx.Value("http.timeout").(int)
-	if !ok {
-		timeout = 60
-	}
-
+	timeout, _ := ctx.Value("http.timeout").(int)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
 	defer cancel()
 

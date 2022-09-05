@@ -52,7 +52,7 @@ func TestExecuteScriptQuery(t *testing.T) {
 
 func TestExecuteFromScripts(t *testing.T) {
 	router := mux.NewRouter()
-	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", ExecuteFromScripts)
+	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", setHTTPTimeoutMiddleware(ExecuteFromScripts))
 	server := httptest.NewServer(router)
 	defer server.Close()
 

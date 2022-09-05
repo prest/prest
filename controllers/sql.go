@@ -50,10 +50,7 @@ func ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
 	// set db name on ctx
 	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
-	timeout, ok := ctx.Value("http.timeout").(int)
-	if !ok {
-		timeout = 60
-	}
+	timeout, _ := ctx.Value("http.timeout").(int)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
 	defer cancel()
 
