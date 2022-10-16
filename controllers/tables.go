@@ -497,7 +497,7 @@ func ShowTable(w http.ResponseWriter, r *http.Request) {
 
 	sc := config.PrestConf.Adapter.ShowTableCtx(ctx, schema, table)
 	if sc.Err() != nil {
-		errorMessage := fmt.Sprintf("error to excute query, schema %s error %s", schema, sc.Err())
+		errorMessage := fmt.Sprintf("error to execute query, schema %s error %s", schema, sc.Err())
 		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}

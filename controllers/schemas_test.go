@@ -51,16 +51,13 @@ func TestVersionDependentGetSchemas(t *testing.T) {
 		url         string
 		method      string
 		status      int
-		body        []string
+		body        string
 	}{
 		{"Get schemas with custom where and pagination invalid",
 			"/schemas?schema_name=$eq.public&_page=A",
 			"GET",
 			http.StatusBadRequest,
-			[]string{
-				`strconv.ParseInt: parsing "A": invalid syntax`,
-				`strconv.Atoi: parsing "A": invalid syntax`,
-			},
+			"strconv.Atoi: parsing \"A\": invalid syntax\n",
 		},
 	}
 
@@ -71,7 +68,7 @@ func TestVersionDependentGetSchemas(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body...)
+		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body)
 	}
 
 }

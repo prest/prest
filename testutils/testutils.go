@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 // DoRequest function used to test internal http requests
@@ -18,26 +18,38 @@ func DoRequest(t *testing.T, url string, r interface{}, method string, expectedS
 
 	if r != nil {
 		byt, err = json.Marshal(r)
-		require.Nil(t, err, "error on json marshal")
+		assert.Nil(t, err, "error on json marshal")
 	}
 
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(byt))
-	require.Nil(t, err, "error on New Request")
+	assert.Nil(t, err, "error on New Request")
+	if err != nil {
+		fmt.Printf("error %+v", err)
+		return
+	}
 
 	req.Header.Add("X-Application", "prest")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	require.Nil(t, err, "error on Do Request")
+	assert.Nil(t, err, "error on Do Request")
+	if err != nil {
+		fmt.Printf("error %+v", err)
+		return
+	}
 
 	body, err := io.ReadAll(resp.Body)
-	require.Nil(t, err, "error on io ReadAll")
+	assert.Nil(t, err, "error on io ReadAll")
+	if err != nil {
+		fmt.Printf("error %+v", err)
+		return
+	}
 
 	fmt.Printf("test: %s body: %s\n", t.Name(), string(body))
-	require.Equal(t, expectedStatus, resp.StatusCode)
+	assert.Equal(t, expectedStatus, resp.StatusCode)
 
 	if len(expectedBody) > 0 {
-		require.True(t, containsStringInSlice(expectedBody, string(body)),
+		assert.True(t, containsStringInSlice(expectedBody, string(body)),
 			fmt.Sprintf("expected %q, got: %q", expectedBody, string(body)))
 	}
 }
