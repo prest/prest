@@ -25,11 +25,11 @@ func TestGetSchemas(t *testing.T) {
 		{"Get schemas without custom where clause", "/schemas", "GET", http.StatusOK, "[{\"schema_name\":\"information_schema\"}, \n {\"schema_name\":\"pg_catalog\"}, \n {\"schema_name\":\"pg_toast\"}, \n {\"schema_name\":\"public\"}]"},
 		{"Get schemas with custom where clause", "/schemas?schema_name=$eq.public", "GET", http.StatusOK, "[{\"schema_name\":\"public\"}]"},
 		{"Get schemas with custom order clause", "/schemas?schema_name=$eq.public&_order=schema_name", "GET", http.StatusOK, "[{\"schema_name\":\"public\"}]"},
-		{"Get schemas with custom order invalid clause", "/schemas?schema_name=$eq.public&_order=$eq.schema_name", "GET", http.StatusBadRequest, "{\"error\":\"invalid identifier\"}\n"},
+		{"Get schemas with custom order invalid clause", "/schemas?schema_name=$eq.public&_order=$eq.schema_name", "GET", http.StatusBadRequest, "invalid identifier\n"},
 		{"Get schemas with custom where clause and pagination", "/schemas?schema_name=$eq.public&_page=1&_page_size=20", "GET", http.StatusOK, "[{\"schema_name\":\"public\"}]"},
 		{"Get schemas with COUNT clause", "/schemas?_count=*", "GET", http.StatusOK, "[{\"count\":4}]"},
-		{"Get schemas with custom where invalid clause", "/schemas?0schema_name=$eq.public", "GET", http.StatusBadRequest, "{\"error\":\"0schema_name: invalid identifier\"}\n"},
-		{"Get schemas with noexistent column", "/schemas?schematame=$eq.test", "GET", http.StatusBadRequest, "{\"error\":\"pq: column \"schematame\" does not exist\"}\n"},
+		{"Get schemas with custom where invalid clause", "/schemas?0schema_name=$eq.public", "GET", http.StatusBadRequest, "0schema_name: invalid identifier\n"},
+		{"Get schemas with noexistent column", "/schemas?schematame=$eq.test", "GET", http.StatusBadRequest, "pq: column \"schematame\" does not exist\n"},
 		{"Get schemas with distinct clause", "/schemas?schema_name=$eq.public&_distinct=true", "GET", http.StatusOK, "[{\"schema_name\":\"public\"}]"},
 	}
 
@@ -58,8 +58,8 @@ func TestVersionDependentGetSchemas(t *testing.T) {
 			"GET",
 			http.StatusBadRequest,
 			[]string{
-				"{\"error\":\"strconv.ParseInt: parsing \"A\": invalid syntax\"}\n",
-				"{\"error\":\"strconv.Atoi: parsing \"A\": invalid syntax\"}\n",
+				`strconv.ParseInt: parsing "A": invalid syntax`,
+				`strconv.Atoi: parsing "A": invalid syntax`,
 			},
 		},
 	}

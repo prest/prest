@@ -52,7 +52,7 @@ func (adapter *Postgres) ParseScript(scriptPath string, templateData map[string]
 
 	tpl, err = tpl.ParseFiles(scriptPath)
 	if err != nil {
-		err = fmt.Errorf("could not parse file %s: %+v", scriptPath, err)
+		err = fmt.Errorf("could not parse file %s: %v", scriptPath, err)
 		return
 	}
 
@@ -89,7 +89,7 @@ func WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
 
 	result, err := stmt.Exec(valuesAux...)
 	if err != nil {
-		log.Printf("sql = %+v\n", sql)
+		log.Printf("sql = %v\n", sql)
 		err = fmt.Errorf("could not peform sql: %v", err)
 		sc = &scanner.PrestScanner{Error: err}
 		return
@@ -135,7 +135,7 @@ func WriteSQLCtx(ctx context.Context, sql string, values []interface{}) (sc adap
 
 	result, err := stmt.Exec(valuesAux...)
 	if err != nil {
-		log.Printf("sql = %+v\n", sql)
+		log.Printf("sql = %v\n", sql)
 		err = fmt.Errorf("could not peform sql: %v", err)
 		sc = &scanner.PrestScanner{Error: err}
 		return
