@@ -124,7 +124,7 @@ func viperCfg() {
 	viper.SetDefault("pg.host", "127.0.0.1")
 	viper.SetDefault("pg.port", 5432)
 	viper.SetDefault("ssl.mode", "require")
-	viper.SetDefault("pg.maxidleconn", 10)
+	viper.SetDefault("pg.maxidleconn", 0) // avoids db memory leak on req timeout
 	viper.SetDefault("pg.maxopenconn", 10)
 	viper.SetDefault("pg.conntimeout", 10)
 	viper.SetDefault("pg.single", true)
@@ -148,31 +148,25 @@ func viperCfg() {
 	hDir, err := homedir.Dir()
 	if err != nil {
 		log.Fatal(err)
-
 	}
 	viper.SetDefault("queries.location", filepath.Join(hDir, "queries"))
 }
 
-func getDefaultPrestConf(prestConf string) (cfg string) {
-	cfg = prestConf
+func getDefaultPrestConf(prestConf string) string {
 	if prestConf == "" {
-		cfg = defaultFile
+		return defaultFile
 	}
-	return
+	return prestConf
 }
 
 // Parse pREST config
 func Parse(cfg *Prest) (err error) {
 	err = viper.ReadInConfig()
 	if err != nil {
-		switch err.(type) {
-		case viper.ConfigFileNotFoundError:
-			if configFile != "" {
-				log.Fatal(fmt.Sprintf("File %s not found. Aborting.\n", configFile))
-			}
-		default:
-			return
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			return fmt.Errorf("file %s not found, aborting", configFile)
 		}
+		return
 	}
 	cfg.AuthEnabled = viper.GetBool("auth.enabled")
 	cfg.AuthSchema = viper.GetString("auth.schema")
@@ -256,7 +250,6 @@ func Load() {
 	if err != nil {
 		panic(err)
 	}
-
 	if _, err = os.Stat(PrestConf.QueriesPath); os.IsNotExist(err) {
 		if err = os.MkdirAll(PrestConf.QueriesPath, 0700); os.IsNotExist(err) {
 			log.Errorf("Queries directory %s is not created", PrestConf.QueriesPath)
