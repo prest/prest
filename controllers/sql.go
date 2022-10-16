@@ -47,6 +47,10 @@ func ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
 	script := vars["script"]
 	database := vars["database"]
 
+	if database == "" {
+		database = config.PrestConf.Adapter.GetDatabase()
+	}
+
 	// set db name on ctx
 	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
 
