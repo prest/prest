@@ -47,8 +47,10 @@ var groupRegex *regexp.Regexp
 
 var stmts *Stmt
 
+type key int
+
 const (
-	_ = iota
+	_ key = iota
 	DBNameKey
 )
 
