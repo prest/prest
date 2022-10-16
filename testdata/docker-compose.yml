@@ -16,26 +16,26 @@ services:
       retries: 3
     logging:
       driver: none # hide postgres logs
-  # prest-test:
-  #   build:
-  #     context: .
-  #     dockerfile: ./Dockerfile
-  #   volumes:
-  #     - ..:/workspace
-  #   links:
-  #     - "postgres:postgres"
-  #   environment:
-  #     - PREST_PG_HOST=postgres
-  #     - PREST_PG_USER=postgres
-  #     - PREST_PG_PASS=postgres
-  #     - PGPASSWORD=postgres
-  #     - PREST_PG_DATABASE=prest-test
-  #     - PREST_PG_PORT=5432
-  #     - PREST_SSL_MODE=disable
-  #     - PREST_CONF=/workspace/testdata/prest.toml
-  #     - PREST_MIGRATIONS=/workspace/testdata/migrations
-  #     - PREST_QUERIES_LOCATION=/workspace/testdata/queries
-  #     - BE_CRASHER=1
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
+  prest-test:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    volumes:
+      - ..:/workspace
+    links:
+      - "postgres:postgres"
+    environment:
+      - PREST_PG_HOST=postgres
+      - PREST_PG_USER=postgres
+      - PREST_PG_PASS=postgres
+      - PGPASSWORD=postgres
+      - PREST_PG_DATABASE=prest-test
+      - PREST_PG_PORT=5432
+      - PREST_SSL_MODE=disable
+      - PREST_CONF=/workspace/testdata/prest.toml
+      - PREST_MIGRATIONS=/workspace/testdata/migrations
+      - PREST_QUERIES_LOCATION=/workspace/testdata/queries
+      - BE_CRASHER=1
+    depends_on:
+      postgres:
+        condition: service_healthy
