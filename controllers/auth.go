@@ -130,19 +130,19 @@ func basicPasswordCheck(user, password string) (obj auth.User, err error) {
 
 // getSelectQuery create the query to authenticate the user
 func getSelectQuery() (query string) {
-	query = fmt.Sprintf(`SELECT * FROM %s.%s WHERE %s=$1 AND %s=$2 LIMIT 1`, config.PrestConf.AuthSchema, config.PrestConf.AuthTable, config.PrestConf.AuthUsername, config.PrestConf.AuthPassword)
-	return
+	return fmt.Sprintf(
+		`SELECT * FROM %s.%s WHERE %s=$1 AND %s=$2 LIMIT 1`,
+		config.PrestConf.AuthSchema, config.PrestConf.AuthTable,
+		config.PrestConf.AuthUsername, config.PrestConf.AuthPassword)
 }
 
 // encrypt will apply the encryption algorithm to the password
 func encrypt(password string) (encrypted string) {
 	switch config.PrestConf.AuthEncrypt {
 	case "MD5":
-		encrypted = fmt.Sprintf("%x", md5.Sum([]byte(password)))
-		break
+		return fmt.Sprintf("%x", md5.Sum([]byte(password)))
 	case "SHA1":
-		encrypted = fmt.Sprintf("%x", sha1.Sum([]byte(password)))
-		break
+		return fmt.Sprintf("%x", sha1.Sum([]byte(password)))
 	}
 	return
 }
