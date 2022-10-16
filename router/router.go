@@ -39,7 +39,7 @@ func GetRouter() *mux.Router {
 	router.HandleFunc("/tables", controllers.GetTables).Methods("GET")
 	// breaking change
 	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", controllers.ExecuteFromScripts)
-	router.HandleFunc("/_QUERIES/{database}/{queriesLocation}/{script}", controllers.ExecuteFromScripts)
+	// router.HandleFunc("/_QUERIES/{database}/{queriesLocation}/{script}", controllers.ExecuteFromScripts)
 	// if it is windows it should not register the plugin endpoint
 	// we use go plugin system that does not support windows
 	// https://github.com/golang/go/issues/19282
