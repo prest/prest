@@ -221,7 +221,7 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 					case "jsonb":
 						jsonField := strings.Split(keyInfo[0], "->>")
 						if chkInvalidIdentifier(jsonField[0], jsonField[1]) {
-							err = errors.Wrapf(ErrInvalidIdentifier, "%+v", jsonField)
+							err = errors.Wrapf(ErrInvalidIdentifier, "%v", jsonField)
 							return
 						}
 						fields := strings.Split(jsonField[0], ".")

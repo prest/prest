@@ -17,7 +17,7 @@ func ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]
 	config.PrestConf.Adapter.SetDatabase(config.PrestConf.PGDatabase)
 	sqlPath, err := config.PrestConf.Adapter.GetScript(rq.Method, queriesPath, script)
 	if err != nil {
-		err = fmt.Errorf("could not get script %s/%s, %+v", queriesPath, script, err)
+		err = fmt.Errorf("could not get script %s/%s, %v", queriesPath, script, err)
 		return nil, err
 	}
 
@@ -27,13 +27,13 @@ func ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]
 
 	sql, values, err := config.PrestConf.Adapter.ParseScript(sqlPath, templateData)
 	if err != nil {
-		err = fmt.Errorf("could not parse script %s/%s, %+v", queriesPath, script, err)
+		err = fmt.Errorf("could not parse script %s/%s, %v", queriesPath, script, err)
 		return nil, err
 	}
 
 	sc := config.PrestConf.Adapter.ExecuteScriptsCtx(rq.Context(), rq.Method, sql, values)
 	if sc.Err() != nil {
-		err = fmt.Errorf("could not execute sql %+v, %s", sc.Err(), sql)
+		err = fmt.Errorf("could not execute sql %v, %s", sc.Err(), sql)
 		return nil, err
 	}
 
