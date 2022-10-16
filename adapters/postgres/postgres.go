@@ -25,6 +25,7 @@ import (
 	"github.com/prest/prest/adapters/postgres/statements"
 	"github.com/prest/prest/adapters/scanner"
 	"github.com/prest/prest/config"
+	pctx "github.com/prest/prest/context"
 	"github.com/prest/prest/template"
 	"github.com/structy/log"
 )
@@ -46,13 +47,6 @@ var insertTableNameRegex *regexp.Regexp
 var groupRegex *regexp.Regexp
 
 var stmts *Stmt
-
-type key int
-
-const (
-	_ key = iota
-	DBNameKey
-)
 
 // Stmt statement representation
 type Stmt struct {
@@ -1631,7 +1625,7 @@ func (adapter *Postgres) GetDatabase() string {
 // getDBFromCtx tries to get the db from context if not present it will
 // fallback to the current setted db
 func getDBFromCtx(ctx context.Context) (db *sqlx.DB, err error) {
-	dbName, ok := ctx.Value(DBNameKey).(string)
+	dbName, ok := ctx.Value(pctx.DBNameKey).(string)
 	if ok {
 		return connection.GetFromPool(dbName)
 	}

@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/cache"
 	"github.com/prest/prest/config"
+	pctx "github.com/prest/prest/context"
 )
 
 // ExecuteScriptQuery is a function to execute and return result of script query
@@ -52,9 +52,9 @@ func ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// set db name on ctx
-	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
+	ctx := context.WithValue(r.Context(), pctx.DBNameKey, database)
 
-	timeout, _ := ctx.Value("http.timeout").(int)
+	timeout, _ := ctx.Value(pctx.HTTPTimeoutKey).(int)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
 	defer cancel()
 

@@ -10,9 +10,9 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/adapters"
-	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/cache"
 	"github.com/prest/prest/config"
+	pctx "github.com/prest/prest/context"
 	"github.com/structy/log"
 )
 
@@ -99,9 +99,9 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	valuesAux = append(valuesAux, values...)
 
 	// set db name on ctx
-	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
+	ctx := context.WithValue(r.Context(), pctx.DBNameKey, database)
 
-	timeout, _ := ctx.Value("http.timeout").(int)
+	timeout, _ := ctx.Value(pctx.HTTPTimeoutKey).(int)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
 	defer cancel()
 
@@ -230,9 +230,9 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 	sqlSelect = fmt.Sprint(sqlSelect, " ", page)
 
-	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
+	ctx := context.WithValue(r.Context(), pctx.DBNameKey, database)
 
-	timeout, _ := ctx.Value("http.timeout").(int)
+	timeout, _ := ctx.Value(pctx.HTTPTimeoutKey).(int)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
 	defer cancel()
 
@@ -280,9 +280,9 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	sql := config.PrestConf.Adapter.InsertSQL(database, schema, table, names, placeholders)
 
 	// set db name on ctx
-	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
+	ctx := context.WithValue(r.Context(), pctx.DBNameKey, database)
 
-	timeout, _ := ctx.Value("http.timeout").(int)
+	timeout, _ := ctx.Value(pctx.HTTPTimeoutKey).(int)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
 	defer cancel()
 
@@ -321,9 +321,9 @@ func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// set db name on ctx
-	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
+	ctx := context.WithValue(r.Context(), pctx.DBNameKey, database)
 
-	timeout, _ := ctx.Value("http.timeout").(int)
+	timeout, _ := ctx.Value(pctx.HTTPTimeoutKey).(int)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
 	defer cancel()
 
@@ -387,9 +387,9 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 			returningSyntax)
 	}
 
-	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
+	ctx := context.WithValue(r.Context(), pctx.DBNameKey, database)
 
-	timeout, _ := ctx.Value("http.timeout").(int)
+	timeout, _ := ctx.Value(pctx.HTTPTimeoutKey).(int)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
 	defer cancel()
 
@@ -457,9 +457,9 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 			" RETURNING ",
 			returningSyntax)
 	}
-	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
+	ctx := context.WithValue(r.Context(), pctx.DBNameKey, database)
 
-	timeout, _ := ctx.Value("http.timeout").(int)
+	timeout, _ := ctx.Value(pctx.HTTPTimeoutKey).(int)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
 	defer cancel()
 
@@ -489,9 +489,9 @@ func ShowTable(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// set db name on ctx
-	ctx := context.WithValue(r.Context(), postgres.DBNameKey, database)
+	ctx := context.WithValue(r.Context(), pctx.DBNameKey, database)
 
-	timeout, _ := ctx.Value("http.timeout").(int)
+	timeout, _ := ctx.Value(pctx.HTTPTimeoutKey).(int)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
 	defer cancel()
 
