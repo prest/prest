@@ -326,7 +326,7 @@ func (adapter *Postgres) SetByRequest(r *http.Request, initialPlaceholderID int)
 	fields := make([]string, 0)
 	for key, value := range body {
 		if chkInvalidIdentifier(key) {
-			err = ErrInvalidIdentifier
+			err = errors.Wrap(ErrInvalidIdentifier, "Set")
 			return
 		}
 		keys := strings.Split(key, ".")
@@ -430,7 +430,7 @@ func (adapter *Postgres) ParseInsertRequest(r *http.Request) (colsName string, c
 	fields := make([]string, 0)
 	for key, value := range body {
 		if chkInvalidIdentifier(key) {
-			err = ErrInvalidIdentifier
+			err = errors.Wrap(ErrInvalidIdentifier, "Insert")
 			return
 		}
 		fields = append(fields, fmt.Sprintf(`"%s"`, key))
