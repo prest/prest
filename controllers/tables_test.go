@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
+	pctx "github.com/prest/prest/context"
 	"github.com/prest/prest/testutils"
 )
 
@@ -362,6 +363,6 @@ func TestShowTable(t *testing.T) {
 
 func setHTTPTimeoutMiddleware(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		h.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), "http.timeout", 60))) // nolint
+		h.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), pctx.HTTPTimeoutKey, 60))) // nolint
 	}
 }

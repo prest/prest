@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/prest/prest/config"
+	pctx "github.com/prest/prest/context"
 	"github.com/prest/prest/controllers/auth"
 	"github.com/urfave/negroni"
 	"gopkg.in/square/go-jose.v2/jwt"
@@ -36,7 +37,7 @@ func HandlerSet() negroni.Handler {
 // By default it is 60 seconds, can be modified to a different value
 func SetTimeoutToContext() negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		next(rw, r.WithContext(context.WithValue(r.Context(), "http.timeout", config.PrestConf.HTTPTimeout))) // nolint
+		next(rw, r.WithContext(context.WithValue(r.Context(), pctx.HTTPTimeoutKey, config.PrestConf.HTTPTimeout))) // nolint
 	})
 }
 
