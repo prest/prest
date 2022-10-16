@@ -59,3 +59,21 @@ Deploy to Heroku and instantly get a realtime RESTFul API backed by Heroku Postg
 ## Documentation
 
 <https://docs.prestd.com/> ([content source](https://github.com/prest/prest/tree/main/docs) and [template source](https://github.com/prest/doc-template))
+
+## run locally
+
+You can use the db from our `docker-compose.yml` file and disable the prestd image pull, then just use the following commands:
+
+```
+$ prest git:(main) cd cmd/prestd
+
+$ prestd git:(main) PREST_CACHE=false \
+PREST_PG_HOST=localhost  \
+PREST_SSL_MODE=disable   \
+PREST_JWT_DEFAULT=false  \
+PREST_PG_PORT=5432       \
+PREST_PG_PASS=prest      \
+PREST_PG_USER=prest      \
+PREST_DEBUG=true  \
+go run main.go
+```
