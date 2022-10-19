@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"github.com/prest/prest/config"
+	"github.com/rs/cors"
 	"github.com/urfave/negroni"
 )
 
@@ -31,7 +32,11 @@ func initApp() {
 		if config.PrestConf.CORSAllowOrigin != nil {
 			MiddlewareStack = append(
 				MiddlewareStack,
-				Cors(config.PrestConf.CORSAllowOrigin, config.PrestConf.CORSAllowHeaders))
+				cors.New(cors.Options{
+					AllowedOrigins: config.PrestConf.CORSAllowOrigin,
+					AllowedMethods: config.PrestConf.CORSAllowMethods,
+					AllowedHeaders: config.PrestConf.CORSAllowHeaders,
+				}))
 		}
 		if config.PrestConf.Cache.Enabled {
 			MiddlewareStack = append(MiddlewareStack, CacheMiddleware())
