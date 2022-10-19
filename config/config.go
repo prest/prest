@@ -134,7 +134,7 @@ func viperCfg() {
 	viper.SetDefault("jwt.algo", "HS256")
 	viper.SetDefault("jwt.whitelist", []string{"/auth"})
 	viper.SetDefault("cors.allowheaders", []string{"Content-Type"})
-	viper.SetDefault("cors.allowmethods", []string{"GET", "HEAD", "POST", "PUT", "DELETE"})
+	viper.SetDefault("cors.allowmethods", []string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
 	viper.SetDefault("cors.alloworigin", []string{"*"})
 	viper.SetDefault("context", "/")
 	viper.SetDefault("https.mode", false)

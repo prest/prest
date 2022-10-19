@@ -2,7 +2,7 @@ package middlewares
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -31,8 +31,7 @@ func TestInitApp(t *testing.T) {
 
 func TestGetApp(t *testing.T) {
 	app = nil
-	n := GetApp()
-	require.NotNil(t, n)
+	require.NotNil(t, GetApp())
 
 	MiddlewareStack = []negroni.Handler{}
 }
@@ -51,7 +50,7 @@ func TestGetAppWithReorderedMiddleware(t *testing.T) {
 	resp, err := http.Get(server.URL)
 	require.NoError(t, err)
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
 	defer resp.Body.Close()
@@ -77,7 +76,7 @@ func TestGetAppWithoutReorderedMiddleware(t *testing.T) {
 	MiddlewareStack = []negroni.Handler{}
 }
 
-func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
+func Test_Middleware_DoesntBlock_CustomRoutes(t *testing.T) {
 	os.Setenv("PREST_DEBUG", "true")
 	config.Load()
 	postgres.Load()
@@ -85,7 +84,6 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
 	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
-
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.SelectFromTables).Methods("GET")
 
 	r.PathPrefix("/").Handler(negroni.New(
@@ -95,12 +93,14 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 	os.Setenv("PREST_CONF", "../testdata/prest.toml")
 	n := GetApp()
 	n.UseHandler(r)
+
 	server := httptest.NewServer(n)
 	defer server.Close()
+
 	resp, err := http.Get(server.URL)
 	require.NoError(t, err)
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
 	defer resp.Body.Close()
@@ -111,7 +111,7 @@ func TestMiddlewareAccessNoblockingCustomRoutes(t *testing.T) {
 	resp, err = http.Get(server.URL + "/prest/public/test_write_and_delete_access")
 	require.NoError(t, err)
 
-	body, err = ioutil.ReadAll(resp.Body)
+	body, err = io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
 	defer resp.Body.Close()
@@ -249,7 +249,7 @@ func appTestWithJwt() *negroni.Negroni {
 	return n
 }
 
-func TestCors(t *testing.T) {
+func Test_CORS_Middleware(t *testing.T) {
 	MiddlewareStack = []negroni.Handler{}
 	os.Setenv("PREST_DEBUG", "true")
 	os.Setenv("PREST_CORS_ALLOWORIGIN", "*")
@@ -270,19 +270,12 @@ func TestCors(t *testing.T) {
 	client := http.Client{}
 	resp, err := client.Do(req)
 	require.NoError(t, err)
-	require.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-
-	methods := resp.Header.Get("Access-Control-Allow-Methods")
-	for _, method := range []string{"GET", "POST", "PUT", "PATCH", "DELETE"} {
-		require.Contains(t, methods, method)
-	}
 
 	require.Equal(t, "OPTIONS", resp.Request.Method)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Equal(t, "Content-Type", resp.Header.Get(headerAllowHeaders))
 
 	var body []byte
-	body, err = ioutil.ReadAll(resp.Body)
+	body, err = io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.Zero(t, len(body))
 }
