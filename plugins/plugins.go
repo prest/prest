@@ -80,5 +80,6 @@ func HandlerPlugin(w http.ResponseWriter, r *http.Request) {
 	}
 	// Cache arrow if enabled
 	cache.BuntSet(r.URL.String(), ret)
+	//nolint
 	w.Write([]byte(ret))
 }

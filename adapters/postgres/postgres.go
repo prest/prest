@@ -1385,9 +1385,7 @@ func columnsByRequest(r *http.Request) (columns []string, err error) {
 	columnsArr := queries["_select"]
 	for _, j := range columnsArr {
 		cArgs := strings.Split(j, ",")
-		for _, columnName := range cArgs {
-			columns = append(columns, columnName)
-		}
+		columns = append(columns, cArgs...)
 	}
 	if queries.Get("_groupby") != "" {
 		columns, err = normalizeAll(columns)
@@ -1405,7 +1403,7 @@ func (adapter *Postgres) DistinctClause(r *http.Request) (distinctQuery string, 
 	distinctQuery = ""
 
 	if checkQuery == "true" {
-		distinctQuery = fmt.Sprintf("SELECT DISTINCT")
+		distinctQuery = "SELECT DISTINCT"
 	}
 	return
 }

@@ -68,6 +68,7 @@ func ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
 		// Cache arrow if enabled
 		cache.BuntSet(r.URL.String(), string(result))
 	}
+	//nolint
 	w.Write(result)
 }
 

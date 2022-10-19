@@ -916,26 +916,16 @@ func TestGetQueryOperator(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Log(fmt.Sprintf("Query operator %s", tc.in))
+		t.Logf("Query operator %s", tc.in)
 		op, err := GetQueryOperator(tc.in)
-		if err != nil {
-			t.Errorf("expected no errors, got: %v", err)
-		}
-
-		if op != tc.out {
-			t.Errorf("expected %s, got: %s", tc.out, op)
-		}
+		require.NoError(t, err)
+		require.Equal(t, tc.out, op)
 	}
 
 	t.Log("Invalid query operator")
 	op, err := GetQueryOperator("!lol")
-	if err == nil {
-		t.Errorf("expected errors, got: %v", err)
-	}
-
-	if op != "" {
-		t.Errorf("expected empty op, got: %s", op)
-	}
+	require.Error(t, err)
+	require.Empty(t, op)
 }
 
 func TestOrderByRequest(t *testing.T) {
