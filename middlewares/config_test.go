@@ -272,7 +272,7 @@ func Test_CORS_Middleware(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, "OPTIONS", resp.Request.Method)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, http.StatusNoContent, resp.StatusCode)
 
 	var body []byte
 	body, err = io.ReadAll(resp.Body)

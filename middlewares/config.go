@@ -33,9 +33,10 @@ func initApp() {
 			MiddlewareStack = append(
 				MiddlewareStack,
 				cors.New(cors.Options{
-					AllowedOrigins: config.PrestConf.CORSAllowOrigin,
-					AllowedMethods: config.PrestConf.CORSAllowMethods,
-					AllowedHeaders: config.PrestConf.CORSAllowHeaders,
+					AllowedOrigins:   config.PrestConf.CORSAllowOrigin,
+					AllowedMethods:   config.PrestConf.CORSAllowMethods,
+					AllowedHeaders:   config.PrestConf.CORSAllowHeaders,
+					AllowCredentials: true,
 				}))
 		}
 		if config.PrestConf.Cache.Enabled {
