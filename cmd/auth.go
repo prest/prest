@@ -17,15 +17,14 @@ var authUpCmd = &cobra.Command{
 		if config.PrestConf.Adapter == nil {
 			postgres.Load()
 		}
-
 		db, err := postgres.Get()
 		if err != nil {
-			fmt.Fprintf(os.Stdout, err.Error())
+			fmt.Fprint(os.Stdout, err.Error())
 			return err
 		}
 		_, err = db.Exec("CREATE TABLE IF NOT EXISTS %s.%s (id serial, name text, username text unique, password text, metadata jsonb)", config.PrestConf.AuthSchema, config.PrestConf.AuthTable)
 		if err != nil {
-			fmt.Fprintf(os.Stdout, err.Error())
+			fmt.Fprint(os.Stdout, err.Error())
 			return err
 		}
 		return nil
@@ -43,12 +42,12 @@ var authDownCmd = &cobra.Command{
 
 		db, err := postgres.Get()
 		if err != nil {
-			fmt.Fprintf(os.Stdout, err.Error())
+			fmt.Fprint(os.Stdout, err.Error())
 			return err
 		}
 		_, err = db.Exec("DROP TABLE IF EXISTS %s.%s", config.PrestConf.AuthSchema, config.PrestConf.AuthTable)
 		if err != nil {
-			fmt.Fprintf(os.Stdout, err.Error())
+			fmt.Fprint(os.Stdout, err.Error())
 			return err
 		}
 		return nil

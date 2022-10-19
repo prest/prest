@@ -99,9 +99,7 @@ func GetPool() *Pool {
 
 func getDatabaseFromPool(name string) *sqlx.DB {
 	var DB *sqlx.DB
-	var p *Pool
-
-	p = GetPool()
+	p := GetPool()
 
 	p.Mtx.Lock()
 	DB = p.DB[GetURI(name)]
@@ -112,9 +110,7 @@ func getDatabaseFromPool(name string) *sqlx.DB {
 
 // AddDatabaseToPool add connection to pool
 func AddDatabaseToPool(name string, DB *sqlx.DB) {
-	var p *Pool
-
-	p = GetPool()
+	p := GetPool()
 
 	p.Mtx.Lock()
 	p.DB[GetURI(name)] = DB
