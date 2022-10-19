@@ -36,7 +36,7 @@ func initApp() {
 					AllowedOrigins:   config.PrestConf.CORSAllowOrigin,
 					AllowedMethods:   config.PrestConf.CORSAllowMethods,
 					AllowedHeaders:   config.PrestConf.CORSAllowHeaders,
-					AllowCredentials: true,
+					AllowCredentials: config.PrestConf.CORSAllowCredentials,
 				}))
 		}
 		if config.PrestConf.Cache.Enabled {
