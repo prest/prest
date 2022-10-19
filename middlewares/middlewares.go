@@ -71,7 +71,7 @@ func AuthMiddleware() negroni.Handler {
 
 			// pass user_info to the next handler
 			ctx := r.Context()
-			ctx = context.WithValue(ctx, "user_info", claims.UserInfo)
+			ctx = context.WithValue(ctx, pctx.UserInfoKey, claims.UserInfo)
 			r = r.WithContext(ctx)
 		}
 

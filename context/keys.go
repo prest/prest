@@ -6,4 +6,5 @@ const (
 	_ Key = iota
 	DBNameKey
 	HTTPTimeoutKey
+	UserInfoKey
 )
