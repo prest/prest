@@ -46,50 +46,51 @@ type AccessConf struct {
 
 // Prest basic config
 type Prest struct {
-	AuthEnabled      bool
-	AuthSchema       string
-	AuthTable        string
-	AuthUsername     string
-	AuthPassword     string
-	AuthEncrypt      string
-	AuthMetadata     []string
-	AuthType         string
-	HTTPHost         string // HTTPHost Declare which http address the PREST used
-	HTTPPort         int    // HTTPPort Declare which http port the PREST used
-	HTTPTimeout      int
-	PGHost           string
-	PGPort           int
-	PGUser           string
-	PGPass           string
-	PGDatabase       string
-	PGURL            string
-	ContextPath      string
-	SSLMode          string
-	SSLCert          string
-	SSLKey           string
-	SSLRootCert      string
-	PGMaxIdleConn    int
-	PGMAxOpenConn    int
-	PGConnTimeout    int
-	PGCache          bool
-	JWTKey           string
-	JWTAlgo          string
-	JWTWhiteList     []string
-	MigrationsPath   string
-	QueriesPath      string
-	AccessConf       AccessConf
-	CORSAllowOrigin  []string
-	CORSAllowHeaders []string
-	CORSAllowMethods []string
-	Debug            bool
-	Adapter          adapters.Adapter
-	EnableDefaultJWT bool
-	SingleDB         bool
-	HTTPSMode        bool
-	HTTPSCert        string
-	HTTPSKey         string
-	Cache            Cache
-	PluginPath       string
+	AuthEnabled          bool
+	AuthSchema           string
+	AuthTable            string
+	AuthUsername         string
+	AuthPassword         string
+	AuthEncrypt          string
+	AuthMetadata         []string
+	AuthType             string
+	HTTPHost             string // HTTPHost Declare which http address the PREST used
+	HTTPPort             int    // HTTPPort Declare which http port the PREST used
+	HTTPTimeout          int
+	PGHost               string
+	PGPort               int
+	PGUser               string
+	PGPass               string
+	PGDatabase           string
+	PGURL                string
+	ContextPath          string
+	SSLMode              string
+	SSLCert              string
+	SSLKey               string
+	SSLRootCert          string
+	PGMaxIdleConn        int
+	PGMAxOpenConn        int
+	PGConnTimeout        int
+	PGCache              bool
+	JWTKey               string
+	JWTAlgo              string
+	JWTWhiteList         []string
+	MigrationsPath       string
+	QueriesPath          string
+	AccessConf           AccessConf
+	CORSAllowOrigin      []string
+	CORSAllowHeaders     []string
+	CORSAllowMethods     []string
+	CORSAllowCredentials bool
+	Debug                bool
+	Adapter              adapters.Adapter
+	EnableDefaultJWT     bool
+	SingleDB             bool
+	HTTPSMode            bool
+	HTTPSCert            string
+	HTTPSKey             string
+	Cache                Cache
+	PluginPath           string
 }
 
 var (
@@ -136,6 +137,7 @@ func viperCfg() {
 	viper.SetDefault("cors.allowheaders", []string{"Content-Type"})
 	viper.SetDefault("cors.allowmethods", []string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
 	viper.SetDefault("cors.alloworigin", []string{"*"})
+	viper.SetDefault("cors.allowcredentials", true)
 	viper.SetDefault("context", "/")
 	viper.SetDefault("https.mode", false)
 	viper.SetDefault("https.cert", "/etc/certs/cert.crt")
@@ -217,6 +219,7 @@ func Parse(cfg *Prest) (err error) {
 	cfg.CORSAllowOrigin = viper.GetStringSlice("cors.alloworigin")
 	cfg.CORSAllowHeaders = viper.GetStringSlice("cors.allowheaders")
 	cfg.CORSAllowMethods = viper.GetStringSlice("cors.allowmethods")
+	cfg.CORSAllowCredentials = viper.GetBool("cors.allowcredentials")
 	cfg.Debug = viper.GetBool("debug")
 	cfg.EnableDefaultJWT = viper.GetBool("jwt.default")
 	cfg.ContextPath = viper.GetString("context")
