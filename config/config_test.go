@@ -176,10 +176,9 @@ func Test_portFromEnv_Error(t *testing.T) {
 func Test_portFromEnv_OK(t *testing.T) {
 	c := &Prest{}
 
-	os.Setenv("PORT", "1234")
+	t.Setenv("PORT", "1234")
 	portFromEnv(c)
 	require.Equal(t, 1234, c.HTTPPort)
-	os.Unsetenv("PORT")
 }
 
 func Test_Auth(t *testing.T) {

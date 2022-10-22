@@ -103,8 +103,9 @@ type Prest struct {
 
 var (
 	// PrestConf config variable
-	PrestConf  *Prest
-	configFile = "./prest.toml"
+	PrestConf      *Prest
+	configFile     string
+	defaultCfgFile = "./prest.toml"
 )
 
 func viperCfg() {
@@ -181,7 +182,7 @@ func getPrestConfFile(prestConf string) string {
 	if prestConf != "" {
 		return prestConf
 	}
-	return configFile
+	return defaultCfgFile
 }
 
 // Parse pREST config
