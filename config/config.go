@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -104,13 +103,12 @@ type Prest struct {
 
 var (
 	// PrestConf config variable
-	PrestConf   *Prest
-	configFile  string
-	defaultFile = "./prest.toml"
+	PrestConf  *Prest
+	configFile = "./prest.toml"
 )
 
 func viperCfg() {
-	configFile = getDefaultPrestConf(os.Getenv("PREST_CONF"))
+	configFile = getPrestConfFile(os.Getenv("PREST_CONF"))
 
 	dir, file := filepath.Split(configFile)
 	file = strings.TrimSuffix(file, filepath.Ext(file))
@@ -121,6 +119,7 @@ func viperCfg() {
 	viper.AddConfigPath(dir)
 	viper.SetConfigName(file)
 	viper.SetConfigType("toml")
+
 	viper.SetDefault("auth.enabled", false)
 	viper.SetDefault("auth.username", "username")
 	viper.SetDefault("auth.password", "password")
@@ -128,33 +127,43 @@ func viperCfg() {
 	viper.SetDefault("auth.table", "prest_users")
 	viper.SetDefault("auth.encrypt", "MD5")
 	viper.SetDefault("auth.type", "body")
+
 	viper.SetDefault("http.host", "0.0.0.0")
 	viper.SetDefault("http.port", 3000)
 	viper.SetDefault("http.timeout", 60)
+
 	viper.SetDefault("pg.host", "127.0.0.1")
 	viper.SetDefault("pg.port", 5432)
-	viper.SetDefault("ssl.mode", "require")
+	viper.SetDefault("pg.database", "prest")
+	viper.SetDefault("pg.user", "postgres")
+	viper.SetDefault("pg.password", "postgres")
 	viper.SetDefault("pg.maxidleconn", 0) // avoids db memory leak on req timeout
 	viper.SetDefault("pg.maxopenconn", 10)
 	viper.SetDefault("pg.conntimeout", 10)
 	viper.SetDefault("pg.single", true)
 	viper.SetDefault("pg.cache", true)
-	viper.SetDefault("debug", false)
+	viper.SetDefault("ssl.mode", "require")
+
 	viper.SetDefault("jwt.default", true)
 	viper.SetDefault("jwt.algo", "HS256")
 	viper.SetDefault("jwt.whitelist", []string{"/auth"})
+
 	viper.SetDefault("cors.allowheaders", []string{"Content-Type"})
 	viper.SetDefault("cors.allowmethods", []string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
 	viper.SetDefault("cors.alloworigin", []string{"*"})
 	viper.SetDefault("cors.allowcredentials", true)
-	viper.SetDefault("context", "/")
+
 	viper.SetDefault("https.mode", false)
 	viper.SetDefault("https.cert", "/etc/certs/cert.crt")
 	viper.SetDefault("https.key", "/etc/certs/cert.key")
+
 	viper.SetDefault("cache.enabled", false)
 	viper.SetDefault("cache.time", 10)
 	viper.SetDefault("cache.storagepath", "./")
 	viper.SetDefault("cache.sufixfile", ".cache.prestd.db")
+
+	viper.SetDefault("debug", false)
+	viper.SetDefault("context", "/")
 	viper.SetDefault("pluginpath", "./lib")
 	viper.SetDefault("expose.enabled", false)
 	viper.SetDefault("expose.tables", true)
@@ -168,21 +177,23 @@ func viperCfg() {
 	viper.SetDefault("queries.location", filepath.Join(hDir, "queries"))
 }
 
-func getDefaultPrestConf(prestConf string) string {
-	if prestConf == "" {
-		return defaultFile
+func getPrestConfFile(prestConf string) string {
+	if prestConf != "" {
+		return prestConf
 	}
-	return prestConf
+	return configFile
 }
 
 // Parse pREST config
-func Parse(cfg *Prest) (err error) {
-	err = viper.ReadInConfig()
+func Parse(cfg *Prest) {
+	err := viper.ReadInConfig()
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			return fmt.Errorf("file %s not found, aborting", configFile)
+			log.Errorf(
+				"file '%s' not found, falling back to default settings\n",
+				configFile)
 		}
-		return
+		log.Errorf("read env config error: %v\n", err)
 	}
 	cfg.AuthEnabled = viper.GetBool("auth.enabled")
 	cfg.AuthSchema = viper.GetString("auth.schema")
@@ -194,6 +205,7 @@ func Parse(cfg *Prest) (err error) {
 	cfg.AuthType = viper.GetString("auth.type")
 	cfg.HTTPHost = viper.GetString("http.host")
 	cfg.HTTPPort = viper.GetInt("http.port")
+	portFromEnv(cfg)
 	cfg.HTTPTimeout = viper.GetInt("http.timeout")
 	cfg.PGURL = viper.GetString("pg.url")
 	cfg.PGHost = viper.GetString("pg.host")
@@ -205,15 +217,11 @@ func Parse(cfg *Prest) (err error) {
 	cfg.SSLCert = viper.GetString("ssl.cert")
 	cfg.SSLKey = viper.GetString("ssl.key")
 	cfg.SSLRootCert = viper.GetString("ssl.rootcert")
-	portFromEnv(cfg)
 	if os.Getenv("DATABASE_URL") != "" {
 		// cloud factor support: https://devcenter.heroku.com/changelog-items/438
 		cfg.PGURL = os.Getenv("DATABASE_URL")
 	}
-	err = parseDatabaseURL(cfg)
-	if err != nil {
-		return
-	}
+	parseDatabaseURL(cfg)
 	cfg.PGMaxIdleConn = viper.GetInt("pg.maxidleconn")
 	cfg.PGMaxOpenConn = viper.GetInt("pg.maxopenconn")
 	cfg.PGConnTimeout = viper.GetInt("pg.conntimeout")
@@ -248,48 +256,47 @@ func Parse(cfg *Prest) (err error) {
 	var cacheendpoints []CacheEndpoint
 	err = viper.UnmarshalKey("cache.endpoints", &cacheendpoints)
 	if err != nil {
-		return
+		log.Errorln("could not unmarshal cache endpoints")
 	}
 	cfg.Cache.Endpoints = cacheendpoints
 	var tablesconf []TablesConf
 	err = viper.UnmarshalKey("access.tables", &tablesconf)
 	if err != nil {
-		return
+		log.Errorln("could not unmarshal access tables")
 	}
 	cfg.AccessConf.Tables = tablesconf
-	return
 }
 
 // Load configuration
 func Load() {
 	viperCfg()
 	PrestConf = &Prest{}
-	err := Parse(PrestConf)
-	if err != nil {
-		panic(err)
-	}
-	if _, err = os.Stat(PrestConf.QueriesPath); os.IsNotExist(err) {
+	Parse(PrestConf)
+	if _, err := os.Stat(PrestConf.QueriesPath); os.IsNotExist(err) {
 		if err = os.MkdirAll(PrestConf.QueriesPath, 0700); os.IsNotExist(err) {
-			log.Errorf("Queries directory %s is not created", PrestConf.QueriesPath)
+			log.Errorf("Queries directory %s was not created\n", PrestConf.QueriesPath)
 		}
 	}
 }
 
-func parseDatabaseURL(cfg *Prest) (err error) {
+// parseDatabaseURL tries to get from URL the DB configs
+func parseDatabaseURL(cfg *Prest) {
 	if cfg.PGURL == "" {
 		return
 	}
 	// Parser PG URL, get database connection via string URL
-	u, errPerse := url.Parse(cfg.PGURL)
-	if errPerse != nil {
-		err = errPerse
+	u, err := url.Parse(cfg.PGURL)
+	if err != nil {
 		return
 	}
 	cfg.PGHost = u.Hostname()
 	if u.Port() != "" {
-		pgPort, PortErr := strconv.Atoi(u.Port())
-		if PortErr != nil {
-			return PortErr
+		pgPort, err := strconv.Atoi(u.Port())
+		if err != nil {
+			log.Errorf(
+				"cannot parse db url port '%v', falling back to default values\n",
+				u.Port())
+			return
 		}
 		cfg.PGPort = pgPort
 	}
@@ -302,19 +309,17 @@ func parseDatabaseURL(cfg *Prest) (err error) {
 	if u.Query().Get("sslmode") != "" {
 		cfg.SSLMode = u.Query().Get("sslmode")
 	}
-	return
 }
 
 func portFromEnv(cfg *Prest) {
-	dfault := 3000
 	if os.Getenv("PORT") == "" {
-		cfg.HTTPPort = dfault
+		log.Debugln("could not find PORT in env")
 		return
 	}
 	// cloud factor support: https://help.heroku.com/PPBPA231/how-do-i-use-the-port-environment-variable-in-container-based-apps
 	HTTPPort, err := strconv.Atoi(os.Getenv("PORT"))
 	if err != nil {
-		cfg.HTTPPort = dfault
+		log.Debugln("could not find PORT in env")
 		return
 	}
 	cfg.HTTPPort = HTTPPort
