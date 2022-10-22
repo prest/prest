@@ -159,9 +159,15 @@ func Test_parseDatabaseURL(t *testing.T) {
 	require.Equal(t, "require", c.SSLMode)
 
 	// errors
+	// todo: make this default on any problem
 	c = &Prest{PGURL: "postgresql://user:pass@localhost:port/mydatabase/?sslmode=require"}
 	parseDatabaseURL(c)
-	// todo
+	require.Equal(t, "", c.PGDatabase)
+
+	c = &Prest{PGURL: `invalid%+o`}
+	parseDatabaseURL(c)
+	require.Equal(t, "", c.PGDatabase)
+	require.Equal(t, "", c.PGUser)
 }
 
 func Test_portFromEnv_Error(t *testing.T) {
