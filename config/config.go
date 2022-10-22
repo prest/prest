@@ -283,11 +283,15 @@ func Load() {
 // parseDatabaseURL tries to get from URL the DB configs
 func parseDatabaseURL(cfg *Prest) {
 	if cfg.PGURL == "" {
+		log.Debugln("no db url found, skipping")
 		return
 	}
 	// Parser PG URL, get database connection via string URL
 	u, err := url.Parse(cfg.PGURL)
 	if err != nil {
+		log.Errorf(
+			"cannot parse db url '%v', falling back to default values\n",
+			cfg.PGURL)
 		return
 	}
 	cfg.PGHost = u.Hostname()
