@@ -205,10 +205,7 @@ func Parse(cfg *Prest) (err error) {
 	cfg.SSLCert = viper.GetString("ssl.cert")
 	cfg.SSLKey = viper.GetString("ssl.key")
 	cfg.SSLRootCert = viper.GetString("ssl.rootcert")
-	err = portFromEnv(cfg)
-	if err != nil {
-		return
-	}
+	portFromEnv(cfg)
 	if os.Getenv("DATABASE_URL") != "" {
 		// cloud factor support: https://devcenter.heroku.com/changelog-items/438
 		cfg.PGURL = os.Getenv("DATABASE_URL")
@@ -308,15 +305,17 @@ func parseDatabaseURL(cfg *Prest) (err error) {
 	return
 }
 
-func portFromEnv(cfg *Prest) (err error) {
+func portFromEnv(cfg *Prest) {
+	dfault := 3000
 	if os.Getenv("PORT") == "" {
+		cfg.HTTPPort = dfault
 		return
 	}
 	// cloud factor support: https://help.heroku.com/PPBPA231/how-do-i-use-the-port-environment-variable-in-container-based-apps
 	HTTPPort, err := strconv.Atoi(os.Getenv("PORT"))
 	if err != nil {
+		cfg.HTTPPort = dfault
 		return
 	}
 	cfg.HTTPPort = HTTPPort
-	return
 }
