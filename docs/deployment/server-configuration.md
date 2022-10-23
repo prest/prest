@@ -4,7 +4,7 @@ date: 2017-08-30T19:05:46-03:00
 weight: 2
 ---
 
-The _**prestd**_ configuration is via an _environment variable_ or _toml_ file.
+The _**prestd**_ configuration is via an _environment variable_ or _toml_ file. Starting from version `v1.2.0` it will be possible to use `prestd` without any _environment variable_ or the _toml_ file, but the configurations used will be the described in the default column bellow.
 
 ## Environment variables
 
@@ -14,12 +14,12 @@ The _**prestd**_ configuration is via an _environment variable_ or _toml_ file.
 | PREST\_MIGRATIONS | ./migrations | |
 | PREST\_QUERIES_LOCATION | ./queries | |
 | PREST\_HTTP_HOST | 0.0.0.0 | |
-| PREST\_HTTP_PORT or **PORT** | 3000 | PORT is cloud factor, _when declaring this variable overwritten PREST\_HTTP_PORT |
-| PREST\_PG_HOST | 127.0.0.1 | |
-| PREST\_PG_USER | | |
-| PREST\_PG_PASS | | |
-| PREST\_PG_DATABASE | | |
-| PREST\_PG_PORT | 5432 | |
+| PREST\_HTTP_PORT or **PORT** | `3000` | PORT is cloud factor, _when declaring this variable overwritten PREST\_HTTP_PORT |
+| PREST\_PG_HOST | `127.0.0.1` | host used to connect |
+| PREST\_PG_USER | `postgres` | user used to connect |
+| PREST\_PG_PASS | `postgres` | password used to connect |
+| PREST\_PG_DATABASE | `prest` | database name used to connect |
+| PREST\_PG_PORT | `5432` | |
 | PREST\_PG_URL or **DATABASE\_URL** | | cloud factor, _when declaring this variable all the previous connection fields are overwritten_ |
 | PREST\_CACHE_ENABLED | false | embedded cache system |
 | PREST\_CACHE_TIME | 10 | TTL in minute (time to live) |
@@ -35,9 +35,9 @@ The _**prestd**_ configuration is via an _environment variable_ or _toml_ file.
 | PREST\_AUTH_TABLE | prest_users | |
 | PREST\_AUTH_USERNAME | username | |
 | PREST\_AUTH_PASSWORD | password | |
-| PREST\_SSL_MODE | require | |
-| PREST\_SSL_CERT | | |
-| PREST\_SSL_KEY | | |
+| PREST\_SSL_MODE | require | SSL mode used to connect to postgres, not related to server SSL |
+| PREST\_SSL_CERT | | server SSL certificate |
+| PREST\_SSL_KEY | | server SSL key |
 | PREST\_SSL_ROOTCERT | | |
 | PREST\_PLUGINPATH | ./lib | path to plugin storage `.so`  |
 
@@ -195,12 +195,15 @@ If you want to disable just the database listing:
 
 ## SSL
 
-There is 4 options to set on ssl mode:
+There are 4 options to set on ssl mode:
 
-* `require` - Always SSL (skip verification) **by default**
-* `disable` - SSL off
-* `verify-ca` - Always SSL (verify that the certificate presented by the server was signed by a trusted CA)
-* `verify-full` - Always SSL (verify that the certification presented by the server was signed by a trusted CA and the server host name matches the one in the certificate)
+| Name | Description | Comment |
+| --- | --- | --- |
+| `require` | Always SSL, is the default value | skips SSL verification step |
+| `disable` | SSL off | also used when prestd is started without a `toml` file |
+| `verify-ca` | Always SSL | verifies that the certificate presented is signed by a trusted CA |
+| `verify-full` | Always SSL | verifies that the certificate presented is signed by a trusted CA and the server host name matches the one in the certificate |
+
 
 ## Debug Mode
 
@@ -212,12 +215,14 @@ PREST_DEBUG=true
 
 ## Single mode
 
-While serving multiple databases over the same API with pREST is doable, it's by default a single database setup. This is this way to prevent unwanted behavior that may make prest instable for users, in order to change that It's possible to pass a variable on your `toml` file to disable it under the `[pg]` tag as shown bellow.
+Serving multiple databases over the same API with `prestd` is doable, but it is not currently supported. Thus it was introduced by default the `single` configuration, it can be disabled by the following config in the `toml` file:
 
 ```toml
 [pg]
     single = false
 ```
+
+Since `v1.1.2` it is a lot safer to use multiple databases, but not yet in the ideal state of security that we want, so use it in your own risk.
 
 ## CORS support
 
