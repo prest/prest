@@ -53,6 +53,7 @@ type ExposeConf struct {
 
 // Prest basic config
 type Prest struct {
+	Version              int
 	AuthEnabled          bool
 	AuthSchema           string
 	AuthTable            string
@@ -70,6 +71,10 @@ type Prest struct {
 	PGPass               string
 	PGDatabase           string
 	PGURL                string
+	PGSSLMode            string
+	PGSSLCert            string
+	PGSSLKey             string
+	PGSSLRootCert        string
 	ContextPath          string
 	SSLMode              string
 	SSLCert              string
@@ -143,6 +148,7 @@ func viperCfg() {
 	viper.SetDefault("pg.conntimeout", 10)
 	viper.SetDefault("pg.single", true)
 	viper.SetDefault("pg.cache", true)
+	viper.SetDefault("pg.ssl.mode", "require")
 	viper.SetDefault("ssl.mode", "require")
 
 	viper.SetDefault("jwt.default", true)
@@ -163,6 +169,7 @@ func viperCfg() {
 	viper.SetDefault("cache.storagepath", "./")
 	viper.SetDefault("cache.sufixfile", ".cache.prestd.db")
 
+	viper.SetDefault("version", 1)
 	viper.SetDefault("debug", false)
 	viper.SetDefault("context", "/")
 	viper.SetDefault("pluginpath", "./lib")
@@ -215,6 +222,10 @@ func Parse(cfg *Prest) {
 	cfg.PGUser = viper.GetString("pg.user")
 	cfg.PGPass = viper.GetString("pg.pass")
 	cfg.PGDatabase = viper.GetString("pg.database")
+	cfg.PGSSLMode = viper.GetString("pg.ssl.mode")
+	cfg.PGSSLKey = viper.GetString("pg.ssl.key")
+	cfg.PGSSLCert = viper.GetString("pg.ssl.cert")
+	cfg.PGSSLRootCert = viper.GetString("pg.ssl.rootcert")
 
 	// only use value if file is present
 	if cfg.SSLMode == "" {
@@ -223,6 +234,8 @@ func Parse(cfg *Prest) {
 	cfg.SSLCert = viper.GetString("ssl.cert")
 	cfg.SSLKey = viper.GetString("ssl.key")
 	cfg.SSLRootCert = viper.GetString("ssl.rootcert")
+
+	parseSSLData(cfg)
 	if os.Getenv("DATABASE_URL") != "" {
 		// cloud factor support: https://devcenter.heroku.com/changelog-items/438
 		cfg.PGURL = os.Getenv("DATABASE_URL")
@@ -331,4 +344,26 @@ func portFromEnv(cfg *Prest) {
 		return
 	}
 	cfg.HTTPPort = HTTPPort
+}
+
+// parseSSLData favors the config according to the version used
+// v1 uses PG from old config
+// v2 uses PG from new config (env/toml)
+func parseSSLData(cfg *Prest) {
+	if cfg.Version == 1 {
+		parseSSLV1Data(cfg)
+		return
+	}
+	log.Warningln(`
+You are using v2 of prestd configs, please not that v1 postgres SSL environment variables are ignored and you have to set them correctly.
+
+View more at https://docs.prestd.com/prestd/deployment/server-configuration`)
+}
+
+func parseSSLV1Data(cfg *Prest) {
+	log.Warningln("you are using v1 of prestd configs, please migrate to v2, view more at https://docs.prestd.com/prestd/deployment/server-configuration")
+	cfg.PGSSLMode = cfg.SSLMode
+	cfg.PGSSLKey = cfg.SSLKey
+	cfg.PGSSLCert = cfg.SSLCert
+	cfg.PGSSLRootCert = cfg.SSLRootCert
 }
