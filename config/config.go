@@ -190,11 +190,12 @@ func Parse(cfg *Prest) {
 	err := viper.ReadInConfig()
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			log.Errorf(
+			log.Warningf(
 				"file '%s' not found, falling back to default settings\n",
 				configFile)
+			cfg.SSLMode = "disable"
 		}
-		log.Errorf("read env config error: %v\n", err)
+		log.Warningf("read env config error: %v\n", err)
 	}
 	cfg.AuthEnabled = viper.GetBool("auth.enabled")
 	cfg.AuthSchema = viper.GetString("auth.schema")
@@ -214,7 +215,11 @@ func Parse(cfg *Prest) {
 	cfg.PGUser = viper.GetString("pg.user")
 	cfg.PGPass = viper.GetString("pg.pass")
 	cfg.PGDatabase = viper.GetString("pg.database")
-	cfg.SSLMode = viper.GetString("ssl.mode")
+
+	// only use value if file is present
+	if cfg.SSLMode == "" {
+		cfg.SSLMode = viper.GetString("ssl.mode")
+	}
 	cfg.SSLCert = viper.GetString("ssl.cert")
 	cfg.SSLKey = viper.GetString("ssl.key")
 	cfg.SSLRootCert = viper.GetString("ssl.rootcert")
