@@ -36,20 +36,20 @@ func GetURI(DBName string) string {
 		DBName,
 		config.PrestConf.PGHost,
 		config.PrestConf.PGPort,
-		config.PrestConf.SSLMode,
+		config.PrestConf.PGSSLMode,
 		config.PrestConf.PGConnTimeout)
 
 	if config.PrestConf.PGPass != "" {
 		dbURI += " password=" + config.PrestConf.PGPass
 	}
-	if config.PrestConf.SSLCert != "" {
-		dbURI += " sslcert=" + config.PrestConf.SSLCert
+	if config.PrestConf.PGSSLCert != "" {
+		dbURI += " sslcert=" + config.PrestConf.PGSSLCert
 	}
-	if config.PrestConf.SSLKey != "" {
-		dbURI += " sslkey=" + config.PrestConf.SSLKey
+	if config.PrestConf.PGSSLKey != "" {
+		dbURI += " sslkey=" + config.PrestConf.PGSSLKey
 	}
-	if config.PrestConf.SSLRootCert != "" {
-		dbURI += " sslrootcert=" + config.PrestConf.SSLRootCert
+	if config.PrestConf.PGSSLRootCert != "" {
+		dbURI += " sslrootcert=" + config.PrestConf.PGSSLRootCert
 	}
 
 	return dbURI
