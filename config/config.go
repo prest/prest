@@ -349,19 +349,26 @@ func portFromEnv(cfg *Prest) {
 // parseSSLData favors the config according to the version used
 // v1 uses PG from old config
 // v2 uses PG from new config (env/toml)
+//
+// todo: deprecate v1
 func parseSSLData(cfg *Prest) {
-	if cfg.Version == 1 {
+	if cfg.Version <= 1 {
 		parseSSLV1Data(cfg)
 		return
 	}
 	log.Warningln(`
-You are using v2 of prestd configs, please not that v1 postgres SSL environment variables are ignored and you have to set them correctly.
+You are using v2 of prestd configs, please note that v1 postgres SSL environment variables are ignored and you have to set them correctly.
 
 View more at https://docs.prestd.com/prestd/deployment/server-configuration`)
 }
 
 func parseSSLV1Data(cfg *Prest) {
-	log.Warningln("you are using v1 of prestd configs, please migrate to v2, view more at https://docs.prestd.com/prestd/deployment/server-configuration")
+	log.Warningln(`
+You are using v1 of prestd configs, please migrate to v2. 
+
+v1 will be deprecated soon.
+
+View more at https://docs.prestd.com/prestd/deployment/server-configuration`)
 	cfg.PGSSLMode = cfg.SSLMode
 	cfg.PGSSLKey = cfg.SSLKey
 	cfg.PGSSLCert = cfg.SSLCert
