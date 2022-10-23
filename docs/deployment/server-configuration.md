@@ -10,36 +10,41 @@ The _**prestd**_ configuration is via an _environment variable_ or _toml_ file. 
 
 | var | default | description |
 | --- | --- | --- |
-| PREST\_CONF | ./prest.conf | |
-| PREST\_MIGRATIONS | ./migrations | |
-| PREST\_QUERIES_LOCATION | ./queries | |
-| PREST\_HTTP_HOST | 0.0.0.0 | |
-| PREST\_HTTP_PORT or **PORT** | `3000` | PORT is cloud factor, _when declaring this variable overwritten PREST\_HTTP_PORT |
-| PREST\_PG_HOST | `127.0.0.1` | host used to connect |
-| PREST\_PG_USER | `postgres` | user used to connect |
-| PREST\_PG_PASS | `postgres` | password used to connect |
-| PREST\_PG_DATABASE | `prest` | database name used to connect |
-| PREST\_PG_PORT | `5432` | |
-| PREST\_PG_URL or **DATABASE\_URL** | | cloud factor, _when declaring this variable all the previous connection fields are overwritten_ |
-| PREST\_CACHE_ENABLED | false | embedded cache system |
-| PREST\_CACHE_TIME | 10 | TTL in minute (time to live) |
-| PREST\_CACHE_STORAGEPATH | ./ | path where the cache file will be created |
-| PREST\_CACHE_SUFIXFILE | .cache.prestd.db | suffix of the name of the file that is created |
-| PREST\_JWT_KEY | | |
-| PREST\_JWT_ALGO | HS256 | |
-| PREST\_JWT_WHITELIST | [/auth] | |
-| PREST\_AUTH_ENABLED | false | |
-| PREST\_AUTH_ENCRYPT | MD5 | |
-| PREST\_AUTH_TYPE | body | |
-| PREST\_AUTH_SCHEMA | public | |
-| PREST\_AUTH_TABLE | prest_users | |
-| PREST\_AUTH_USERNAME | username | |
-| PREST\_AUTH_PASSWORD | password | |
-| PREST\_SSL_MODE | require | SSL mode used to connect to postgres, not related to server SSL |
-| PREST\_SSL_CERT | | server SSL certificate |
-| PREST\_SSL_KEY | | server SSL key |
-| PREST\_SSL_ROOTCERT | | |
-| PREST\_PLUGINPATH | ./lib | path to plugin storage `.so`  |
+| `PREST_VERSION` | 1 | version used for environment variables, v2 introduces better naming for SSL pg connection |
+| `PREST_CONF` | ./prest.conf | |
+| `PREST_MIGRATIONS` | ./migrations | |
+| `PREST_QUERIES_LOCATION` | ./queries | |
+| `PREST_HTTP_HOST` | 0.0.0.0 | |
+| `PREST_HTTP_PORT` or **PORT** | `3000` | `PORT` is for cloud factor, _when declared this variable overwrittes_ `PREST_HTTP_PORT` |
+| `PREST_PG_HOST` | `127.0.0.1` | host used to connect |
+| `PREST_PG_USER` | `postgres` | user used to connect |
+| `PREST_PG_PASS` | `postgres` | password used to connect |
+| `PREST_PG_DATABASE` | `prest` | database name used to connect |
+| `PREST_PG_PORT` | `5432` | |
+| `PREST_PG_URL` or **DATABASE\_URL** | | cloud factor, _when declaring this variable all the previous connection fields are overwritten_ |
+| `PREST_CACHE_ENABLED` | false | embedded cache system |
+| `PREST_CACHE_TIME` | 10 | TTL in minute (time to live) |
+| `PREST_CACHE_STORAGEPATH` | ./ | path where the cache file will be created |
+| `PREST_CACHE_SUFIXFILE` | .cache.prestd.db | suffix of the name of the file that is created |
+| `PREST_JWT_KEY` | | |
+| `PREST_JWT_ALGO` | HS256 | |
+| `PREST_JWT_WHITELIST` | [/auth] | |
+| `PREST_AUTH_ENABLED` | false | |
+| `PREST_AUTH_ENCRYPT` | MD5 | |
+| `PREST_AUTH_TYPE` | body | |
+| `PREST_AUTH_SCHEMA` | public | |
+| `PREST_AUTH_TABLE` | prest_users | |
+| `PREST_AUTH_USERNAME` | username | |
+| `PREST_AUTH_PASSWORD` | password | |
+| `PREST_SSL_MODE` | require | SSL mode used to connect to postgres, not related to server SSL |
+| `PREST_SSL_CERT` | | SSL certificate used to connect to postgres, not related to server SSL |
+| `PREST_SSL_KEY` | | SSL key used to connect to postgres, not related to server SSL |
+| `PREST_SSL_ROOTCERT` | | SSL root certificate used to connect to postgres, not related to server SSL |
+| `PREST_PG_SSL_MODE` | require | v2 of configuration envs, is the postgres connection SSL mode |
+| `PREST_PG_SSL_CERT` | | v2 of configuration envs, is the postgres connection SSL certificate |
+| `PREST_PG_SSL_KEY` | | v2 of configuration envs, is the postgres connection SSL key |
+| `PREST_PG_SSL_ROOTCERT` | | v2 of configuration envs, is the postgres connection SSL root certificate |
+| `PREST_PLUGINPATH` | ./lib | path to plugin storage `.so`  |
 
 ## TOML
 
