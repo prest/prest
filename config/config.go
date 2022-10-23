@@ -359,6 +359,8 @@ func parseSSLData(cfg *Prest) {
 	log.Warningln(`
 You are using v2 of prestd configs, please note that v1 postgres SSL environment variables are ignored and you have to set them correctly.
 
+When using v2 the following environment variables will be ignored: PREST_SSL_MODE, PREST_SSL_CERT, PREST_SSL_KEY, PREST_SSL_ROOTCERT
+
 View more at https://docs.prestd.com/prestd/deployment/server-configuration`)
 }
 
