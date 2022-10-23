@@ -294,9 +294,7 @@ func parseDatabaseURL(cfg *Prest) {
 	// Parser PG URL, get database connection via string URL
 	u, err := url.Parse(cfg.PGURL)
 	if err != nil {
-		log.Errorf(
-			"cannot parse db url '%v', falling back to default values\n",
-			cfg.PGURL)
+		log.Errorf("cannot parse db url, err: %v\n", err)
 		return
 	}
 	cfg.PGHost = u.Hostname()
