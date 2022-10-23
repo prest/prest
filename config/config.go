@@ -137,7 +137,7 @@ func viperCfg() {
 	viper.SetDefault("pg.port", 5432)
 	viper.SetDefault("pg.database", "prest")
 	viper.SetDefault("pg.user", "postgres")
-	viper.SetDefault("pg.password", "postgres")
+	viper.SetDefault("pg.pass", "postgres")
 	viper.SetDefault("pg.maxidleconn", 0) // avoids db memory leak on req timeout
 	viper.SetDefault("pg.maxopenconn", 10)
 	viper.SetDefault("pg.conntimeout", 10)
