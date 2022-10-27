@@ -174,6 +174,8 @@ func TestWhereByRequest(t *testing.T) {
 		{"Where by request with dot values", "/prest-test/public/test5?name=$eq.prest.txt tester", []string{`"name" = $`}, []string{"prest.txt tester"}, nil},
 		{"Where by request with like", "/prest-test/public/test5?name=$like.%25val%25&phonenumber=123456", []string{`"name" LIKE $`, `"phonenumber" = $`, " AND "}, []string{"%val%", "123456"}, nil},
 		{"Where by request with ilike", "/prest-test/public/test5?name=$ilike.%25vAl%25&phonenumber=123456", []string{`"name" ILIKE $`, `"phonenumber" = $`, " AND "}, []string{"%vAl%", "123456"}, nil},
+		{"Where by request with not like", "/prest-test/public/test5?name=$nlike.%25val%25&phonenumber=123456", []string{`"name" NOT LIKE $`, `"phonenumber" = $`, " AND "}, []string{"%val%", "123456"}, nil},
+		{"Where by request with not ilike", "/prest-test/public/test5?name=$nilike.%25vAl%25&phonenumber=123456", []string{`"name" NOT ILIKE $`, `"phonenumber" = $`, " AND "}, []string{"%vAl%", "123456"}, nil},
 		{"Where by request with multiple colunm values", "/prest-test/public/table?created_at='$gte.1997-11-03'&created_at='$lte.1997-12-05'", []string{`"created_at" >= $`, ` AND `, `"created_at" <= $`}, []string{`'1997-11-03'`, `'1997-12-05'`}, nil},
 		{"Where by request with tsquery", "/prest-test/public/test5?name:tsquery=prest", []string{`name @@ to_tsquery('prest')`}, []string{`'prest'`}, nil},
 	}
@@ -913,6 +915,8 @@ func TestGetQueryOperator(t *testing.T) {
 		{"$notfalse", "IS NOT FALSE"},
 		{"$like", "LIKE"},
 		{"$ilike", "ILIKE"},
+		{"$nlike", "NOT LIKE"},
+		{"$nilike", "NOT ILIKE"},
 	}
 
 	for _, tc := range testCases {
