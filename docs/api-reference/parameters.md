@@ -74,3 +74,5 @@ Uses these operators in various filter applications
 | `$notfalse` | Matches if field is not false |
 | `$like` | Matches always cover the entire string |
 | `$ilike` | Matches _case-insensitive_ always cover the entire string |
+| `$nlike` | Matches results without the entire string |
+| `$nilike` | Matches _case-insensitive_ results without the entire string |

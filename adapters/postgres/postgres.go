@@ -1239,6 +1239,10 @@ func GetQueryOperator(op string) (string, error) {
 		return "LIKE", nil
 	case "ilike":
 		return "ILIKE", nil
+	case "nlike":
+		return "NOT LIKE", nil
+	case "nilike":
+		return "NOT ILIKE", nil
 	}
 
 	return "", ErrInvalidOperator
