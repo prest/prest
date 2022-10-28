@@ -29,7 +29,7 @@ func TestParse(t *testing.T) {
 	cfg := &Prest{}
 	err := Parse(cfg)
 	require.NoError(t, err)
-	require.Equal(t, 6000, cfg.HTTPPort)
+	require.Equal(t, 3000, cfg.HTTPPort)
 
 	var expected string
 	expected = os.Getenv("PREST_PG_DATABASE")

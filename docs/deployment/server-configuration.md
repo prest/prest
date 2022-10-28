@@ -54,8 +54,7 @@ migrations = "./migrations"
 # enabling debug mode will disable JWT authorization
 
 [http]
-port = 6000
-# Port 6000 is blocked on windows. You must change to 8080 or any unblocked port
+port = 3000
 
 [jwt]
 key = "secret"
