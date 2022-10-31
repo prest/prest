@@ -609,15 +609,45 @@ func (adapter *Postgres) QueryCtx(ctx context.Context, SQL string, params ...int
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
 	}
-	SQL = fmt.Sprintf("SELECT json_agg(s) FROM (%s) s", SQL)
-	log.Debugln("generated SQL:", SQL, " parameters: ", params)
 	p, err := Prepare(db, SQL)
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
 	}
 	var jsonData []byte
-	err = p.QueryRowContext(ctx, params...).Scan(&jsonData)
+	rows, err := p.QueryContext(ctx, params...)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var data []map[string]interface{}
+	for rows.Next() {
+		cols, err := rows.Columns()
+		if err != nil {
+			log.Fatal(err)
+		}
+		columns := make([]interface{}, len(cols))
+		columnPointers := make([]interface{}, len(cols))
+		for i := range columns {
+			columnPointers[i] = &columns[i]
+		}
+		if err := rows.Scan(columnPointers...); err != nil {
+			log.Fatal(err)
+		}
+		m := make(map[string]interface{})
+		for i, colName := range cols {
+			val := columnPointers[i].(*interface{})
+			switch (*val).(type) {
+				case []uint8:
+					var f interface{}
+					err = json.Unmarshal((*val).([]byte), &f)
+					m[colName] = f
+				default:
+					m[colName] = *val
+			}
+		}
+		data = append(data, m)
+	}
+	jsonData, _ = json.Marshal(data)
 	if len(jsonData) == 0 {
 		jsonData = []byte("[]")
 	}
