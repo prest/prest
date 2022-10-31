@@ -15,7 +15,7 @@ HTTP method `GET`
 | query string | Description |
 | --- | --- |
 | `_page={set page number}` | the api return is paged, this parameter sets which page you want |
-| `_page_size={number to return by pages}` | delimits the number of records per page, default `10` |
+| `_page_size={number to return by pages}` | delimits the number of records per page, default `10`. Every time you specify a page size, you must include the page you are accessing. |
 | `?_select={field name 1},{fiel name 2}` | Limit fields list on result - sql ansii standard |
 | `?_count={field name}` | Count per field - `*` representation all fields |
 | `?_count_first=true` | Query string `_count` returns a list, passing this parameter will return the first record as a non-list object, **by default** this parameter is set to `false` (_return list non-object_) |
@@ -27,7 +27,7 @@ HTTP method `GET`
 
 ### Functions support
 
-Used to perform data **grouping** and **selection**
+Used to perform data **aggregation**(**grouping** and **selection**)
 
 | name | Use in request |
 | --- | --- |

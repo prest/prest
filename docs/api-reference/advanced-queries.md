@@ -6,11 +6,11 @@ description: >
   Allows you to do some advanced queries, but with some limitations in order not to "dirty" the URL and parameters.
 ---
 
-_**prestd**_ allows you to do some advanced queries, but with some limitations in order not to "dirty" the URL and parameters.
+_**prestd**_ allows you to do some advanced queries, but with some limitations in order to make the URL and parameters as clean as possible.
 
 ## Filter range
 
-It is common to have to query a database in a range of time, e.g:
+It is common to query a database in a range of time, e.g:
 
 > I need all records that were created from `1997-11-03-03` to `1997-12-05`.
 
