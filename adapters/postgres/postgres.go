@@ -609,6 +609,7 @@ func (adapter *Postgres) QueryCtx(ctx context.Context, SQL string, params ...int
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
 	}
+	log.Debugln("generated SQL:", SQL, " parameters: ", params)
 	p, err := Prepare(db, SQL)
 	if err != nil {
 		log.Errorln(err)
