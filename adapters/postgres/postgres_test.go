@@ -1279,7 +1279,7 @@ func TestDisableCache(t *testing.T) {
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
-	_, ok := stmts.PrepareMap[`SELECT json_agg(s) FROM (SELECT * FROM "Reply") s`]
+	_, ok := stmts.PrepareMap[`SELECT jsonb_agg(s) FROM (SELECT * FROM "Reply") s`]
 	if ok {
 		t.Error("has query in cache")
 	}
