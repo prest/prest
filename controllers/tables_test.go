@@ -105,7 +105,7 @@ func TestSelectFromTables(t *testing.T) {
 	}{
 		{"execute select in a table with array", "/prest-test/public/testarray", "GET", http.StatusOK, "[{\"id\": 100,\"data\":[\"Gohan\",\"Goten\"]}]"},
 		{"execute select in a table without custom where clause", "/prest-test/public/test", "GET", http.StatusOK, ""},
-		{"execute select in a table case sentive", "/prest-test/public/Reply", "GET", http.StatusOK, "[{\"id\": 1 ,\"name\": \"prest tester\"}, {\"id\": 2 ,\"name\": \"prest-test-insert\"}, {\"id\": 3 ,\"name\": \"prest-test-insert-ctx\"}, {\"id\": 4 ,\"name\": \"3prest-test-batch-insert\"}, {\"id\": 5 ,\"name\": \"3batch-prest-test-insert\"}, {\"id\": 6 ,\"name\": \"3prest-test-batch-insert-ctx\"}, {\"id\": 7 ,\"name\": \"3batch-prest-test-insert-ctx\"}, {\"id\": 8 ,\"name\": \"copy-ctx\"}, {\"id\": 9 ,\"name\": \"copy-ctx\"}, {\"id\": 10 ,\"name\": \"copy\"}, {\"id\": 11 ,\"name\": \"copy\"}]"},
+		{"execute select in a table case sentive", "/prest-test/public/Reply", "GET", http.StatusOK, "[{\"id\": 1,\"name\": \"prest tester\"}, {\"id\": 2,\"name\": \"prest-test-insert\"}, {\"id\": 3,\"name\": \"prest-test-insert-ctx\"}, {\"id\": 4,\"name\": \"3prest-test-batch-insert\"}, {\"id\": 5,\"name\": \"3batch-prest-test-insert\"}, {\"id\": 6,\"name\": \"3prest-test-batch-insert-ctx\"}, {\"id\": 7,\"name\": \"3batch-prest-test-insert-ctx\"}, {\"id\": 8,\"name\": \"copy-ctx\"}, {\"id\": 9,\"name\": \"copy-ctx\"}, {\"id\": 10,\"name\": \"copy\"}, {\"id\": 11,\"name\": \"copy\"}]"},
 		{"execute select in a table with count all fields *", "/prest-test/public/test?_count=*", "GET", http.StatusOK, ""},
 		{"execute select in a table with count function", "/prest-test/public/test?_count=name", "GET", http.StatusOK, ""},
 		{"execute select in a table with custom where clause", "/prest-test/public/test?name=$eq.test", "GET", http.StatusOK, ""},
@@ -117,13 +117,13 @@ func TestSelectFromTables(t *testing.T) {
 		{"execute select in a table with select * and distinct", "/prest-test/public/test5?_select=*&_distinct=true", "GET", http.StatusOK, ""},
 
 		{"execute select in a table with group by clause", "/prest-test/public/test_group_by_table?_select=age,sum:salary&_groupby=age", "GET", http.StatusOK, ""},
-		{"execute select in a table with group by and having clause", "/prest-test/public/test_group_by_table?_select=age,sum:salary&_groupby=age->>having:sum:salary:$gt:3000", "GET", http.StatusOK, "[{\"age\":19,\"sum\":7997}]"},
+		{"execute select in a table with group by and having clause", "/prest-test/public/test_group_by_table?_select=age,sum:salary&_groupby=age->>having:sum:salary:$gt:3000", "GET", http.StatusOK, "[{\"age\": 19,\"sum\": 7997}]"},
 
 		{"execute select in a view without custom where clause", "/prest-test/public/view_test", "GET", http.StatusOK, ""},
 		{"execute select in a view with count all fields *", "/prest-test/public/view_test?_count=*", "GET", http.StatusOK, ""},
 		{"execute select in a view with count function", "/prest-test/public/view_test?_count=player", "GET", http.StatusOK, ""},
-		{"execute select in a view with count function check return list", "/prest-test/public/view_test?_count=player", "GET", http.StatusOK, "[{\"count\":1}]"},
-		{"execute select in a view with count function check return object (_count_first)", "/prest-test/public/view_test?_count=player&_count_first=true", "GET", http.StatusOK, "{\"count\":1}"},
+		{"execute select in a view with count function check return list", "/prest-test/public/view_test?_count=player", "GET", http.StatusOK, "[{\"count\": 1}]"},
+		{"execute select in a view with count function check return object (_count_first)", "/prest-test/public/view_test?_count=player&_count_first=true", "GET", http.StatusOK, "{\"count\": 1}"},
 		{"execute select in a view with order function", "/prest-test/public/view_test?_order=-player", "GET", http.StatusOK, ""},
 		{"execute select in a view with custom where clause", "/prest-test/public/view_test?player=$eq.gopher", "GET", http.StatusOK, ""},
 		{"execute select in a view with custom join clause", "/prest-test/public/view_test?_join=inner:test2:test2.name:eq:view_test.player", "GET", http.StatusOK, ""},
