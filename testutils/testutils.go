@@ -50,7 +50,7 @@ func DoRequest(t *testing.T, url string, r interface{}, method string, expectedS
 
 	if len(expectedBody) > 0 {
 		assert.True(t, containsStringInSlice(expectedBody, string(body)),
-			fmt.Sprintf("expected %q, got: %q", expectedBody, string(body)))
+			fmt.Sprintf("expected %q, got: %q", expectedBody[0], string(body)))
 	}
 }
 
