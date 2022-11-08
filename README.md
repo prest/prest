@@ -10,7 +10,7 @@
 
 _p_**REST** (**P**_ostgreSQL_ **REST**), simplify and accelerate development, instant, realtime, high-performance on any **Postgres** application, **existing or new**
 
-> PostgreSQL version 9.4 or higher
+> PostgreSQL version 9.5 or higher
 
 Contributor License Agreement - [![CLA assistant](https://cla-assistant.io/readme/badge/prest/prest)](https://cla-assistant.io/prest/prest)
 
