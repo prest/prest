@@ -35,7 +35,6 @@ Used to perform data **aggregation**(**grouping** and **selection**)
 | AVG | `avg:field` |
 | MAX | `max:field` |
 | MIN | `min:field` |
-| MEDIAN | `median:field` |
 | STDDEV | `stddev:field` |
 | VARIANCE | `variance:field` |
 
