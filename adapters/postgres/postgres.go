@@ -518,7 +518,15 @@ func (adapter *Postgres) SelectFields(fields []string) (sql string, err error) {
 		return
 	}
 	var aux []string
+
 	for _, field := range fields {
+		groupFunc, _ := NormalizeGroupFunction(field)
+
+		if groupFunc != "" {
+			aux = append(aux, groupFunc)
+			continue
+		}
+
 		if field != "*" && chkInvalidIdentifier(field) {
 			err = errors.Wrapf(ErrInvalidIdentifier, "%s", field)
 			return
