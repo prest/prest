@@ -156,9 +156,18 @@ func PrepareTx(tx *sql.Tx, SQL string) (stmt *sql.Stmt, err error) {
 // chkInvalidIdentifier return true if identifier is invalid
 func chkInvalidIdentifier(identifer ...string) bool {
 	for _, ival := range identifer {
-		if ival == "" || len(ival) > 63 || unicode.IsDigit([]rune(ival)[0]) {
+		if ival == "" || unicode.IsDigit([]rune(ival)[0]) {
 			return true
 		}
+
+		if ival_split := strings.Split(ival, "."); len(ival_split) == 2 && len(ival_split[len(ival_split) - 1]) > 63 {
+			return true
+		}
+
+		if contains_dot := strings.Contains(ival, "."); contains_dot == false && len(ival) > 63 {
+			return true
+		}
+		
 		count := 0
 		for _, v := range ival {
 			if !unicode.IsLetter(v) &&
