@@ -1474,7 +1474,7 @@ func NormalizeGroupFunction(paramValue string) (groupFuncSQL string, err error) 
 	values := strings.Split(paramValue, ":")
 	groupFunc := strings.ToUpper(values[0])
 	switch groupFunc {
-	case "SUM", "AVG", "MAX", "MIN", "MEDIAN", "STDDEV", "VARIANCE":
+	case "SUM", "AVG", "MAX", "MIN", "STDDEV", "VARIANCE":
 		// values[1] it's a field in table
 		v := values[1]
 		if v != "*" {
