@@ -1115,7 +1115,7 @@ func TestColumnsByRequest(t *testing.T) {
 		{"Select with empty '_select' field", "/prest-test/public/test5?_select=", ""},
 		{"Select with more columns", "/prest-test/public/test5?_select=celphone,battery", "celphone,battery"},
 		{"Select with more columns", "/prest-test/public/test5?_select=age,sum:salary&_groupby=age", `age,SUM("salary")`},
-		{"Select with one aggregate function without group by", "/prest-test/public/test5?_select=sum:salary", `SUM("salary")`},
+		{"Select with one aggregate function without group by", "/prest-test/public/test5?_select=sum:salary", `sum:salary`},
 	}
 	for _, tc := range testCases {
 		r, err := http.NewRequest("GET", tc.url, nil)
