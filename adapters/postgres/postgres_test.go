@@ -1067,6 +1067,7 @@ func TestSelectFields(t *testing.T) {
 		{"One field", []string{"test"}, `SELECT "test" FROM`},
 		{"One field with alias", []string{"c.test"}, `SELECT "c"."test" FROM`},
 		{"More field", []string{"test", "test02"}, `SELECT "test","test02" FROM`},
+		{"Aggregation Fields", []string{"max:age"}, `SELECT MAX("age") FROM`},
 	}
 	var testErrorCases = []struct {
 		description string
@@ -1114,6 +1115,7 @@ func TestColumnsByRequest(t *testing.T) {
 		{"Select with empty '_select' field", "/prest-test/public/test5?_select=", ""},
 		{"Select with more columns", "/prest-test/public/test5?_select=celphone,battery", "celphone,battery"},
 		{"Select with more columns", "/prest-test/public/test5?_select=age,sum:salary&_groupby=age", `age,SUM("salary")`},
+		{"Select with one aggregate function without group by", "/prest-test/public/test5?_select=sum:salary", `SUM("salary")`},
 	}
 	for _, tc := range testCases {
 		r, err := http.NewRequest("GET", tc.url, nil)
