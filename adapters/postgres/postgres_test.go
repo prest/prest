@@ -707,6 +707,8 @@ func TestChkInvaidIdentifier(t *testing.T) {
 		{"not_invalid_table.with_not_invalid_column", false},
 		{"not_long_enough_invalid_table_with_lots_of_chars.with_not_invalid_column", false},
 		{"the_most_invalid_table_ever_seen_on_life_and_on_earth_at_least_today.the_most_invalid_column_ever_seen_on_life_and_on_earth_at_least_today", true},
+		{`SUM("the_most_invalid_table_ever_seen_on_life_and_on_earth_at_least_today.the_most_invalid_column_ever_seen_on_life_and_on_earth_at_least_today")`, true},
+		{`SUM("not_long_enough_invalid_table_with_lots_of_chars.with_not_invalid_column")`, false},
 	}
 
 	for _, tc := range testCases {
