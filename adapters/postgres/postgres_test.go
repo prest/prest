@@ -705,6 +705,7 @@ func TestChkInvaidIdentifier(t *testing.T) {
 		{`SUM("test")`, false},
 		{"_123456789_123456789_123456789_123456789_123456789_123456789_12345", true},
 		{"not_invalid_table.with_not_invalid_column", false},
+		{"not_long_enough_invalid_table_with_lots_of_chars.with_not_invalid_column", false},
 		{"the_most_invalid_table_ever_seen_on_life_and_on_earth_at_least_today.the_most_invalid_column_ever_seen_on_life_and_on_earth_at_least_today", true},
 	}
 
