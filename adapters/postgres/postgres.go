@@ -165,8 +165,7 @@ func chkInvalidIdentifier(identifer ...string) bool {
 			return true
 		}
 
-		hasDot := strings.Contains(ival, ".")
-		if !hasDot && len(ival) > 63 {
+		if !strings.Contains(ival, ".") && len(ival) > 63 {
 			return true
 		}
 		
