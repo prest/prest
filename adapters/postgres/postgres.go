@@ -160,11 +160,13 @@ func chkInvalidIdentifier(identifer ...string) bool {
 			return true
 		}
 
-		if ival_split := strings.Split(ival, "."); len(ival_split) == 2 && len(ival_split[len(ival_split) - 1]) > 63 {
+		ivalSplit := strings.Split(ival, ".")
+		if len(ivalSplit) == 2 && len(ivalSplit[len(ivalSplit) - 1]) > 63 {
 			return true
 		}
 
-		if contains_dot := strings.Contains(ival, "."); contains_dot == false && len(ival) > 63 {
+		containsDot := strings.Contains(ival, ".")
+		if containsDot == false && len(ival) > 63 {
 			return true
 		}
 		
