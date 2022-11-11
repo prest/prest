@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -304,6 +305,25 @@ func (adapter *Postgres) ReturningByRequest(r *http.Request) (returningSyntax st
 	return
 }
 
+func sliceToJSONList(ifaceSlice interface{}) (returnValue string) {
+    v := reflect.ValueOf(ifaceSlice)
+	value := make([]string, 0)
+	
+    for i := 0; i < v.Len(); i++ {
+        val := v.Index(i).Interface()
+		switch val.(type){
+			case int, float64:
+				newVal := fmt.Sprint(val)
+				value = append(value, newVal)
+			default:
+				newVal := fmt.Sprintf(`'%s'`, val)
+				value = append(value, newVal)
+		}
+    }
+	returnValue = fmt.Sprintf(`"[%v]"`, strings.Join(value, ", "))
+	return
+}
+
 // SetByRequest create a set clause for SQL
 func (adapter *Postgres) SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, values []interface{}, err error) {
 	body := make(map[string]interface{})
@@ -327,13 +347,20 @@ func (adapter *Postgres) SetByRequest(r *http.Request, initialPlaceholderID int)
 		key = fmt.Sprintf(`"%s"`, strings.Join(keys, `"."`))
 		fields = append(fields, fmt.Sprintf(`%s=$%d`, key, initialPlaceholderID))
 
-		switch value.(type) {
-		case []interface{}:
-			values = append(values, formatters.FormatArray(value))
-		default:
-			values = append(values, value)
+		switch reflect.ValueOf(value).Kind(){
+			case reflect.Interface:
+				values = append(values, formatters.FormatArray(value))
+			case reflect.Map:
+				value, err = json.Marshal(value)
+				if err != nil {
+					fmt.Println(err.Error())
+				}
+				values = append(values, fmt.Sprint(value))
+			case reflect.Slice:
+				values = append(values, sliceToJSONList(value))
+			default:
+				values = append(values, value)
 		}
-
 		initialPlaceholderID++
 	}
 	setSyntax = strings.Join(fields, ", ")
