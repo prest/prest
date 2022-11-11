@@ -326,11 +326,11 @@ func sliceToJSONList(ifaceSlice interface{}) (returnValue string) {
 				newVal := fmt.Sprint(val)
 				value = append(value, newVal)
 			default:
-				newVal := fmt.Sprintf(`'%s'`, val)
+				newVal := fmt.Sprintf(`"%s"`, val)
 				value = append(value, newVal)
 		}
     }
-	returnValue = fmt.Sprintf(`"[%v]"`, strings.Join(value, ", "))
+	returnValue = fmt.Sprintf(`[%v]`, strings.Join(value, ", "))
 	return
 }
 
