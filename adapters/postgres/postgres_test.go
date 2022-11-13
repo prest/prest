@@ -114,6 +114,12 @@ func TestSetByRequest(t *testing.T) {
 	mc["dbname"] = "prest"
 	ma := make(map[string]interface{})
 	ma["c.name"] = "prest"
+	mjl := make(map[string]interface{})
+	mjl["prest"] = []string{"prest", "is", "awesome"}
+	mjo := make(map[string]interface{})
+	mjo["prest"] = "is marvelous"
+	mjoJson, _ := json.Marshal(mjo)
+	mjoStr := string(mjoJson)
 
 	var testCases = []struct {
 		description    string
@@ -124,6 +130,8 @@ func TestSetByRequest(t *testing.T) {
 	}{
 		{"set by request more than one field", mc, []string{`"dbname"=$`, `"test"=$`, ", "}, []string{"prest", "prest"}, nil},
 		{"set by request one field", m, []string{`"name"=$`}, []string{"prest"}, nil},
+		{"set by request one JSONB List field", mjl, []string{`"prest"=$`}, []string{`["prest", "is", "awesome"]`}, nil},
+		{"set by request one JSONB Object field", mjo, []string{`"prest"=$`}, []string{mjoStr}, nil},
 		{"set by request alias", ma, []string{`"c".`, `"name"=$`}, []string{"prest"}, nil},
 		{"set by request empty body", nil, nil, nil, ErrBodyEmpty},
 	}
