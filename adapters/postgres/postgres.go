@@ -360,13 +360,11 @@ func (adapter *Postgres) SetByRequest(r *http.Request, initialPlaceholderID int)
 			case reflect.Interface:
 				values = append(values, formatters.FormatArray(value))
 			case reflect.Map:
-				b := new(bytes.Buffer)
-				enc := json.NewEncoder(b)
-
-				if err := enc.Encode(value); err != nil {
-					log.Fatal(err)
+				jsonData, err := json.Marshal(value)
+				if err != nil {
+					log.Errorln(err)
 				}
-				values = append(values, fmt.Sprint(b))
+				values = append(values, string(jsonData))
 			case reflect.Slice:
 				values = append(values, sliceToJSONList(value))
 			default:
