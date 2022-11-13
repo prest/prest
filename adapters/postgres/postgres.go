@@ -336,7 +336,6 @@ func (adapter *Postgres) SetByRequest(r *http.Request, initialPlaceholderID int)
 		err = ErrBodyEmpty
 		return
 	}
-
 	fields := make([]string, 0)
 	for key, value := range body {
 		if chkInvalidIdentifier(key) {
@@ -351,11 +350,13 @@ func (adapter *Postgres) SetByRequest(r *http.Request, initialPlaceholderID int)
 			case reflect.Interface:
 				values = append(values, formatters.FormatArray(value))
 			case reflect.Map:
-				value, err = json.Marshal(value)
-				if err != nil {
-					fmt.Println(err.Error())
+				b := new(bytes.Buffer)
+				enc := json.NewEncoder(b)
+
+				if err := enc.Encode(value); err != nil {
+					log.Fatal(err)
 				}
-				values = append(values, fmt.Sprint(value))
+				values = append(values, fmt.Sprint(b))
 			case reflect.Slice:
 				values = append(values, sliceToJSONList(value))
 			default:
