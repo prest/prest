@@ -305,8 +305,13 @@ func (adapter *Postgres) ReturningByRequest(r *http.Request) (returningSyntax st
 	return
 }
 
-func sliceToJSONList(ifaceSlice interface{}) (returnValue string) {
+func sliceToJSONList(ifaceSlice interface{}) (returnValue string, err error) {
     v := reflect.ValueOf(ifaceSlice)
+
+	if v.Kind() == 0 {
+		return "[]", ErrEmptyOrInvalidSlice
+	}
+
 	value := make([]string, 0)
 	
     for i := 0; i < v.Len(); i++ {
@@ -356,7 +361,11 @@ func (adapter *Postgres) SetByRequest(r *http.Request, initialPlaceholderID int)
 				}
 				values = append(values, string(jsonData))
 			case reflect.Slice:
-				values = append(values, sliceToJSONList(value))
+				value, err = sliceToJSONList(value)
+				if err != nil {
+					log.Errorln(err)
+				}
+				values = append(values, value)
 			default:
 				values = append(values, value)
 		}

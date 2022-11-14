@@ -1978,3 +1978,31 @@ func newScannerMock(t *testing.T) (sc adapters.Scanner) {
 	}
 	return
 }
+
+func TestSliceToJSONList(t *testing.T) {
+	var i interface{}
+	var testCases = []struct {
+		description    string
+		body           interface{}
+		expectedValue  string
+		err            error
+	}{
+		{"String slice", []string{"one","two","three"}, `["one", "two", "three"]`, nil},
+		{"Integer slice", []int{1,2,3}, `[1, 2, 3]`, nil},
+		{"Interface error", i, `[]`, ErrEmptyOrInvalidSlice},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+
+		value, err := sliceToJSONList(tc.body)
+
+		if !strings.Contains(tc.expectedValue, value) {
+			t.Errorf("expected %s in %s", value, tc.expectedValue)
+		}
+
+		if err != tc.err {
+			t.Errorf("expected %s in %s", err, tc.err)
+		}
+	}
+}
