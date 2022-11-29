@@ -223,3 +223,23 @@ func Test_Auth(t *testing.T) {
 		require.Equal(t, metadata[i], v)
 	}
 }
+
+func Test_ExposeDataConfig(t *testing.T) {
+	os.Setenv("PREST_CONF", "../testdata/prest_expose.toml")
+
+	viperCfg()
+	cfg := &Prest{}
+	err := Parse(cfg)
+	require.NoError(t, err)
+	require.Equal(t, true, cfg.ExposeConf.Enabled)
+	require.Equal(t, true, cfg.ExposeConf.DatabaseListing)
+	require.Equal(t, true, cfg.ExposeConf.SchemaListing)
+	require.Equal(t, true, cfg.ExposeConf.TableListing)
+
+	metadata := []string{"first_name", "last_name", "last_login"}
+	require.Equal(t, len(metadata), len(cfg.AuthMetadata))
+
+	for i, v := range cfg.AuthMetadata {
+		require.Equal(t, metadata[i], v)
+	}
+}

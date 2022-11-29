@@ -83,6 +83,12 @@ mode = "disable"
 sslcert = "./PATH"
 sslkey = "./PATH"
 sslrootcert = "./PATH"
+
+[expose]
+enabled = true
+databases = true
+schemas = true
+tables = true
 ```
 
 ## Authorization
@@ -144,6 +150,40 @@ password = "password"
 | password | Password **field** that will be consulted |
 
 > to validate all endpoints with generated jwt token must be activated jwt option
+
+## Expose Data
+
+The expose data setting enables you to configure if you want users to be able to reach listing endpoints, such as:
+
+ - /databases
+ - /{database}/schemas
+ - /{database}/{schema}/tables
+
+
+An example of a configuration file disabling all listings:
+
+```toml
+# previous toml content
+
+[expose]
+    enabled = true
+```
+
+If you want to disable just the database listing:
+
+```toml
+# previous toml content
+
+[expose]
+    databases = true
+```
+
+| Name | Description |
+| --- | --- |
+| enabled | Set this as `true` if you want to **disable** all listing endpoints available. |
+| databases | Set this as `true` if you want to **disable** *databases* listing endpoints only. |
+| schemas | Set this as `true` if you want to **disable** *schemas* listing endpoints only. |
+| tables | Set this as `true` if you want to **disable** *tables* listing endpoints only. |
 
 ## SSL
 

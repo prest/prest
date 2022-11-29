@@ -15,6 +15,8 @@ import (
 )
 
 func TestExecuteScriptQuery(t *testing.T) {
+	config.Load()
+	config.PrestConf.Adapter = &postgres.Postgres{}
 	r := mux.NewRouter()
 	r.HandleFunc("/testing/script-get/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp, err := ExecuteScriptQuery(r, "fulltable", "get_all")

@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
+	"github.com/prest/prest/middlewares"
 	"github.com/prest/prest/testutils"
 )
 
@@ -43,4 +44,20 @@ func TestGetDatabases(t *testing.T) {
 		t.Log(tc.description)
 		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetDatabases")
 	}
+}
+
+func TestGetDatabasesWithEnabledExposeMiddleware(t *testing.T) {
+	config.Load()
+	postgres.Load()
+	config.PrestConf.Adapter = &postgres.Postgres{}
+	config.PrestConf.ExposeConf.Enabled = true
+	config.PrestConf.ExposeConf.DatabaseListing = true
+	router := mux.NewRouter()
+	router.HandleFunc("/databases", GetDatabases).Methods("GET")
+	n := middlewares.GetApp()
+	n.UseHandler(router)
+	server := httptest.NewServer(n)
+	defer server.Close()
+
+	testutils.DoRequest(t, server.URL+"/databases", nil, "GET", 401, "GetDatabases")
 }

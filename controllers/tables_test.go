@@ -14,12 +14,14 @@ import (
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
 	pctx "github.com/prest/prest/context"
+	"github.com/prest/prest/middlewares"
 	"github.com/prest/prest/testutils"
 )
 
 func init() {
 	config.Load()
 	postgres.Load()
+	config.PrestConf.Adapter = &postgres.Postgres{}
 	if config.PrestConf.PGDatabase != "prest-test" {
 		log.Fatal("expected db: 'prest-test' got ", config.PrestConf.PGDatabase)
 	}
@@ -45,7 +47,6 @@ func TestGetTables(t *testing.T) {
 		{"Get tables with ORDER BY and invalid column", "/tables?_order=0c.relname", "GET", http.StatusBadRequest},
 		{"Get tables with noexistent column", "/tables?c.rolooo=$eq.test", "GET", http.StatusBadRequest},
 	}
-
 	router := mux.NewRouter()
 	router.HandleFunc("/tables", setHTTPTimeoutMiddleware(GetTables)).
 		Methods("GET")
@@ -89,7 +90,25 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 	}
 }
 
+func TestGetTablesWithEnabledExposeMiddleware(t *testing.T) {
+	config.Load()
+	postgres.Load()
+	config.PrestConf.Adapter = &postgres.Postgres{}
+	config.PrestConf.ExposeConf.Enabled = true
+	config.PrestConf.ExposeConf.TableListing = true
+	router := mux.NewRouter()
+	router.HandleFunc("/{database}/{schema}/tables", GetTables).Methods("GET")
+	n := middlewares.GetApp()
+	n.UseHandler(router)
+	server := httptest.NewServer(n)
+	defer server.Close()
+
+	testutils.DoRequest(t, server.URL+"/random/public/tables", nil, "GET", 401, "GetDatabases")
+}
+
 func TestSelectFromTables(t *testing.T) {
+	config.Load()
+	config.PrestConf.Adapter = &postgres.Postgres{}
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(SelectFromTables)).
 		Methods("GET")
@@ -152,8 +171,6 @@ func TestSelectFromTables(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		//config.PrestConf = &config.Prest{}
-		//config.Load()
 
 		if tc.body != "" {
 			testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "SelectFromTables", tc.body)
@@ -164,6 +181,8 @@ func TestSelectFromTables(t *testing.T) {
 }
 
 func TestInsertInTables(t *testing.T) {
+	config.Load()
+	config.PrestConf.Adapter = &postgres.Postgres{}
 	m := make(map[string]interface{})
 	m["name"] = "prest-test"
 

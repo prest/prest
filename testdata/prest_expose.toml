@@ -80,3 +80,9 @@ restrict = true  # can access only the tables listed below
     name = "test_group_by_table"
     permissions = ["read"]
     fields = ["id", "name", "age", "salary"]
+
+[expose]
+enabled = true
+databases = true
+schemas = true
+tables = true

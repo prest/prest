@@ -105,6 +105,34 @@ func AccessControl() negroni.Handler {
 	})
 }
 
+func ExposureMiddleware() negroni.Handler {
+	return negroni.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
+		fmt.Println()
+		url := rq.URL.String()
+		exposeConf := config.PrestConf.ExposeConf
+
+		if strings.Contains(url, "/databases") && !exposeConf.DatabaseListing {
+			err := fmt.Errorf("unauthorized listing")
+			http.Error(rw, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		if strings.Contains(url, "/tables") && !exposeConf.TableListing {
+			err := fmt.Errorf("unauthorized listing")
+			http.Error(rw, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		if strings.Contains(url, "/schemas") && !exposeConf.SchemaListing {
+			err := fmt.Errorf("unauthorized listing")
+			http.Error(rw, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		next(rw, rq)
+	})
+}
+
 // JwtMiddleware check if actual request have JWT
 func JwtMiddleware(key string, algo string) negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {

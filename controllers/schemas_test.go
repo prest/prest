@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
+	"github.com/prest/prest/middlewares"
 	"github.com/prest/prest/testutils"
 )
 
@@ -71,4 +72,20 @@ func TestVersionDependentGetSchemas(t *testing.T) {
 		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body)
 	}
 
+}
+
+func TestGetSchemasWithEnabledExposeMiddleware(t *testing.T) {
+	config.Load()
+	postgres.Load()
+	config.PrestConf.Adapter = &postgres.Postgres{}
+	config.PrestConf.ExposeConf.Enabled = true
+	config.PrestConf.ExposeConf.SchemaListing = true
+	router := mux.NewRouter()
+	router.HandleFunc("/schemas", GetSchemas).Methods("GET")
+	n := middlewares.GetApp()
+	n.UseHandler(router)
+	server := httptest.NewServer(n)
+	defer server.Close()
+
+	testutils.DoRequest(t, server.URL+"/schemas", nil, "GET", 401, "GetSchemas")
 }

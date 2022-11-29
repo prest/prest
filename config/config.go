@@ -44,6 +44,14 @@ type AccessConf struct {
 	Tables      []TablesConf
 }
 
+// ExposeConf (expose data) informations
+type ExposeConf struct {
+	Enabled         bool
+	DatabaseListing bool
+	SchemaListing   bool
+	TableListing    bool
+}
+
 // Prest basic config
 type Prest struct {
 	AuthEnabled          bool
@@ -91,6 +99,7 @@ type Prest struct {
 	HTTPSKey             string
 	Cache                Cache
 	PluginPath           string
+	ExposeConf           ExposeConf
 }
 
 var (
@@ -142,6 +151,10 @@ func viperCfg() {
 	viper.SetDefault("https.mode", false)
 	viper.SetDefault("https.cert", "/etc/certs/cert.crt")
 	viper.SetDefault("https.key", "/etc/certs/cert.key")
+	viper.SetDefault("expose.enabled", false)
+	viper.SetDefault("expose.tables", true)
+	viper.SetDefault("expose.schemas", true)
+	viper.SetDefault("expose.databases", true)
 	viper.SetDefault("cache.enabled", false)
 	viper.SetDefault("cache.time", 10)
 	viper.SetDefault("cache.storagepath", "./")
@@ -231,6 +244,10 @@ func Parse(cfg *Prest) (err error) {
 	cfg.Cache.Time = viper.GetInt("cache.time")
 	cfg.Cache.StoragePath = viper.GetString("cache.storagepath")
 	cfg.Cache.SufixFile = viper.GetString("cache.sufixfile")
+	cfg.ExposeConf.Enabled = viper.GetBool("expose.enabled")
+	cfg.ExposeConf.TableListing = viper.GetBool("expose.tables")
+	cfg.ExposeConf.SchemaListing = viper.GetBool("expose.schemas")
+	cfg.ExposeConf.DatabaseListing = viper.GetBool("expose.databases")
 	var cacheendpoints []CacheEndpoint
 	err = viper.UnmarshalKey("cache.endpoints", &cacheendpoints)
 	if err != nil {
