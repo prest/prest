@@ -14,7 +14,6 @@ import (
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
 	pctx "github.com/prest/prest/context"
-	"github.com/prest/prest/middlewares"
 	"github.com/prest/prest/testutils"
 )
 
@@ -88,22 +87,6 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 		t.Log(tc.description)
 		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetTablesByDatabaseAndSchema")
 	}
-}
-
-func TestGetTablesWithEnabledExposeMiddleware(t *testing.T) {
-	config.Load()
-	postgres.Load()
-	config.PrestConf.Adapter = &postgres.Postgres{}
-	config.PrestConf.ExposeConf.Enabled = true
-	config.PrestConf.ExposeConf.TableListing = true
-	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}/tables", GetTables).Methods("GET")
-	n := middlewares.GetApp()
-	n.UseHandler(router)
-	server := httptest.NewServer(n)
-	defer server.Close()
-
-	testutils.DoRequest(t, server.URL+"/random/public/tables", nil, "GET", 401, "GetDatabases")
 }
 
 func TestSelectFromTables(t *testing.T) {

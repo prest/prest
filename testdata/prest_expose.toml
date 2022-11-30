@@ -1,85 +1,8 @@
-[auth]
-table = "prest_users"
-username = "username"
-password = "password"
-metadata = ["first_name", "last_name", "last_login"]
+[jwt]
+default = false
 
 [http]
 port = 3000
-
-[cache]
-enabled = true
-
-    [[cache.endpoints]]
-    endpoint = "/prest/public/test"
-    time = 5
-
-[access]
-restrict = true  # can access only the tables listed below
-
-    [[access.tables]]
-    name = "Reply"
-    permissions = ["read", "write", "delete"]
-    fields = ["id", "name"]
-
-    [[access.tables]]
-    name = "test"
-    permissions = ["read", "write", "delete"]
-    fields = ["id", "name"]
-
-    [[access.tables]]
-    name = "testarray"
-    permissions = ["read", "write", "delete"]
-    fields = ["id", "data"]
-
-    [[access.tables]]
-    name = "test2"
-    permissions = ["read", "write", "delete"]
-    fields = ["id", "name"]
-
-    [[access.tables]]
-    name = "test3"
-    permissions = ["read", "write", "delete"]
-    fields = ["id", "name"]
-
-    [[access.tables]]
-    name = "test4"
-    permissions = ["read", "write", "delete"]
-    fields = ["id", "name"]
-
-    [[access.tables]]
-    name = "test5"
-    permissions = ["read", "write", "delete"]
-    fields = ["*"]
-
-    [[access.tables]]
-    name = "test_readonly_access"
-    permissions = ["read"]
-    fields = ["id", "name"]
-
-    [[access.tables]]
-    name = "test_write_and_delete_access"
-    permissions = ["write", "delete"]
-
-    [[access.tables]]
-    name = "test_list_only_id"
-    permissions = ["read"]
-    fields = ["id"]
-
-    [[access.tables]]
-    name = "test6"
-    permissions = ["read", "write", "delete"]
-    fields = ["nuveo", "name"]
-
-    [[access.tables]]
-    name = "view_test"
-    permissions = ["read"]
-    fields = ["player"]
-
-    [[access.tables]]
-    name = "test_group_by_table"
-    permissions = ["read"]
-    fields = ["id", "name", "age", "salary"]
 
 [expose]
 enabled = true
