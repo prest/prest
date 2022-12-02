@@ -5,6 +5,7 @@ package main
 
 import (
 	"encoding/json"
+	"net/http"
 )
 
 var (
@@ -39,5 +40,20 @@ func GETHelloHandler() (ret string) {
 		return
 	}
 	ret = string(respJSON)
+	return
+}
+
+func GETHelloWithStatusHandler() (ret string, code int) {
+	resp := Response{
+		HTTPVars: HTTPVars,
+		URLQuery: URLQuery,
+		MSG:      "Hello plugin caller!",
+	}
+	respJSON, err := json.Marshal(resp)
+	if err != nil {
+		return
+	}
+	ret = string(respJSON)
+	code = http.StatusAccepted
 	return
 }
