@@ -18,6 +18,7 @@ type LoadedPlugin struct {
 	Plugin *plugin.Plugin
 }
 
+// PluginFuncReturn structure for holding return value and status of plugin function.
 type PluginFuncReturn struct {
 	ReturnJson string
 	StatusCode int
