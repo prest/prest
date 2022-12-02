@@ -18,11 +18,16 @@ type LoadedPlugin struct {
 	Plugin *plugin.Plugin
 }
 
+type PluginFuncReturn struct {
+	ReturnJson string
+	StatusCode int
+}
+
 // loadedFunc global variable to control plugins loaded, blocking duplicate loading
 var loadedFunc = map[string]LoadedPlugin{}
 
 // loadFunc private func to load and exec OS Library
-func loadFunc(fileName, funcName string, r *http.Request) (ret string, err error) {
+func loadFunc(fileName, funcName string, r *http.Request) (ret PluginFuncReturn, err error) {
 	libPath := filepath.Join(config.PrestConf.PluginPath, fmt.Sprintf("%s.so", fileName))
 	loadedPlugin := loadedFunc[libPath]
 	p := loadedPlugin.Plugin
@@ -61,9 +66,25 @@ func loadFunc(fileName, funcName string, r *http.Request) (ret string, err error
 	if err != nil {
 		return
 	}
-	// Exec (call) function name, return string
-	ret = f.(func() string)()
-	log.Println("ret plugin:", ret)
+	// Exec (call) function name, return string (In case which return status code does not matter)
+	function, ok := f.(func() string)
+
+	if !ok {
+		// It is probable that plugin function return not only json but also status code.
+		function := f.(func() (string, int))
+		retJson, code := function()
+		ret.ReturnJson = retJson
+		ret.StatusCode = code
+
+		log.Printf("ret plugin(status %d): %s\n", code, ret.ReturnJson)
+	} else {
+		retJson := function()
+		ret.ReturnJson = retJson
+		ret.StatusCode = -1
+
+		log.Println("ret plugin:", ret.ReturnJson)
+	}
+
 	return
 }
 
@@ -79,7 +100,12 @@ func HandlerPlugin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Cache arrow if enabled
-	cache.BuntSet(r.URL.String(), ret)
+	cache.BuntSet(r.URL.String(), ret.ReturnJson)
+
 	//nolint
-	w.Write([]byte(ret))
+	if ret.StatusCode != -1 {
+		w.WriteHeader(ret.StatusCode)
+	}
+
+	w.Write([]byte(ret.ReturnJson))
 }
