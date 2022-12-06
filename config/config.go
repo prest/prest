@@ -44,7 +44,7 @@ type AccessConf struct {
 	Tables      []TablesConf
 }
 
-// ExposeConf (expose data) informations
+// ExposeConf (expose data) information
 type ExposeConf struct {
 	Enabled         bool
 	DatabaseListing bool
