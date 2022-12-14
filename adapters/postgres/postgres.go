@@ -318,7 +318,7 @@ func (adapter *Postgres) ReturningByRequest(r *http.Request) (returningSyntax st
 func sliceToJSONList(ifaceSlice interface{}) (returnValue string, err error) {
     v := reflect.ValueOf(ifaceSlice)
 
-	if v.Kind() == 0 {
+	if v.Kind() == reflect.Invalid {
 		return "[]", ErrEmptyOrInvalidSlice
 	}
 
