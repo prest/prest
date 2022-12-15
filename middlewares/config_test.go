@@ -279,3 +279,28 @@ func Test_CORS_Middleware(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, len(body))
 }
+
+func TestExposeTablesMiddleware(t *testing.T) {
+	MiddlewareStack = []negroni.Handler{}
+	app = nil
+	os.Setenv("PREST_DEBUG", "true")
+	os.Setenv("PREST_CONF", "../testdata/prest_expose.toml")
+	config.Load()
+	app = nil
+	r := mux.NewRouter()
+	r.HandleFunc("/tables", controllers.GetTables).Methods("GET")
+	r.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
+	r.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
+	n := GetApp()
+	n.UseHandler(r)
+	server := httptest.NewServer(n)
+	defer server.Close()
+	resp, _ := http.Get(server.URL + "/tables")
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+
+	resp, _ = http.Get(server.URL + "/databases")
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+
+	resp, _ = http.Get(server.URL + "/schemas")
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+}
