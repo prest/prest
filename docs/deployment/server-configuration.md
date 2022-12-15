@@ -156,8 +156,8 @@ password = "password"
 The expose data setting enables you to configure if you want users to be able to reach listing endpoints, such as:
 
  - /databases
- - /{database}/schemas
- - /{database}/{schema}/tables
+ - /schemas
+ - /tables
 
 
 An example of a configuration file disabling all listings:
@@ -182,6 +182,16 @@ If you want to disable just the database listing:
 | databases | Set this as `true` if you want to **disable** *databases* listing endpoints only. |
 | schemas | Set this as `true` if you want to **disable** *schemas* listing endpoints only. |
 | tables | Set this as `true` if you want to **disable** *tables* listing endpoints only. |
+
+### Default values for Exposure Settings
+
+| Name | Default Value |
+| --- | --- |
+| enabled | `false` |
+| databases | `true` |
+| schemas | `true` |
+| tables | `true` |
+
 
 ## SSL
 
