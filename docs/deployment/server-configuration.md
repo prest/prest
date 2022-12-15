@@ -179,9 +179,9 @@ If you want to disable just the database listing:
 | Name | Description |
 | --- | --- |
 | enabled | Set this as `true` if you want to **disable** all listing endpoints available. |
-| databases | Set this as `true` if you want to **disable** *databases* listing endpoints only. |
-| schemas | Set this as `true` if you want to **disable** *schemas* listing endpoints only. |
-| tables | Set this as `true` if you want to **disable** *tables* listing endpoints only. |
+| databases | Set this as `false` if you want to **disable** *databases* listing endpoints only. |
+| schemas | Set this as `false` if you want to **disable** *schemas* listing endpoints only. |
+| tables | Set this as `false` if you want to **disable** *tables* listing endpoints only. |
 
 ### Default values for Exposure Settings
 
