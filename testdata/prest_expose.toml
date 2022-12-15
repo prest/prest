@@ -1,0 +1,11 @@
+[auth]
+table = "prest_users"
+username = "username"
+password = "password"
+metadata = ["first_name", "last_name", "last_login"]
+
+[expose]
+enabled = true
+tables = false
+databases = false
+schemas = false

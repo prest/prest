@@ -44,6 +44,14 @@ type AccessConf struct {
 	Tables      []TablesConf
 }
 
+// ExposeConf (expose data) information
+type ExposeConf struct {
+	Enabled         bool
+	DatabaseListing bool
+	SchemaListing   bool
+	TableListing    bool
+}
+
 // Prest basic config
 type Prest struct {
 	AuthEnabled          bool
@@ -78,6 +86,7 @@ type Prest struct {
 	MigrationsPath       string
 	QueriesPath          string
 	AccessConf           AccessConf
+	ExposeConf           ExposeConf
 	CORSAllowOrigin      []string
 	CORSAllowHeaders     []string
 	CORSAllowMethods     []string
@@ -147,6 +156,10 @@ func viperCfg() {
 	viper.SetDefault("cache.storagepath", "./")
 	viper.SetDefault("cache.sufixfile", ".cache.prestd.db")
 	viper.SetDefault("pluginpath", "./lib")
+	viper.SetDefault("expose.enabled", false)
+	viper.SetDefault("expose.tables", true)
+	viper.SetDefault("expose.schemas", true)
+	viper.SetDefault("expose.databases", true)
 
 	hDir, err := homedir.Dir()
 	if err != nil {
@@ -231,6 +244,10 @@ func Parse(cfg *Prest) (err error) {
 	cfg.Cache.Time = viper.GetInt("cache.time")
 	cfg.Cache.StoragePath = viper.GetString("cache.storagepath")
 	cfg.Cache.SufixFile = viper.GetString("cache.sufixfile")
+	cfg.ExposeConf.Enabled = viper.GetBool("expose.enabled")
+	cfg.ExposeConf.TableListing = viper.GetBool("expose.tables")
+	cfg.ExposeConf.SchemaListing = viper.GetBool("expose.schemas")
+	cfg.ExposeConf.DatabaseListing = viper.GetBool("expose.databases")
 	var cacheendpoints []CacheEndpoint
 	err = viper.UnmarshalKey("cache.endpoints", &cacheendpoints)
 	if err != nil {

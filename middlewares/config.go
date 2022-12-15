@@ -42,6 +42,9 @@ func initApp() {
 		if config.PrestConf.Cache.Enabled {
 			MiddlewareStack = append(MiddlewareStack, CacheMiddleware())
 		}
+		if config.PrestConf.ExposeConf.Enabled {
+			MiddlewareStack = append(MiddlewareStack, ExposureMiddleware())
+		}
 	}
 	app = negroni.New(MiddlewareStack...)
 }
