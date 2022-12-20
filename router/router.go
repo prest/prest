@@ -33,6 +33,7 @@ func GetRouter() *mux.Router {
 	router.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
 	router.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
 	router.HandleFunc("/tables", controllers.GetTables).Methods("GET")
+	router.HandleFunc("/health", controllers.GetHealthStatus).Methods("GET")
 	// breaking change
 	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", controllers.ExecuteFromScripts)
 	// router.HandleFunc("/_QUERIES/{database}/{queriesLocation}/{script}", controllers.ExecuteFromScripts)
