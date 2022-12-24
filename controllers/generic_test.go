@@ -16,11 +16,11 @@ func TestGetHealthStatus(t *testing.T) {
 		method      string
 		status      int
 	}{
-		{"Get databases without custom where clause", "/health", "GET", http.StatusOK},
+		{"Get databases without custom where clause", "/_health", "GET", http.StatusOK},
 	}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/health", GetHealthStatus).Methods("GET")
+	router.HandleFunc("/_health", GetHealthStatus).Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
 
