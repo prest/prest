@@ -26,6 +26,6 @@ func TestHealthStatus(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetDatabases")
+		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "HealthStatus")
 	}
 }
