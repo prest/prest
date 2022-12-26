@@ -224,3 +224,10 @@ While serving multiple databases over the same API with pREST is doable, it's by
 **Cross-Origin Resource Sharing**
 
 Read the specific topic where we talk about CROS [here](/prestd/deployment/cors-support/).
+
+
+## Health check endpoint
+
+If you need to setup a health check on your deployment (ECS/EKS or others), you can use `/_health` as a provider of this information.
+
+The server will return 424 whenever a Postgres connection is not reachable.  

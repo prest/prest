@@ -12,8 +12,9 @@ _**prestd**_ implements all http verbs, transcribing to SQL ANSI (American Natio
 
 > Postgres `SELECT` instruction
 
-| Endpointis | Description |
+| Endpoints | Description |
 | --- | --- |
+| `/_health` | Health check endpoint |
 | `/databases` | List all databases |
 | `/schemas` | List all schemas |
 | `/tables` | List all tables |
