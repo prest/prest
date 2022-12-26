@@ -33,7 +33,6 @@ func GetRouter() *mux.Router {
 	router.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
 	router.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
 	router.HandleFunc("/tables", controllers.GetTables).Methods("GET")
-	router.HandleFunc("/_health", controllers.GetHealthStatus).Methods("GET")
 	// breaking change
 	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", controllers.ExecuteFromScripts)
 	// router.HandleFunc("/_QUERIES/{database}/{queriesLocation}/{script}", controllers.ExecuteFromScripts)
@@ -46,6 +45,7 @@ func GetRouter() *mux.Router {
 	router.HandleFunc("/{database}/{schema}", controllers.GetTablesByDatabaseAndSchema).Methods("GET")
 	router.HandleFunc("/show/{database}/{schema}/{table}", controllers.ShowTable).Methods("GET")
 	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
+	router.HandleFunc("/_health", controllers.HealthStatus).Methods("GET")
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.SelectFromTables).Methods("GET")
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.InsertInTables).Methods("POST")
 	crudRoutes.HandleFunc("/batch/{database}/{schema}/{table}", controllers.BatchInsertInTables).Methods("POST")

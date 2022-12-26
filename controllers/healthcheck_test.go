@@ -9,7 +9,7 @@ import (
 	"github.com/prest/prest/testutils"
 )
 
-func TestGetHealthStatus(t *testing.T) {
+func TestHealthStatus(t *testing.T) {
 	var testCases = []struct {
 		description string
 		url         string
@@ -20,7 +20,7 @@ func TestGetHealthStatus(t *testing.T) {
 	}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/_health", GetHealthStatus).Methods("GET")
+	router.HandleFunc("/_health", HealthStatus).Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
 
