@@ -133,11 +133,20 @@ SELECT * FROM table WHERE name = '{{defaultOrValue "field1" "gopher"}}';
 
 ### inFormat
 
-If value of param is an slice this function format to an IN SQL clause.
+If you need to format data for a usage on a `IN ('option1', 'option2')` statement.
+You can use this with the field inside the format. Whenever passing multiple arguments to
+`inFormat` function, you must use multiple `field1` instances on the URL.
+
+In example: I want to query field `name` with options `Mary` and `John`.
 
 ```sql
-SELECT * FROM table WHERE name IN {{inFormat "field1"}};
+-- URL will be equal to /_QUERIES/custom_query/query?name=Mary&name=John
+
+SELECT * FROM names WHERE name IN {{inFormat "name"}};
 ```
+
+**Future updates** will include the support of multiple strings splited by `,` on the same
+instance of the field.
 
 ### split
 
