@@ -44,8 +44,8 @@ func init() {
 	dbConn = DbConnection{}
 }
 
-// GetHealthStatus - returns 200 if server is fine, else 424 if Postgres not working
-func GetHealthStatus(w http.ResponseWriter, r *http.Request) {
+// HealthStatus - returns 200 if server is fine, else 424 if Postgres not working
+func HealthStatus(w http.ResponseWriter, r *http.Request) {
 	data := HealthCheck{
 		Status: "ok",
 	}
