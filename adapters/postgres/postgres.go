@@ -162,14 +162,14 @@ func chkInvalidIdentifier(identifer ...string) bool {
 		}
 
 		ivalSplit := strings.Split(ival, ".")
-		if len(ivalSplit) == 2 && len(ivalSplit[len(ivalSplit) - 1]) > 63 {
+		if len(ivalSplit) == 2 && len(ivalSplit[len(ivalSplit)-1]) > 63 {
 			return true
 		}
 
 		if !strings.Contains(ival, ".") && len(ival) > 63 {
 			return true
 		}
-		
+
 		count := 0
 		for _, v := range ival {
 			if !unicode.IsLetter(v) &&
@@ -316,25 +316,25 @@ func (adapter *Postgres) ReturningByRequest(r *http.Request) (returningSyntax st
 }
 
 func sliceToJSONList(ifaceSlice interface{}) (returnValue string, err error) {
-    v := reflect.ValueOf(ifaceSlice)
+	v := reflect.ValueOf(ifaceSlice)
 
 	if v.Kind() == reflect.Invalid {
 		return "[]", ErrEmptyOrInvalidSlice
 	}
 
 	value := make([]string, 0)
-	
-    for i := 0; i < v.Len(); i++ {
-        val := v.Index(i).Interface()
-		switch val.(type){
-			case int, float64:
-				newVal := fmt.Sprint(val)
-				value = append(value, newVal)
-			default:
-				newVal := fmt.Sprintf(`"%s"`, val)
-				value = append(value, newVal)
+
+	for i := 0; i < v.Len(); i++ {
+		val := v.Index(i).Interface()
+		switch val.(type) {
+		case int, float64:
+			newVal := fmt.Sprint(val)
+			value = append(value, newVal)
+		default:
+			newVal := fmt.Sprintf(`"%s"`, val)
+			value = append(value, newVal)
 		}
-    }
+	}
 	returnValue = fmt.Sprintf(`[%v]`, strings.Join(value, ", "))
 	return
 }
@@ -361,23 +361,23 @@ func (adapter *Postgres) SetByRequest(r *http.Request, initialPlaceholderID int)
 		key = fmt.Sprintf(`"%s"`, strings.Join(keys, `"."`))
 		fields = append(fields, fmt.Sprintf(`%s=$%d`, key, initialPlaceholderID))
 
-		switch reflect.ValueOf(value).Kind(){
-			case reflect.Interface:
-				values = append(values, formatters.FormatArray(value))
-			case reflect.Map:
-				jsonData, err := json.Marshal(value)
-				if err != nil {
-					log.Errorln(err)
-				}
-				values = append(values, string(jsonData))
-			case reflect.Slice:
-				value, err = sliceToJSONList(value)
-				if err != nil {
-					log.Errorln(err)
-				}
-				values = append(values, value)
-			default:
-				values = append(values, value)
+		switch reflect.ValueOf(value).Kind() {
+		case reflect.Interface:
+			values = append(values, formatters.FormatArray(value))
+		case reflect.Map:
+			jsonData, err := json.Marshal(value)
+			if err != nil {
+				log.Errorln(err)
+			}
+			values = append(values, string(jsonData))
+		case reflect.Slice:
+			value, err = sliceToJSONList(value)
+			if err != nil {
+				log.Errorln(err)
+			}
+			values = append(values, value)
+		default:
+			values = append(values, value)
 		}
 		initialPlaceholderID++
 	}

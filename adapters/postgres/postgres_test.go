@@ -1987,13 +1987,13 @@ func newScannerMock(t *testing.T) (sc adapters.Scanner) {
 func TestSliceToJSONList(t *testing.T) {
 	var i interface{}
 	var testCases = []struct {
-		description    string
-		body           interface{}
-		expectedValue  string
-		err            error
+		description   string
+		body          interface{}
+		expectedValue string
+		err           error
 	}{
-		{"String slice", []string{"one","two","three"}, `["one", "two", "three"]`, nil},
-		{"Integer slice", []int{1,2,3}, `[1, 2, 3]`, nil},
+		{"String slice", []string{"one", "two", "three"}, `["one", "two", "three"]`, nil},
+		{"Integer slice", []int{1, 2, 3}, `[1, 2, 3]`, nil},
 		{"Interface error", i, `[]`, ErrEmptyOrInvalidSlice},
 	}
 

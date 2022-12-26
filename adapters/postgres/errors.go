@@ -11,6 +11,6 @@ var (
 	ErrInvalidOperator         = errors.New("invalid operator")
 	ErrInvalidGroupFn          = errors.New("invalid group function")
 	// ErrBodyEmpty err throw when body is empty
-	ErrBodyEmpty               = errors.New("body is empty")
-	ErrEmptyOrInvalidSlice     = errors.New("empty or invalid slice")
+	ErrBodyEmpty           = errors.New("body is empty")
+	ErrEmptyOrInvalidSlice = errors.New("empty or invalid slice")
 )
