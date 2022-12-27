@@ -55,7 +55,7 @@ func HealthStatus(w http.ResponseWriter, r *http.Request) {
 	err := dbc.RunTestQuery()
 
 	if err != nil {
-		http.Error(w, "failed to connect", http.StatusFailedDependency)
+		http.Error(w, "failed to connect", http.StatusServiceUnavailable)
 		return
 	}
 
