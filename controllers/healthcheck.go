@@ -30,7 +30,7 @@ func (d DbConnection) GetConnection() (db *sqlx.DB, err error) {
 
 func (d DbConnection) RunTestQuery() (err error) {
 	db, _ := d.GetConnection()
-	_, err = db.Exec("SELECT 1")
+	_, err = db.Exec(";")
 
 	if err != nil {
 		return err
