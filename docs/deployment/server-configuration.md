@@ -230,4 +230,4 @@ Read the specific topic where we talk about CROS [here](/prestd/deployment/cors-
 
 If you need to setup a health check on your deployment (ECS/EKS or others), you can use `/_health` as a provider of this information.
 
-The server will return 424 whenever a Postgres connection is not reachable.  
+The server will return 503 whenever a Postgres connection is not reachable.  
