@@ -1296,6 +1296,15 @@ func GetQueryOperator(op string) (string, error) {
 		return "NOT LIKE", nil
 	case "nilike":
 		return "NOT ILIKE", nil
+	// ltree features
+	case "ltreelanc":
+		return "@>", nil
+	case "ltreerdesc":
+		return "<@", nil
+	case "ltreematch":
+		return "~", nil
+	case "ltreematchtxt":
+		return "@", nil
 	}
 
 	return "", ErrInvalidOperator
