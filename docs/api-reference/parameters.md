@@ -75,3 +75,7 @@ Uses these operators in various filter applications
 | `$ilike` | Matches _case-insensitive_ always cover the entire string |
 | `$nlike` | Matches results without the entire string |
 | `$nilike` | Matches _case-insensitive_ results without the entire string |
+| `$ltreelanc` | Is left argument an ancestor of right (or equal)? |
+| `$ltreerdesc` | Is left argument a descendant of right (or equal)? |
+| `$ltreematch` | Does ltree match lquery? |
+| `$ltreematchtxt` | Does ltree match ltxtquery? |

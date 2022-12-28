@@ -168,6 +168,8 @@ func TestSetByRequest(t *testing.T) {
 }
 
 func TestWhereByRequest(t *testing.T) {
+	config.Load()
+	Load()
 	var testCases = []struct {
 		description    string
 		url            string
@@ -186,6 +188,10 @@ func TestWhereByRequest(t *testing.T) {
 		{"Where by request with not ilike", "/prest-test/public/test5?name=$nilike.%25vAl%25&phonenumber=123456", []string{`"name" NOT ILIKE $`, `"phonenumber" = $`, " AND "}, []string{"%vAl%", "123456"}, nil},
 		{"Where by request with multiple colunm values", "/prest-test/public/table?created_at='$gte.1997-11-03'&created_at='$lte.1997-12-05'", []string{`"created_at" >= $`, ` AND `, `"created_at" <= $`}, []string{`'1997-11-03'`, `'1997-12-05'`}, nil},
 		{"Where by request with tsquery", "/prest-test/public/test5?name:tsquery=prest", []string{`name @@ to_tsquery('prest')`}, []string{`'prest'`}, nil},
+		{"Where by request with ltree left acendent", "/prest-test/public/test5?path='$ltreelanc.Top.*'", []string{`"path" @> $`}, []string{`'Top.*'`}, nil},
+		{"Where by request with ltree right descendent", "/prest-test/public/test5?path='$ltreerdesc.Top.*'", []string{`"path" <@ $`}, []string{`'Top.*'`}, nil},
+		{"Where by request with ltree match lquery", "/prest-test/public/test5?path='$ltreematch.Top.*'", []string{`"path" ~ $`}, []string{`'Top.*'`}, nil},
+		{"Where by request with ltree match ltxtquery", "/prest-test/public/test5?path='$ltreematchtxt.Top*'", []string{`"path" @ $`}, []string{`'Top*'`}, nil},
 	}
 
 	for _, tc := range testCases {
@@ -930,6 +936,10 @@ func TestGetQueryOperator(t *testing.T) {
 		{"$ilike", "ILIKE"},
 		{"$nlike", "NOT LIKE"},
 		{"$nilike", "NOT ILIKE"},
+		{"$ltreelanc", "@>"},
+		{"$ltreerdesc", "<@"},
+		{"$ltreematch", "~"},
+		{"$ltreematchtxt", "@"},
 	}
 
 	for _, tc := range testCases {
