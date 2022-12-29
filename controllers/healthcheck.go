@@ -12,7 +12,8 @@ type HealthCheck struct {
 	Status string `json:"status"`
 }
 
-// Created an interface for future mocking test
+// iDbConnection is the interface of the health test database context
+// used externally (e.g. in the view or even in tests)
 type iDbConnection interface {
 	GetConnection() (*sqlx.DB, error)
 	RunTestQuery() error
