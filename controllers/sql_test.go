@@ -4,7 +4,6 @@ package controllers
 import (
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/gorilla/mux"
@@ -92,7 +91,7 @@ func TestRenderWithXML(t *testing.T) {
 	}{
 		{"Get schemas with COUNT clause with XML Render", "/schemas?_count=*&_renderer=xml", "GET", 200, "<objects><object><count>4</count></object></objects>"},
 	}
-	os.Setenv("PREST_DEBUG", "true")
+	t.Setenv("PREST_DEBUG", "true")
 	config.Load()
 	postgres.Load()
 	n := middlewares.GetApp()

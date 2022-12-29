@@ -10,12 +10,10 @@ import (
 func init() {
 	os.Setenv("PREST_CONF", "./testdata/prest.toml")
 	os.Setenv("PREST_CACHE_ENABLED", "true")
+	os.Setenv("PREST_PG_CACHE", "true")
 	config.Load()
 }
 func TestEndpointRulesEnable(t *testing.T) {
-	os.Setenv("PREST_CONF", "./testdata/prest.toml")
-	os.Setenv("PREST_CACHE_ENABLED", "true")
-	config.Load()
 	config.PrestConf.Cache.Endpoints = append(config.PrestConf.Cache.Endpoints, config.CacheEndpoint{
 		Time:     5,
 		Endpoint: "/prest/public/test",
@@ -38,9 +36,6 @@ func TestEndpointRulesNotExist(t *testing.T) {
 }
 
 func TestEndpointRulesDisable(t *testing.T) {
-	os.Setenv("PREST_CONF", "./testdata/prest.toml")
-	os.Setenv("PREST_CACHE_ENABLED", "true")
-	config.Load()
 	config.PrestConf.Cache.Endpoints = append(config.PrestConf.Cache.Endpoints, config.CacheEndpoint{
 		Endpoint: "/prest/public/test-disable",
 		Enabled:  false,
