@@ -25,7 +25,8 @@ func TestHealthStatus(t *testing.T) {
 	defer server.Close()
 
 	for _, tc := range testCases {
-		t.Log(tc.description)
-		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "HealthStatus")
+		t.Run(tc.description, function (t *testing.T) {
+				testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "HealthStatus")
+		}
 	}
 }
