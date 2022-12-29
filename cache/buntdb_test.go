@@ -2,7 +2,6 @@ package cache
 
 import (
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/prest/prest/adapters/postgres"
@@ -15,7 +14,7 @@ func init() {
 }
 
 func TestBuntGetDoesntExist(t *testing.T) {
-	os.Setenv("PREST_CACHE", "true")
+	t.Setenv("PREST_CACHE", "true")
 	config.Load()
 	w := httptest.NewRecorder()
 

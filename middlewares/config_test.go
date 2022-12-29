@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/gorilla/mux"
@@ -77,7 +76,7 @@ func TestGetAppWithoutReorderedMiddleware(t *testing.T) {
 }
 
 func Test_Middleware_DoesntBlock_CustomRoutes(t *testing.T) {
-	os.Setenv("PREST_DEBUG", "true")
+	t.Setenv("PREST_DEBUG", "true")
 	config.Load()
 	postgres.Load()
 	app = nil
@@ -90,7 +89,7 @@ func Test_Middleware_DoesntBlock_CustomRoutes(t *testing.T) {
 		AccessControl(),
 		negroni.Wrap(crudRoutes),
 	))
-	os.Setenv("PREST_CONF", "../testdata/prest.toml")
+	t.Setenv("PREST_CONF", "../testdata/prest.toml")
 	n := GetApp()
 	n.UseHandler(r)
 
@@ -121,7 +120,6 @@ func Test_Middleware_DoesntBlock_CustomRoutes(t *testing.T) {
 	require.Contains(t, string(body), "required authorization to table")
 
 	MiddlewareStack = []negroni.Handler{}
-	os.Setenv("PREST_CONF", "")
 }
 
 func customMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -136,7 +134,7 @@ func customMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerF
 }
 
 func TestDebug(t *testing.T) {
-	os.Setenv("PREST_DEBUG", "true")
+	t.Setenv("PREST_DEBUG", "true")
 	config.Load()
 	nd := appTest()
 	serverd := httptest.NewServer(nd)
@@ -148,8 +146,8 @@ func TestDebug(t *testing.T) {
 
 func TestEnableDefaultJWT(t *testing.T) {
 	app = nil
-	os.Setenv("PREST_JWT_DEFAULT", "false")
-	os.Setenv("PREST_DEBUG", "false")
+	t.Setenv("PREST_JWT_DEFAULT", "false")
+	t.Setenv("PREST_DEBUG", "false")
 	config.Load()
 	nd := appTest()
 	serverd := httptest.NewServer(nd)
@@ -162,8 +160,8 @@ func TestEnableDefaultJWT(t *testing.T) {
 func TestJWTIsRequired(t *testing.T) {
 	MiddlewareStack = []negroni.Handler{}
 	app = nil
-	os.Setenv("PREST_JWT_DEFAULT", "true")
-	os.Setenv("PREST_DEBUG", "false")
+	t.Setenv("PREST_JWT_DEFAULT", "true")
+	t.Setenv("PREST_DEBUG", "false")
 	config.Load()
 	nd := appTestWithJwt()
 	serverd := httptest.NewServer(nd)
@@ -178,10 +176,10 @@ func TestJWTSignatureOk(t *testing.T) {
 	app = nil
 	MiddlewareStack = nil
 	bearer := "Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImpvaG4uZG9lQHNvbWV3aGVyZS5jb20iLCJpYXQiOjE1MTc1NjM2MTYsImlzcyI6InByaXZhdGUiLCJqdGkiOiJjZWZhNzRmZS04OTRjLWZmNjMtZDgxNi00NjIwYjhjZDkyZWUiLCJvcmciOiJwcml2YXRlIiwic3ViIjoiam9obi5kb2UifQ.zLWkEd4hP4XdCD_DlRy6mgPeKwEl1dcdtx5A_jHSfmc87EsrGgNSdi8eBTzCgSU0jgV6ssTgQwzY6x4egze2xA"
-	os.Setenv("PREST_JWT_DEFAULT", "true")
-	os.Setenv("PREST_DEBUG", "false")
-	os.Setenv("PREST_JWT_KEY", "s3cr3t")
-	os.Setenv("PREST_JWT_ALGO", "HS512")
+	t.Setenv("PREST_JWT_DEFAULT", "true")
+	t.Setenv("PREST_DEBUG", "false")
+	t.Setenv("PREST_JWT_KEY", "s3cr3t")
+	t.Setenv("PREST_JWT_ALGO", "HS512")
 	config.Load()
 	nd := appTestWithJwt()
 	serverd := httptest.NewServer(nd)
@@ -201,10 +199,10 @@ func TestJWTSignatureOk(t *testing.T) {
 func TestJWTSignatureKo(t *testing.T) {
 	app = nil
 	bearer := "Bearer: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImpvaG4uZG9lQHNvbWV3aGVyZS5jb20iLCJleHAiOjE1MjUzMzk2MTYsImlhdCI6MTUxNzU2MzYxNiwiaXNzIjoicHJpdmF0ZSIsImp0aSI6ImNlZmE3NGZlLTg5NGMtZmY2My1kODE2LTQ2MjBiOGNkOTJlZSIsIm9yZyI6InByaXZhdGUiLCJzdWIiOiJqb2huLmRvZSJ9.zGP1Xths2bK2r9FN0Gv1SzyoisO0dhRwvqrPvunGxUyU5TbkfdnTcQRJNYZzJfGILeQ9r3tbuakWm-NIoDlbbA"
-	os.Setenv("PREST_JWT_DEFAULT", "true")
-	os.Setenv("PREST_DEBUG", "false")
-	os.Setenv("PREST_JWT_KEY", "s3cr3t")
-	os.Setenv("PREST_JWT_ALGO", "HS256")
+	t.Setenv("PREST_JWT_DEFAULT", "true")
+	t.Setenv("PREST_DEBUG", "false")
+	t.Setenv("PREST_JWT_KEY", "s3cr3t")
+	t.Setenv("PREST_JWT_ALGO", "HS256")
 	config.Load()
 	nd := appTestWithJwt()
 	serverd := httptest.NewServer(nd)
@@ -251,9 +249,9 @@ func appTestWithJwt() *negroni.Negroni {
 
 func Test_CORS_Middleware(t *testing.T) {
 	MiddlewareStack = []negroni.Handler{}
-	os.Setenv("PREST_DEBUG", "true")
-	os.Setenv("PREST_CORS_ALLOWORIGIN", "*")
-	os.Setenv("PREST_CONF", "../testdata/prest.toml")
+	t.Setenv("PREST_DEBUG", "true")
+	t.Setenv("PREST_CORS_ALLOWORIGIN", "*")
+	t.Setenv("PREST_CONF", "../testdata/prest.toml")
 	config.Load()
 	app = nil
 	r := mux.NewRouter()
@@ -283,8 +281,8 @@ func Test_CORS_Middleware(t *testing.T) {
 func TestExposeTablesMiddleware(t *testing.T) {
 	MiddlewareStack = []negroni.Handler{}
 	app = nil
-	os.Setenv("PREST_DEBUG", "true")
-	os.Setenv("PREST_CONF", "../testdata/prest_expose.toml")
+	t.Setenv("PREST_DEBUG", "true")
+	t.Setenv("PREST_CONF", "../testdata/prest_expose.toml")
 	config.Load()
 	app = nil
 	r := mux.NewRouter()

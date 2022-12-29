@@ -37,7 +37,7 @@ func TestLoad(t *testing.T) {
 	// Only run the failing part when a specific env variable is set
 	if os.Getenv("BE_CRASHER") == "1" {
 		Load()
-		os.Setenv("PREST_PG_DATABASE", "prest-test")
+		t.Setenv("PREST_PG_DATABASE", "prest-test")
 		return
 	}
 	// Start the actual test in a different subprocess
@@ -1284,7 +1284,7 @@ func BenchmarkPrepare(b *testing.B) {
 }
 
 func TestDisableCache(t *testing.T) {
-	os.Setenv("PREST_PG_CACHE", "false")
+	t.Setenv("PREST_PG_CACHE", "false")
 	config.Load()
 	Load()
 	ClearStmt()
@@ -1296,7 +1296,6 @@ func TestDisableCache(t *testing.T) {
 	if ok {
 		t.Error("has query in cache")
 	}
-	os.Setenv("PREST_PG_CACHE", "true")
 }
 
 func TestParseBatchInsertRequest(t *testing.T) {
