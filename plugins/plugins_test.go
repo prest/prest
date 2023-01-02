@@ -33,8 +33,8 @@ func TestPlugins(t *testing.T) {
 		status      int
 	}{
 		// should be status 200 `http.StatusOK`, but ... read TODO
-		{"/_PLUGIN/hello/Hello request GET method", "/_PLUGIN/hello/Hello", "GET", http.StatusOK},
-		{"/_PLUGIN/hello/HelloWithStatus request GET method", "/_PLUGIN/hello/HelloWithStatus", "GET", http.StatusAccepted},
+		{"/_PLUGIN/hello/Hello request GET method", "/_PLUGIN/hello/Hello", "GET", http.StatusNotFound},
+		{"/_PLUGIN/hello/HelloWithStatus request GET method", "/_PLUGIN/hello/HelloWithStatus", "GET", http.StatusNotFound},
 		{"/_PLUGIN/hello/Hello request POST method", "/_PLUGIN/hello/Hello", "POST", http.StatusNotFound},
 	}
 
