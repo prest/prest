@@ -104,6 +104,23 @@ func GETHelloHandler() (ret string) {
  ret = string(respJSON)
  return
 }
+
+// GETHelloHandler plugin
+// same function as GETHelloHandler, but this time we can return status code.
+func GETHelloWithStatusHandler() (ret string, code int) {
+	resp := Response{
+		HTTPVars: HTTPVars,
+		URLQuery: URLQuery,
+		MSG:      "Hello plugin caller!",
+	}
+	respJSON, err := json.Marshal(resp)
+	if err != nil {
+		return
+	}
+	ret = string(respJSON)
+	code = http.StatusAccepted
+	return
+}
 ```
 
 **Request:**
