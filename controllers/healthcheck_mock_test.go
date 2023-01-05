@@ -1,27 +1,46 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
+	"github.com/jmoiron/sqlx"
+	"github.com/prest/prest/adapters/mock"
 	"github.com/prest/prest/testutils"
 )
 
-func init() {
-	dbConn = DbConnection{}
+type mockedDbConn struct {
+	mock.Mock
 }
 
-func TestHealthStatus(t *testing.T) {
+func (m mockedDbConn) RunTestQuery() (err error) {
+	return fmt.Errorf("Mocked run test query")
+}
+
+func (m mockedDbConn) GetConnection() (db *sqlx.DB, err error) {
+	return nil, fmt.Errorf("Mocked get connection error")
+}
+
+func init() {
+	dbConn = mockedDbConn{}
+}
+
+func TestMockedHealthcheck(t *testing.T) {
 	var testCases = []struct {
 		description string
 		url         string
 		method      string
 		status      int
 	}{
-		{"Healthcheck endpoint", "/_health", "GET", http.StatusOK},
+		{"Fail to get healthcheck", "/_health", "GET", http.StatusServiceUnavailable},
 	}
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
 	router := mux.NewRouter()
 	router.HandleFunc("/_health", HealthStatus).Methods("GET")
