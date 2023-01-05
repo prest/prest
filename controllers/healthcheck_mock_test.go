@@ -25,11 +25,8 @@ func (m mockedDbConn) GetConnection() (db *sqlx.DB, err error) {
 	return nil, fmt.Errorf("Mocked get connection error")
 }
 
-func init() {
-	dbConn = mockedDbConn{}
-}
-
 func TestMockedHealthcheck(t *testing.T) {
+	dbConn = mockedDbConn{}
 	var testCases = []struct {
 		description string
 		url         string

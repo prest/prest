@@ -9,11 +9,12 @@ import (
 	"github.com/prest/prest/testutils"
 )
 
-func init() {
-	dbConn = DbConnection{}
-}
+// func init() {
+
+// }
 
 func TestHealthStatus(t *testing.T) {
+	dbConn = DbConnection{}
 	var testCases = []struct {
 		description string
 		url         string
