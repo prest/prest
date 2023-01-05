@@ -32,7 +32,7 @@ func TestPlugins(t *testing.T) {
 		method      string
 		status      int
 	}{
-		// should be status 200 `http.StatusOK`, but ... read TODO
+		// TODO: should be status 200 `http.StatusOK`, but read
 		{"/_PLUGIN/hello/Hello request GET method", "/_PLUGIN/hello/Hello", "GET", http.StatusNotFound},
 		{"/_PLUGIN/hello/HelloWithStatus request GET method", "/_PLUGIN/hello/HelloWithStatus", "GET", http.StatusNotFound},
 		{"/_PLUGIN/hello/Hello request POST method", "/_PLUGIN/hello/Hello", "POST", http.StatusNotFound},
