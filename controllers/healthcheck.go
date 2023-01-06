@@ -1,5 +1,7 @@
 package controllers
 
+//go:generate mockgen -source=healthcheck.go -destination=../mocks/healthcheck.go -package=mocks
+
 import (
 	"encoding/json"
 	"net/http"
@@ -12,16 +14,14 @@ type HealthCheck struct {
 	Status string `json:"status"`
 }
 
-// iDbConnection is the interface of the health test database context
-// used externally (e.g. in the view or even in tests)
-type iDbConnection interface {
+type DbConnection interface {
 	GetConnection() (*sqlx.DB, error)
 	RunTestQuery() error
 }
 
-type DbConnection struct{}
+type SDbConnection struct{}
 
-func (d DbConnection) GetConnection() (db *sqlx.DB, err error) {
+func (d SDbConnection) GetConnection() (db *sqlx.DB, err error) {
 	db, err = postgres.Get()
 	if err != nil {
 		return
@@ -29,37 +29,40 @@ func (d DbConnection) GetConnection() (db *sqlx.DB, err error) {
 	return
 }
 
-func (d DbConnection) RunTestQuery() (err error) {
-	db, _ := d.GetConnection()
-	_, err = db.Exec(";")
+func (d SDbConnection) RunTestQuery() (err error) {
+	db, err := d.GetConnection()
 
 	if err != nil {
 		return err
 	}
+
+	_, err = db.Exec(";")
+
 	return err
 }
 
-var dbConn iDbConnection
+func WrappedHealthCheck(dbc DbConnection) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data := HealthCheck{
+			Status: "ok",
+		}
 
-func init() {
-	dbConn = DbConnection{}
-}
+		w.Header().Set("Content-Type", "application/json")
+		_, err := dbc.GetConnection()
 
-// HealthStatus - returns 200 if server is fine, else 503 if Postgres not working
-func HealthStatus(w http.ResponseWriter, r *http.Request) {
-	data := HealthCheck{
-		Status: "ok",
+		if err != nil {
+			http.Error(w, "failed to connect", http.StatusServiceUnavailable)
+			return
+		}
+
+		err = dbc.RunTestQuery()
+
+		if err != nil {
+			http.Error(w, "failed to query", http.StatusServiceUnavailable)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(data)
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	dbc := dbConn
-	err := dbc.RunTestQuery()
-
-	if err != nil {
-		http.Error(w, "failed to connect", http.StatusServiceUnavailable)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(data)
 }
