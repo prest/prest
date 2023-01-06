@@ -23,6 +23,8 @@ func GetRouter() *mux.Router {
 		initRouter()
 	}
 
+	dbConn := controllers.SDbConnection{}
+
 	if config.PrestConf.AuthEnabled {
 		// can be db specific in the future, there's bellow a proposal
 		// maybe disable on multiple databases
@@ -45,7 +47,7 @@ func GetRouter() *mux.Router {
 	router.HandleFunc("/{database}/{schema}", controllers.GetTablesByDatabaseAndSchema).Methods("GET")
 	router.HandleFunc("/show/{database}/{schema}/{table}", controllers.ShowTable).Methods("GET")
 	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
-	router.HandleFunc("/_health", controllers.HealthStatus).Methods("GET")
+	router.HandleFunc("/_health", controllers.WrappedHealthCheck(dbConn)).Methods("GET")
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.SelectFromTables).Methods("GET")
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.InsertInTables).Methods("POST")
 	crudRoutes.HandleFunc("/batch/{database}/{schema}/{table}", controllers.BatchInsertInTables).Methods("POST")
