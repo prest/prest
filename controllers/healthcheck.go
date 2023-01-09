@@ -58,7 +58,7 @@ func WrappedHealthCheck(dbc DbConnection) http.HandlerFunc {
 		err = dbc.RunTestQuery()
 
 		if err != nil {
-			http.Error(w, "failed to query", http.StatusServiceUnavailable)
+			http.Error(w, "unable to run queries on the database", http.StatusServiceUnavailable)
 			return
 		}
 
