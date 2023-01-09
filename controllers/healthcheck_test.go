@@ -13,37 +13,18 @@ import (
 )
 
 func TestHealthStatus(t *testing.T) {
-	var testCases = []struct {
-		description string
-		url         string
-		method      string
-		status      int
-	}{
-		{"Healthcheck endpoint", "/_health", "GET", http.StatusOK},
-	}
-
 	router := mux.NewRouter()
 	dbConn := SDbConnection{}
 	router.HandleFunc("/_health", WrappedHealthCheck(dbConn)).Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
 
-	for _, tc := range testCases {
-		t.Run(tc.description, func(t *testing.T) {
-			testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "HealthStatus")
-		})
-	}
+	t.Run("Working Healthcheck endpoint", func(t *testing.T) {
+		testutils.DoRequest(t, server.URL+"/_health", nil, "GET", http.StatusOK, "HealthStatus")
+	})
 }
 
 func TestMockedHealthcheckFailedConnection(t *testing.T) {
-	var testCases = []struct {
-		description string
-		url         string
-		method      string
-		status      int
-	}{
-		{"Healthcheck endpoint failed connection", "/_health", "GET", http.StatusServiceUnavailable},
-	}
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockedConn := mocks.NewMockDbConnection(mockCtrl)
@@ -53,22 +34,12 @@ func TestMockedHealthcheckFailedConnection(t *testing.T) {
 	server := httptest.NewServer(router)
 	defer server.Close()
 
-	for _, tc := range testCases {
-		t.Run(tc.description, func(t *testing.T) {
-			testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "HealthStatus")
-		})
-	}
+	t.Run("Healthcheck endpoint failed connection", func(t *testing.T) {
+		testutils.DoRequest(t, server.URL+"/_health", nil, "GET", http.StatusServiceUnavailable, "HealthStatus")
+	})
 }
 
 func TestMockedHealthcheckFailedQuery(t *testing.T) {
-	var testCases = []struct {
-		description string
-		url         string
-		method      string
-		status      int
-	}{
-		{"Healthcheck endpoint failed connection", "/_health", "GET", http.StatusServiceUnavailable},
-	}
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockedConn := mocks.NewMockDbConnection(mockCtrl)
@@ -79,9 +50,7 @@ func TestMockedHealthcheckFailedQuery(t *testing.T) {
 	server := httptest.NewServer(router)
 	defer server.Close()
 
-	for _, tc := range testCases {
-		t.Run(tc.description, func(t *testing.T) {
-			testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "HealthStatus")
-		})
-	}
+	t.Run("Failed query healthcheck test", func(t *testing.T) {
+		testutils.DoRequest(t, server.URL+"/_health", nil, "GET", http.StatusServiceUnavailable, "HealthStatus")
+	})
 }
