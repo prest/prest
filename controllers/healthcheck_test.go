@@ -14,14 +14,12 @@ import (
 
 func TestHealthStatus(t *testing.T) {
 	router := mux.NewRouter()
-	dbConn := SDbConnection{}
+	dbConn := DBConn{}
 	router.HandleFunc("/_health", WrappedHealthCheck(dbConn)).Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
 
-	t.Run("Working Healthcheck endpoint", func(t *testing.T) {
-		testutils.DoRequest(t, server.URL+"/_health", nil, "GET", http.StatusOK, "HealthStatus")
-	})
+	testutils.DoRequest(t, server.URL+"/_health", nil, "GET", http.StatusOK, "HealthStatus")
 }
 
 func TestMockedHealthcheckFailedConnection(t *testing.T) {
@@ -34,9 +32,7 @@ func TestMockedHealthcheckFailedConnection(t *testing.T) {
 	server := httptest.NewServer(router)
 	defer server.Close()
 
-	t.Run("Healthcheck endpoint failed connection", func(t *testing.T) {
-		testutils.DoRequest(t, server.URL+"/_health", nil, "GET", http.StatusServiceUnavailable, "HealthStatus")
-	})
+	testutils.DoRequest(t, server.URL+"/_health", nil, "GET", http.StatusServiceUnavailable, "HealthStatus")
 }
 
 func TestMockedHealthcheckFailedQuery(t *testing.T) {
@@ -50,7 +46,5 @@ func TestMockedHealthcheckFailedQuery(t *testing.T) {
 	server := httptest.NewServer(router)
 	defer server.Close()
 
-	t.Run("Failed query healthcheck test", func(t *testing.T) {
-		testutils.DoRequest(t, server.URL+"/_health", nil, "GET", http.StatusServiceUnavailable, "HealthStatus")
-	})
+	testutils.DoRequest(t, server.URL+"/_health", nil, "GET", http.StatusServiceUnavailable, "HealthStatus")
 }
