@@ -19,9 +19,9 @@ type DbConnection interface {
 	RunTestQuery() error
 }
 
-type SDbConnection struct{}
+type DBConn struct{}
 
-func (d SDbConnection) GetConnection() (db *sqlx.DB, err error) {
+func (d DBConn) GetConnection() (db *sqlx.DB, err error) {
 	db, err = postgres.Get()
 	if err != nil {
 		return
@@ -29,7 +29,7 @@ func (d SDbConnection) GetConnection() (db *sqlx.DB, err error) {
 	return
 }
 
-func (d SDbConnection) RunTestQuery() (err error) {
+func (d DBConn) RunTestQuery() (err error) {
 	db, err := d.GetConnection()
 
 	if err != nil {

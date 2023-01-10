@@ -23,7 +23,7 @@ func GetRouter() *mux.Router {
 		initRouter()
 	}
 
-	dbConn := controllers.SDbConnection{}
+	dbConn := controllers.DBConn{}
 
 	if config.PrestConf.AuthEnabled {
 		// can be db specific in the future, there's bellow a proposal
