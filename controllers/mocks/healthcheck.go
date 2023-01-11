@@ -49,16 +49,16 @@ func (mr *MockDbConnectionMockRecorder) GetConnection() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConnection", reflect.TypeOf((*MockDbConnection)(nil).GetConnection))
 }
 
-// RunTestQuery mocks base method.
-func (m *MockDbConnection) RunTestQuery() error {
+// ConnectionTest mocks base method.
+func (m *MockDbConnection) ConnectionTest() error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RunTestQuery")
+	ret := m.ctrl.Call(m, "ConnectionTest")
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// RunTestQuery indicates an expected call of RunTestQuery.
-func (mr *MockDbConnectionMockRecorder) RunTestQuery() *gomock.Call {
+// ConnectionTest indicates an expected call of ConnectionTest.
+func (mr *MockDbConnectionMockRecorder) ConnectionTest() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunTestQuery", reflect.TypeOf((*MockDbConnection)(nil).RunTestQuery))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionTest", reflect.TypeOf((*MockDbConnection)(nil).ConnectionTest))
 }
