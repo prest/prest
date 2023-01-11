@@ -34,7 +34,6 @@ func (d DBConn) RunTestQuery() (err error) {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
 
 	_, err = db.Exec(";")
 
