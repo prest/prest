@@ -1,6 +1,6 @@
 package controllers
 
-//go:generate mockgen -source=healthcheck.go -destination=../mocks/healthcheck.go -package=mocks
+//go:generate mockgen -source=healthcheck.go -destination=./mocks/healthcheck.go -package=mocks
 
 import (
 	"encoding/json"
@@ -31,10 +31,10 @@ func (d DBConn) GetConnection() (db *sqlx.DB, err error) {
 
 func (d DBConn) RunTestQuery() (err error) {
 	db, err := d.GetConnection()
-
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 
 	_, err = db.Exec(";")
 
@@ -43,19 +43,9 @@ func (d DBConn) RunTestQuery() (err error) {
 
 func WrappedHealthCheck(dbc DbConnection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		data := HealthCheck{
-			Status: "ok",
-		}
-
 		w.Header().Set("Content-Type", "application/json")
-		_, err := dbc.GetConnection()
 
-		if err != nil {
-			http.Error(w, "failed to connect", http.StatusServiceUnavailable)
-			return
-		}
-
-		err = dbc.RunTestQuery()
+		err := dbc.RunTestQuery()
 
 		if err != nil {
 			http.Error(w, "unable to run queries on the database", http.StatusServiceUnavailable)
@@ -63,6 +53,8 @@ func WrappedHealthCheck(dbc DbConnection) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(data)
+		json.NewEncoder(w).Encode(HealthCheck{
+			Status: "ok",
+		})
 	}
 }
