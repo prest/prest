@@ -11,7 +11,6 @@ func CheckDBHealth() error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
 	_, err = conn.Exec(";")
 	if err != nil {
 		return err
