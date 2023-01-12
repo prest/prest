@@ -69,7 +69,7 @@ func Get() (*sqlx.DB, error) {
 		return nil, err
 	}
 	DB.SetMaxIdleConns(config.PrestConf.PGMaxIdleConn)
-	DB.SetMaxOpenConns(config.PrestConf.PGMAxOpenConn)
+	DB.SetMaxOpenConns(config.PrestConf.PGMaxOpenConn)
 
 	AddDatabaseToPool(GetDatabase(), DB)
 

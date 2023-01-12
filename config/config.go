@@ -77,7 +77,7 @@ type Prest struct {
 	SSLKey               string
 	SSLRootCert          string
 	PGMaxIdleConn        int
-	PGMAxOpenConn        int
+	PGMaxOpenConn        int
 	PGConnTimeout        int
 	PGCache              bool
 	JWTKey               string
@@ -218,7 +218,7 @@ func Parse(cfg *Prest) (err error) {
 		return
 	}
 	cfg.PGMaxIdleConn = viper.GetInt("pg.maxidleconn")
-	cfg.PGMAxOpenConn = viper.GetInt("pg.maxopenconn")
+	cfg.PGMaxOpenConn = viper.GetInt("pg.maxopenconn")
 	cfg.PGConnTimeout = viper.GetInt("pg.conntimeout")
 	cfg.PGCache = viper.GetBool("pg.cache")
 	cfg.SingleDB = viper.GetBool("pg.single")
