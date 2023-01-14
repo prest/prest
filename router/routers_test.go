@@ -8,6 +8,7 @@ import (
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/testutils"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -16,19 +17,9 @@ func init() {
 	postgres.Load()
 }
 
-func TestInitRouter(t *testing.T) {
-	initRouter()
-	if router == nil {
-		t.Errorf("Router should not be nil.")
-	}
-}
-
 func TestRoutes(t *testing.T) {
-	router = nil
 	r := Routes()
-	if r == nil {
-		t.Errorf("Should return a router.")
-	}
+	require.NotNil(t, r)
 }
 
 func TestDefaultRouters(t *testing.T) {
@@ -62,7 +53,6 @@ func TestDefaultRouters(t *testing.T) {
 
 func TestAuthRouterActive(t *testing.T) {
 	config.PrestConf.AuthEnabled = true
-	initRouter()
 	server := httptest.NewServer(GetRouter())
 	testutils.DoRequest(t, server.URL+"/auth", nil, "GET", http.StatusNotFound, "AuthEnable")
 	testutils.DoRequest(t, server.URL+"/auth", nil, "POST", http.StatusUnauthorized, "AuthEnable")
