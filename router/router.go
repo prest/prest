@@ -11,18 +11,10 @@ import (
 	"github.com/urfave/negroni"
 )
 
-var router *mux.Router
-
-func initRouter() {
-	router = mux.NewRouter().StrictSlash(true)
-}
-
 // GetRouter reagister all routes
+// v2: this is not used anywhere, so we can make it private
 func GetRouter() *mux.Router {
-	if router == nil {
-		initRouter()
-	}
-
+	router := mux.NewRouter().StrictSlash(true)
 
 	if config.PrestConf.AuthEnabled {
 		// can be db specific in the future, there's bellow a proposal
