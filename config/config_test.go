@@ -176,7 +176,8 @@ func Test_portFromEnv_Error(t *testing.T) {
 	t.Setenv("PORT", "PORT")
 
 	portFromEnv(c)
-	require.Equal(t, 3000, c.HTTPPort)
+	// this should be zero as this only modifies c.HTTPPort when the "PORT" env is set
+	require.Equal(t, 0, c.HTTPPort)
 }
 
 func Test_portFromEnv_OK(t *testing.T) {
