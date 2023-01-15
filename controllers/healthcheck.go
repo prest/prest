@@ -1,26 +1,34 @@
 package controllers
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/prest/prest/adapters/postgres"
+	pctx "github.com/prest/prest/context"
+	"github.com/structy/log"
 )
 
-func CheckDBHealth() error {
+type checkFunc func(context.Context) error
+
+func CheckDBHealth(ctx context.Context) error {
 	conn, err := postgres.Get()
 	if err != nil {
 		return err
 	}
-	_, err = conn.Exec(";")
-	if err != nil {
-		return err
-	}
-	return nil
+	_, err = conn.ExecContext(ctx, ";")
+	return err
 }
 
-func WrappedHealthCheck(checkDBhealth func() error) http.HandlerFunc {
+func WrappedHealthCheck(fn checkFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := checkDBhealth(); err != nil {
+		timeout, _ := r.Context().Value(pctx.HTTPTimeoutKey).(int)
+		ctx, cancel := context.WithTimeout(
+			r.Context(), time.Second*time.Duration(timeout))
+		defer cancel()
+		if err := fn(ctx); err != nil {
+			log.Errorf("could not check DB connection: %v\n", err)
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
