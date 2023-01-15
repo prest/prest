@@ -284,6 +284,8 @@ func Parse(cfg *Prest) {
 		log.Errorln("could not unmarshal access tables")
 	}
 	cfg.AccessConf.Tables = tablesconf
+
+	cfg.Version = viper.GetInt("version")
 }
 
 // Load configuration
