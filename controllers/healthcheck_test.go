@@ -30,7 +30,8 @@ func TestHealthStatus(t *testing.T) {
 		{unhealthyDB, "unhealthy database", http.StatusServiceUnavailable},
 	} {
 		router := mux.NewRouter()
-		router.HandleFunc("/_health", WrappedHealthCheck(tc.checkDBHealth)).Methods("GET")
+		checks := CheckList{tc.checkDBHealth}
+		router.HandleFunc("/_health", WrappedHealthCheck(checks)).Methods("GET")
 		server := httptest.NewServer(router)
 		defer server.Close()
 		testutils.DoRequest(t, server.URL+"/_health", nil, "GET", tc.expected, "")
