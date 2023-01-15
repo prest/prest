@@ -1,4 +1,4 @@
-FROM registry.hub.docker.com/library/golang:1.18 as builder
+FROM registry.hub.docker.com/library/golang:1.19.5 as builder
 WORKDIR /workspace
 COPY . .
 ENV GOOS linux
@@ -9,11 +9,10 @@ RUN go mod vendor && \
 
 # Use golang image
 # needs go to compile the plugin system
-FROM registry.hub.docker.com/library/golang:1.18
+FROM registry.hub.docker.com/library/golang:1.19.5
 ENV CGO_ENABLED 1
 COPY --from=builder /bin/nc /bin/nc
 COPY --from=builder /workspace/prestd /bin/prestd
-COPY --from=builder /workspace/etc/prest.toml /app/prest.toml
 COPY --from=builder /workspace/etc/entrypoint.sh /app/entrypoint.sh
 COPY --from=builder /workspace/lib /app/lib
 COPY --from=builder /workspace/etc/plugin /app/plugin
