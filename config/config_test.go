@@ -23,12 +23,13 @@ func TestLoad(t *testing.T) {
 
 func TestParse(t *testing.T) {
 	t.Run("no envs", func(t *testing.T) {
+		t.Setenv("PREST_CONF", "../notfound.toml")
 		viperCfg()
 		cfg := &Prest{}
 		Parse(cfg)
 		require.Equal(t, 3000, cfg.HTTPPort)
 		require.Equal(t, "prest-test", cfg.PGDatabase)
-		require.Equal(t, "127.0.0.1", cfg.PGHost)
+		require.Equal(t, "postgres", cfg.PGHost)
 		require.Equal(t, "postgres", cfg.PGUser)
 		require.Equal(t, "postgres", cfg.PGPass)
 		require.Equal(t, true, cfg.PGCache)
@@ -36,7 +37,7 @@ func TestParse(t *testing.T) {
 		require.Equal(t, "disable", cfg.SSLMode)
 		require.Equal(t, false, cfg.Debug)
 		require.Equal(t, 1, cfg.Version)
-		require.Equal(t, false, cfg.AccessConf.Restrict)
+		require.Equal(t, true, cfg.AccessConf.Restrict)
 	})
 
 	t.Run("PREST_CONF", func(t *testing.T) {
