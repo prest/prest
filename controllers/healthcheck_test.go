@@ -9,12 +9,11 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/testutils"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCheckDBHealth(t *testing.T) {
-	if err := CheckDBHealth(context.Background()); err != nil {
-		t.Errorf("expected no error running the test query, got %s", err)
-	}
+	require.Nil(t, CheckDBHealth(context.Background()))
 }
 
 func healthyDB(context.Context) error   { return nil }
