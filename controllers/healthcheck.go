@@ -12,6 +12,10 @@ import (
 
 type CheckList []func(context.Context) error
 
+var DefaultCheckList = CheckList{
+	CheckDBHealth,
+}
+
 func CheckDBHealth(ctx context.Context) error {
 	conn, err := postgres.Get()
 	if err != nil {
