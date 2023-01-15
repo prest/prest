@@ -10,7 +10,7 @@ import (
 	"github.com/structy/log"
 )
 
-type checkFunc func(context.Context) error
+type CheckList []func(context.Context) error
 
 func CheckDBHealth(ctx context.Context) error {
 	conn, err := postgres.Get()
@@ -21,16 +21,18 @@ func CheckDBHealth(ctx context.Context) error {
 	return err
 }
 
-func WrappedHealthCheck(fn checkFunc) http.HandlerFunc {
+func WrappedHealthCheck(checks CheckList) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		timeout, _ := r.Context().Value(pctx.HTTPTimeoutKey).(int)
 		ctx, cancel := context.WithTimeout(
 			r.Context(), time.Second*time.Duration(timeout))
 		defer cancel()
-		if err := fn(ctx); err != nil {
-			log.Errorf("could not check DB connection: %v\n", err)
-			w.WriteHeader(http.StatusServiceUnavailable)
-			return
+		for _, check := range checks {
+			if err := check(ctx); err != nil {
+				log.Errorf("could not check DB connection: %v\n", err)
+				w.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
 		}
 		w.WriteHeader(http.StatusOK)
 	}
