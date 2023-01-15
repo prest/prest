@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -11,17 +12,17 @@ import (
 )
 
 func TestCheckDBHealth(t *testing.T) {
-	if err := CheckDBHealth(); err != nil {
+	if err := CheckDBHealth(context.Background()); err != nil {
 		t.Errorf("expected no error running the test query, got %s", err)
 	}
 }
 
-func healthyDB() error   { return nil }
-func unhealthyDB() error { return errors.New("could not connect to the database") }
+func healthyDB(context.Context) error   { return nil }
+func unhealthyDB(context.Context) error { return errors.New("could not connect to the database") }
 
 func TestHealthStatus(t *testing.T) {
 	for _, tc := range []struct {
-		checkDBHealth func() error
+		checkDBHealth func(context.Context) error
 		desc          string
 		expected      int
 	}{
