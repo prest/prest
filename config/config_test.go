@@ -28,7 +28,7 @@ func TestParse(t *testing.T) {
 		cfg := &Prest{}
 		Parse(cfg)
 		require.Equal(t, 3000, cfg.HTTPPort)
-		require.Equal(t, "prest", cfg.PGDatabase)
+		require.Equal(t, "prest-test", cfg.PGDatabase)
 	})
 
 	t.Run("PREST_HTTP_PORT and unset PREST_JWT_DEFAULT", func(t *testing.T) {
