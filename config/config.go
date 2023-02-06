@@ -104,7 +104,6 @@ type Prest struct {
 	HTTPSKey             string
 	Cache                Cache
 	PluginPath           string
-	SilentErrors         bool
 }
 
 var (
@@ -172,7 +171,6 @@ func viperCfg() {
 
 	viper.SetDefault("version", 1)
 	viper.SetDefault("debug", false)
-	viper.SetDefault("silent.errors", false)
 	viper.SetDefault("context", "/")
 	viper.SetDefault("pluginpath", "./lib")
 	viper.SetDefault("expose.enabled", false)
@@ -274,7 +272,6 @@ func Parse(cfg *Prest) {
 	cfg.ExposeConf.TableListing = viper.GetBool("expose.tables")
 	cfg.ExposeConf.SchemaListing = viper.GetBool("expose.schemas")
 	cfg.ExposeConf.DatabaseListing = viper.GetBool("expose.databases")
-	cfg.SilentErrors = viper.GetBool("silent.errors")
 	var cacheendpoints []CacheEndpoint
 	err = viper.UnmarshalKey("cache.endpoints", &cacheendpoints)
 	if err != nil {

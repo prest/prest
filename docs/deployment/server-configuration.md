@@ -12,7 +12,6 @@ The _**prestd**_ configuration is via an _environment variable_ or _toml_ file. 
 | --- | --- | --- |
 | `PREST_VERSION` | 1 | version used for environment variables, v2 introduces better naming for SSL pg connection |
 | `PREST_CONF` | ./prest.conf | |
-| `PREST_SILENT_ERRORS` | false | enables silent errors, not displaying database infrastructure |
 | `PREST_MIGRATIONS` | ./migrations | |
 | `PREST_QUERIES_LOCATION` | ./queries | |
 | `PREST_HTTP_HOST` | 0.0.0.0 | |
@@ -95,9 +94,6 @@ enabled = true
 databases = true
 schemas = true
 tables = true
-
-[silent]
-errors = true
 ```
 
 ## Authorization

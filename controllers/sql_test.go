@@ -107,3 +107,24 @@ func TestRenderWithXML(t *testing.T) {
 
 	}
 }
+
+func TestSilentErrorsOnQuery(t *testing.T) {
+	t.Setenv("PREST_DEBUG", "false")
+	config.Load()
+	postgres.Load()
+	router := mux.NewRouter()
+	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", setHTTPTimeoutMiddleware(ExecuteFromScripts))
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	t.Log("error query silent")
+	testutils.DoRequest(
+		t,
+		server.URL+"/_QUERIES/error/query_w_error",
+		nil,
+		"GET",
+		http.StatusBadRequest,
+		"SilentError",
+		"could not execute sql, check your psql logs\n",
+	)
+}
