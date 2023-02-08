@@ -125,6 +125,6 @@ func TestSilentErrorsOnQuery(t *testing.T) {
 		"GET",
 		http.StatusBadRequest,
 		"SilentError",
-		"could not execute sql, check your psql logs\n",
+		"could not execute sql, check your prest logs\n",
 	)
 }

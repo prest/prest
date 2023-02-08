@@ -32,11 +32,8 @@ func ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]
 	}
 
 	sc := config.PrestConf.Adapter.ExecuteScriptsCtx(rq.Context(), rq.Method, sql, values)
-	if sc.Err() != nil && config.PrestConf.Debug {
-		err = fmt.Errorf("could not execute sql %v, %s", sc.Err(), sql)
-		return nil, err
-	} else if sc.Err() != nil && !config.PrestConf.Debug {
-		err = fmt.Errorf("could not execute sql, check your psql logs")
+	if sc.Err() != nil {
+		err = fmt.Errorf("could not execute sql, check your prest logs")
 		return nil, err
 	}
 
