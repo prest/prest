@@ -60,7 +60,6 @@ jobs:
           apt -y install gcc-multilib
           git config --global --add url."git@github.com:prest".insteadOf "https://github.com/prest"
           go get -v -d ./...
-          go get -v github.com/inconshreveable/mousetrap
           go install github.com/mattn/goveralls@latest
 
       - name: goreleaser check
