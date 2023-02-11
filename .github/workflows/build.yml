@@ -2,20 +2,14 @@ name: build
 run-name: build images, deploy to docker and ghcr
 
 on:
-  workflow_run:
-    workflows: ["test"]
-    branches: [main]
-    types:
-      - completed
   push:
     branches:
       - 'main'
     tags:
       - 'v*'
-  pull_request:
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     environment: build
     container: golang:latest
