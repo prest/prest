@@ -1,4 +1,5 @@
 name: build
+run-name: build images, deploy to docker and ghcr
 
 on:
   workflow_run:
