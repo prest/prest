@@ -7,6 +7,4 @@ git checkout . && \
     docker tag prest/prest:latest prest/prest:v1 && \
     docker push prest/prest:latest && \
     docker push prest/prest:v1 && \
-    docker push prest/prest:$DOCKER_TAG && \
-    git checkout . && \
-    rm cache/test
+    docker push prest/prest:$DOCKER_TAG
