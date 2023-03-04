@@ -227,6 +227,7 @@ func Parse(cfg *Prest) {
 	cfg.PGSSLCert = viper.GetString("pg.ssl.cert")
 	cfg.PGSSLRootCert = viper.GetString("pg.ssl.rootcert")
 
+	cfg.Version = viper.GetInt("version")
 	// only use value if file is present
 	if cfg.SSLMode == "" {
 		cfg.SSLMode = viper.GetString("ssl.mode")
@@ -285,7 +286,6 @@ func Parse(cfg *Prest) {
 	}
 	cfg.AccessConf.Tables = tablesconf
 
-	cfg.Version = viper.GetInt("version")
 }
 
 // Load configuration
