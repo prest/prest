@@ -66,9 +66,8 @@ func driverURL() string {
 		url.PathEscape(config.PrestConf.PGHost),
 		config.PrestConf.PGPort,
 		url.PathEscape(config.PrestConf.PGDatabase),
-		url.QueryEscape(config.PrestConf.SSLMode),
-		url.QueryEscape(config.PrestConf.SSLCert),
-		url.QueryEscape(config.PrestConf.SSLKey),
-		url.QueryEscape(config.PrestConf.SSLRootCert))
-
+		url.QueryEscape(config.PrestConf.PGSSLMode),
+		url.QueryEscape(config.PrestConf.PGSSLCert),
+		url.QueryEscape(config.PrestConf.PGSSLKey),
+		url.QueryEscape(config.PrestConf.PGSSLRootCert))
 }
