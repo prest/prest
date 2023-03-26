@@ -45,37 +45,6 @@ curl -i -X POST http://127.0.0.1:3000/auth -H "Content-Type: application/json" -
 curl -i -X GET http://127.0.0.1:3000/prest/public/prest_users -H "Accept: application/json" -H "Authorization: Bearer {TOKEN}"
 ```
 
-## Samples to getting started with API calls
-
-### Description
-
-First api calls and test automation sample.
-
-### Usage
-
-Import on Postman and execute the following steps:
-
-* Bearer Authentication
-* List Databases
-
-This is the manual process to see how things is going.
-
-So, we have the automated way:
-
-```
-npm i --location=global newman
-```
-
-After the installation run the following command:
-
-```
-newman run samples/prest_first_look.postman_collection.json
-```
-
-That's it, you have a way to validate the project running locally, and to test
-on the environments you need to edit and go forward with your own version of this
-sample.
-
 Want to contribute to the project and don't know where to start? See our contribution guide [here](https://docs.prestd.com/contribution/).
 
 ## 1-Click Deploy
