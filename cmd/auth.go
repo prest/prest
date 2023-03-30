@@ -22,7 +22,7 @@ var authUpCmd = &cobra.Command{
 			fmt.Fprint(os.Stdout, err.Error())
 			return err
 		}
-		_, err = db.Exec("CREATE TABLE IF NOT EXISTS $1.$2 (id serial, name text, username text unique, password text, metadata jsonb)", config.PrestConf.AuthSchema, config.PrestConf.AuthTable)
+		_, err = db.Exec(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s.%s (id serial, name text, username text unique, password text, metadata jsonb)", config.PrestConf.AuthSchema, config.PrestConf.AuthTable))
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
 			return err
@@ -45,7 +45,7 @@ var authDownCmd = &cobra.Command{
 			fmt.Fprint(os.Stdout, err.Error())
 			return err
 		}
-		_, err = db.Exec("DROP TABLE IF EXISTS %s.%s", config.PrestConf.AuthSchema, config.PrestConf.AuthTable)
+		_, err = db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", config.PrestConf.AuthSchema, config.PrestConf.AuthTable))
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
 			return err
