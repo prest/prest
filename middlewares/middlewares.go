@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/prest/prest/config"
 	pctx "github.com/prest/prest/context"
@@ -68,6 +69,10 @@ func AuthMiddleware() negroni.Handler {
 				http.Error(rw, err.Error(), http.StatusUnauthorized)
 				return
 			}
+			if err := Validate(claims); err != nil {
+				http.Error(rw, err.Error(), http.StatusUnauthorized)
+				return
+			}
 
 			// pass user_info to the next handler
 			ctx := r.Context()
@@ -78,6 +83,17 @@ func AuthMiddleware() negroni.Handler {
 		// if auth isn't enabled
 		next(rw, r)
 	})
+}
+
+// Validate claims
+func Validate(c auth.Claims) error {
+	if c.Expiry != nil && time.Now().After(c.Expiry.Time()) {
+		return ErrJWTValidate
+	}
+	if c.NotBefore != nil && time.Now().Before(c.NotBefore.Time()) {
+		return ErrJWTValidate
+	}
+	return nil
 }
 
 // AccessControl is a middleware to handle permissions on tables in pREST
@@ -133,6 +149,10 @@ func JwtMiddleware(key string, algo string) negroni.Handler {
 		out := auth.Claims{}
 		if err := tok.Claims([]byte(key), &out); err != nil {
 			http.Error(w, ErrJWTValidate.Error(), http.StatusUnauthorized)
+			return
+		}
+		if err := Validate(out); err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
 		next(w, r)
