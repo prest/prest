@@ -39,6 +39,8 @@ type Login struct {
 
 // Token for user
 func Token(u auth.User) (t string, err error) {
+	// add start time (NotBefore)
+	getToken := time.Now()
 	// add expiry time in configuration (in minute format, so we support the maximum need)
 	expireToken := time.Now().Add(time.Hour * 6)
 
@@ -54,7 +56,7 @@ func Token(u auth.User) (t string, err error) {
 
 	cl := auth.Claims{
 		UserInfo:  u,
-		NotBefore: jwt.NewNumericDate(expireToken),
+		NotBefore: jwt.NewNumericDate(getToken),
 		Expiry:    jwt.NewNumericDate(expireToken),
 	}
 	return jwt.Signed(sig).Claims(cl).CompactSerialize()
