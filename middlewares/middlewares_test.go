@@ -37,15 +37,14 @@ func TestJWTClaimsOk(t *testing.T) {
 			Algorithm: jose.HS256,
 			Key:       []byte(config.PrestConf.JWTKey)},
 		(&jose.SignerOptions{}).WithType("JWT"))
-	if err != nil {
-		return
-	}
+	require.NoError(t, err)
 
 	cl := auth.Claims{
 		NotBefore: jwt.NewNumericDate(getToken),
 		Expiry:    jwt.NewNumericDate(expireToken),
 	}
-	bearer, _ := jwt.Signed(sig).Claims(cl).CompactSerialize()
+	bearer, err := jwt.Signed(sig).Claims(cl).CompactSerialize()
+	require.NoError(t, err)
 	req.Header.Add("authorization", bearer)
 
 	client := http.Client{}
@@ -77,15 +76,14 @@ func TestJWTClaimsNotOk(t *testing.T) {
 			Algorithm: jose.HS256,
 			Key:       []byte(config.PrestConf.JWTKey)},
 		(&jose.SignerOptions{}).WithType("JWT"))
-	if err != nil {
-		return
-	}
+	require.NoError(t, err)
 
 	cl := auth.Claims{
 		NotBefore: jwt.NewNumericDate(getToken),
 		Expiry:    jwt.NewNumericDate(expireToken),
 	}
-	bearer, _ := jwt.Signed(sig).Claims(cl).CompactSerialize()
+	bearer, err := jwt.Signed(sig).Claims(cl).CompactSerialize()
+	require.NoError(t, err)
 
 	req.Header.Add("authorization", bearer)
 
