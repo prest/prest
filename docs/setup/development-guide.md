@@ -130,13 +130,13 @@ This is the manual process to see how things is going.
 
 So, we have the automated way:
 
-```
+```sh
 npm i --location=global newman
 ```
 
 After the installation run the following command:
 
-```
+```sh
 newman run samples/prest_first_look.postman_collection.json
 ```
 
