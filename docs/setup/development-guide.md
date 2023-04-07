@@ -140,9 +140,7 @@ After the installation run the following command:
 newman run samples/prest_first_look.postman_collection.json
 ```
 
-That's it, you have a way to validate the project running locally, and to test
-on the environments you need to edit and go forward with your own version of this
-sample.
+That's it, you have a way to validate the project running locally, and to test on the environments you need to edit and go forward with your own version of this sample.
 
 ## Execute unit tests locally (integration/e2e)
 
