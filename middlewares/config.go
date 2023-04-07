@@ -3,7 +3,7 @@ package middlewares
 import (
 	"github.com/prest/prest/config"
 	"github.com/rs/cors"
-	"github.com/urfave/negroni"
+	"github.com/urfave/negroni/v3"
 )
 
 var (

@@ -8,7 +8,7 @@ import (
 	"github.com/prest/prest/controllers"
 	"github.com/prest/prest/middlewares"
 	"github.com/prest/prest/plugins"
-	"github.com/urfave/negroni"
+	"github.com/urfave/negroni/v3"
 )
 
 // GetRouter reagister all routes

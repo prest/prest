@@ -12,7 +12,7 @@ import (
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/controllers"
 	"github.com/stretchr/testify/require"
-	"github.com/urfave/negroni"
+	"github.com/urfave/negroni/v3"
 )
 
 func init() {

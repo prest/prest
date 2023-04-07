@@ -17,7 +17,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/structy/log v0.0.0-20220126185905-65895d7017d5
 	github.com/tidwall/buntdb v1.2.10
-	github.com/urfave/negroni v1.0.0
+	github.com/urfave/negroni/v3 v3.0.0
 	gopkg.in/square/go-jose.v2 v2.6.0
 )
 
