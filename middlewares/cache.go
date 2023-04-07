@@ -6,7 +6,7 @@ import (
 
 	"github.com/prest/prest/cache"
 	"github.com/prest/prest/config"
-	"github.com/urfave/negroni"
+	"github.com/urfave/negroni/v3"
 )
 
 // CacheMiddleware simple caching to avoid equal queries to the database
