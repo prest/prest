@@ -51,6 +51,11 @@ type ExposeConf struct {
 	TableListing    bool
 }
 
+type PluginMiddleware struct {
+	File string
+	Func string
+}
+
 // Prest basic config
 type Prest struct {
 	Version              int
@@ -104,6 +109,7 @@ type Prest struct {
 	HTTPSKey             string
 	Cache                Cache
 	PluginPath           string
+	PluginMiddlewareList []PluginMiddleware
 }
 
 var (
@@ -173,6 +179,7 @@ func viperCfg() {
 	viper.SetDefault("debug", false)
 	viper.SetDefault("context", "/")
 	viper.SetDefault("pluginpath", "./lib")
+	viper.SetDefault("pluginmiddlewarelist", []PluginMiddleware{})
 	viper.SetDefault("expose.enabled", false)
 	viper.SetDefault("expose.tables", true)
 	viper.SetDefault("expose.schemas", true)
@@ -273,12 +280,16 @@ func Parse(cfg *Prest) {
 	cfg.ExposeConf.TableListing = viper.GetBool("expose.tables")
 	cfg.ExposeConf.SchemaListing = viper.GetBool("expose.schemas")
 	cfg.ExposeConf.DatabaseListing = viper.GetBool("expose.databases")
+
+	// cache endpoints config
 	var cacheendpoints []CacheEndpoint
 	err = viper.UnmarshalKey("cache.endpoints", &cacheendpoints)
 	if err != nil {
 		log.Errorln("could not unmarshal cache endpoints")
 	}
 	cfg.Cache.Endpoints = cacheendpoints
+
+	// table access config
 	var tablesconf []TablesConf
 	err = viper.UnmarshalKey("access.tables", &tablesconf)
 	if err != nil {
@@ -286,6 +297,13 @@ func Parse(cfg *Prest) {
 	}
 	cfg.AccessConf.Tables = tablesconf
 
+	// plugin middleware list config
+	var pluginMiddlewareConfig []PluginMiddleware
+	err = viper.UnmarshalKey("pluginmiddlewarelist", &pluginMiddlewareConfig)
+	if err != nil {
+		log.Errorln("could not unmarshal access plugin middleware list")
+	}
+	cfg.PluginMiddlewareList = pluginMiddlewareConfig
 }
 
 // Load configuration
@@ -368,7 +386,7 @@ View more at https://docs.prestd.com/prestd/deployment/server-configuration`)
 
 func parseSSLV1Data(cfg *Prest) {
 	log.Warningln(`
-You are using v1 of prestd configs, please migrate to v2. 
+You are using v1 of prestd configs, please migrate to v2.
 
 v1 will be deprecated soon.
 
