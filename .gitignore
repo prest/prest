@@ -28,6 +28,9 @@ data/
 cache/test
 .idea
 *.iml
+.clj-kondo
+.dccache
+.lsp/
 
 # prestd
 prest-*
@@ -39,3 +42,4 @@ prest.toml
 /cmd/prestd/prestd
 docbuild/
 /vendor
+.clj-kondo
