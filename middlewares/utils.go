@@ -55,7 +55,7 @@ func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, fo
 		m["error"] = strings.TrimSpace(string(byt))
 		byt, _ = json.MarshalIndent(m, "", "\t")
 	}
-	http.ResponseWriter.WriteHeader(w, recorder.Code)
+	w.WriteHeader(recorder.Code)
 	switch format {
 	case "xml":
 		xmldata, err := j2x.JsonToXml(byt)

@@ -34,10 +34,10 @@ func WrappedHealthCheck(checks CheckList) http.HandlerFunc {
 		for _, check := range checks {
 			if err := check(ctx); err != nil {
 				log.Errorf("could not check DB connection: %v\n", err)
-				http.ResponseWriter.WriteHeader(w, http.StatusServiceUnavailable)
+				w.WriteHeader(http.StatusServiceUnavailable)
 				return
 			}
 		}
-		http.ResponseWriter.WriteHeader(w, http.StatusOK)
+		w.WriteHeader(http.StatusOK)
 	}
 }

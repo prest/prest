@@ -224,7 +224,7 @@ func appTest() *negroni.Negroni {
 	r := mux.NewRouter()
 	if !config.PrestConf.Debug && !config.PrestConf.EnableDefaultJWT {
 		n.UseHandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.ResponseWriter.WriteHeader(w, http.StatusNotImplemented)
+			w.WriteHeader(http.StatusNotImplemented)
 		})
 	}
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

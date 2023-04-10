@@ -105,7 +105,7 @@ func HandlerPlugin(w http.ResponseWriter, r *http.Request) {
 
 	//nolint
 	if ret.StatusCode != -1 {
-		http.ResponseWriter.WriteHeader(w, ret.StatusCode)
+		w.WriteHeader(ret.StatusCode)
 	}
 	http.ResponseWriter.Write(w, []byte(ret.ReturnJson))
 }
