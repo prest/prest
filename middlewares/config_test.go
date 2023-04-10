@@ -127,7 +127,7 @@ func customMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerF
 	m["msg"] = "Calling custom middleware"
 	b, _ := json.Marshal(m)
 
-	w.Header().Set("Content-Type", "application/json")
+	http.ResponseWriter.Header(w).Set("Content-Type", "application/json")
 	http.ResponseWriter.Write(w, b)
 
 	next(w, r)

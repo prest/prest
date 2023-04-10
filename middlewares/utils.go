@@ -47,7 +47,7 @@ func permissionByMethod(method string) (permission string) {
 
 func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, format string) {
 	for key := range recorder.Header() {
-		w.Header().Set(key, recorder.Header().Get(key))
+		http.ResponseWriter.Header(w).Set(key, recorder.Header().Get(key))
 	}
 	byt, _ := ioutil.ReadAll(recorder.Body)
 	if recorder.Code >= 400 {
@@ -64,10 +64,10 @@ func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, fo
 			return
 		}
 		xmlStr := fmt.Sprintf("<objects>%s</objects>", string(xmldata))
-		w.Header().Set("Content-Type", "application/xml")
+		http.ResponseWriter.Header(w).Set("Content-Type", "application/xml")
 		http.ResponseWriter.Write(w, []byte(xmlStr))
 	default:
-		w.Header().Set("Content-Type", "application/json")
+		http.ResponseWriter.Header(w).Set("Content-Type", "application/json")
 		http.ResponseWriter.Write(w, byt)
 	}
 }
