@@ -81,7 +81,7 @@ func Test_Middleware_DoesntBlock_CustomRoutes(t *testing.T) {
 	postgres.Load()
 	app = nil
 	r := mux.NewRouter()
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { http.ResponseWriter.Write(w, []byte("custom route")) })
 	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.SelectFromTables).Methods("GET")
 
@@ -128,7 +128,7 @@ func customMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerF
 	b, _ := json.Marshal(m)
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(b)
+	http.ResponseWriter.Write(w, b)
 
 	next(w, r)
 }
@@ -224,11 +224,11 @@ func appTest() *negroni.Negroni {
 	r := mux.NewRouter()
 	if !config.PrestConf.Debug && !config.PrestConf.EnableDefaultJWT {
 		n.UseHandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusNotImplemented)
+			http.ResponseWriter.WriteHeader(w, http.StatusNotImplemented)
 		})
 	}
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("test app"))
+		http.ResponseWriter.Write(w, []byte("test app"))
 	}).Methods("GET")
 
 	n.UseHandler(r)
@@ -240,7 +240,7 @@ func appTestWithJwt() *negroni.Negroni {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("test app"))
+		http.ResponseWriter.Write(w, []byte("test app"))
 	}).Methods("GET")
 
 	n.UseHandler(r)
@@ -255,7 +255,7 @@ func Test_CORS_Middleware(t *testing.T) {
 	config.Load()
 	app = nil
 	r := mux.NewRouter()
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { http.ResponseWriter.Write(w, []byte("custom route")) })
 	n := GetApp()
 	n.UseHandler(r)
 	server := httptest.NewServer(n)

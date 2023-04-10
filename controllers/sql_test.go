@@ -20,7 +20,7 @@ func TestExecuteScriptQuery(t *testing.T) {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
-		w.Write(resp)
+		http.ResponseWriter.Write(w, resp)
 	}))
 
 	r.HandleFunc("/testing/script-post/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -28,7 +28,7 @@ func TestExecuteScriptQuery(t *testing.T) {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
-		w.Write(resp)
+		http.ResponseWriter.Write(w, resp)
 	}))
 
 	ts := httptest.NewServer(r)

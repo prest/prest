@@ -52,7 +52,7 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
 	}
-	w.Write(sc.Bytes())
+	http.ResponseWriter.Write(w, sc.Bytes())
 }
 
 // GetTablesByDatabaseAndSchema list all (or filter) tables based on database and schema
@@ -111,7 +111,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
 	}
-	w.Write(sc.Bytes())
+	http.ResponseWriter.Write(w, sc.Bytes())
 }
 
 // SelectFromTables perform select in database
@@ -254,7 +254,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 
 	// Cache arrow if enabled
 	cache.BuntSet(r.URL.String(), string(sc.Bytes()))
-	w.Write(sc.Bytes())
+	http.ResponseWriter.Write(w, sc.Bytes())
 }
 
 // InsertInTables perform insert in specific table
@@ -296,8 +296,8 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	w.Write(sc.Bytes())
+	http.ResponseWriter.WriteHeader(w, http.StatusCreated)
+	http.ResponseWriter.Write(w, sc.Bytes())
 }
 
 // BatchInsertInTables perform insert in specific table from a batch request
@@ -344,8 +344,8 @@ func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	w.Write(sc.Bytes())
+	http.ResponseWriter.WriteHeader(w, http.StatusCreated)
+	http.ResponseWriter.Write(w, sc.Bytes())
 }
 
 // DeleteFromTable perform delete sql
@@ -403,7 +403,7 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	w.Write(sc.Bytes())
+	http.ResponseWriter.Write(w, sc.Bytes())
 }
 
 // UpdateTable perform update table
@@ -472,7 +472,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	w.Write(sc.Bytes())
+	http.ResponseWriter.Write(w, sc.Bytes())
 }
 
 // ShowTable show information from table
@@ -501,5 +501,5 @@ func ShowTable(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errorMessage, http.StatusBadRequest)
 		return
 	}
-	w.Write(sc.Bytes())
+	http.ResponseWriter.Write(w, sc.Bytes())
 }

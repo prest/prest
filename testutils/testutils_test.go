@@ -13,7 +13,7 @@ func TestDoRequest(t *testing.T) {
 	bodyResponse := `{"key": "value"}`
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		//nolint
-		w.Write([]byte(bodyResponse))
+		http.ResponseWriter.Write(w, []byte(bodyResponse))
 	}).Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()

@@ -69,7 +69,7 @@ func ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
 		cache.BuntSet(r.URL.String(), string(result))
 	}
 	//nolint
-	w.Write(result)
+	http.ResponseWriter.Write(w, result)
 }
 
 // extractHeaders gets from the given request the headers and populate the provided templateData accordingly.

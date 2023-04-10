@@ -51,5 +51,5 @@ func GetSchemas(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//nolint
-	w.Write(sc.Bytes())
+	http.ResponseWriter.Write(w, sc.Bytes())
 }

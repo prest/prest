@@ -170,10 +170,10 @@ func Cors(origin []string, headers []string) negroni.Handler {
 			w.Header().Set(headerAllowMethods, strings.Join(defaultAllowMethods, ","))
 			w.Header().Set(headerAllowHeaders, strings.Join(headers, ","))
 			if allowed := checkCors(r, origin); !allowed {
-				w.WriteHeader(http.StatusForbidden)
+				http.ResponseWriter.WriteHeader(w, http.StatusForbidden)
 				return
 			}
-			w.WriteHeader(http.StatusOK)
+			http.ResponseWriter.WriteHeader(w, http.StatusOK)
 			return
 		}
 		next(w, r)
