@@ -39,7 +39,7 @@ func BuntGet(key string, w http.ResponseWriter) (cacheExist bool) {
 		if err == nil {
 			cacheExist = true
 			http.ResponseWriter.Header(w).Set("Cache-Server", "prestd")
-			w.WriteHeader(http.StatusOK)
+			http.ResponseWriter.WriteHeader(w, http.StatusOK)
 			http.ResponseWriter.Write(w, []byte(val))
 		}
 		return nil

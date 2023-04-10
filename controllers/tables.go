@@ -296,7 +296,7 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
+	http.ResponseWriter.WriteHeader(w, http.StatusCreated)
 	http.ResponseWriter.Write(w, sc.Bytes())
 }
 
@@ -344,7 +344,7 @@ func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
+	http.ResponseWriter.WriteHeader(w, http.StatusCreated)
 	http.ResponseWriter.Write(w, sc.Bytes())
 }
 
