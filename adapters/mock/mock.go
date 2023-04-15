@@ -236,7 +236,7 @@ func (m *Mock) QueryCountCtx(ctx context.Context, SQL string, params ...interfac
 }
 
 // ParseInsertRequest mock
-func (m *Mock) ParseInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error) {
+func (m *Mock) ParseInsertRequest(r *http.Request, table string, op string) (colsName string, colsValue string, values []interface{}, err error) {
 	return
 }
 
@@ -283,7 +283,7 @@ func (m *Mock) DeleteWithTransaction(tx *sql.Tx, SQL string, params ...interface
 }
 
 // SetByRequest mock
-func (m *Mock) SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, values []interface{}, err error) {
+func (m *Mock) SetByRequest(r *http.Request, initialPlaceholderID int, table string, op string) (setSyntax string, values []interface{}, err error) {
 	return
 }
 

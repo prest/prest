@@ -270,9 +270,15 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	names, placeholders, values, err := config.PrestConf.Adapter.ParseInsertRequest(r)
+	names, placeholders, values, err := config.PrestConf.Adapter.ParseInsertRequest(r, table, "write")
 	if err != nil {
 		err = fmt.Errorf("could not perform InsertInTables: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if len(names) == 0 {
+		err := errors.New("you don't have permission for this action, please check the permitted fields for this table")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -419,9 +425,14 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setSyntax, values, err := config.PrestConf.Adapter.SetByRequest(r, 1)
+	setSyntax, values, err := config.PrestConf.Adapter.SetByRequest(r, 1, table, "write")
 	if err != nil {
 		err = fmt.Errorf("could not perform UPDATE: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(setSyntax) == 0 {
+		err := errors.New("you don't have permission for this action, please check the permitted fields for this table")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

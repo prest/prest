@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-//Adapter interface
+// Adapter interface
 type Adapter interface {
 	// GetTransaction attempts to get a transaction from the db connection
 	GetTransaction() (tx *sql.Tx, err error)
@@ -71,7 +71,7 @@ type Adapter interface {
 	OrderByRequest(r *http.Request) (values string, err error)
 	PaginateIfPossible(r *http.Request) (paginatedQuery string, err error)
 	ParseBatchInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error)
-	ParseInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error)
+	ParseInsertRequest(r *http.Request, table string, op string) (colsName string, colsValue string, values []interface{}, err error)
 	ParseScript(scriptPath string, templateData map[string]interface{}) (sqlQuery string, values []interface{}, err error)
 
 	Query(SQL string, params ...interface{}) (sc Scanner)
@@ -87,7 +87,7 @@ type Adapter interface {
 	SchemaTablesWhere(requestWhere string) (whereSyntax string)
 	SelectFields(fields []string) (sql string, err error)
 	SelectSQL(selectStr string, database string, schema string, table string) string
-	SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, values []interface{}, err error)
+	SetByRequest(r *http.Request, initialPlaceholderID int, table string, op string) (setSyntax string, values []interface{}, err error)
 	SetDatabase(name string)
 	GetDatabase() string
 	TableClause() (query string)

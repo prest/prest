@@ -86,7 +86,7 @@ func TestParseInsertRequest(t *testing.T) {
 			t.Errorf("expected no errors in http request, got %v", err)
 		}
 
-		colsNames, _, values, err := config.PrestConf.Adapter.ParseInsertRequest(req)
+		colsNames, _, values, err := config.PrestConf.Adapter.ParseInsertRequest(req, "test1", "test2")
 		if err != tc.err {
 			t.Errorf("expected errors %v in where by request, got %v", tc.err, err)
 		}
@@ -147,7 +147,7 @@ func TestSetByRequest(t *testing.T) {
 			t.Errorf("expected no errors in http request, got %v", err)
 		}
 
-		setSyntax, values, err := config.PrestConf.Adapter.SetByRequest(req, 1)
+		setSyntax, values, err := config.PrestConf.Adapter.SetByRequest(req, 1, "test1", "test2")
 		if err != tc.err {
 			t.Errorf("expected errors %v in where by request, got %v", tc.err, err)
 		}
