@@ -1,0 +1,7 @@
+contact_links:
+  - name: prestd documentation or site issue 📖
+    url: https://github.com/prest/prest/issues/new
+    about: If you're reporting on prestd documentation or website.
+  - name: Feature Request 💡
+    url: https://github.com/prest/prest/discussions/new
+    about: Suggest a new idea for the project.
