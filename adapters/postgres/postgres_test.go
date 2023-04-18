@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -86,7 +87,7 @@ func TestParseInsertRequest(t *testing.T) {
 			t.Errorf("expected no errors in http request, got %v", err)
 		}
 
-		colsNames, _, values, err := config.PrestConf.Adapter.ParseInsertRequest(req)
+		colsNames, _, values, err := config.PrestConf.Adapter.ParseInsertRequest(req, "test1", "test2")
 		if err != tc.err {
 			t.Errorf("expected errors %v in where by request, got %v", tc.err, err)
 		}
@@ -107,6 +108,8 @@ func TestParseInsertRequest(t *testing.T) {
 }
 
 func TestSetByRequest(t *testing.T) {
+	config.Load()
+	Load()
 	m := make(map[string]interface{})
 	m["name"] = "prest"
 	mc := make(map[string]interface{})
@@ -120,6 +123,8 @@ func TestSetByRequest(t *testing.T) {
 	mjo["prest"] = "is marvelous"
 	mjoJson, _ := json.Marshal(mjo)
 	mjoStr := string(mjoJson)
+	mi := make(map[string]interface{})
+	mi["&nbsp;"] = "prest"
 
 	var testCases = []struct {
 		description    string
@@ -134,6 +139,7 @@ func TestSetByRequest(t *testing.T) {
 		{"set by request one JSONB Object field", mjo, []string{`"prest"=$`}, []string{mjoStr}, nil},
 		{"set by request alias", ma, []string{`"c".`, `"name"=$`}, []string{"prest"}, nil},
 		{"set by request empty body", nil, nil, nil, ErrBodyEmpty},
+		{"set by request invalid indentifier", mi, nil, nil, ErrInvalidIdentifier},
 	}
 
 	for _, tc := range testCases {
@@ -147,8 +153,8 @@ func TestSetByRequest(t *testing.T) {
 			t.Errorf("expected no errors in http request, got %v", err)
 		}
 
-		setSyntax, values, err := config.PrestConf.Adapter.SetByRequest(req, 1)
-		if err != tc.err {
+		setSyntax, values, err := config.PrestConf.Adapter.SetByRequest(req, 1, "test1", "test2")
+		if !errors.Is(err, tc.err) {
 			t.Errorf("expected errors %v in where by request, got %v", tc.err, err)
 		}
 

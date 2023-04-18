@@ -555,7 +555,7 @@ func TestMockEmptyMethods(t *testing.T) {
 	}
 
 	// ParseInsertRequest
-	_, _, _, err = mock.ParseInsertRequest(&http.Request{})
+	_, _, _, err = mock.ParseInsertRequest(&http.Request{}, "test1", "test2")
 	if err != nil {
 		t.Errorf("expected empty return, got: %s", err)
 	}
@@ -574,7 +574,7 @@ func TestMockEmptyMethods(t *testing.T) {
 	}
 
 	// SetByRequest
-	_, _, err = mock.SetByRequest(&http.Request{}, 1)
+	_, _, err = mock.SetByRequest(&http.Request{}, 1, "test1", "test2")
 	if err != nil {
 		t.Errorf("expected empty return, got: %s", err)
 	}

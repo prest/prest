@@ -344,7 +344,7 @@ func sliceToJSONList(ifaceSlice interface{}) (returnValue string, err error) {
 }
 
 // SetByRequest create a set clause for SQL
-func (adapter *Postgres) SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, values []interface{}, err error) {
+func (adapter *Postgres) SetByRequest(r *http.Request, initialPlaceholderID int, table string, op string) (setSyntax string, values []interface{}, err error) {
 	body := make(map[string]interface{})
 	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return
@@ -355,35 +355,43 @@ func (adapter *Postgres) SetByRequest(r *http.Request, initialPlaceholderID int)
 		err = ErrBodyEmpty
 		return
 	}
+	allowedFields := fieldsByPermission(table, op)
+	set := make(map[string]bool)
+	for _, v := range allowedFields {
+		set[v] = true
+	}
+	k := containsAsterisk(allowedFields)
 	fields := make([]string, 0)
 	for key, value := range body {
-		if chkInvalidIdentifier(key) {
-			err = errors.Wrap(ErrInvalidIdentifier, "Set")
-			return
-		}
-		keys := strings.Split(key, ".")
-		key = fmt.Sprintf(`"%s"`, strings.Join(keys, `"."`))
-		fields = append(fields, fmt.Sprintf(`%s=$%d`, key, initialPlaceholderID))
+		if k || set[key] {
+			if chkInvalidIdentifier(key) {
+				err = errors.Wrap(ErrInvalidIdentifier, "Set")
+				return
+			}
+			keys := strings.Split(key, ".")
+			key = fmt.Sprintf(`"%s"`, strings.Join(keys, `"."`))
+			fields = append(fields, fmt.Sprintf(`%s=$%d`, key, initialPlaceholderID))
 
-		switch reflect.ValueOf(value).Kind() {
-		case reflect.Interface:
-			values = append(values, formatters.FormatArray(value))
-		case reflect.Map:
-			jsonData, err := json.Marshal(value)
-			if err != nil {
-				log.Errorln(err)
+			switch reflect.ValueOf(value).Kind() {
+			case reflect.Interface:
+				values = append(values, formatters.FormatArray(value))
+			case reflect.Map:
+				jsonData, err := json.Marshal(value)
+				if err != nil {
+					log.Errorln(err)
+				}
+				values = append(values, string(jsonData))
+			case reflect.Slice:
+				value, err = sliceToJSONList(value)
+				if err != nil {
+					log.Errorln(err)
+				}
+				values = append(values, value)
+			default:
+				values = append(values, value)
 			}
-			values = append(values, string(jsonData))
-		case reflect.Slice:
-			value, err = sliceToJSONList(value)
-			if err != nil {
-				log.Errorln(err)
-			}
-			values = append(values, value)
-		default:
-			values = append(values, value)
+			initialPlaceholderID++
 		}
-		initialPlaceholderID++
 	}
 	setSyntax = strings.Join(fields, ", ")
 	return
@@ -458,7 +466,7 @@ func (adapter *Postgres) createPlaceholders(initial, lenValues int) (ret string)
 }
 
 // ParseInsertRequest create insert SQL
-func (adapter *Postgres) ParseInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error) {
+func (adapter *Postgres) ParseInsertRequest(r *http.Request, table string, op string) (colsName string, colsValue string, values []interface{}, err error) {
 	body := make(map[string]interface{})
 	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return
@@ -469,20 +477,27 @@ func (adapter *Postgres) ParseInsertRequest(r *http.Request) (colsName string, c
 		err = ErrBodyEmpty
 		return
 	}
-
+	allowedFields := fieldsByPermission(table, op)
+	set := make(map[string]bool)
+	for _, v := range allowedFields {
+		set[v] = true
+	}
+	k := containsAsterisk(allowedFields)
 	fields := make([]string, 0)
 	for key, value := range body {
-		if chkInvalidIdentifier(key) {
-			err = errors.Wrap(ErrInvalidIdentifier, "Insert")
-			return
-		}
-		fields = append(fields, fmt.Sprintf(`"%s"`, key))
+		if k || set[key] {
+			if chkInvalidIdentifier(key) {
+				err = errors.Wrap(ErrInvalidIdentifier, "Insert")
+				return
+			}
+			fields = append(fields, fmt.Sprintf(`"%s"`, key))
 
-		switch value.(type) {
-		case []interface{}:
-			values = append(values, formatters.FormatArray(value))
-		default:
-			values = append(values, value)
+			switch value.(type) {
+			case []interface{}:
+				values = append(values, formatters.FormatArray(value))
+			default:
+				values = append(values, value)
+			}
 		}
 	}
 
