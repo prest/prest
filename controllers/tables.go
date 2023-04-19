@@ -277,6 +277,12 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(names) == 0 {
+		err := errors.New("you don't have permission for this action, please check the permitted fields for this table")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	sql := config.PrestConf.Adapter.InsertSQL(database, schema, table, names, placeholders)
 
 	// set db name on ctx
@@ -422,6 +428,11 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	setSyntax, values, err := config.PrestConf.Adapter.SetByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform UPDATE: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(setSyntax) == 0 {
+		err := errors.New("you don't have permission for this action, please check the permitted fields for this table")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

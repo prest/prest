@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -107,6 +108,8 @@ func TestParseInsertRequest(t *testing.T) {
 }
 
 func TestSetByRequest(t *testing.T) {
+	config.Load()
+	Load()
 	m := make(map[string]interface{})
 	m["name"] = "prest"
 	mc := make(map[string]interface{})
@@ -118,6 +121,8 @@ func TestSetByRequest(t *testing.T) {
 	mjl["prest"] = []string{"prest", "is", "awesome"}
 	mjo := make(map[string]interface{})
 	mjo["prest"] = "is marvelous"
+	mi := make(map[string]interface{})
+	mi["&nbsp;"] = "prest"
 	mjoJson, _ := json.Marshal(mjo)
 	mjoStr := string(mjoJson)
 
@@ -134,6 +139,7 @@ func TestSetByRequest(t *testing.T) {
 		{"set by request one JSONB Object field", mjo, []string{`"prest"=$`}, []string{mjoStr}, nil},
 		{"set by request alias", ma, []string{`"c".`, `"name"=$`}, []string{"prest"}, nil},
 		{"set by request empty body", nil, nil, nil, ErrBodyEmpty},
+		{"set by request invalid indentifier", mi, nil, nil, ErrInvalidIdentifier},
 	}
 
 	for _, tc := range testCases {
@@ -148,7 +154,7 @@ func TestSetByRequest(t *testing.T) {
 		}
 
 		setSyntax, values, err := config.PrestConf.Adapter.SetByRequest(req, 1)
-		if err != tc.err {
+		if !errors.Is(err, tc.err) {
 			t.Errorf("expected errors %v in where by request, got %v", tc.err, err)
 		}
 
