@@ -48,8 +48,7 @@ func loadMiddlewareFunc(fileName, funcName string) (handlerFunc negroni.HandlerF
 	// Exec (call) function name, return `negroni.HandlerFunc`
 	handlerFunc, ok := f.(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc))
 	if !ok {
-		// It is probable that plugin function return not only json but also status code.
-		// log.Printf("ret plugin(status %d): %s\n", code, ret.ReturnJson)
+		log.Printf("it not a negroni middleware function: %s", funcName)
 		return
 	}
 	return
@@ -71,7 +70,12 @@ func MiddlewarePlugin() negroni.Handler {
 			log.Println(err)
 			return nil
 		}
+		if fn == nil {
+			continue
+		}
 		return negroni.HandlerFunc(fn)
 	}
-	return nil
+	return negroni.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
+		next(rw, rq)
+	})
 }
