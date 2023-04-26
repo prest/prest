@@ -30,14 +30,6 @@ func loadMiddlewareFunc(fileName, funcName string) (handlerFunc negroni.HandlerF
 			Plugin: p,
 		}
 	}
-
-	/**
-	handlerFunc = func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
-		next(rw, rq)
-	}
-	return
-	*/
-
 	// function name: FunctionName+"MiddlewareLoad" (string sufix)
 	// standardizing the name of the method that will be invoked we use
 	// the name Handler as a suffix to identify what will be called in the http
