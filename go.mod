@@ -8,15 +8,15 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gosidekick/migration/v3 v3.0.0
 	github.com/jmoiron/sqlx v1.3.5
-	github.com/lib/pq v1.10.7
+	github.com/lib/pq v1.10.8
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1
-	github.com/rs/cors v1.8.3
+	github.com/rs/cors v1.9.0
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.2
 	github.com/structy/log v0.0.0-20220126185905-65895d7017d5
-	github.com/tidwall/buntdb v1.2.10
+	github.com/tidwall/buntdb v1.3.0
 	github.com/urfave/negroni/v3 v3.0.0
 	gopkg.in/square/go-jose.v2 v2.6.0
 )
