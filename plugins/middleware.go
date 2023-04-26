@@ -75,6 +75,7 @@ func MiddlewarePlugin() negroni.Handler {
 		}
 		return negroni.HandlerFunc(fn)
 	}
+	// negroni not support nil, return empty middleware to continue request
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
 		next(rw, rq)
 	})
