@@ -1,25 +1,12 @@
 ---
-title: "Plugins"
+title: "Endpoint Plugin"
 date: 2022-01-04T17:28:24-03:00
-weight: 7
+weight: 1
 ---
 
-It is possible to create custom endpoints by writing an operating system library (`.so`) and _**prestd**_ can load it when starting the server (api).
-
-We use the [plugin system of the Go language](https://pkg.go.dev/plugin) to load the lib, unfortunately it doesn't work well with _Microsoft Windows_ yet - if you are working with _**prestd**_ on Windows the plugin endpoint will not exist.
+With prestd's http plugin system it is possible to create new endpoints in the "private" URI,
 
 The plugin endpoint has the following default: `/_PLUGIN/{file}/{func}`
-
-When starting the _**prestd**_ server and there is a plugin in the `./lib` folder they are automatically compiled and loaded when accessing their respective endpoint for the first time.
-
-**Change where the libraries will be:**
-`PREST_PLUGINPATH` is the name of the _environment variable_ that has this purpose, by default it comes with the value `./lib`.
-
-or via `toml`:
-
-```
-pluginpath = ./lib
-```
 
 ## Naming patterns
 
