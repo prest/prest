@@ -36,6 +36,7 @@ func loadMiddlewareFunc(fileName, funcName string) (handlerFunc negroni.HandlerF
 	// the name Handler as a suffix to identify what will be called in the http
 	f, err := p.Lookup(fmt.Sprintf("%sMiddlewareLoad", funcName))
 	if err != nil {
+		log.Printf("unable to load middleware plugin function: %s", funcName)
 		return
 	}
 	// Exec (call) function name, return `negroni.HandlerFunc`
@@ -62,7 +63,7 @@ func MiddlewarePlugin() negroni.Handler {
 			fn, err := loadMiddlewareFunc(plugin.File, plugin.Func)
 			if err != nil {
 				log.Println(err)
-				return nil
+				continue
 			}
 			if fn == nil {
 				continue
