@@ -12,12 +12,12 @@ The plugin endpoint has the following default: `/_PLUGIN/{file}/{func}`
 
 The plugin endpoint (`/_PLUGIN/{file}/{func}`) receives two parameters:
 
-- File name: The name of the file without the extension (`{file}`)
-- Function name: The name of the function (`{func}`)
+- **File name:** The name of the file without the extension (`{file}`)
+- **Function name:** The name of the function (`{func}`)
 
 ### File name
 
-The file name will be used on the endpoint to identify which library will be loaded when it receives the first access.
+The file name will be used on the endpoint to identify which library will be loaded when it **receives the first access**.
 
 > After the **first access the library will not be loaded again**, it will only be executed, i.e., if the file (`.so`) is changed after the first execution it will have no effect because it has already been loaded.
 
@@ -32,13 +32,6 @@ When talking about a compiled _library_ we have no way of identifying its functi
 - `Handler`: The suffix of the function name - it is always `Handler`
 
 > `fmt.Sprintf("%s%sHandler", r.Method, funcName)`
-
-## Process of building
-
-In the first version of the _**prestd**_ plugin system we are working with **Go code**.
-
-> This doesn't mean that _**prestd**_ doesn't read plugins (library `.so`) written in other technologies (e.g. c, cpp, java and ...).
-> The automatic constructor is designed to work with Go code, in the future we will write for other technologies.
 
 ## Example
 

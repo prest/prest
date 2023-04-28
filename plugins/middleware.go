@@ -17,6 +17,7 @@ var loadedMiddlewareFunc = map[string]LoadedPlugin{}
 
 // loadFunc private func to load and exec OS Library
 func loadMiddlewareFunc(fileName, funcName string) (handlerFunc negroni.HandlerFunc, err error) {
+	// path to plugin file ex: `./libs/middlewares/hello.so`
 	libPath := filepath.Join(config.PrestConf.PluginPath, "middlewares", fmt.Sprintf("%s.so", fileName))
 	loadedPlugin := loadedMiddlewareFunc[libPath]
 	p := loadedPlugin.Plugin
