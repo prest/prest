@@ -27,8 +27,8 @@ pluginpath = ./lib
 
 ## Extension-supported modules
 
-* [Endpoint](/prestd/plugins/http-endpoints.md)
-* [Middleware](/prestd/plugins/middleware.md)
+* [Endpoint](/prestd/docs/plugins/http-endpoints/)
+* [Middleware](/prestd/docs/plugins/middleware/)
 
 
 ## Process of building
