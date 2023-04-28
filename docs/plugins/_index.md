@@ -25,8 +25,15 @@ or via `toml`:
 pluginpath = ./lib
 ```
 
-
 ## Extension-supported modules
 
 * [Endpoint](/prestd/plugins/http-endpoints.md)
-* [Middleware](/prestd/plugins/http-endpoints.md)
+* [Middleware](/prestd/plugins/middleware.md)
+
+
+## Process of building
+
+In the first version of the _**prestd**_ plugin system we are working with **Go code**.
+
+> This doesn't mean that _**prestd**_ doesn't read plugins (library `.so`) written in other technologies (e.g. c, cpp, rust, java and ...).
+> The automatic constructor is designed to work with Go code, in the future we will write for other technologies.
