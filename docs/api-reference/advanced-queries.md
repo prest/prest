@@ -71,6 +71,23 @@ PostgreSQL offers type for storing jsonb data. To implement efficient query mech
 ?FIELD->>JSONFIELD:jsonb=VALUE
 ```
 
+### Example of how to do insertion via `cURL`
+
+**Fields:**
+
+* id: `INT`
+* data: `JSONB`
+
+```sh
+
+```sh
+curl -i -X POST 'http://127.0.0.1:3000/prest/public/t_mydata' \
+  -H 'Content-Type: application/json' \
+  -d '{"id": 80, "data": "{\"a\": 123}"}'
+```
+
+> [reference](https://github.com/prest/prest/issues/815)
+
 ## Full Text Search (with tsquery)
 
 Full Text Searching (or just text search) provides the capability to identify natural-language documents that satisfy a query, and optionally to sort them by relevance to the query. The most common type of search is to find all documents containing given query terms and return them in order of their similarity to the query. Notions of query and similarity are very flexible and depend on the specific application. The simplest search considers query as a set of words and similarity as the frequency of query words in the document.
