@@ -45,7 +45,8 @@ func Execute() {
 
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Println(err)
-		os.Exit(-1)
+		fmt.Println("exit status 1")
+		os.Exit(1)
 	}
 }
 
