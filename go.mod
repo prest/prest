@@ -14,7 +14,7 @@ require (
 	github.com/rs/cors v1.9.0
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.15.0
-	github.com/stretchr/testify v1.8.3
+	github.com/stretchr/testify v1.8.4
 	github.com/structy/log v0.0.0-20220126185905-65895d7017d5
 	github.com/tidwall/buntdb v1.3.0
 	github.com/urfave/negroni/v3 v3.0.0
