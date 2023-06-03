@@ -20,4 +20,4 @@ The _self-hosted_ version is up to the host to keep prestd up to date, we invite
 
 ## Troubleshooting
 
-If you encounter an error while installing _**prestd**_ on any platform, [open a new discussion thread](https://github.com/prest/prest/discussions/new) or join our [Slack](https://slack.prestd.com/).
+If you encounter an error while installing _**prestd**_ on any platform, [open a new discussion thread](https://github.com/prest/prest/discussions/new) or join our [Discord](https://discord.gg/JnRjvu39w8).

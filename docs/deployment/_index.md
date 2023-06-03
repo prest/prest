@@ -20,4 +20,4 @@ If you are interested in setting up your _development environment_ we recommend 
 
 ## Troubleshooting
 
-If you encounter an error while installing _**prestd**_ on any platform, [open a new discussion thread](https://github.com/prest/prest/discussions/new) or join our [Slack](https://slack.prestd.com/).
+If you encounter an error while installing _**prestd**_ on any platform, [open a new discussion thread](https://github.com/prest/prest/discussions/new) or join our [Discord](https://discord.gg/JnRjvu39w8).
