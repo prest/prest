@@ -92,6 +92,7 @@ type Prest struct {
 	JWTKey               string
 	JWTAlgo              string
 	JWTWhiteList         []string
+	JSONAggType          string
 	MigrationsPath       string
 	QueriesPath          string
 	AccessConf           AccessConf
@@ -118,6 +119,18 @@ var (
 	configFile     string
 	defaultCfgFile = "./prest.toml"
 )
+
+// Load configuration
+func Load() {
+	viperCfg()
+	PrestConf = &Prest{}
+	Parse(PrestConf)
+	if _, err := os.Stat(PrestConf.QueriesPath); os.IsNotExist(err) {
+		if err = os.MkdirAll(PrestConf.QueriesPath, 0700); os.IsNotExist(err) {
+			log.Errorf("Queries directory %s was not created\n", PrestConf.QueriesPath)
+		}
+	}
+}
 
 func viperCfg() {
 	configFile = getPrestConfFile(os.Getenv("PREST_CONF"))
@@ -160,6 +173,7 @@ func viperCfg() {
 	viper.SetDefault("jwt.default", true)
 	viper.SetDefault("jwt.algo", "HS256")
 	viper.SetDefault("jwt.whitelist", []string{"/auth"})
+	viper.SetDefault("json.agg.type", "jsonb_agg")
 
 	viper.SetDefault("cors.allowheaders", []string{"Content-Type"})
 	viper.SetDefault("cors.allowmethods", []string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
@@ -304,18 +318,6 @@ func Parse(cfg *Prest) {
 		log.Errorln("could not unmarshal access plugin middleware list")
 	}
 	cfg.PluginMiddlewareList = pluginMiddlewareConfig
-}
-
-// Load configuration
-func Load() {
-	viperCfg()
-	PrestConf = &Prest{}
-	Parse(PrestConf)
-	if _, err := os.Stat(PrestConf.QueriesPath); os.IsNotExist(err) {
-		if err = os.MkdirAll(PrestConf.QueriesPath, 0700); os.IsNotExist(err) {
-			log.Errorf("Queries directory %s was not created\n", PrestConf.QueriesPath)
-		}
-	}
 }
 
 // parseDatabaseURL tries to get from URL the DB configs
