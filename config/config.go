@@ -173,6 +173,7 @@ func viperCfg() {
 	viper.SetDefault("jwt.default", true)
 	viper.SetDefault("jwt.algo", "HS256")
 	viper.SetDefault("jwt.whitelist", []string{"/auth"})
+
 	viper.SetDefault("json.agg.type", "jsonb_agg")
 
 	viper.SetDefault("cors.allowheaders", []string{"Content-Type"})
@@ -214,6 +215,7 @@ func getPrestConfFile(prestConf string) string {
 }
 
 // Parse pREST config
+// todo: split config onto methods to simplify this
 func Parse(cfg *Prest) {
 	err := viper.ReadInConfig()
 	if err != nil {
@@ -271,6 +273,9 @@ func Parse(cfg *Prest) {
 	cfg.JWTKey = viper.GetString("jwt.key")
 	cfg.JWTAlgo = viper.GetString("jwt.algo")
 	cfg.JWTWhiteList = viper.GetStringSlice("jwt.whitelist")
+
+	cfg.JSONAggType = getJSONAgg()
+
 	cfg.MigrationsPath = viper.GetString("migrations")
 	cfg.AccessConf.Restrict = viper.GetBool("access.restrict")
 	cfg.AccessConf.IgnoreTable = viper.GetStringSlice("access.ignore_table")
@@ -397,4 +402,15 @@ View more at https://docs.prestd.com/prestd/deployment/server-configuration`)
 	cfg.PGSSLKey = cfg.SSLKey
 	cfg.PGSSLCert = cfg.SSLCert
 	cfg.PGSSLRootCert = cfg.SSLRootCert
+}
+
+func getJSONAgg() string {
+	jsonType := viper.GetString("json.agg.type")
+	if jsonType == "json_agg" {
+		return "json_agg"
+	}
+	if jsonType != "jsonb_agg" {
+		log.Warningln("JSON Agg type can only be 'json_agg' or 'jsonb_agg', using the later as default.")
+	}
+	return "jsonb_agg"
 }
