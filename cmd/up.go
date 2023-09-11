@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -16,7 +15,7 @@ var upCmd = &cobra.Command{
 	Long:    `Apply all available migrations`,
 	PreRunE: checkTable,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		n, executed, err := migration.Run(context.Background(), path, urlConn, "up")
+		n, executed, err := migration.Run(cmd.Context(), path, urlConn, "up")
 		if err != nil {
 			return err
 		}

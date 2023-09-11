@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -16,7 +15,7 @@ var mversionCmd = &cobra.Command{
 	Long:    `Show the current migration version`,
 	PreRunE: checkTable,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		n, executed, err := migration.Run(context.Background(), path, urlConn, "status")
+		n, executed, err := migration.Run(cmd.Context(), path, urlConn, "status")
 		if err != nil {
 			return err
 		}

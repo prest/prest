@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -16,7 +15,7 @@ var redoCmd = &cobra.Command{
 	Long:    `roll back the most recently applied migration, then run it again.`,
 	PreRunE: checkTable,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		n, executed, err := migration.Run(context.Background(), path, urlConn, "down 1")
+		n, executed, err := migration.Run(cmd.Context(), path, urlConn, "down 1")
 		if err != nil {
 			return err
 		}
@@ -25,7 +24,7 @@ var redoCmd = &cobra.Command{
 		for _, e := range executed {
 			fmt.Fprintf(os.Stdout, "%v SUCCESS\n", e)
 		}
-		n, executed, err = migration.Run(context.Background(), path, urlConn, "up")
+		n, executed, err = migration.Run(cmd.Context(), path, urlConn, "up")
 		if err != nil {
 			return err
 		}

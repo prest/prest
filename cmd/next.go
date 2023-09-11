@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -27,9 +26,9 @@ var nextCmd = &cobra.Command{
 		)
 		a := args[0]
 		if strings.HasPrefix(a, "+") {
-			n, executed, err = migration.Run(context.Background(), path, urlConn, "up "+strings.TrimPrefix(a, "+"))
+			n, executed, err = migration.Run(cmd.Context(), path, urlConn, "up "+strings.TrimPrefix(a, "+"))
 		} else {
-			n, executed, err = migration.Run(context.Background(), path, urlConn, "down "+strings.TrimPrefix(a, "-"))
+			n, executed, err = migration.Run(cmd.Context(), path, urlConn, "down "+strings.TrimPrefix(a, "-"))
 		}
 		if err != nil {
 			return err

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -16,7 +15,7 @@ var resetCmd = &cobra.Command{
 	Long:    `Run down and then up command`,
 	PreRunE: checkTable,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		n, executed, err := migration.Run(context.Background(), path, urlConn, "down")
+		n, executed, err := migration.Run(cmd.Context(), path, urlConn, "down")
 		if err != nil {
 			return err
 		}
@@ -25,7 +24,7 @@ var resetCmd = &cobra.Command{
 		for _, e := range executed {
 			fmt.Fprintf(os.Stdout, "%v SUCCESS\n", e)
 		}
-		n, executed, err = migration.Run(context.Background(), path, urlConn, "up")
+		n, executed, err = migration.Run(cmd.Context(), path, urlConn, "up")
 		if err != nil {
 			return err
 		}
