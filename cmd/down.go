@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -16,7 +15,7 @@ var downCmd = &cobra.Command{
 	Long:    `Roll back all migrations`,
 	PreRunE: checkTable,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		n, executed, err := migration.Run(context.Background(), path, urlConn, "down")
+		n, executed, err := migration.Run(cmd.Context(), path, urlConn, "down")
 		if err != nil {
 			return err
 		}
