@@ -666,7 +666,7 @@ func (adapter *Postgres) QueryCtx(ctx context.Context, SQL string, params ...int
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
 	}
-	SQL = fmt.Sprintf("SELECT jsonb_agg(s) FROM (%s) s", SQL)
+	SQL = fmt.Sprintf("SELECT %s(s) FROM (%s) s", config.PrestConf.JSONAggType, SQL)
 	log.Debugln("generated SQL:", SQL, " parameters: ", params)
 	p, err := Prepare(db, SQL)
 	if err != nil {
@@ -691,7 +691,7 @@ func (adapter *Postgres) Query(SQL string, params ...interface{}) (sc adapters.S
 		log.Println(err)
 		return &scanner.PrestScanner{Error: err}
 	}
-	SQL = fmt.Sprintf("SELECT jsonb_agg(s) FROM (%s) s", SQL)
+	SQL = fmt.Sprintf("SELECT %s(s) FROM (%s) s", config.PrestConf.JSONAggType, SQL)
 	log.Debugln("generated SQL:", SQL, " parameters: ", params)
 	p, err := Prepare(db, SQL)
 	if err != nil {
