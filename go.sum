@@ -206,6 +206,8 @@ github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcU
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 github.com/structy/log v0.0.0-20220126185905-65895d7017d5 h1:LLVTPUfPUlYO+M1xVifu4FvNrRWe8mYHLV4lyzLpLRk=
 github.com/structy/log v0.0.0-20220126185905-65895d7017d5/go.mod h1:Kdm/3WgC0iBGQquFr9121ppnjHb7H87/BV3EmeEuEkk=
+github.com/structy/log v0.0.0-20220126205329-1f766c8d0b3c h1:5bSfQZwUyRNAur6HSDsT9nKqWA4Ib/39kHqX/BirNeU=
+github.com/structy/log v0.0.0-20220126205329-1f766c8d0b3c/go.mod h1:ySchUjnj4YThNf3WpD715vsU5+ojdLIFQGW1BxsIFRo=
 github.com/subosito/gotenv v1.4.2 h1:X1TuBLAMDFbaTAChgCBLu3DU3UPyELpnF2jjJ2cz/S8=
 github.com/subosito/gotenv v1.4.2/go.mod h1:ayKnFf/c6rvx/2iiLrJUk1e6plDbT3edrFNGqEflhK0=
 github.com/tidwall/assert v0.1.0 h1:aWcKyRBUAdLoVebxo95N7+YZVTFF/ASTr7BN4sLP6XI=
