@@ -22,40 +22,18 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: setup docker
-        run: |
-          apt update && apt install sudo lsb-release -y
-          apt install apt-transport-https ca-certificates curl software-properties-common -y
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
-          apt update
-          apt-cache policy docker-ce
-          sudo apt install docker-ce -y
-
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v4
         with:
-          go-version: 1.18
+          go-version: 1.20.8
 
       - name: Cache Go modules
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-
-      - name: Install Dependencies
-        run: |
-          echo "Installing DeepSource"
-          sed -i 's/azure\.//' /etc/apt/sources.list
-          apt-get update
-          curl https://deepsource.io/cli | sh
-          apt -y install gcc-multilib
-          git config --global --add url."git@github.com:prest".insteadOf "https://github.com/prest"
-          git config --global --add safe.directory /__w/prest/prest
-          go get -v -d ./...
-          go install github.com/mattn/goveralls@latest
 
       - name: goreleaser check
         if: ${{ github.ref == 'refs/heads/main' }}
