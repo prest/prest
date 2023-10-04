@@ -54,7 +54,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
           GITHUB_REF: ${GITHUB_REF}
-        run: bash ./scripts/docker-beta.sh
+        run: |
+          git config --global --add safe.directory /__w/prest/prest
+          bash ./scripts/docker-beta.sh
 
       - name: docker release ghcr.io/prest/prest
         if: github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/v') && github.repository == 'prest/prest'
