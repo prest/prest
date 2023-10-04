@@ -1,6 +1,6 @@
 module github.com/prest/prest
 
-go 1.18
+go 1.20
 
 require (
 	github.com/avelino/slugify v0.0.0-20180501145920-855f152bd774
@@ -15,7 +15,7 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
-	github.com/structy/log v0.0.0-20220126185905-65895d7017d5
+	github.com/structy/log v0.0.0-20220126205329-1f766c8d0b3c
 	github.com/tidwall/buntdb v1.3.0
 	github.com/urfave/negroni/v3 v3.0.0
 	gopkg.in/square/go-jose.v2 v2.6.0
