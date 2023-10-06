@@ -25,6 +25,7 @@ var migrateCmd = &cobra.Command{
 }
 
 func checkTable(cmd *cobra.Command, args []string) error {
+	cmd.SilenceUsage = true
 	if config.PrestConf.Adapter == nil {
 		postgres.Load()
 	}
