@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 
@@ -17,6 +18,11 @@ var (
 	path    string
 )
 
+var (
+	ErrPathNotSet = errors.New("Migrations path not set. \nPlease set it using --path flag or in your prest config file")
+	ErrURLNotSet  = errors.New("Database URL not set. \nPlease set it using --url flag or configure it on your prest config file")
+)
+
 // migrateCmd represents the migrate command
 var migrateCmd = &cobra.Command{
 	Use:   "migrate",
@@ -25,6 +31,12 @@ var migrateCmd = &cobra.Command{
 }
 
 func checkTable(cmd *cobra.Command, args []string) error {
+	if path == "" {
+		return ErrPathNotSet
+	}
+	if urlConn == "" {
+		return ErrURLNotSet
+	}
 	cmd.SilenceUsage = true
 	if config.PrestConf.Adapter == nil {
 		postgres.Load()
