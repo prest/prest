@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/avelino/slugify v0.0.0-20180501145920-855f152bd774
 	github.com/clbanning/mxj v1.8.4
-	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/mux v1.8.1
 	github.com/gosidekick/migration/v3 v3.0.0
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
