@@ -404,13 +404,16 @@ View more at https://docs.prestd.com/prestd/deployment/server-configuration`)
 	cfg.PGSSLRootCert = cfg.SSLRootCert
 }
 
-func getJSONAgg() string {
+// getJSONAgg identify which json aggregation function will be used, support `jsonb` and `json`
+// https://www.postgresql.org/docs/9.5/functions-aggregate.html
+func getJSONAgg() (jsonType string) {
 	jsonType := viper.GetString("json.agg.type")
 	if jsonType == "json_agg" {
-		return "json_agg"
+		return
 	}
 	if jsonType != "jsonb_agg" {
 		log.Warningln("JSON Agg type can only be 'json_agg' or 'jsonb_agg', using the later as default.")
+		jsonType = "jsonb_agg"
 	}
-	return "jsonb_agg"
+	return
 }
