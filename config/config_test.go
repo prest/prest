@@ -93,6 +93,30 @@ func TestParse(t *testing.T) {
 		Parse(cfg)
 		require.Equal(t, "HS512", cfg.JWTAlgo)
 	})
+
+	t.Run("PREST_JSON_AGG_TYPE", func(t *testing.T) {
+		t.Setenv("PREST_JSON_AGG_TYPE", "invalid")
+		viperCfg()
+		cfg := &Prest{}
+		Parse(cfg)
+		require.Equal(t, jsonAggDefault, cfg.JSONAggType)
+	})
+
+	t.Run("PREST_JSON_AGG_TYPE backwards compatible", func(t *testing.T) {
+		t.Setenv("PREST_JSON_AGG_TYPE", jsonAgg)
+		viperCfg()
+		cfg := &Prest{}
+		Parse(cfg)
+		require.Equal(t, jsonAgg, cfg.JSONAggType)
+	})
+
+	t.Run("PREST_JSON_AGG_TYPE default works", func(t *testing.T) {
+		t.Setenv("PREST_JSON_AGG_TYPE", jsonAggDefault)
+		viperCfg()
+		cfg := &Prest{}
+		Parse(cfg)
+		require.Equal(t, jsonAggDefault, cfg.JSONAggType)
+	})
 }
 
 func Test_getPrestConfFile(t *testing.T) {
