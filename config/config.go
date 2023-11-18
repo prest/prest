@@ -13,6 +13,11 @@ import (
 	"github.com/structy/log"
 )
 
+const (
+	jsonAggDefault = "jsonb_agg"
+	jsonAgg        = "json_agg"
+)
+
 // TablesConf informations
 type TablesConf struct {
 	Name        string   `mapstructure:"name"`
@@ -404,16 +409,17 @@ View more at https://docs.prestd.com/prestd/deployment/server-configuration`)
 	cfg.PGSSLRootCert = cfg.SSLRootCert
 }
 
-// getJSONAgg identify which json aggregation function will be used, support `jsonb` and `json`
+// getJSONAgg identifies which json aggregation function will be used,
+// support `jsonb` and `json`; `jsonb` is the default value
+//
 // https://www.postgresql.org/docs/9.5/functions-aggregate.html
-func getJSONAgg() (jsonType string) {
-	jsonType := viper.GetString("json.agg.type")
-	if jsonType == "json_agg" {
-		return
+func getJSONAgg() (config string) {
+	config = viper.GetString("json.agg.type")
+	if config == jsonAgg {
+		return jsonAgg
 	}
-	if jsonType != "jsonb_agg" {
+	if config != jsonAggDefault {
 		log.Warningln("JSON Agg type can only be 'json_agg' or 'jsonb_agg', using the later as default.")
-		jsonType = "jsonb_agg"
 	}
-	return
+	return jsonAggDefault
 }
