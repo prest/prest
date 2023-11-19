@@ -1,5 +1,5 @@
 /*
-pREST - Serve a RESTful API from any PostgreSQL database
+pREST - Serves a RESTful API from any SQL database
 
 Install
 
@@ -20,7 +20,5 @@ Run
 	```
 	PREST_PG_USER=postgres PREST_PG_DATABASE=prest PREST_PG_PORT=5432 PREST_HTTP_PORT=3010 prest # Binary installed
 	```
-
-pREST also can be used as web framework, to see more details please visit https://docs.prestd.com/
 */
 package main
