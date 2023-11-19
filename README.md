@@ -17,7 +17,8 @@ Contributor License Agreement - [![CLA assistant](https://cla-assistant.io/readm
 
 ## Problem
 
-There is PostgREST written in Haskell, but keeping Haskell software in production is not an easy job. With this need prestd was born. [Read more](https://github.com/prest/prest/issues/41).
+There is PostgREST written in Haskell, but keeping Haskell software in production is not an easy job.
+To manage and develop easier software in highly performant production environments, pRESTd was born. [Read more](https://github.com/prest/prest/issues/41).
 
 ## Test using Docker
 
@@ -45,7 +46,7 @@ curl -i -X POST http://127.0.0.1:3000/auth -H "Content-Type: application/json" -
 curl -i -X GET http://127.0.0.1:3000/prest/public/prest_users -H "Accept: application/json" -H "Authorization: Bearer {TOKEN}"
 ```
 
-Want to contribute to the project and don't know where to start? See our contribution guide [here](https://docs.prestd.com/contribution/).
+Want to contribute to the project and don't know where to start? See our contribution guide [here](https://docs.prestd.com/get-prest/development-guide).
 
 ## 1-Click Deploy
 
@@ -57,7 +58,7 @@ Deploy to Heroku and instantly get a realtime RESTFul API backed by Heroku Postg
 
 ## Documentation
 
-<https://docs.prestd.com/> ([content source](https://github.com/prest/prest/tree/main/docs) and [template source](https://github.com/prest/doc-template))
+<https://docs.prestd.com/> ([content source](https://github.com/prest/docs)).
 
 ## run locally
 

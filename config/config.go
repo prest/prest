@@ -393,7 +393,7 @@ You are using v2 of prestd configs, please note that v1 postgres SSL environment
 
 When using v2 the following environment variables will be ignored: PREST_SSL_MODE, PREST_SSL_CERT, PREST_SSL_KEY, PREST_SSL_ROOTCERT
 
-View more at https://docs.prestd.com/prestd/deployment/server-configuration`)
+View more at https://docs.prestd.com/deployment/configuring-prest`)
 }
 
 func parseSSLV1Data(cfg *Prest) {
@@ -402,7 +402,7 @@ You are using v1 of prestd configs, please migrate to v2.
 
 v1 will be deprecated soon.
 
-View more at https://docs.prestd.com/prestd/deployment/server-configuration`)
+View more at https://docs.prestd.com/deployment/configuring-prest`)
 	cfg.PGSSLMode = cfg.SSLMode
 	cfg.PGSSLKey = cfg.SSLKey
 	cfg.PGSSLCert = cfg.SSLCert

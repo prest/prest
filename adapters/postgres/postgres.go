@@ -306,7 +306,7 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 // ReturningByRequest create interface for queries + returning
 func (adapter *Postgres) ReturningByRequest(r *http.Request) (returningSyntax string, err error) {
 	// TODO: write documentation:
-	// https://docs.prestd.com/query-statements/#filters-parameters-query-string---get
+	// https://docs.prestd.com/api-reference/parameters
 	queries := r.URL.Query()["_returning"]
 	if len(queries) > 0 {
 		for i, q := range queries {
