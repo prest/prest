@@ -400,7 +400,7 @@ func parseSSLV1Data(cfg *Prest) {
 	log.Warningln(`
 You are using v1 of prestd configs, please migrate to v2.
 
-v1 will be deprecated by dec 31st 2023.
+v1 will be deprecated by Dec 31st 2023.
 
 View more at https://docs.prestd.com/get-started/configuring-prest`)
 	cfg.PGSSLMode = cfg.SSLMode
