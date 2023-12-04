@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-//Adapter interface
+// Adapter interface
 type Adapter interface {
 	// GetTransaction attempts to get a transaction from the db connection
 	GetTransaction() (tx *sql.Tx, err error)
