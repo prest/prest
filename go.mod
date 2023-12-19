@@ -13,7 +13,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/cors v1.10.1
 	github.com/spf13/cobra v1.8.0
-	github.com/spf13/viper v1.18.1
+	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.8.4
 	github.com/structy/log v0.0.0-20220126205329-1f766c8d0b3c
 	github.com/tidwall/buntdb v1.3.0
