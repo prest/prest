@@ -40,7 +40,7 @@ func initApp() {
 				JwtMiddleware(config.PrestConf.JWTKey, config.PrestConf.JWTAlgo))
 		}
 		if config.PrestConf.Cache.Enabled {
-			MiddlewareStack = append(MiddlewareStack, CacheMiddleware())
+			MiddlewareStack = append(MiddlewareStack, CacheMiddleware(&config.PrestConf.Cache))
 		}
 		if config.PrestConf.ExposeConf.Enabled {
 			MiddlewareStack = append(MiddlewareStack, ExposureMiddleware())

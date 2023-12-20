@@ -7,8 +7,10 @@ import (
 	"strconv"
 	"strings"
 
-	homedir "github.com/mitchellh/go-homedir"
 	"github.com/prest/prest/adapters"
+	"github.com/prest/prest/cache"
+
+	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 	"github.com/structy/log"
 )
@@ -97,7 +99,7 @@ type Prest struct {
 	HTTPSMode            bool
 	HTTPSCert            string
 	HTTPSKey             string
-	Cache                Cache
+	Cache                cache.Config
 	PluginPath           string
 	PluginMiddlewareList []PluginMiddleware
 }
@@ -290,7 +292,7 @@ func Parse(cfg *Prest) {
 	cfg.ExposeConf.DatabaseListing = viper.GetBool("expose.databases")
 
 	// cache endpoints config
-	var cacheendpoints []CacheEndpoint
+	var cacheendpoints = []cache.Endpoint{}
 	err = viper.UnmarshalKey("cache.endpoints", &cacheendpoints)
 	if err != nil {
 		log.Errorln("could not unmarshal cache endpoints")

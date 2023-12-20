@@ -48,7 +48,7 @@ func GetRouter() *mux.Router {
 		middlewares.ExposureMiddleware(),
 		middlewares.AccessControl(),
 		middlewares.AuthMiddleware(),
-		middlewares.CacheMiddleware(),
+		middlewares.CacheMiddleware(&config.PrestConf.Cache),
 		// plugins middleware
 		plugins.MiddlewarePlugin(),
 		negroni.Wrap(crudRoutes),

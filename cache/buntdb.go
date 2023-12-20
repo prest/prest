@@ -8,30 +8,29 @@ import (
 	"time"
 
 	"github.com/avelino/slugify"
-	"github.com/prest/prest/config"
 	"github.com/tidwall/buntdb"
 )
 
 // BuntConnect connects to database BuntDB - used for caching
-func BuntConnect(key string) (db *buntdb.DB, err error) {
+func (c *Config) BuntConnect(key string) (db *buntdb.DB, err error) {
 	if key != "" {
 		// each url will have its own cache,
 		// this will avoid slowing down the cache base
 		// it is saved in a file on the file system
 		key = slugify.Slugify(key)
 	}
-	db, err = buntdb.Open(filepath.Join(config.PrestConf.Cache.StoragePath, fmt.Sprint(key, config.PrestConf.Cache.SufixFile)))
+	db, err = buntdb.Open(filepath.Join(c.StoragePath, fmt.Sprint(key, c.SufixFile)))
 	if err != nil {
 		// in case of an error to open buntdb the prestd cache is forced to false
-		config.PrestConf.Cache.Enabled = false
+		c.Enabled = false
 	}
 	return
 }
 
 // BuntGet downloads the data - if any - that is in the buntdb (embedded cache database)
 // using response.URL.String() as key
-func BuntGet(key string, w http.ResponseWriter) (cacheExist bool) {
-	db, _ := BuntConnect(key)
+func (c Config) BuntGet(key string, w http.ResponseWriter) (cacheExist bool) {
+	db, _ := c.BuntConnect(key)
 	cacheExist = false
 	//nolint:errcheck
 	db.View(func(tx *buntdb.Tx) error {
@@ -50,13 +49,13 @@ func BuntGet(key string, w http.ResponseWriter) (cacheExist bool) {
 
 // BuntSet sets data as cache in buntdb (embedded cache database)
 // using response.URL.String() as key
-func BuntSet(key, value string) {
+func (c Config) BuntSet(key, value string) {
 	uri := strings.Split(key, "?")
-	cacheRule, cacheTime := EndpointRules(uri[0])
-	if !config.PrestConf.Cache.Enabled || !cacheRule {
+	cacheRule, cacheTime := c.EndpointRules(uri[0])
+	if !c.Enabled || !cacheRule {
 		return
 	}
-	db, _ := BuntConnect(key)
+	db, _ := c.BuntConnect(key)
 	//nolint:errcheck
 	db.Update(func(tx *buntdb.Tx) error {
 		//nolint:errcheck

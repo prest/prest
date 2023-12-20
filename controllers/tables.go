@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/structy/log"
+
 	"github.com/prest/prest/adapters"
-	"github.com/prest/prest/cache"
 	"github.com/prest/prest/config"
 	pctx "github.com/prest/prest/context"
-	"github.com/structy/log"
 )
 
 // GetTables list all (or filter) tables
@@ -253,7 +253,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Cache arrow if enabled
-	cache.BuntSet(r.URL.String(), string(sc.Bytes()))
+	config.PrestConf.Cache.BuntSet(r.URL.String(), string(sc.Bytes()))
 	w.Write(sc.Bytes())
 }
 

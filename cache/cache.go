@@ -1,24 +1,34 @@
 package cache
 
-import (
-	"github.com/prest/prest/config"
-)
-
-// EndpointRules checks if there is a custom caching rule for the endpoint
-// todo: deprecate
-func EndpointRules(uri string) (cacheEnable bool, time int) {
-	return EndpointRulesWithConfig(config.PrestConf, uri)
+// Config structure for storing cache system configuration
+type Config struct {
+	Enabled     bool       `mapstructure:"enabled"`
+	Time        int        `mapstructure:"time"`
+	StoragePath string     `mapstructure:"storagepath"`
+	SufixFile   string     `mapstructure:"sufixfile"`
+	Endpoints   []Endpoint `mapstructure:"endpoints"`
 }
 
-// EndpointRulesWithConfig checks if there is a custom caching rule for the endpoint
-func EndpointRulesWithConfig(cfg *config.Prest, uri string) (bool, int) {
-	enabled := false
-	time := cfg.Cache.Time
+// Endpoint specific configuration for specific endpoint
+type Endpoint struct {
+	Enabled  bool   `mapstructure:"enabled"`
+	Endpoint string `mapstructure:"endpoint"`
+	Time     int    `mapstructure:"time"`
+}
 
-	if cfg.Cache.Enabled && len(cfg.Cache.Endpoints) == 0 {
+func (c *Config) ClearEndpoints() {
+	c.Endpoints = []Endpoint{}
+}
+
+// EndpointRules checks if there is a custom caching rule for the endpoint
+func (c Config) EndpointRules(uri string) (bool, int) {
+	enabled := false
+	time := c.Time
+
+	if c.Enabled && len(c.Endpoints) == 0 {
 		enabled = true
 	}
-	for _, endpoint := range cfg.Cache.Endpoints {
+	for _, endpoint := range c.Endpoints {
 		if endpoint.Endpoint == uri {
 			enabled = true
 			return enabled, endpoint.Time
