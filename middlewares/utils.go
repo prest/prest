@@ -3,7 +3,7 @@ package middlewares
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -49,7 +49,7 @@ func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, fo
 	for key := range recorder.Header() {
 		w.Header().Set(key, recorder.Header().Get(key))
 	}
-	byt, _ := ioutil.ReadAll(recorder.Body)
+	byt, _ := io.ReadAll(recorder.Body)
 	if recorder.Code >= 400 {
 		m := make(map[string]string)
 		m["error"] = strings.TrimSpace(string(byt))

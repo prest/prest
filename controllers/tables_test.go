@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -260,9 +260,9 @@ func TestBatchInsertInTables(t *testing.T) {
 			if resp.StatusCode != tc.status {
 				t.Errorf("expected %d, got: %d", tc.status, resp.StatusCode)
 			}
-			body, err := ioutil.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
 			if err != nil {
-				t.Error("error on ioutil ReadAll", err)
+				t.Error("error on io ReadAll", err)
 			}
 			if tc.isCopy && len(body) != 0 {
 				t.Errorf("len body is %d", len(body))
