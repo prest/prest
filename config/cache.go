@@ -1,5 +1,9 @@
 package config
 
+// todo:
+// - move to cache package
+// - insert into server
+
 // Cache structure for storing cache system configuration
 type Cache struct {
 	Enabled     bool            `mapstructure:"enabled"`
