@@ -30,7 +30,10 @@ func (c *Config) BuntConnect(key string) (db *buntdb.DB, err error) {
 // BuntGet downloads the data - if any - that is in the buntdb (embedded cache database)
 // using response.URL.String() as key
 func (c Config) BuntGet(key string, w http.ResponseWriter) (cacheExist bool) {
-	db, _ := c.BuntConnect(key)
+	db, err := c.BuntConnect(key)
+	if err != nil {
+		return
+	}
 	cacheExist = false
 	//nolint:errcheck
 	db.View(func(tx *buntdb.Tx) error {
@@ -55,7 +58,10 @@ func (c Config) BuntSet(key, value string) {
 	if !c.Enabled || !cacheRule {
 		return
 	}
-	db, _ := c.BuntConnect(key)
+	db, err := c.BuntConnect(key)
+	if err != nil {
+		return
+	}
 	//nolint:errcheck
 	db.Update(func(tx *buntdb.Tx) error {
 		//nolint:errcheck
