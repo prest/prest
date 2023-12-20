@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/cache"
+
 	"github.com/prest/prest/config"
 	pctx "github.com/prest/prest/context"
 )
@@ -66,7 +66,7 @@ func ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "GET" {
 		// Cache arrow if enabled
-		cache.BuntSet(r.URL.String(), string(result))
+		config.PrestConf.Cache.BuntSet(r.URL.String(), string(result))
 	}
 	//nolint
 	w.Write(result)
