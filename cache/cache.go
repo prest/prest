@@ -5,14 +5,19 @@ import (
 )
 
 // EndpointRules checks if there is a custom caching rule for the endpoint
+// todo: deprecate
 func EndpointRules(uri string) (cacheEnable bool, time int) {
+	return EndpointRulesWithConfig(config.PrestConf, uri)
+}
+
+// EndpointRulesWithConfig checks if there is a custom caching rule for the endpoint
+func EndpointRulesWithConfig(cfg *config.Prest, uri string) (cacheEnable bool, time int) {
 	cacheEnable = false
-	if config.PrestConf.Cache.Enabled && len(config.PrestConf.Cache.Endpoints) == 0 {
+	if cfg.Cache.Enabled && len(cfg.Cache.Endpoints) == 0 {
 		cacheEnable = true
 	}
 
-	time = config.PrestConf.Cache.Time
-	for _, endpoint := range config.PrestConf.Cache.Endpoints {
+	for _, endpoint := range cfg.Cache.Endpoints {
 		if endpoint.Endpoint == uri {
 			cacheEnable = true
 			time = endpoint.Time
