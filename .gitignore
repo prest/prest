@@ -43,3 +43,4 @@ prest.toml
 docbuild/
 /vendor
 .clj-kondo
+*debug*
