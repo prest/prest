@@ -1,4 +1,4 @@
-# <img align="right" src="https://docs.prestd.com/logo.png" alt="RESTful API" title="RESTful API"> prestd
+# pRESTd
 
 [![Build Status](https://travis-ci.com/prest/prest.svg?branch=main)](https://travis-ci.com/prest/prest)
 [![GoDoc](https://godoc.org/github.com/prest/prest?status.png)](https://godoc.org/github.com/prest/prest)
@@ -15,38 +15,11 @@ Contributor License Agreement - [![CLA assistant](https://cla-assistant.io/readm
 
 <a href="https://www.producthunt.com/posts/prest?utm_source=badge-featured&utm_medium=badge&utm_souce=badge-prest" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=303506&theme=light" alt="pREST - instant, realtime, high-performance on PostgreSQL | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
 
-## Problem
+## Problems we solve
 
-There is PostgREST written in Haskell, but keeping Haskell software in production is not an easy job.
-To manage and develop easier software in highly performant production environments, pRESTd was born. [Read more](https://github.com/prest/prest/issues/41).
+The pREST project addresses the need for a streamlined and efficient solution in building RESTful APIs on PostgreSQL databases. It simplifies API development by offering a lightweight server with easy configuration, direct support for SQL queries in URLs, and optimizations for high performance. pREST enhances developer productivity, ensuring compatibility with PostgreSQL, implementing authentication and authorization features, and providing middleware support for customizations. Overall, pREST simplifies the process of creating secure and performant RESTful APIs on top of your new or old PostgreSQL database.
 
-## Test using Docker
-
-> _To simplify the process of bringing up the test environment we will use **docker-compose**_
-
-```sh
-# Download docker compose file
-wget https://raw.githubusercontent.com/prest/prest/main/docker-compose-prod.yml -O docker-compose.yml
-
-# Up (run) PostgreSQL and prestd
-docker-compose up
-# Run data migration to create user structure for access (JWT)
-docker-compose exec prest prestd migrate up auth
-
-# Create user and password for API access (via JWT)
-## user: prest
-## pass: prest
-docker-compose exec postgres psql -d prest -U prest -c "INSERT INTO prest_users (name, username, password) VALUES ('pREST Full Name', 'prest', MD5('prest'))"
-# Check if the user was created successfully (by doing a select on the table)
-docker-compose exec postgres psql -d prest -U prest -c "select * from prest_users"
-
-# Generate JWT Token with user and password created
-curl -i -X POST http://127.0.0.1:3000/auth -H "Content-Type: application/json" -d '{"username": "prest", "password": "prest"}'
-# Access endpoint using JWT Token
-curl -i -X GET http://127.0.0.1:3000/prest/public/prest_users -H "Accept: application/json" -H "Authorization: Bearer {TOKEN}"
-```
-
-Want to contribute to the project and don't know where to start? See our contribution guide [here](https://docs.prestd.com/get-prest/development-guide).
+[Read more](https://github.com/prest/prest/issues/41).
 
 ## 1-Click Deploy
 
@@ -59,20 +32,3 @@ Deploy to Heroku and instantly get a realtime RESTFul API backed by Heroku Postg
 ## Documentation
 
 <https://docs.prestd.com/> ([content source](https://github.com/prest/docs)).
-
-## run locally
-
-You can use the db from our `docker-compose.yml` file and disable the prestd image pull, then just use the following commands:
-
-```sh
-cd cmd/prestd
-PREST_CACHE=false \
-PREST_PG_HOST=localhost \
-PREST_PG_SSL_MODE=disable \
-PREST_JWT_DEFAULT=false \
-PREST_PG_PORT=5432 \
-PREST_PG_PASS=prest \
-PREST_PG_USER=prest \
-PREST_DEBUG=true \
-go run main.go
-```
