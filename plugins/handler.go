@@ -8,7 +8,6 @@ import (
 	"plugin"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/cache"
 	"github.com/prest/prest/config"
 )
 
@@ -101,7 +100,7 @@ func HandlerPlugin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Cache arrow if enabled
-	cache.BuntSet(r.URL.String(), ret.ReturnJson)
+	config.PrestConf.Cache.BuntSet(r.URL.String(), ret.ReturnJson)
 
 	//nolint
 	if ret.StatusCode != -1 {
