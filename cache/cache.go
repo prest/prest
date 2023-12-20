@@ -11,18 +11,18 @@ func EndpointRules(uri string) (cacheEnable bool, time int) {
 }
 
 // EndpointRulesWithConfig checks if there is a custom caching rule for the endpoint
-func EndpointRulesWithConfig(cfg *config.Prest, uri string) (cacheEnable bool, time int) {
-	cacheEnable = false
-	if cfg.Cache.Enabled && len(cfg.Cache.Endpoints) == 0 {
-		cacheEnable = true
-	}
+func EndpointRulesWithConfig(cfg *config.Prest, uri string) (bool, int) {
+	enabled := false
+	time := cfg.Cache.Time
 
+	if cfg.Cache.Enabled && len(cfg.Cache.Endpoints) == 0 {
+		enabled = true
+	}
 	for _, endpoint := range cfg.Cache.Endpoints {
 		if endpoint.Endpoint == uri {
-			cacheEnable = true
-			time = endpoint.Time
-			return
+			enabled = true
+			return enabled, endpoint.Time
 		}
 	}
-	return
+	return enabled, time
 }
