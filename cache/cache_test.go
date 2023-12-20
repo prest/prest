@@ -26,7 +26,7 @@ func TestEndpointRulesEnable(t *testing.T) {
 		Enabled:  true,
 	})
 	cacheEnable, cacheTime := EndpointRulesWithConfig(cfg, "/prest/public/test")
-	require.False(t, cacheEnable)
+	require.True(t, cacheEnable)
 	require.Equal(t, 5, cacheTime)
 	cfg.Cache.ClearEndpoints()
 }
@@ -42,6 +42,13 @@ func TestEndpointRulesNotExist(t *testing.T) {
 	cfg.Cache.ClearEndpoints()
 }
 
+func TestEndpointRulesNotExistWithoutEndpoints(t *testing.T) {
+	cacheEnable, cacheTime := EndpointRulesWithConfig(cfg, "/prest/public/test-notexist")
+	require.True(t, cacheEnable)
+	require.Equal(t, 10, cacheTime)
+	cfg.Cache.ClearEndpoints()
+}
+
 func TestEndpointRulesDisable(t *testing.T) {
 	cfg.Cache.Endpoints = append(cfg.Cache.Endpoints, config.CacheEndpoint{
 		Endpoint: "/prest/public/test-disable",
@@ -49,6 +56,6 @@ func TestEndpointRulesDisable(t *testing.T) {
 	})
 	cacheEnable, cacheTime := EndpointRulesWithConfig(cfg, "/prest/public/test-diable")
 	require.False(t, cacheEnable)
-	require.Equal(t, 0, cacheTime)
+	require.Equal(t, 10, cacheTime)
 	cfg.Cache.ClearEndpoints()
 }
