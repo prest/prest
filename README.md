@@ -7,7 +7,7 @@
 [![Homebrew](https://img.shields.io/badge/dynamic/json.svg?url=https://formulae.brew.sh/api/formula/prestd.json&query=$.versions.stable&label=homebrew)](https://formulae.brew.sh/formula/prestd)
 [![Discord](https://img.shields.io/badge/discord-prestd-blue?logo=discord)](https://discord.gg/JnRjvu39w8)
 
-_p_**REST** (**P**_ostgreSQL_ **REST**), simplify and accelerate development, instant, realtime, high-performance on any **Postgres** application, **existing or new**
+_p_**REST** (**P**_ostgreSQL_ **REST**), is a simple production-ready API, that delivers a instant, realtime, and high-performance application on top of your **existing or new Postgres** database.
 
 > PostgreSQL version 9.5 or higher
 
@@ -17,9 +17,24 @@ Contributor License Agreement - [![CLA assistant](https://cla-assistant.io/readm
 
 ## Problems we solve
 
-The pREST project addresses the need for a streamlined and efficient solution in building RESTful APIs on PostgreSQL databases. It simplifies API development by offering a lightweight server with easy configuration, direct support for SQL queries in URLs, and optimizations for high performance. pREST enhances developer productivity, ensuring compatibility with PostgreSQL, implementing authentication and authorization features, and providing middleware support for customizations. Overall, pREST simplifies the process of creating secure and performant RESTful APIs on top of your new or old PostgreSQL database.
+The pREST project is the API that addresses the need for fast and efficient solution in building RESTful APIs on PostgreSQL databases. It simplifies API development by offering:
+
+1. A **lightweight server** with easy configuration;
+2. Direct **SQL queries with templating** in customizable URLs;
+3. Optimizations for **high performance**;
+4. **Enhanced** developer **productivity**;
+5. **Authentication and authorization** features;
+6. **Pluggable** custom routes and middlewares.
+
+Overall, pREST simplifies the process of creating secure and performant RESTful APIs on top of your new or old PostgreSQL database.
 
 [Read more](https://github.com/prest/prest/issues/41).
+
+## Why we built pREST
+
+When we built pREST, we originally intended to contribute and build with the PostgREST project, although it took a lot of work as the project is in Haskell. At the time, we did not have anything similar or intended to keep working with that tech stack. We've been building production-ready Go applications for a long time, so building a similar project with Golang as its core was natural.
+
+Additionally, as Go has taken a huge role in many other vital projects such as Kubernetes and Docker, and we've been able to use the pREST project in many different companies with success over the years, it has shown to be an excellent decision.
 
 ## 1-Click Deploy
 
@@ -31,4 +46,4 @@ Deploy to Heroku and instantly get a realtime RESTFul API backed by Heroku Postg
 
 ## Documentation
 
-<https://docs.prestd.com/> ([content source](https://github.com/prest/docs)).
+Visit https://docs.prestd.com/
