@@ -14,7 +14,13 @@ dc-up:
 		--force-recreate \
 		--remove-orphans \
 		--build
-	
+
 PHONY: dc-up
 dc-down:
 	$(DOCKER_COMPOSE) down --volumes --remove-orphans --rmi local
+
+PHONY: mockgen
+mockgen:
+	go install github.com/golang/mock/mockgen@v1.6.0
+	mockgen -source=adapters/scanner.go -destination=adapters/mockgen/scanner.go -package=mockgen
+	mockgen -source=adapters/adapter.go -destination=adapters/mockgen/adapter.go -package=mockgen
