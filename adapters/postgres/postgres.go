@@ -36,10 +36,10 @@ var (
 	_ adapters.Adapter = (*Adapter)(nil)
 )
 
-// Postgres to keep compatibility
+// Postgres struct to keep compatibility
 type Postgres Adapter
 
-// Postgres a Adapterql
+// Adapter implements the postgres adapter
 type Adapter struct {
 	cfg *config.Prest
 }
