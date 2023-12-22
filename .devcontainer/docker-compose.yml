@@ -21,7 +21,7 @@ services:
       - PREST_SSL_MODE=disable
 
   postgres:
-    image: postgres:13
+    image: postgres:16
     restart: unless-stopped
     volumes:
       - "postgres_data:/var/lib/postgresql/data"
