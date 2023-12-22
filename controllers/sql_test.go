@@ -91,10 +91,12 @@ func TestRenderWithXML(t *testing.T) {
 	}{
 		{"Get schemas with COUNT clause with XML Render", "/schemas?_count=*&_renderer=xml", "GET", 200, "<objects><object><count>4</count></object></objects>"},
 	}
-	t.Setenv("PREST_DEBUG", "true")
-	config.Load()
-	postgres.Load()
-	n := middlewares.GetApp()
+	// todo: fix it
+	// t.Setenv("PREST_DEBUG", "true")
+	// config.Load()
+	// postgres.Load()
+
+	n := middlewares.GetApp(&config.Prest{Debug: true})
 	r := mux.NewRouter()
 	r.HandleFunc("/schemas", GetSchemas).Methods("GET")
 	n.UseHandler(r)

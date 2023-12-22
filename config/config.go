@@ -93,7 +93,8 @@ type Prest struct {
 	CORSAllowMethods     []string
 	CORSAllowCredentials bool
 	Debug                bool
-	// todo: remove this
+	// todo: remove this from config
+	// send to server
 	Adapter              adapters.Adapter
 	EnableDefaultJWT     bool
 	SingleDB             bool
