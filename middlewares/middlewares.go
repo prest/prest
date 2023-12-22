@@ -36,16 +36,16 @@ func HandlerSet() negroni.Handler {
 // SetTimeoutToContext adds the configured timeout in seconds to the request context
 //
 // By default it is 60 seconds, can be modified to a different value
-func SetTimeoutToContext() negroni.Handler {
+func SetTimeoutToContext(timeout int) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		next(rw, r.WithContext(context.WithValue(r.Context(), pctx.HTTPTimeoutKey, config.PrestConf.HTTPTimeout))) // nolint
+		next(rw, r.WithContext(context.WithValue(r.Context(), pctx.HTTPTimeoutKey, timeout))) // nolint
 	})
 }
 
 // AuthMiddleware handle request token validation
-func AuthMiddleware() negroni.Handler {
+func AuthMiddleware(cfg *config.Prest) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		match, err := MatchURL(r.URL.String())
+		match, err := MatchURL(cfg.JWTWhiteList, r.URL.String())
 		if err != nil {
 			http.Error(rw, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
 			return
@@ -97,7 +97,7 @@ func Validate(c auth.Claims) error {
 }
 
 // AccessControl is a middleware to handle permissions on tables in pREST
-func AccessControl() negroni.Handler {
+func AccessControl(cfg *config.Prest) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
 		mapPath := getVars(rq.URL.Path)
 		if mapPath == nil {
@@ -111,7 +111,7 @@ func AccessControl() negroni.Handler {
 			return
 		}
 
-		if config.PrestConf.Adapter.TablePermissions(mapPath["table"], permission) {
+		if cfg.Adapter.TablePermissions(mapPath["table"], permission) {
 			next(rw, rq)
 			return
 		}
@@ -122,9 +122,9 @@ func AccessControl() negroni.Handler {
 }
 
 // JwtMiddleware check if actual request have JWT
-func JwtMiddleware(key string, algo string) negroni.Handler {
+func JwtMiddleware(cfg *config.Prest) negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		match, err := MatchURL(r.URL.String())
+		match, err := MatchURL(cfg.JWTWhiteList, r.URL.String())
 		if err != nil {
 			http.Error(w, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
 			return
@@ -147,7 +147,7 @@ func JwtMiddleware(key string, algo string) negroni.Handler {
 			return
 		}
 		out := auth.Claims{}
-		if err := tok.Claims([]byte(key), &out); err != nil {
+		if err := tok.Claims([]byte(cfg.JWTKey), &out); err != nil {
 			http.Error(w, ErrJWTValidate.Error(), http.StatusUnauthorized)
 			return
 		}
@@ -180,10 +180,10 @@ func Cors(origin []string, headers []string) negroni.Handler {
 	})
 }
 
-func ExposureMiddleware() negroni.Handler {
+func ExposureMiddleware(cfg *config.Prest) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
 		url := rq.URL.Path
-		exposeConf := config.PrestConf.ExposeConf
+		exposeConf := cfg.ExposeConf
 
 		if strings.HasPrefix(url, "/databases") && !exposeConf.DatabaseListing {
 			http.Error(rw, "unauthorized listing", http.StatusUnauthorized)

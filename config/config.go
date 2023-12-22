@@ -47,7 +47,7 @@ type PluginMiddleware struct {
 	Func string
 }
 
-// Prest basic config
+// Prest basic configuration
 type Prest struct {
 	Version              int
 	AuthEnabled          bool
@@ -93,6 +93,7 @@ type Prest struct {
 	CORSAllowMethods     []string
 	CORSAllowCredentials bool
 	Debug                bool
+	// todo: remove this
 	Adapter              adapters.Adapter
 	EnableDefaultJWT     bool
 	SingleDB             bool
@@ -129,6 +130,11 @@ func Load() {
 			PrestConf.Cache.StoragePath = defaultCacheDir
 		}
 	}
+}
+
+func New() *Prest {
+	Load()
+	return PrestConf
 }
 
 func viperCfg() {

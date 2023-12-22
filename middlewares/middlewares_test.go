@@ -14,14 +14,13 @@ import (
 )
 
 func TestJWTClaimsOk(t *testing.T) {
-	app = nil
-	MiddlewareStack = nil
-	t.Setenv("PREST_JWT_DEFAULT", "true")
-	t.Setenv("PREST_DEBUG", "false")
-	t.Setenv("PREST_JWT_KEY", "s3cr3t")
-	t.Setenv("PREST_JWT_ALGO", "HS512")
-	config.Load()
-	nd := appTestWithJwt()
+	cfg := &config.Prest{
+		EnableDefaultJWT: true,
+		Debug:            false,
+		JWTKey:           "s3cr3t",
+		JWTAlgo:          "HS512",
+	}
+	nd := appTestWithJwt(cfg)
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
 
@@ -54,13 +53,13 @@ func TestJWTClaimsOk(t *testing.T) {
 }
 
 func TestJWTClaimsNotOk(t *testing.T) {
-	app = nil
-	t.Setenv("PREST_JWT_DEFAULT", "true")
-	t.Setenv("PREST_DEBUG", "false")
-	t.Setenv("PREST_JWT_KEY", "s3cr3t")
-	t.Setenv("PREST_JWT_ALGO", "HS256")
-	config.Load()
-	nd := appTestWithJwt()
+	cfg := &config.Prest{
+		EnableDefaultJWT: true,
+		Debug:            false,
+		JWTKey:           "s3cr3t",
+		JWTAlgo:          "HS512",
+	}
+	nd := appTestWithJwt(cfg)
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
 

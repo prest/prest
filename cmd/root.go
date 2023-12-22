@@ -19,10 +19,13 @@ var RootCmd = &cobra.Command{
 	Short: "Serve a RESTful API from any PostgreSQL database",
 	Long:  `prestd (PostgreSQL REST), simplify and accelerate development, ⚡ instant, realtime, high-performance on any Postgres application, existing or new`,
 	Run: func(cmd *cobra.Command, args []string) {
+		config.Load()
 		if config.PrestConf.Adapter == nil {
 			slog.Warningln("adapter is not set. Using the default (postgres)")
+			// return config from env
 			postgres.Load()
 		}
+		// start with config
 		startServer()
 	},
 }
@@ -50,7 +53,8 @@ func Execute() {
 }
 
 // startServer starts the server
-func startServer() {
+func startServer(cfg *config.Prest) {
+	// pass config and log to router and controllers
 	http.Handle(config.PrestConf.ContextPath, router.Routes())
 	l := log.New(os.Stdout, "[prestd] ", 0)
 

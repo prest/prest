@@ -18,7 +18,7 @@ import (
 )
 
 // GetScript get SQL template file
-func (adapter *Postgres) GetScript(verb, folder, scriptName string) (script string, err error) {
+func (a Adapter) GetScript(verb, folder, scriptName string) (script string, err error) {
 	verbs := map[string]string{
 		"GET":    ".read.sql",
 		"POST":   ".write.sql",
@@ -44,7 +44,7 @@ func (adapter *Postgres) GetScript(verb, folder, scriptName string) (script stri
 }
 
 // ParseScript use values sent by users and add on script
-func (adapter *Postgres) ParseScript(scriptPath string, templateData map[string]interface{}) (sqlQuery string, values []interface{}, err error) {
+func (a Adapter) ParseScript(scriptPath string, templateData map[string]interface{}) (sqlQuery string, values []interface{}, err error) {
 	_, tplName := filepath.Split(scriptPath)
 
 	funcs := &template.FuncRegistry{TemplateData: templateData}
@@ -75,7 +75,7 @@ func WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	stmt, err := Prepare(db, sql)
+	stmt, err := Prepare(db, sql, false)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -121,7 +121,7 @@ func WriteSQLCtx(ctx context.Context, sql string, values []interface{}) (sc adap
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	stmt, err := Prepare(db, sql)
+	stmt, err := Prepare(db, sql, false)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -160,10 +160,10 @@ func WriteSQLCtx(ctx context.Context, sql string, values []interface{}) (sc adap
 }
 
 // ExecuteScripts run sql templates created by users
-func (adapter *Postgres) ExecuteScripts(method, sql string, values []interface{}) (sc adapters.Scanner) {
+func (a Adapter) ExecuteScripts(method, sql string, values []interface{}) (sc adapters.Scanner) {
 	switch method {
 	case "GET":
-		return adapter.Query(sql, values...)
+		return a.Query(sql, values...)
 	case "POST", "PUT", "PATCH", "DELETE":
 		return WriteSQL(sql, values)
 	}
@@ -171,10 +171,10 @@ func (adapter *Postgres) ExecuteScripts(method, sql string, values []interface{}
 }
 
 // ExecuteScriptsCtx run sql templates created by users
-func (adapter *Postgres) ExecuteScriptsCtx(ctx context.Context, method, sql string, values []interface{}) (sc adapters.Scanner) {
+func (a Adapter) ExecuteScriptsCtx(ctx context.Context, method, sql string, values []interface{}) (sc adapters.Scanner) {
 	switch method {
 	case "GET":
-		return adapter.QueryCtx(ctx, sql, values...)
+		return a.QueryCtx(ctx, sql, values...)
 	case "POST", "PUT", "PATCH", "DELETE":
 		return WriteSQLCtx(ctx, sql, values)
 	}

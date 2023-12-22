@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/prest/prest/config"
 	"github.com/prest/prest/middlewares/statements"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_getVars(t *testing.T) {
@@ -99,15 +99,11 @@ func TestMatchURL(t *testing.T) {
 	}
 
 	for _, tt := range test {
+		tt := tt
 		t.Run(tt.Label, func(t *testing.T) {
-			config.PrestConf.JWTWhiteList = tt.JWTWhiteList
-			match, err := MatchURL(tt.URL)
-			if err != nil {
-				t.Error(err)
-			}
-			if match != tt.match {
-				t.Errorf("expected %v, but got %v\n", tt.match, match)
-			}
+			match, err := MatchURL(tt.JWTWhiteList, tt.URL)
+			require.NoError(t, err)
+			require.Equal(t, tt.match, match)
 		})
 	}
 }

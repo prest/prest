@@ -13,53 +13,54 @@ import (
 
 // GetRouter reagister all routes
 // v2: this is not used anywhere, so we can make it private
-func GetRouter() *mux.Router {
-	router := mux.NewRouter().StrictSlash(true)
-
-	if config.PrestConf.AuthEnabled {
+func (r *Config) Get() *mux.Router {
+	r.MuxRouter = mux.NewRouter().StrictSlash(true)
+	if r.ServerConfig.AuthEnabled {
 		// can be db specific in the future, there's bellow a proposal
 		// maybe disable on multiple databases
-		router.HandleFunc("/auth", controllers.Auth).Methods("POST")
+		r.MuxRouter.HandleFunc("/auth", controllers.Auth).Methods("POST")
 		// multiple DB suggestion:
 		// router.HandleFunc("/db/{database}/auth", controllers.Auth).Methods("POST")
 	}
-	router.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
-	router.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
-	router.HandleFunc("/tables", controllers.GetTables).Methods("GET")
+
+	r.MuxRouter.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
+	r.MuxRouter.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
+	r.MuxRouter.HandleFunc("/tables", controllers.GetTables).Methods("GET")
+
 	// breaking change
-	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", controllers.ExecuteFromScripts)
-	// router.HandleFunc("/_QUERIES/{database}/{queriesLocation}/{script}", controllers.ExecuteFromScripts)
+	r.MuxRouter.HandleFunc("/_QUERIES/{queriesLocation}/{script}", controllers.ExecuteFromScripts)
+	// r.MuxRouter.HandleFunc("/_QUERIES/{database}/{queriesLocation}/{script}", controllers.ExecuteFromScripts)
 	// if it is windows it should not register the plugin endpoint
 	// we use go plugin system that does not support windows
 	// https://github.com/golang/go/issues/19282
 	if runtime.GOOS != "windows" {
-		router.HandleFunc("/_PLUGIN/{file}/{func}", plugins.HandlerPlugin)
+		r.MuxRouter.HandleFunc("/_PLUGIN/{file}/{func}", plugins.HandlerPlugin)
 	}
-	router.HandleFunc("/{database}/{schema}", controllers.GetTablesByDatabaseAndSchema).Methods("GET")
-	router.HandleFunc("/show/{database}/{schema}/{table}", controllers.ShowTable).Methods("GET")
+	r.MuxRouter.HandleFunc("/{database}/{schema}", controllers.GetTablesByDatabaseAndSchema).Methods("GET")
+	r.MuxRouter.HandleFunc("/show/{database}/{schema}/{table}", controllers.ShowTable).Methods("GET")
 	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
-	router.HandleFunc("/_health", controllers.WrappedHealthCheck(controllers.DefaultCheckList)).Methods("GET")
+	r.MuxRouter.HandleFunc("/_health", controllers.WrappedHealthCheck(controllers.DefaultCheckList)).Methods("GET")
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.SelectFromTables).Methods("GET")
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.InsertInTables).Methods("POST")
 	crudRoutes.HandleFunc("/batch/{database}/{schema}/{table}", controllers.BatchInsertInTables).Methods("POST")
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.DeleteFromTable).Methods("DELETE")
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.UpdateTable).Methods("PUT", "PATCH")
-	router.PathPrefix("/").Handler(negroni.New(
-		middlewares.ExposureMiddleware(),
-		middlewares.AccessControl(),
-		middlewares.AuthMiddleware(),
-		middlewares.CacheMiddleware(&config.PrestConf.Cache),
+	r.MuxRouter.PathPrefix("/").Handler(negroni.New(
+		middlewares.ExposureMiddleware(r.ServerConfig),
+		middlewares.AccessControl(r.ServerConfig),
+		middlewares.AuthMiddleware(r.ServerConfig),
+		middlewares.CacheMiddleware(r.ServerConfig),
 		// plugins middleware
 		plugins.MiddlewarePlugin(),
 		negroni.Wrap(crudRoutes),
 	))
 
-	return router
+	return r.MuxRouter
 }
 
 // Routes for pREST
-func Routes() *negroni.Negroni {
-	n := middlewares.GetApp()
-	n.UseHandler(GetRouter())
+func Routes(cfg *config.Prest) *negroni.Negroni {
+	n := middlewares.GetApp(cfg)
+	n.UseHandler(NewRouter(cfg).Get())
 	return n
 }

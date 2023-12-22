@@ -1286,7 +1286,7 @@ func TestCacheDelete(t *testing.T) {
 func BenchmarkPrepare(b *testing.B) {
 	db := connection.MustGet()
 	for index := 0; index < b.N; index++ {
-		_, err := Prepare(db, `SELECT * FROM "Reply"`)
+		_, err := Prepare(db, `SELECT * FROM "Reply"`, false)
 		if err != nil {
 			b.Fail()
 		}
@@ -1699,7 +1699,7 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 				Fields:      tt.args.fields,
 			})
 		t.Run(tt.name, func(t *testing.T) {
-			adapter := &Postgres{}
+			adapter := &Adapter{}
 			r, err := http.NewRequest(http.MethodGet, tt.args.url, strings.NewReader(""))
 			if err != nil {
 				t.Fatal(err)
@@ -1795,7 +1795,7 @@ func Test_Postgres_GeneratesFuncs(t *testing.T) {
 
 	//Postgres struct MOCK
 	// will be used just to invoke the functions
-	pg := Postgres{}
+	pg := Adapter{}
 
 	// all of this tests is for functions whats returns a string. We can use two string as args of tests. The string we will got by the function, and the expected string.
 	type args struct {
@@ -1962,7 +1962,7 @@ ORDER BY
 }
 
 func Test_ShowTable(t *testing.T) {
-	pg := Postgres{}
+	pg := Adapter{}
 	sc := pg.ShowTable("testschema", "testtable")
 
 	scMock := newScannerMock(t)
@@ -1973,7 +1973,7 @@ func Test_ShowTable(t *testing.T) {
 }
 
 func Test_ShowTableCtx(t *testing.T) {
-	pg := Postgres{}
+	pg := Adapter{}
 
 	sc := pg.ShowTableCtx(context.Background(), "testschema", "testtable")
 
