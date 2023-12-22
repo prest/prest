@@ -19,14 +19,13 @@ var RootCmd = &cobra.Command{
 	Short: "Serve a RESTful API from any PostgreSQL database",
 	Long:  `prestd (PostgreSQL REST), simplify and accelerate development, ⚡ instant, realtime, high-performance on any Postgres application, existing or new`,
 	Run: func(cmd *cobra.Command, args []string) {
-		config.Load()
-		if config.PrestConf.Adapter == nil {
+		cfg := config.New()
+		if cfg.Adapter == nil {
 			slog.Warningln("adapter is not set. Using the default (postgres)")
-			// return config from env
-			postgres.Load()
+			cfg.Adapter = postgres.NewAdapter(cfg)
+			// todo: load db name from config
 		}
-		// start with config
-		startServer()
+		startServer(cfg)
 	},
 }
 
@@ -55,21 +54,21 @@ func Execute() {
 // startServer starts the server
 func startServer(cfg *config.Prest) {
 	// pass config and log to router and controllers
-	http.Handle(config.PrestConf.ContextPath, router.Routes())
+	http.Handle(cfg.ContextPath, router.Routes(cfg))
 	l := log.New(os.Stdout, "[prestd] ", 0)
 
-	if !config.PrestConf.AccessConf.Restrict {
+	if !cfg.AccessConf.Restrict {
 		slog.Warningln("You are running prestd in public mode.")
 	}
 
-	if config.PrestConf.Debug {
-		slog.DebugMode = config.PrestConf.Debug
+	if cfg.Debug {
+		slog.DebugMode = cfg.Debug
 		slog.Warningln("You are running prestd in debug mode.")
 	}
-	addr := fmt.Sprintf("%s:%d", config.PrestConf.HTTPHost, config.PrestConf.HTTPPort)
-	l.Printf("listening on %s and serving on %s", addr, config.PrestConf.ContextPath)
-	if config.PrestConf.HTTPSMode {
-		l.Fatal(http.ListenAndServeTLS(addr, config.PrestConf.HTTPSCert, config.PrestConf.HTTPSKey, nil))
+	addr := fmt.Sprintf("%s:%d", cfg.HTTPHost, cfg.HTTPPort)
+	l.Printf("listening on %s and serving on %s", addr, cfg.ContextPath)
+	if cfg.HTTPSMode {
+		l.Fatal(http.ListenAndServeTLS(addr, cfg.HTTPSCert, cfg.HTTPSKey, nil))
 	}
 	l.Fatal(http.ListenAndServe(addr, nil))
 }
