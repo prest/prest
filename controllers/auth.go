@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"crypto/md5"
 	"crypto/sha1"
 	"encoding/json"
@@ -85,20 +86,24 @@ func (c *Config) Auth(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	loggedUser, err := c.basicPasswordCheck(strings.ToLower(login.Username), login.Password)
+	loggedUser, err := c.basicPasswordCheck(r.Context(),
+		strings.ToLower(login.Username), login.Password)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
+
 	token, err := c.Token(loggedUser)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	resp := Response{
 		LoggedUser: loggedUser,
 		Token:      token,
 	}
+
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -111,11 +116,9 @@ func (c *Config) Auth(w http.ResponseWriter, r *http.Request) {
 // table name, fields (user and password) and encryption must be defined in
 // the configuration file (toml) by default this endpoint will not be available,
 // it is necessary to activate in the configuration file
-func (c *Config) basicPasswordCheck(user, password string) (obj auth.User, err error) {
-	// TODO: use Queryctx
-	sc := c.adapter.Query(c.getSelectQuery(),
-		user,
-		encrypt(c.server.AuthEncrypt, password))
+func (c *Config) basicPasswordCheck(ctx context.Context, user, password string) (obj auth.User, err error) {
+	sc := c.adapter.QueryCtx(ctx,
+		c.getSelectQuery(), user, encrypt(c.server.AuthEncrypt, password))
 	if sc.Err() != nil {
 		err = sc.Err()
 		return
