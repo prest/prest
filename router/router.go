@@ -57,7 +57,7 @@ func (r *Config) Get() {
 
 	r.router.PathPrefix("/").Handler(
 		negroni.New(
-			middlewares.ExposureMiddleware(r.srvCfg),
+			middlewares.ExposureMiddleware(&r.srvCfg.ExposeConf),
 			middlewares.AccessControl(r.srvCfg),
 			middlewares.AuthMiddleware(
 				r.srvCfg.AuthEnabled, r.srvCfg.JWTKey, r.srvCfg.JWTWhiteList),

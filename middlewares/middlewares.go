@@ -200,22 +200,21 @@ func Cors(origin []string, headers []string) negroni.Handler {
 	})
 }
 
-func ExposureMiddleware(cfg *config.Prest) negroni.Handler {
+func ExposureMiddleware(cfg *config.ExposeConf) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
 		url := rq.URL.Path
-		exposeConf := cfg.ExposeConf
 
-		if strings.HasPrefix(url, "/databases") && !exposeConf.DatabaseListing {
+		if strings.HasPrefix(url, "/databases") && !cfg.DatabaseListing {
 			http.Error(rw, "unauthorized listing", http.StatusUnauthorized)
 			return
 		}
 
-		if strings.HasPrefix(url, "/tables") && !exposeConf.TableListing {
+		if strings.HasPrefix(url, "/tables") && !cfg.TableListing {
 			http.Error(rw, "unauthorized listing", http.StatusUnauthorized)
 			return
 		}
 
-		if strings.HasPrefix(url, "/schemas") && !exposeConf.SchemaListing {
+		if strings.HasPrefix(url, "/schemas") && !cfg.SchemaListing {
 			http.Error(rw, "unauthorized listing", http.StatusUnauthorized)
 			return
 		}

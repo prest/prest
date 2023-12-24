@@ -43,7 +43,7 @@ func GetApp(cfg *config.Prest, opts ...OptMiddleware) *negroni.Negroni {
 		stack = append(stack, CacheMiddleware(cfg))
 	}
 	if cfg.ExposeConf.Enabled {
-		stack = append(stack, ExposureMiddleware(cfg))
+		stack = append(stack, ExposureMiddleware(&cfg.ExposeConf))
 	}
 	for _, opt := range opts {
 		stack = append(stack, negroni.HandlerFunc(opt))
