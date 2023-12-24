@@ -200,7 +200,7 @@ func Test_AuthRouteActive_Unauthorized(t *testing.T) {
 	ctrl2 := gomock.NewController(t)
 	adapter2 := mockgen.NewMockScanner(ctrl2)
 
-	adapter.EXPECT().Query("SELECT * FROM . WHERE =$1 AND =$2 LIMIT 1",
+	adapter.EXPECT().QueryCtx(gomock.Any(), "SELECT * FROM . WHERE =$1 AND =$2 LIMIT 1",
 		gomock.Any(), gomock.Any()).Return(adapter2)
 
 	adapter2.EXPECT().Err().Return(nil)
