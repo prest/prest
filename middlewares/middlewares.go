@@ -181,7 +181,7 @@ func JwtMiddleware(key string, ignoreList []string) negroni.Handler {
 
 // Cors middleware
 //
-// Deprecated: we'll use github.com/rs/cors instead
+// Deprecated: use github.com/rs/cors instead
 func Cors(origin []string, headers []string) negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		w.Header().Set(headerAllowOrigin, strings.Join(origin, ","))
