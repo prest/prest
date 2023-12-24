@@ -132,10 +132,19 @@ func AccessControl(cfg *config.Prest) negroni.Handler {
 	})
 }
 
-// JwtMiddleware check if actual request have JWT
-func JwtMiddleware(cfg *config.Prest) negroni.Handler {
+// JwtMiddleware check if actual request have JWT token in header Authorization
+// and validate it with JWTKey and JWTWhiteList
+//
+// if token is valid, it will pass user_info to the next handler
+//
+// if token is invalid, it will return 401
+//
+// if token is not present, it will return 401
+//
+// if token is present but not valid, it will return 401
+func JwtMiddleware(key string, ignoreList []string) negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		match, err := MatchURL(cfg.JWTWhiteList, r.URL.String())
+		match, err := MatchURL(ignoreList, r.URL.String())
 		if err != nil {
 			http.Error(w, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
 			return
@@ -158,7 +167,7 @@ func JwtMiddleware(cfg *config.Prest) negroni.Handler {
 			return
 		}
 		out := auth.Claims{}
-		if err := tok.Claims([]byte(cfg.JWTKey), &out); err != nil {
+		if err := tok.Claims([]byte(key), &out); err != nil {
 			http.Error(w, ErrJWTValidate.Error(), http.StatusUnauthorized)
 			return
 		}

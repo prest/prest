@@ -37,7 +37,7 @@ func GetApp(cfg *config.Prest, opts ...OptMiddleware) *negroni.Negroni {
 			}))
 	}
 	if !cfg.Debug && cfg.EnableDefaultJWT {
-		stack = append(stack, JwtMiddleware(cfg))
+		stack = append(stack, JwtMiddleware(cfg.JWTKey, cfg.JWTWhiteList))
 	}
 	if cfg.Cache.Enabled {
 		stack = append(stack, CacheMiddleware(cfg))
