@@ -12,7 +12,6 @@ import (
 	"github.com/prest/prest/adapters"
 	"github.com/prest/prest/adapters/postgres/internal/connection"
 	"github.com/prest/prest/adapters/scanner"
-	"github.com/prest/prest/config"
 	"github.com/prest/prest/template"
 	"github.com/structy/log"
 )
@@ -33,7 +32,7 @@ func (a Adapter) GetScript(verb, folder, scriptName string) (script string, err 
 		return
 	}
 
-	script = filepath.Join(config.PrestConf.QueriesPath, folder, fmt.Sprint(scriptName, sufix))
+	script = filepath.Join(a.cfg.QueriesPath, folder, fmt.Sprint(scriptName, sufix))
 
 	if _, err = os.Stat(script); os.IsNotExist(err) {
 		err = fmt.Errorf("could not load %s", script)

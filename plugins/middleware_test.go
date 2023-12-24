@@ -14,7 +14,7 @@ import (
 func initMiddlewarePluginTestRouter() *negroni.Negroni {
 	r := negroni.New()
 	l := []config.PluginMiddleware{}
-	r.Use(MiddlewarePlugin(l))
+	r.Use(MiddlewarePlugin("", l))
 	return r
 }
 

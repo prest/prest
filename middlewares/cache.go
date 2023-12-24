@@ -9,8 +9,6 @@ import (
 )
 
 // CacheMiddleware simple caching to avoid equal queries to the database
-// todo: receive config.PrestConf.Cache to pass to cache.EndpointRules
-// this will help removing global config calls
 func CacheMiddleware(cfg *config.Prest) negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		match, err := MatchURL(cfg.JWTWhiteList, r.URL.String())
