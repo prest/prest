@@ -5,24 +5,24 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/prest/prest/config"
+	pctx "github.com/prest/prest/context"
 )
 
 // GetSchemas list all (or filter) schemas
-func GetSchemas(w http.ResponseWriter, r *http.Request) {
-	requestWhere, values, err := config.PrestConf.Adapter.WhereByRequest(r, 1)
+func (c *Config) GetSchemas(w http.ResponseWriter, r *http.Request) {
+	requestWhere, values, err := c.adapter.WhereByRequest(r, 1)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	sqlSchemas, hasCount := config.PrestConf.Adapter.SchemaClause(r)
+	sqlSchemas, hasCount := c.adapter.SchemaClause(r)
 
 	if requestWhere != "" {
 		sqlSchemas = fmt.Sprint(sqlSchemas, " WHERE ", requestWhere)
 	}
 
-	distinct, err := config.PrestConf.Adapter.DistinctClause(r)
+	distinct, err := c.adapter.DistinctClause(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -31,21 +31,24 @@ func GetSchemas(w http.ResponseWriter, r *http.Request) {
 		sqlSchemas = strings.Replace(sqlSchemas, "SELECT", distinct, 1)
 	}
 
-	order, err := config.PrestConf.Adapter.OrderByRequest(r)
+	order, err := c.adapter.OrderByRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	order = config.PrestConf.Adapter.SchemaOrderBy(order, hasCount)
+	order = c.adapter.SchemaOrderBy(order, hasCount)
 
-	page, err := config.PrestConf.Adapter.PaginateIfPossible(r)
+	page, err := c.adapter.PaginateIfPossible(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	ctx, cancel := pctx.WithTimeout(r.Context())
+	defer cancel()
 
 	sqlSchemas = fmt.Sprint(sqlSchemas, order, " ", page)
-	sc := config.PrestConf.Adapter.Query(sqlSchemas, values...)
+	sc := c.adapter.QueryCtx(ctx, sqlSchemas, values...)
 	if sc.Err() != nil {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return

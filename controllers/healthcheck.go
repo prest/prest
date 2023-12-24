@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/prest/prest/adapters/postgres"
 	pctx "github.com/prest/prest/context"
@@ -16,6 +15,8 @@ var DefaultCheckList = CheckList{
 	CheckDBHealth,
 }
 
+// todo: detach postgres from here
+// this will allow us to use other databases
 func CheckDBHealth(ctx context.Context) error {
 	conn, err := postgres.Get()
 	if err != nil {
@@ -27,10 +28,9 @@ func CheckDBHealth(ctx context.Context) error {
 
 func WrappedHealthCheck(checks CheckList) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		timeout, _ := r.Context().Value(pctx.HTTPTimeoutKey).(int)
-		ctx, cancel := context.WithTimeout(
-			r.Context(), time.Second*time.Duration(timeout))
+		ctx, cancel := pctx.WithTimeout(r.Context())
 		defer cancel()
+
 		for _, check := range checks {
 			if err := check(ctx); err != nil {
 				log.Errorf("could not check DB connection: %v\n", err)

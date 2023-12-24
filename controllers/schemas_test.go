@@ -5,7 +5,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
+
+	"github.com/prest/prest/adapters/mockgen"
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/testutils"
@@ -32,9 +35,12 @@ func TestGetSchemas(t *testing.T) {
 		{"Get schemas with noexistent column", "/schemas?schematame=$eq.test", "GET", http.StatusBadRequest, "pq: column \"schematame\" does not exist\n"},
 		{"Get schemas with distinct clause", "/schemas?schema_name=$eq.public&_distinct=true", "GET", http.StatusOK, "[{\"schema_name\": \"public\"}]"},
 	}
+	ctrl := gomock.NewController(t)
+	adapter := mockgen.NewMockAdapter(ctrl)
+	h := Config{adapter: adapter}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/schemas", GetSchemas).Methods("GET")
+	router.HandleFunc("/schemas", h.GetSchemas).Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
 
@@ -60,9 +66,12 @@ func TestVersionDependentGetSchemas(t *testing.T) {
 			"strconv.Atoi: parsing \"A\": invalid syntax\n",
 		},
 	}
+	ctrl := gomock.NewController(t)
+	adapter := mockgen.NewMockAdapter(ctrl)
+	h := Config{adapter: adapter}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/schemas", GetSchemas).Methods("GET")
+	router.HandleFunc("/schemas", h.GetSchemas).Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
 

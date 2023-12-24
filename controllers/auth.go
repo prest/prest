@@ -9,11 +9,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prest/prest/config"
 	"github.com/prest/prest/controllers/auth"
-	"gopkg.in/square/go-jose.v2"
+
+	signer "gopkg.in/square/go-jose.v2"
 	jwt "gopkg.in/square/go-jose.v2/jwt"
 )
+
+const unf = "user not found"
 
 // Response representation
 type Response struct {
@@ -38,18 +40,18 @@ type Login struct {
 }
 
 // Token for user
-func Token(u auth.User) (t string, err error) {
+func (c *Config) Token(u auth.User) (t string, err error) {
 	// add start time (NotBefore)
 	getToken := time.Now()
 	// add expiry time in configuration (in minute format, so we support the maximum need)
 	expireToken := time.Now().Add(time.Hour * 6)
 
 	// TODO: JWT any Algorithm support
-	sig, err := jose.NewSigner(
-		jose.SigningKey{
-			Algorithm: jose.HS256,
-			Key:       []byte(config.PrestConf.JWTKey)},
-		(&jose.SignerOptions{}).WithType("JWT"))
+	sig, err := signer.NewSigner(
+		signer.SigningKey{
+			Algorithm: signer.HS256,
+			Key:       []byte(c.server.JWTKey)},
+		(&signer.SignerOptions{}).WithType("JWT"))
 	if err != nil {
 		return
 	}
@@ -62,12 +64,10 @@ func Token(u auth.User) (t string, err error) {
 	return jwt.Signed(sig).Claims(cl).CompactSerialize()
 }
 
-const unf = "user not found"
-
 // Auth controller
-func Auth(w http.ResponseWriter, r *http.Request) {
+func (c *Config) Auth(w http.ResponseWriter, r *http.Request) {
 	login := Login{}
-	switch config.PrestConf.AuthType {
+	switch c.server.AuthType {
 	// TODO: form support
 	case "body":
 		// to use body field authentication
@@ -85,12 +85,12 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	loggedUser, err := basicPasswordCheck(strings.ToLower(login.Username), login.Password)
+	loggedUser, err := c.basicPasswordCheck(strings.ToLower(login.Username), login.Password)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
-	token, err := Token(loggedUser)
+	token, err := c.Token(loggedUser)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -107,14 +107,17 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 }
 
 // basicPasswordCheck
-func basicPasswordCheck(user, password string) (obj auth.User, err error) {
+func (c *Config) basicPasswordCheck(user, password string) (obj auth.User, err error) {
 	/**
 	table name, fields (user and password) and encryption must be defined in
 	the configuration file (toml)
 	by default this endpoint will not be available, it is necessary to activate
 	in the configuration file
 	*/
-	sc := config.PrestConf.Adapter.Query(getSelectQuery(), user, encrypt(password))
+	// TODO: use Queryctx
+	sc := c.adapter.Query(c.getSelectQuery(),
+		user,
+		encrypt(c.server.AuthEncrypt, password))
 	if sc.Err() != nil {
 		err = sc.Err()
 		return
@@ -126,21 +129,20 @@ func basicPasswordCheck(user, password string) (obj auth.User, err error) {
 	if n != 1 {
 		err = fmt.Errorf(unf)
 	}
-
 	return
 }
 
 // getSelectQuery create the query to authenticate the user
-func getSelectQuery() (query string) {
+func (c *Config) getSelectQuery() (query string) {
 	return fmt.Sprintf(
 		`SELECT * FROM %s.%s WHERE %s=$1 AND %s=$2 LIMIT 1`,
-		config.PrestConf.AuthSchema, config.PrestConf.AuthTable,
-		config.PrestConf.AuthUsername, config.PrestConf.AuthPassword)
+		c.server.AuthSchema, c.server.AuthTable,
+		c.server.AuthUsername, c.server.AuthPassword)
 }
 
 // encrypt will apply the encryption algorithm to the password
-func encrypt(password string) (encrypted string) {
-	switch config.PrestConf.AuthEncrypt {
+func encrypt(encrypt, password string) (encrypted string) {
+	switch encrypt {
 	case "MD5":
 		return fmt.Sprintf("%x", md5.Sum([]byte(password)))
 	case "SHA1":

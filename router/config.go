@@ -6,12 +6,14 @@ import (
 )
 
 type Config struct {
-	MuxRouter    *mux.Router
+	router       *mux.Router
 	ServerConfig *config.Prest
 }
 
-func NewRouter(c *config.Prest) *Config {
-	return &Config{
+func New(c *config.Prest) *Config {
+	cfg := &Config{
 		ServerConfig: c,
 	}
+	cfg.Get()
+	return cfg
 }

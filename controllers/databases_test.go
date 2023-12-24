@@ -5,16 +5,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/adapters/postgres"
-	"github.com/prest/prest/config"
+
+	"github.com/prest/prest/adapters/mockgen"
 	"github.com/prest/prest/testutils"
 )
 
 func TestGetDatabases(t *testing.T) {
-	config.Load()
-	postgres.Load()
-
 	var testCases = []struct {
 		description string
 		url         string
@@ -34,11 +32,17 @@ func TestGetDatabases(t *testing.T) {
 		{"Get databases with invalid distinct", "/databases?_distinct", "GET", http.StatusOK},
 	}
 
+	// new test setup
+	ctrl := gomock.NewController(t)
+	adapter := mockgen.NewMockAdapter(ctrl)
+	h := Config{adapter: adapter}
+
 	router := mux.NewRouter()
-	router.HandleFunc("/databases", GetDatabases).Methods("GET")
+	router.HandleFunc("/databases", h.GetDatabases).Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
 
+	// todo: fix this test
 	for _, tc := range testCases {
 		t.Log(tc.description)
 		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetDatabases")

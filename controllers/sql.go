@@ -4,18 +4,16 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/mux"
 
-	"github.com/prest/prest/config"
 	pctx "github.com/prest/prest/context"
 )
 
 // ExecuteScriptQuery is a function to execute and return result of script query
-func ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]byte, error) {
-	config.PrestConf.Adapter.SetDatabase(config.PrestConf.PGDatabase)
-	sqlPath, err := config.PrestConf.Adapter.GetScript(rq.Method, queriesPath, script)
+func (c *Config) ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]byte, error) {
+	c.adapter.SetDatabase(c.server.PGDatabase)
+	sqlPath, err := c.adapter.GetScript(rq.Method, queriesPath, script)
 	if err != nil {
 		err = fmt.Errorf("could not get script %s/%s, %v", queriesPath, script, err)
 		return nil, err
@@ -25,13 +23,13 @@ func ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]
 	extractHeaders(rq, templateData)
 	extractQueryParameters(rq, templateData)
 
-	sql, values, err := config.PrestConf.Adapter.ParseScript(sqlPath, templateData)
+	sql, values, err := c.adapter.ParseScript(sqlPath, templateData)
 	if err != nil {
 		err = fmt.Errorf("could not parse script %s/%s, %v", queriesPath, script, err)
 		return nil, err
 	}
 
-	sc := config.PrestConf.Adapter.ExecuteScriptsCtx(rq.Context(), rq.Method, sql, values)
+	sc := c.adapter.ExecuteScriptsCtx(rq.Context(), rq.Method, sql, values)
 	if sc.Err() != nil {
 		err = fmt.Errorf("could not execute sql, check your prest logs")
 		return nil, err
@@ -41,24 +39,21 @@ func ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]
 }
 
 // ExecuteFromScripts is a controller to peform SQL in scripts created by users
-func ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
+func (c *Config) ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	queriesPath := vars["queriesLocation"]
 	script := vars["script"]
 	database := vars["database"]
 
 	if database == "" {
-		database = config.PrestConf.Adapter.GetDatabase()
+		database = c.adapter.GetDatabase()
 	}
 
-	// set db name on ctx
-	ctx := context.WithValue(r.Context(), pctx.DBNameKey, database)
-
-	timeout, _ := ctx.Value(pctx.HTTPTimeoutKey).(int)
-	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
+	ctx, cancel := pctx.WithTimeout(
+		context.WithValue(r.Context(), pctx.DBNameKey, database))
 	defer cancel()
 
-	result, err := ExecuteScriptQuery(r.WithContext(ctx), queriesPath, script)
+	result, err := c.ExecuteScriptQuery(r.WithContext(ctx), queriesPath, script)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -66,7 +61,7 @@ func ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "GET" {
 		// Cache arrow if enabled
-		config.PrestConf.Cache.BuntSet(r.URL.String(), string(result))
+		c.server.Cache.BuntSet(r.URL.String(), string(result))
 	}
 	//nolint
 	w.Write(result)

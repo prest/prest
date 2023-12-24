@@ -6,17 +6,24 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/adapters/postgres"
+
+	"github.com/prest/prest/adapters/mockgen"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/middlewares"
 	"github.com/prest/prest/testutils"
 )
 
 func TestExecuteScriptQuery(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+	adapter := mockgen.NewMockAdapter(ctrl)
+	h := Config{adapter: adapter}
+
 	r := mux.NewRouter()
 	r.HandleFunc("/testing/script-get/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp, err := ExecuteScriptQuery(r, "fulltable", "get_all")
+		resp, err := h.ExecuteScriptQuery(r, "fulltable", "get_all")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
@@ -24,7 +31,7 @@ func TestExecuteScriptQuery(t *testing.T) {
 	}))
 
 	r.HandleFunc("/testing/script-post/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp, err := ExecuteScriptQuery(r, "fulltable", "write_all")
+		resp, err := h.ExecuteScriptQuery(r, "fulltable", "write_all")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
@@ -51,8 +58,12 @@ func TestExecuteScriptQuery(t *testing.T) {
 }
 
 func TestExecuteFromScripts(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	adapter := mockgen.NewMockAdapter(ctrl)
+	h := Config{adapter: adapter}
+
 	router := mux.NewRouter()
-	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", setHTTPTimeoutMiddleware(ExecuteFromScripts))
+	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", setHTTPTimeoutMiddleware(h.ExecuteFromScripts))
 	server := httptest.NewServer(router)
 	defer server.Close()
 
@@ -92,13 +103,16 @@ func TestRenderWithXML(t *testing.T) {
 		{"Get schemas with COUNT clause with XML Render", "/schemas?_count=*&_renderer=xml", "GET", 200, "<objects><object><count>4</count></object></objects>"},
 	}
 	// todo: fix it
-	// t.Setenv("PREST_DEBUG", "true")
-	// config.Load()
-	// postgres.Load()
+	ctrl := gomock.NewController(t)
+	adapter := mockgen.NewMockAdapter(ctrl)
+	h := Config{
+		server:  &config.Prest{Debug: true},
+		adapter: adapter,
+	}
 
 	n := middlewares.GetApp(&config.Prest{Debug: true})
 	r := mux.NewRouter()
-	r.HandleFunc("/schemas", GetSchemas).Methods("GET")
+	r.HandleFunc("/schemas", h.GetSchemas).Methods("GET")
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
 	defer server.Close()
@@ -111,11 +125,15 @@ func TestRenderWithXML(t *testing.T) {
 }
 
 func TestSilentErrorsOnQuery(t *testing.T) {
-	t.Setenv("PREST_DEBUG", "false")
-	config.Load()
-	postgres.Load()
+	ctrl := gomock.NewController(t)
+	adapter := mockgen.NewMockAdapter(ctrl)
+	h := Config{
+		server:  &config.Prest{Debug: true},
+		adapter: adapter,
+	}
+
 	router := mux.NewRouter()
-	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", setHTTPTimeoutMiddleware(ExecuteFromScripts))
+	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", setHTTPTimeoutMiddleware(h.ExecuteFromScripts))
 	server := httptest.NewServer(router)
 	defer server.Close()
 

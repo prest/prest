@@ -8,47 +8,47 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/adapters/postgres"
+	"github.com/stretchr/testify/require"
+
+	"github.com/prest/prest/adapters/mockgen"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/testutils"
 )
 
-func initAuthRoutes() *mux.Router {
+// todo: fix these tests
+func initAuthRoutes(enabled bool, c Config) *mux.Router {
 	r := mux.NewRouter()
-	// if auth is enabled
-	if config.PrestConf.AuthEnabled {
-		r.HandleFunc("/auth", Auth).Methods("POST")
+	if enabled {
+		r.HandleFunc("/auth", c.Auth).Methods("POST")
 	}
 	return r
 }
 
 func Test_basicPasswordCheck(t *testing.T) {
-	config.Load()
-	postgres.Load()
+	cfg := New(config.PrestConf, nil)
 
-	_, err := basicPasswordCheck("test@postgres.rest", "123456")
+	_, err := cfg.basicPasswordCheck("test@postgres.rest", "123456")
 	if err != nil {
 		t.Errorf("expected authenticated user, got: %s", err)
 	}
 }
 
 func Test_getSelectQuery(t *testing.T) {
-	config.Load()
+	cfg := New(config.PrestConf, nil)
 
 	expected := "SELECT * FROM public.prest_users WHERE username=$1 AND password=$2 LIMIT 1"
-	query := getSelectQuery()
+	query := cfg.getSelectQuery()
 
-	if query != expected {
-		t.Errorf("expected query: %s, got: %s", expected, query)
-	}
+	require.Equal(t, expected, query)
 }
 
 func Test_encrypt(t *testing.T) {
-	config.Load()
+	cfg := New(&config.Prest{AuthEncrypt: "MD5"}, nil)
 
 	pwd := "123456"
-	enc := encrypt(pwd)
+	enc := encrypt(cfg.server.AuthEncrypt, pwd)
 
 	md5Enc := fmt.Sprintf("%x", md5.Sum([]byte(pwd)))
 	if enc != md5Enc {
@@ -57,7 +57,7 @@ func Test_encrypt(t *testing.T) {
 
 	config.PrestConf.AuthEncrypt = "SHA1"
 
-	enc = encrypt(pwd)
+	enc = encrypt(cfg.server.AuthEncrypt, pwd)
 
 	sha1Enc := fmt.Sprintf("%x", sha1.Sum([]byte(pwd)))
 	if enc != sha1Enc {
@@ -66,7 +66,11 @@ func Test_encrypt(t *testing.T) {
 }
 
 func TestAuthDisable(t *testing.T) {
-	server := httptest.NewServer(initAuthRoutes())
+	ctrl := gomock.NewController(t)
+	adapter := mockgen.NewMockAdapter(ctrl)
+	h := Config{adapter: adapter}
+
+	server := httptest.NewServer(initAuthRoutes(false, h))
 	defer server.Close()
 
 	t.Log("/auth request POST method, disable auth")
@@ -74,11 +78,16 @@ func TestAuthDisable(t *testing.T) {
 }
 
 func TestAuthEnable(t *testing.T) {
-	config.Load()
-	postgres.Load()
+	ctrl := gomock.NewController(t)
+	adapter := mockgen.NewMockAdapter(ctrl)
+	h := Config{
+		server:  &config.Prest{Debug: true},
+		adapter: adapter,
+	}
+
 	config.PrestConf.AuthEnabled = true
 
-	server := httptest.NewServer(initAuthRoutes())
+	server := httptest.NewServer(initAuthRoutes(true, h))
 	defer server.Close()
 
 	var testCases = []struct {

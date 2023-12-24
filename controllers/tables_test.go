@@ -10,7 +10,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
+
+	"github.com/prest/prest/adapters/mockgen"
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
 	pctx "github.com/prest/prest/context"
@@ -46,8 +49,15 @@ func TestGetTables(t *testing.T) {
 		{"Get tables with noexistent column", "/tables?c.rolooo=$eq.test", "GET", http.StatusBadRequest},
 	}
 
+	ctrl := gomock.NewController(t)
+	adapter := mockgen.NewMockAdapter(ctrl)
+	h := Config{
+		server:  &config.Prest{Debug: true},
+		adapter: adapter,
+	}
+
 	router := mux.NewRouter()
-	router.HandleFunc("/tables", setHTTPTimeoutMiddleware(GetTables)).
+	router.HandleFunc("/tables", setHTTPTimeoutMiddleware(h.GetTables)).
 		Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -77,12 +87,19 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 		{"Get tables by databases with noexistent column", "/prest-test/public?t.taababa=$eq.test", "GET", http.StatusBadRequest},
 		{"Get tables by databases with not configured database", "/random/public?t.taababa=$eq.test", "GET", http.StatusBadRequest},
 	}
+	ctrl := gomock.NewController(t)
+	adapter := mockgen.NewMockAdapter(ctrl)
+	h := Config{
+		server:  &config.Prest{Debug: true},
+		adapter: adapter,
+	}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}", setHTTPTimeoutMiddleware(GetTablesByDatabaseAndSchema)).
+	router.HandleFunc("/{database}/{schema}", setHTTPTimeoutMiddleware(h.GetTablesByDatabaseAndSchema)).
 		Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
+
 	for _, tc := range testCases {
 		t.Log(tc.description)
 		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetTablesByDatabaseAndSchema")
@@ -90,8 +107,15 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 }
 
 func TestSelectFromTables(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	adapter := mockgen.NewMockAdapter(ctrl)
+	h := Config{
+		server:  &config.Prest{Debug: true},
+		adapter: adapter,
+	}
+
 	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(SelectFromTables)).
+	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(h.SelectFromTables)).
 		Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -152,8 +176,6 @@ func TestSelectFromTables(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		//config.PrestConf = &config.Prest{}
-		//config.Load()
 
 		if tc.body != "" {
 			testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "SelectFromTables", tc.body)
@@ -174,8 +196,15 @@ func TestInsertInTables(t *testing.T) {
 	mARRAY := make(map[string]interface{})
 	mARRAY["data"] = []string{"value 1", "value 2", "value 3"}
 
+	ctrl := gomock.NewController(t)
+	adapter := mockgen.NewMockAdapter(ctrl)
+	h := Config{
+		server:  &config.Prest{Debug: true},
+		adapter: adapter,
+	}
+
 	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(InsertInTables)).
+	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(h.InsertInTables)).
 		Methods("POST")
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -213,8 +242,15 @@ func TestBatchInsertInTables(t *testing.T) {
 	mARRAY := make([]map[string]interface{}, 0)
 	mARRAY = append(mARRAY, map[string]interface{}{"data": []string{"1", "2"}}, map[string]interface{}{"data": []string{"1", "2", "3"}})
 
+	ctrl := gomock.NewController(t)
+	adapter := mockgen.NewMockAdapter(ctrl)
+	h := Config{
+		server:  &config.Prest{Debug: true},
+		adapter: adapter,
+	}
+
 	router := mux.NewRouter()
-	router.HandleFunc("/batch/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(BatchInsertInTables)).
+	router.HandleFunc("/batch/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(h.BatchInsertInTables)).
 		Methods("POST")
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -272,8 +308,16 @@ func TestBatchInsertInTables(t *testing.T) {
 }
 
 func TestDeleteFromTable(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+	adapter := mockgen.NewMockAdapter(ctrl)
+	h := Config{
+		server:  &config.Prest{Debug: true},
+		adapter: adapter,
+	}
+
 	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(DeleteFromTable)).
+	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(h.DeleteFromTable)).
 		Methods("DELETE")
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -301,8 +345,16 @@ func TestDeleteFromTable(t *testing.T) {
 }
 
 func TestUpdateFromTable(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+	adapter := mockgen.NewMockAdapter(ctrl)
+	h := Config{
+		server:  &config.Prest{Debug: true},
+		adapter: adapter,
+	}
+
 	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(UpdateTable)).
+	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(h.UpdateTable)).
 		Methods("PUT", "PATCH")
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -338,8 +390,16 @@ func TestUpdateFromTable(t *testing.T) {
 }
 
 func TestShowTable(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+	adapter := mockgen.NewMockAdapter(ctrl)
+	h := Config{
+		server:  &config.Prest{Debug: true},
+		adapter: adapter,
+	}
+
 	router := mux.NewRouter()
-	router.HandleFunc("/show/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(ShowTable)).
+	router.HandleFunc("/show/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(h.ShowTable)).
 		Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
