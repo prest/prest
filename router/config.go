@@ -7,12 +7,12 @@ import (
 
 type Config struct {
 	router       *mux.Router
-	ServerConfig *config.Prest
+	serverConfig *config.Prest
 }
 
 func New(c *config.Prest) *Config {
 	cfg := &Config{
-		ServerConfig: c,
+		serverConfig: c,
 	}
 	cfg.Get()
 	return cfg
