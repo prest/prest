@@ -16,10 +16,11 @@ import (
 	"sync"
 	"unicode"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
+	"github.com/structy/log"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/prest/prest/adapters"
 	"github.com/prest/prest/adapters/postgres/formatters"
 	"github.com/prest/prest/adapters/postgres/internal/connection"
@@ -28,12 +29,26 @@ import (
 	"github.com/prest/prest/config"
 	pctx "github.com/prest/prest/context"
 	"github.com/prest/prest/template"
-	"github.com/structy/log"
+)
+
+const (
+	pageNumberKey   = "_page"
+	pageSizeKey     = "_page_size"
+	defaultPageSize = 10
+	//nolint
+	defaultPageNumber = 1
 )
 
 var (
 	// ensure the adapter interface is implemented by the postgres adapter
 	_ adapters.Adapter = (*Adapter)(nil)
+
+	removeOperatorRegex        = regexp.MustCompile(`\$[a-z]+.`)
+	insertTableNameRegex       = regexp.MustCompile(`(?i)INTO\s+([\w|\.|-]*\.)*([\w|-]+)\s*\(`)
+	insertTableNameQuotesRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.|"|-]*\.)*"([\w|-]+)"\s*\(`)
+	groupRegex                 = regexp.MustCompile(`\"(.+?)\"`)
+
+	stmts *Stmt
 )
 
 // Postgres struct to keep compatibility
@@ -48,21 +63,6 @@ type Adapter struct {
 func NewAdapter(cfg *config.Prest) *Adapter {
 	return &Adapter{cfg: cfg}
 }
-
-const (
-	pageNumberKey   = "_page"
-	pageSizeKey     = "_page_size"
-	defaultPageSize = 10
-	//nolint
-	defaultPageNumber = 1
-)
-
-var removeOperatorRegex *regexp.Regexp
-var insertTableNameQuotesRegex *regexp.Regexp
-var insertTableNameRegex *regexp.Regexp
-var groupRegex *regexp.Regexp
-
-var stmts *Stmt
 
 // Stmt statement representation
 type Stmt struct {
@@ -115,13 +115,6 @@ func Load() {
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-func init() {
-	removeOperatorRegex = regexp.MustCompile(`\$[a-z]+.`)
-	insertTableNameRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.|-]*\.)*([\w|-]+)\s*\(`)
-	insertTableNameQuotesRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.|"|-]*\.)*"([\w|-]+)"\s*\(`)
-	groupRegex = regexp.MustCompile(`\"(.+?)\"`)
 }
 
 // GetStmt get statement
