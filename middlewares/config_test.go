@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	prestTomlCfg = &config.Prest{
+	prestCfg = &config.Prest{
 		Debug:           true,
 		CORSAllowOrigin: []string{"*"},
 		AuthTable:       "prest_users",
@@ -115,8 +115,10 @@ func TestGetAppWithReorderedMiddleware(t *testing.T) {
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {})
 	n := GetApp(&config.Prest{}, customMiddleware)
 	n.UseHandler(r)
+
 	server := httptest.NewServer(n)
 	defer server.Close()
+
 	resp, err := http.Get(server.URL)
 	require.NoError(t, err)
 
@@ -142,12 +144,14 @@ func TestGetAppWithoutReorderedMiddleware(t *testing.T) {
 }
 
 func Test_Middleware_DoesntBlock_CustomRoutes(t *testing.T) {
+	routerCfg := controllers.New(prestCfg, nil)
+
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
 	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.SelectFromTables).Methods("GET")
+	crudRoutes.HandleFunc("/{database}/{schema}/{table}", routerCfg.SelectFromTables).Methods("GET")
 
-	cfg := prestTomlCfg
+	cfg := prestCfg
 	cfg.Adapter = postgres.NewAdapter(cfg)
 
 	r.PathPrefix("/").Handler(negroni.New(
@@ -294,7 +298,7 @@ func Test_CORS_Middleware(t *testing.T) {
 		w.Write([]byte("custom route"))
 	})
 
-	n := GetApp(prestTomlCfg)
+	n := GetApp(prestCfg)
 	n.UseHandler(r)
 
 	server := httptest.NewServer(n)
@@ -333,21 +337,29 @@ func TestExposeTablesMiddleware(t *testing.T) {
 		AuthMetadata: []string{"first_name", "last_name", "last_login"},
 	}
 
+	routerCfg := controllers.New(prestCfg, nil)
+
 	r := mux.NewRouter()
-	r.HandleFunc("/tables", controllers.GetTables).Methods("GET")
-	r.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
-	r.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
+
+	r.HandleFunc("/tables", routerCfg.GetTables).Methods("GET")
+	r.HandleFunc("/databases", routerCfg.GetDatabases).Methods("GET")
+	r.HandleFunc("/schemas", routerCfg.GetSchemas).Methods("GET")
+
 	n := GetApp(cfg)
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
 	defer server.Close()
-	resp, _ := http.Get(server.URL + "/tables")
+
+	resp, err := http.Get(server.URL + "/tables")
+	require.NoError(t, err)
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
-	resp, _ = http.Get(server.URL + "/databases")
+	resp, err = http.Get(server.URL + "/databases")
+	require.NoError(t, err)
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
-	resp, _ = http.Get(server.URL + "/schemas")
+	resp, err = http.Get(server.URL + "/schemas")
+	require.NoError(t, err)
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
 
@@ -359,6 +371,7 @@ func appTest(cfg *config.Prest) *negroni.Negroni {
 			w.WriteHeader(http.StatusNotImplemented)
 		})
 	}
+
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("test app"))
 	}).Methods("GET")
