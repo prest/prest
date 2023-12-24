@@ -55,17 +55,17 @@ func (r *Config) Get() {
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", routes.DeleteFromTable).Methods("DELETE")
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", routes.UpdateTable).Methods("PUT", "PATCH")
 
-	r.router.PathPrefix("/").Handler(negroni.New(
-		middlewares.ExposureMiddleware(r.serverConfig),
-		middlewares.AccessControl(r.serverConfig),
-		middlewares.AuthMiddleware(r.serverConfig),
-		middlewares.CacheMiddleware(r.serverConfig),
-		// plugins middleware
-		plugins.MiddlewarePlugin(r.serverConfig.PluginMiddlewareList),
-		negroni.Wrap(crudRoutes),
-	))
-
-	return
+	r.router.PathPrefix("/").Handler(
+		negroni.New(
+			middlewares.ExposureMiddleware(r.serverConfig),
+			middlewares.AccessControl(r.serverConfig),
+			middlewares.AuthMiddleware(r.serverConfig),
+			middlewares.CacheMiddleware(r.serverConfig),
+			// plugins middleware
+			plugins.MiddlewarePlugin(r.serverConfig.PluginMiddlewareList),
+			negroni.Wrap(crudRoutes),
+		),
+	)
 }
 
 // Routes for pREST
