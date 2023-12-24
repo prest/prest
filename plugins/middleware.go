@@ -56,21 +56,23 @@ example .toml config:
 file = "hello_midlleware.so"
 func = "Hello"
 */
-func MiddlewarePlugin() negroni.Handler {
-	if runtime.GOOS != "windows" {
-		// list of plugins configured to be loaded
-		pluginMiddlewareList := config.PrestConf.PluginMiddlewareList
-		for _, plugin := range pluginMiddlewareList {
-			fn, err := loadMiddlewareFunc(plugin.File, plugin.Func)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			if fn == nil {
-				continue
-			}
-			return negroni.HandlerFunc(fn)
+func MiddlewarePlugin(middlewares []config.PluginMiddleware) negroni.Handler {
+	if runtime.GOOS == "windows" {
+		return negroni.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
+			next(rw, rq)
+		})
+	}
+	for _, plugin := range middlewares {
+		fn, err := loadMiddlewareFunc(plugin.File, plugin.Func)
+		if err != nil {
+			log.Println(err)
+			continue
 		}
+
+		if fn == nil {
+			continue
+		}
+		return negroni.HandlerFunc(fn)
 	}
 	// negroni not support nil, return empty middleware to continue request
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {

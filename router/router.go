@@ -61,7 +61,7 @@ func (r *Config) Get() {
 		middlewares.AuthMiddleware(r.serverConfig),
 		middlewares.CacheMiddleware(r.serverConfig),
 		// plugins middleware
-		plugins.MiddlewarePlugin(),
+		plugins.MiddlewarePlugin(r.serverConfig.PluginMiddlewareList),
 		negroni.Wrap(crudRoutes),
 	))
 
