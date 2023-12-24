@@ -22,7 +22,8 @@ var (
 	ErrJWTValidate  = errors.New("failed JWT claims validated")
 )
 
-// HandlerSet add content type to the header
+// HandlerSet add content type to the header response
+// and set the response format to the requested format
 func HandlerSet() negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		format := r.URL.Query().Get("_renderer")
@@ -42,45 +43,55 @@ func SetTimeoutToContext(timeout int) negroni.Handler {
 	})
 }
 
-// AuthMiddleware handles request token validation
-func AuthMiddleware(cfg *config.Prest) negroni.Handler {
+// AuthMiddleware handles request token validation and user info extraction from token
+//
+// if token is valid, it will pass user_info to the next handler
+//
+// if token is invalid, it will return 401
+//
+// if token is not present, it will return 401
+//
+// if token is present but not valid, it will return 401
+func AuthMiddleware(enabled bool, key string, ignoreList []string) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		match, err := MatchURL(cfg.JWTWhiteList, r.URL.String())
+		match, err := MatchURL(ignoreList, r.URL.String())
 		if err != nil {
 			http.Error(rw, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
 			return
 		}
-		if cfg.AuthEnabled && !match {
-			// extract authorization token
-			token := strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1)
-			if token == "" {
-				err := fmt.Errorf("authorization token is empty")
-				http.Error(rw, err.Error(), http.StatusUnauthorized)
-				return
-			}
-
-			tok, err := jwt.ParseSigned(token)
-			if err != nil {
-				http.Error(rw, ErrJWTParseFail.Error(), http.StatusUnauthorized)
-				return
-			}
-			claims := auth.Claims{}
-			if err := tok.Claims([]byte(cfg.JWTKey), &claims); err != nil {
-				http.Error(rw, err.Error(), http.StatusUnauthorized)
-				return
-			}
-			if err := Validate(claims); err != nil {
-				http.Error(rw, err.Error(), http.StatusUnauthorized)
-				return
-			}
-
-			// pass user_info to the next handler
-			ctx := r.Context()
-			ctx = context.WithValue(ctx, pctx.UserInfoKey, claims.UserInfo)
-			r = r.WithContext(ctx)
+		if !enabled || match {
+			next(rw, r)
+			return
 		}
 
-		// if auth isn't enabled
+		// extract authorization token
+		token := strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1)
+		if token == "" {
+			err := fmt.Errorf("authorization token is empty")
+			http.Error(rw, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		tok, err := jwt.ParseSigned(token)
+		if err != nil {
+			http.Error(rw, ErrJWTParseFail.Error(), http.StatusUnauthorized)
+			return
+		}
+		claims := auth.Claims{}
+		if err := tok.Claims([]byte(key), &claims); err != nil {
+			http.Error(rw, err.Error(), http.StatusUnauthorized)
+			return
+		}
+		if err := Validate(claims); err != nil {
+			http.Error(rw, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		// pass user_info to the next handler
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, pctx.UserInfoKey, claims.UserInfo)
+		r = r.WithContext(ctx)
+
 		next(rw, r)
 	})
 }

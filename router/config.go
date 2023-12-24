@@ -6,13 +6,13 @@ import (
 )
 
 type Config struct {
-	router       *mux.Router
-	serverConfig *config.Prest
+	router *mux.Router
+	srvCfg *config.Prest
 }
 
 func New(c *config.Prest) *Config {
 	cfg := &Config{
-		serverConfig: c,
+		srvCfg: c,
 	}
 	cfg.Get()
 	return cfg

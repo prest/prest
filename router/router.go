@@ -16,11 +16,11 @@ import (
 // v2: this is not used anywhere, so we can make it private
 func (r *Config) Get() {
 	// TODO: allow logger customization
-	routes := controllers.New(r.serverConfig, log.Default())
+	routes := controllers.New(r.srvCfg, log.Default())
 
 	r.router = mux.NewRouter().StrictSlash(true)
 
-	if r.serverConfig.AuthEnabled {
+	if r.srvCfg.AuthEnabled {
 		// can be db specific in the future, there's bellow a proposal
 		// maybe disable on multiple databases
 		r.router.HandleFunc("/auth", routes.Auth).Methods("POST")
@@ -57,12 +57,13 @@ func (r *Config) Get() {
 
 	r.router.PathPrefix("/").Handler(
 		negroni.New(
-			middlewares.ExposureMiddleware(r.serverConfig),
-			middlewares.AccessControl(r.serverConfig),
-			middlewares.AuthMiddleware(r.serverConfig),
-			middlewares.CacheMiddleware(r.serverConfig),
+			middlewares.ExposureMiddleware(r.srvCfg),
+			middlewares.AccessControl(r.srvCfg),
+			middlewares.AuthMiddleware(
+				r.srvCfg.AuthEnabled, r.srvCfg.JWTKey, r.srvCfg.JWTWhiteList),
+			middlewares.CacheMiddleware(r.srvCfg),
 			// plugins middleware
-			plugins.MiddlewarePlugin(r.serverConfig.PluginPath, r.serverConfig.PluginMiddlewareList),
+			plugins.MiddlewarePlugin(r.srvCfg.PluginPath, r.srvCfg.PluginMiddlewareList),
 			negroni.Wrap(crudRoutes),
 		),
 	)
