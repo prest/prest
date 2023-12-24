@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"crypto/md5"
 	"crypto/sha1"
 	"fmt"
@@ -63,14 +64,14 @@ func Test_basicPasswordCheck(t *testing.T) {
 	dc.Adapter = adapter
 
 	cfg := New(&dc, nil)
-	_, err := cfg.basicPasswordCheck("test@postgres.rest", "123456")
+	_, err := cfg.basicPasswordCheck(context.Background(), "test@postgres.rest", "123456")
 	if err != nil {
 		t.Errorf("expected authenticated user, got: %s", err)
 	}
 }
 
 func Test_getSelectQuery(t *testing.T) {
-	cfg := New(&config.Prest{}, nil)
+	cfg := New(defaultConfig, nil)
 
 	expected := "SELECT * FROM public.prest_users WHERE username=$1 AND password=$2 LIMIT 1"
 	query := cfg.getSelectQuery()
@@ -89,7 +90,7 @@ func Test_encrypt(t *testing.T) {
 		t.Errorf("expected encrypted password to be: %s, got: %s", enc, md5Enc)
 	}
 
-	config.PrestConf.AuthEncrypt = "SHA1"
+	cfg.server.AuthEncrypt = "SHA1"
 
 	enc = encrypt(cfg.server.AuthEncrypt, pwd)
 
@@ -102,7 +103,12 @@ func Test_encrypt(t *testing.T) {
 func TestAuthDisable(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	adapter := mockgen.NewMockAdapter(ctrl)
-	h := Config{adapter: adapter}
+	h := Config{
+		server: &config.Prest{
+			AuthEnabled: false,
+			Debug:       true,
+		},
+		adapter: adapter}
 
 	server := httptest.NewServer(initAuthRoutes(false, h))
 	defer server.Close()
@@ -112,30 +118,51 @@ func TestAuthDisable(t *testing.T) {
 }
 
 func TestAuthEnable(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	adapter := mockgen.NewMockAdapter(ctrl)
-	h := Config{
-		server:  &config.Prest{Debug: true},
-		adapter: adapter,
-	}
-
-	config.PrestConf.AuthEnabled = true
-
-	server := httptest.NewServer(initAuthRoutes(true, h))
-	defer server.Close()
 
 	var testCases = []struct {
 		description string
 		url         string
 		method      string
 		status      int
+
+		wantAuth bool
+		authType string
 	}{
-		{"/auth request GET method", "/auth", "GET", http.StatusMethodNotAllowed},
-		{"/auth request POST method", "/auth", "POST", http.StatusUnauthorized},
+		{"/auth request GET method", "/auth", "GET", http.StatusMethodNotAllowed, false, ""},
+		{"/auth request POST method basic auth", "/auth", "POST", http.StatusBadRequest, false, "basic"},
+		{"/auth request POST method no auth provided", "/auth", "POST", http.StatusUnauthorized, true, ""},
 	}
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
+
+		ctrl := gomock.NewController(t)
+		adapter := mockgen.NewMockAdapter(ctrl)
+
+		if tc.wantAuth {
+			ctrl2 := gomock.NewController(t)
+			adapter2 := mockgen.NewMockScanner(ctrl2)
+
+			adapter.EXPECT().QueryCtx(gomock.Any(), "SELECT * FROM . WHERE =$1 AND =$2 LIMIT 1",
+				gomock.Any(), gomock.Any()).Return(adapter2)
+
+			adapter2.EXPECT().Err().Return(nil)
+			adapter2.EXPECT().Scan(&auth.User{}).Return(0, nil)
+		}
+
+		h := Config{
+			server: &config.Prest{
+				Debug:       true,
+				AuthEnabled: true,
+				AuthType:    tc.authType,
+			},
+			adapter: adapter,
+		}
+
+		server := httptest.NewServer(initAuthRoutes(true, h))
+
 		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "AuthEnable")
+
+		server.Close()
 	}
 }
