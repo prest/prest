@@ -47,8 +47,6 @@ var (
 	insertTableNameRegex       = regexp.MustCompile(`(?i)INTO\s+([\w|\.|-]*\.)*([\w|-]+)\s*\(`)
 	insertTableNameQuotesRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.|"|-]*\.)*"([\w|-]+)"\s*\(`)
 	groupRegex                 = regexp.MustCompile(`\"(.+?)\"`)
-
-	stmts *Stmt
 )
 
 // Postgres struct to keep compatibility
@@ -56,12 +54,19 @@ type Postgres Adapter
 
 // Adapter implements the postgres adapter
 type Adapter struct {
-	cfg *config.Prest
+	cfg  *config.Prest
+	stmt *Stmt
 }
 
 // NewAdapter sets the postgresql adapter
 func NewAdapter(cfg *config.Prest) *Adapter {
-	return &Adapter{cfg: cfg}
+	return &Adapter{
+		cfg: cfg,
+		stmt: &Stmt{
+			Mtx:        &sync.Mutex{},
+			PrepareMap: make(map[string]*sql.Stmt),
+		},
+	}
 }
 
 // Stmt statement representation
@@ -87,15 +92,16 @@ func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string, cache bool) (stateme
 	} else {
 		statement, err = db.Prepare(SQL)
 	}
-
 	if err != nil {
 		return
 	}
+
 	if cache && (tx == nil) {
 		s.Mtx.Lock()
 		s.PrepareMap[SQL] = statement
 		s.Mtx.Unlock()
 	}
+
 	return
 }
 
@@ -118,21 +124,21 @@ func Load() {
 }
 
 // GetStmt get statement
-func GetStmt() *Stmt {
-	if stmts == nil {
-		stmts = &Stmt{
+func (a Adapter) GetStmt() *Stmt {
+	if a.stmt == nil {
+		a.stmt = &Stmt{
 			Mtx:        &sync.Mutex{},
 			PrepareMap: make(map[string]*sql.Stmt),
 		}
 	}
-	return stmts
+	return a.stmt
 }
 
 // ClearStmt used to reset the cache and allow multiple tests
-func ClearStmt() {
-	if stmts != nil {
-		stmts = nil
-		stmts = GetStmt()
+func (a Adapter) ClearStmt() {
+	if a.stmt != nil {
+		a.stmt = nil
+		a.stmt = a.GetStmt()
 	}
 }
 
@@ -157,13 +163,13 @@ func (a Adapter) GetTransactionCtx(ctx context.Context) (tx *sql.Tx, err error) 
 }
 
 // Prepare statement func
-func Prepare(db *sqlx.DB, SQL string, cache bool) (stmt *sql.Stmt, err error) {
-	return GetStmt().Prepare(db, nil, SQL, cache)
+func (a Adapter) Prepare(db *sqlx.DB, SQL string, cache bool) (stmt *sql.Stmt, err error) {
+	return a.GetStmt().Prepare(db, nil, SQL, cache)
 }
 
 // PrepareTx statement func
-func PrepareTx(tx *sql.Tx, SQL string, cache bool) (stmt *sql.Stmt, err error) {
-	return GetStmt().Prepare(nil, tx, SQL, cache)
+func (a Adapter) PrepareTx(tx *sql.Tx, SQL string, cache bool) (stmt *sql.Stmt, err error) {
+	return a.GetStmt().Prepare(nil, tx, SQL, cache)
 }
 
 // chkInvalidIdentifier return true if identifier is invalid
@@ -676,7 +682,7 @@ func (a Adapter) QueryCtx(ctx context.Context, SQL string, params ...interface{}
 	}
 	SQL = fmt.Sprintf("SELECT %s(s) FROM (%s) s", a.cfg.JSONAggType, SQL)
 	log.Debugln("generated SQL:", SQL, " parameters: ", params)
-	p, err := Prepare(db, SQL, a.cfg.PGCache)
+	p, err := a.Prepare(db, SQL, a.cfg.PGCache)
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
@@ -701,7 +707,7 @@ func (a Adapter) Query(SQL string, params ...interface{}) (sc adapters.Scanner) 
 	}
 	SQL = fmt.Sprintf("SELECT %s(s) FROM (%s) s", a.cfg.JSONAggType, SQL)
 	log.Debugln("generated SQL:", SQL, " parameters: ", params)
-	p, err := Prepare(db, SQL, a.cfg.PGCache)
+	p, err := a.Prepare(db, SQL, a.cfg.PGCache)
 	if err != nil {
 		return &scanner.PrestScanner{Error: err}
 	}
@@ -725,7 +731,7 @@ func (a Adapter) QueryCount(SQL string, params ...interface{}) (sc adapters.Scan
 	}
 
 	log.Debugln("generated SQL:", SQL, " parameters: ", params)
-	p, err := Prepare(db, SQL, a.cfg.PGCache)
+	p, err := a.Prepare(db, SQL, a.cfg.PGCache)
 	if err != nil {
 		return &scanner.PrestScanner{Error: err}
 	}
@@ -754,7 +760,7 @@ func (a Adapter) QueryCountCtx(ctx context.Context, SQL string, params ...interf
 		return &scanner.PrestScanner{Error: err}
 	}
 	log.Debugln("generated SQL:", SQL, " parameters: ", params)
-	p, err := Prepare(db, SQL, a.cfg.PGCache)
+	p, err := a.Prepare(db, SQL, a.cfg.PGCache)
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
@@ -1031,11 +1037,9 @@ func (a Adapter) fullInsert(db *sqlx.DB, tx *sql.Tx, SQL string) (stmt *sql.Stmt
 	}
 	SQL = fmt.Sprintf(`%s RETURNING row_to_json("%s")`, SQL, tableName[2])
 	if tx != nil {
-		stmt, err = PrepareTx(tx, SQL, a.cfg.PGCache)
-	} else {
-		stmt, err = Prepare(db, SQL, a.cfg.PGCache)
+		return a.PrepareTx(tx, SQL, a.cfg.PGCache)
 	}
-	return
+	return a.Prepare(db, SQL, a.cfg.PGCache)
 }
 
 // Insert execute insert sql into a table
@@ -1108,9 +1112,9 @@ func (a Adapter) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface
 	var stmt *sql.Stmt
 	var err error
 	if tx != nil {
-		stmt, err = PrepareTx(tx, SQL, a.cfg.PGCache)
+		stmt, err = a.PrepareTx(tx, SQL, a.cfg.PGCache)
 	} else {
-		stmt, err = Prepare(db, SQL, a.cfg.PGCache)
+		stmt, err = a.Prepare(db, SQL, a.cfg.PGCache)
 	}
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", SQL, err)
@@ -1198,9 +1202,9 @@ func (a Adapter) update(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface
 	var stmt *sql.Stmt
 	var err error
 	if tx != nil {
-		stmt, err = PrepareTx(tx, SQL, a.cfg.PGCache)
+		stmt, err = a.PrepareTx(tx, SQL, a.cfg.PGCache)
 	} else {
-		stmt, err = Prepare(db, SQL, a.cfg.PGCache)
+		stmt, err = a.Prepare(db, SQL, a.cfg.PGCache)
 	}
 	if err != nil {
 		log.Errorf("could not prepare sql: %s\n Error: %v\n", SQL, err)

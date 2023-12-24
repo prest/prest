@@ -10,6 +10,7 @@ import (
 	"github.com/prest/prest/config"
 )
 
+// todo: remove this
 func TestMain(m *testing.M) {
 	os.Setenv("PREST_CONF", "./testdata/prest.toml")
 	config.Load()
@@ -119,7 +120,10 @@ func TestWriteSQL(t *testing.T) {
 	}
 	for _, tc := range testValidCases {
 		t.Log(tc.description)
-		sc := WriteSQL(tc.sql, tc.values)
+		// todo: fix this test
+		adpt := NewAdapter(&config.Prest{})
+
+		sc := adpt.WriteSQL(tc.sql, tc.values)
 		if sc.Err() != nil && tc.pass {
 			t.Errorf("pass true, got: %s", sc.Err())
 		} else if sc.Err() == nil && !tc.pass {
@@ -144,7 +148,10 @@ func TestWriteSQLCtx(t *testing.T) {
 	}
 	for _, tc := range testValidCases {
 		t.Log(tc.description)
-		sc := WriteSQLCtx(ctx, tc.sql, tc.values)
+		// todo: fix this test
+		adpt := NewAdapter(&config.Prest{})
+
+		sc := adpt.WriteSQLCtx(ctx, tc.sql, tc.values)
 		if sc.Err() != nil && tc.pass {
 			t.Errorf("pass true, got: %s", sc.Err())
 		} else if sc.Err() == nil && !tc.pass {

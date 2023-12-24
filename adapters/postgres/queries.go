@@ -67,14 +67,14 @@ func (a Adapter) ParseScript(scriptPath string, templateData map[string]interfac
 }
 
 // WriteSQL perform INSERT's, UPDATE's, DELETE's operations
-func WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
+func (a Adapter) WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
 	db, err := connection.Get()
 	if err != nil {
 		log.Println(err)
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	stmt, err := Prepare(db, sql, false)
+	stmt, err := a.Prepare(db, sql, false)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -113,14 +113,14 @@ func WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
 }
 
 // WriteSQLCtx perform INSERT's, UPDATE's, DELETE's operations
-func WriteSQLCtx(ctx context.Context, sql string, values []interface{}) (sc adapters.Scanner) {
+func (a Adapter) WriteSQLCtx(ctx context.Context, sql string, values []interface{}) (sc adapters.Scanner) {
 	db, err := getDBFromCtx(ctx)
 	if err != nil {
 		log.Println(err)
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
-	stmt, err := Prepare(db, sql, false)
+	stmt, err := a.Prepare(db, sql, false)
 	if err != nil {
 		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -164,7 +164,7 @@ func (a Adapter) ExecuteScripts(method, sql string, values []interface{}) (sc ad
 	case "GET":
 		return a.Query(sql, values...)
 	case "POST", "PUT", "PATCH", "DELETE":
-		return WriteSQL(sql, values)
+		return a.WriteSQL(sql, values)
 	}
 	return &scanner.PrestScanner{Error: fmt.Errorf("invalid method %s", method)}
 }
@@ -175,7 +175,7 @@ func (a Adapter) ExecuteScriptsCtx(ctx context.Context, method, sql string, valu
 	case "GET":
 		return a.QueryCtx(ctx, sql, values...)
 	case "POST", "PUT", "PATCH", "DELETE":
-		return WriteSQLCtx(ctx, sql, values)
+		return a.WriteSQLCtx(ctx, sql, values)
 	}
 	return &scanner.PrestScanner{Error: fmt.Errorf("invalid method %s", method)}
 }
