@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,22 +13,10 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/prest/prest/adapters/mockgen"
-	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
 	pctx "github.com/prest/prest/context"
 	"github.com/prest/prest/testutils"
 )
-
-func init() {
-	config.Load()
-	postgres.Load()
-	if config.PrestConf.PGDatabase != "prest-test" {
-		log.Fatal("expected db: 'prest-test' got ", config.PrestConf.PGDatabase)
-	}
-	if config.PrestConf.Adapter.GetDatabase() != "prest-test" {
-		log.Fatal("expected Adapter db: 'prest-test' got ", config.PrestConf.Adapter.GetDatabase())
-	}
-}
 
 func TestGetTables(t *testing.T) {
 	var testCases = []struct {
