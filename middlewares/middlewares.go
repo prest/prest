@@ -22,7 +22,7 @@ var (
 	ErrJWTValidate  = errors.New("failed JWT claims validated")
 )
 
-// HandlerSet add content type header
+// HandlerSet add content type to the header
 func HandlerSet() negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		format := r.URL.Query().Get("_renderer")
@@ -42,7 +42,7 @@ func SetTimeoutToContext(timeout int) negroni.Handler {
 	})
 }
 
-// AuthMiddleware handle request token validation
+// AuthMiddleware handles request token validation
 func AuthMiddleware(cfg *config.Prest) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		match, err := MatchURL(cfg.JWTWhiteList, r.URL.String())
@@ -50,7 +50,7 @@ func AuthMiddleware(cfg *config.Prest) negroni.Handler {
 			http.Error(rw, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
 			return
 		}
-		if config.PrestConf.AuthEnabled && !match {
+		if cfg.AuthEnabled && !match {
 			// extract authorization token
 			token := strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1)
 			if token == "" {
@@ -65,7 +65,7 @@ func AuthMiddleware(cfg *config.Prest) negroni.Handler {
 				return
 			}
 			claims := auth.Claims{}
-			if err := tok.Claims([]byte(config.PrestConf.JWTKey), &claims); err != nil {
+			if err := tok.Claims([]byte(cfg.JWTKey), &claims); err != nil {
 				http.Error(rw, err.Error(), http.StatusUnauthorized)
 				return
 			}
