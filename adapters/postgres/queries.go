@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 	gotemplate "text/template"
 
+	"github.com/structy/log"
+
 	"github.com/prest/prest/adapters"
-	"github.com/prest/prest/adapters/postgres/internal/connection"
 	"github.com/prest/prest/adapters/scanner"
 	"github.com/prest/prest/template"
-	"github.com/structy/log"
 )
 
 // GetScript get SQL template file
@@ -68,7 +68,7 @@ func (a Adapter) ParseScript(scriptPath string, templateData map[string]interfac
 
 // WriteSQL perform INSERT's, UPDATE's, DELETE's operations
 func (a Adapter) WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
-	db, err := connection.Get()
+	db, err := a.conn.Get()
 	if err != nil {
 		log.Println(err)
 		sc = &scanner.PrestScanner{Error: err}
@@ -114,7 +114,7 @@ func (a Adapter) WriteSQL(sql string, values []interface{}) (sc adapters.Scanner
 
 // WriteSQLCtx perform INSERT's, UPDATE's, DELETE's operations
 func (a Adapter) WriteSQLCtx(ctx context.Context, sql string, values []interface{}) (sc adapters.Scanner) {
-	db, err := getDBFromCtx(ctx)
+	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Println(err)
 		sc = &scanner.PrestScanner{Error: err}

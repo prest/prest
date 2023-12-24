@@ -3,6 +3,8 @@ package connection
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	config "github.com/prest/prest/config"
 )
 
@@ -12,28 +14,27 @@ func init() {
 
 func TestGet(t *testing.T) {
 	t.Log("Open connection")
-	db, err := Get()
-	if err != nil {
-		t.Fatalf("Expected err equal to nil but got %q", err.Error())
-	}
+
+	p := NewPool(config.New())
+
+	db, err := p.Get()
+	require.NoError(t, err)
+	require.NotNil(t, db)
 
 	t.Log("Ping Pong")
 	err = db.Ping()
-	if err != nil {
-		t.Fatalf("expected no error, but got: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestMustGet(t *testing.T) {
 	t.Log("Open connection")
-	db := MustGet()
-	if db == nil {
-		t.Fatalf("expected db connection, but no was!")
-	}
+
+	p := NewPool(config.New())
+
+	db := p.MustGet()
+	require.NotNil(t, db)
 
 	t.Log("Ping Pong")
 	err := db.Ping()
-	if err != nil {
-		t.Fatalf("expected no error, but got: %v", err)
-	}
+	require.NoError(t, err)
 }

@@ -56,6 +56,7 @@ type Postgres Adapter
 type Adapter struct {
 	cfg  *config.Prest
 	stmt *Stmt
+	conn *connection.Pool
 }
 
 // NewAdapter sets the postgresql adapter
@@ -66,6 +67,7 @@ func NewAdapter(cfg *config.Prest) *Adapter {
 			Mtx:        &sync.Mutex{},
 			PrepareMap: make(map[string]*sql.Stmt),
 		},
+		conn: connection.NewPool(cfg),
 	}
 }
 
@@ -109,18 +111,18 @@ func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string, cache bool) (stateme
 func Load() {
 	config.PrestConf.Adapter = &Adapter{}
 
-	if connection.GetDatabase() == "" {
-		connection.SetDatabase(config.PrestConf.PGDatabase)
-	}
+	// if a.conn.GetDatabase() == "" {
+	// 	a.conn.SetDatabase(config.PrestConf.PGDatabase)
+	// }
 
-	db, err := connection.Get()
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = db.Ping()
-	if err != nil {
-		log.Fatal(err)
-	}
+	// db, err := a.conn.Get()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// err = db.Ping()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 }
 
 // GetStmt get statement
@@ -144,7 +146,7 @@ func (a Adapter) ClearStmt() {
 
 // GetTransaction get transaction
 func (a Adapter) GetTransaction() (tx *sql.Tx, err error) {
-	db, err := connection.Get()
+	db, err := a.conn.Get()
 	if err != nil {
 		log.Println(err)
 		return
@@ -154,7 +156,7 @@ func (a Adapter) GetTransaction() (tx *sql.Tx, err error) {
 
 // GetTransactionCtx get transaction
 func (a Adapter) GetTransactionCtx(ctx context.Context) (tx *sql.Tx, err error) {
-	db, err := getDBFromCtx(ctx)
+	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
 		return
@@ -675,7 +677,7 @@ func (a Adapter) CountByRequest(req *http.Request) (countQuery string, err error
 // allows setting timeout
 func (a Adapter) QueryCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	// use the db_name that was set on request to avoid runtime collisions
-	db, err := getDBFromCtx(ctx)
+	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
@@ -700,7 +702,7 @@ func (a Adapter) QueryCtx(ctx context.Context, SQL string, params ...interface{}
 }
 
 func (a Adapter) Query(SQL string, params ...interface{}) (sc adapters.Scanner) {
-	db, err := connection.Get()
+	db, err := a.conn.Get()
 	if err != nil {
 		log.Println(err)
 		return &scanner.PrestScanner{Error: err}
@@ -725,7 +727,7 @@ func (a Adapter) Query(SQL string, params ...interface{}) (sc adapters.Scanner) 
 
 // QueryCount process queries with count
 func (a Adapter) QueryCount(SQL string, params ...interface{}) (sc adapters.Scanner) {
-	db, err := connection.Get()
+	db, err := a.conn.Get()
 	if err != nil {
 		return &scanner.PrestScanner{Error: err}
 	}
@@ -754,7 +756,7 @@ func (a Adapter) QueryCount(SQL string, params ...interface{}) (sc adapters.Scan
 
 // QueryCount process queries with count
 func (a Adapter) QueryCountCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
-	db, err := getDBFromCtx(ctx)
+	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
@@ -806,7 +808,7 @@ func (a Adapter) PaginateIfPossible(r *http.Request) (paginatedQuery string, err
 
 // BatchInsertCopy execute batch insert sql into a table unsing copy
 func (a Adapter) BatchInsertCopy(dbname, schema, table string, keys []string, values ...interface{}) (sc adapters.Scanner) {
-	db, err := connection.Get()
+	db, err := a.conn.Get()
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
@@ -872,7 +874,7 @@ func (a Adapter) BatchInsertCopy(dbname, schema, table string, keys []string, va
 
 // BatchInsertCopyCtx execute batch insert sql into a table unsing copy
 func (a Adapter) BatchInsertCopyCtx(ctx context.Context, dbname, schema, table string, keys []string, values ...interface{}) (sc adapters.Scanner) {
-	db, err := getDBFromCtx(ctx)
+	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
@@ -938,7 +940,7 @@ func (a Adapter) BatchInsertCopyCtx(ctx context.Context, dbname, schema, table s
 
 // BatchInsertValues execute batch insert sql into a table unsing multi values
 func (a Adapter) BatchInsertValues(SQL string, values ...interface{}) (sc adapters.Scanner) {
-	db, err := connection.Get()
+	db, err := a.conn.Get()
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
@@ -983,7 +985,7 @@ func (a Adapter) BatchInsertValues(SQL string, values ...interface{}) (sc adapte
 
 // BatchInsertValuesCtx execute batch insert sql into a table unsing multi values
 func (a Adapter) BatchInsertValuesCtx(ctx context.Context, SQL string, values ...interface{}) (sc adapters.Scanner) {
-	db, err := getDBFromCtx(ctx)
+	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
@@ -1044,7 +1046,7 @@ func (a Adapter) fullInsert(db *sqlx.DB, tx *sql.Tx, SQL string) (stmt *sql.Stmt
 
 // Insert execute insert sql into a table
 func (a Adapter) Insert(SQL string, params ...interface{}) (sc adapters.Scanner) {
-	db, err := connection.Get()
+	db, err := a.conn.Get()
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
@@ -1054,7 +1056,7 @@ func (a Adapter) Insert(SQL string, params ...interface{}) (sc adapters.Scanner)
 
 // InsertCtx execute insert sql into a table
 func (a Adapter) InsertCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
-	db, err := getDBFromCtx(ctx)
+	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
@@ -1084,7 +1086,7 @@ func (a Adapter) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface
 
 // Delete execute delete sql into a table
 func (a Adapter) Delete(SQL string, params ...interface{}) (sc adapters.Scanner) {
-	db, err := connection.Get()
+	db, err := a.conn.Get()
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
@@ -1094,7 +1096,7 @@ func (a Adapter) Delete(SQL string, params ...interface{}) (sc adapters.Scanner)
 
 // Delete execute delete sql into a table
 func (a Adapter) DeleteCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
-	db, err := getDBFromCtx(ctx)
+	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
@@ -1175,7 +1177,7 @@ func (a Adapter) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface
 
 // Update execute update sql into a table
 func (a Adapter) Update(SQL string, params ...interface{}) (sc adapters.Scanner) {
-	db, err := connection.Get()
+	db, err := a.conn.Get()
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
@@ -1185,7 +1187,7 @@ func (a Adapter) Update(SQL string, params ...interface{}) (sc adapters.Scanner)
 
 // Update execute update sql into a table
 func (a Adapter) UpdateCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
-	db, err := getDBFromCtx(ctx)
+	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
@@ -1560,11 +1562,6 @@ func NormalizeGroupFunction(paramValue string) (groupFuncSQL string, err error) 
 	}
 }
 
-// SetDatabase set the current database name in use
-func (a Adapter) SetDatabase(name string) {
-	connection.SetDatabase(name)
-}
-
 // SelectSQL generate select sql
 func (a Adapter) SelectSQL(selectStr string, database string, schema string, table string) string {
 	return fmt.Sprintf(`%s "%s"."%s"."%s"`, selectStr, database, schema, table)
@@ -1692,17 +1689,12 @@ func (a Adapter) ShowTableCtx(ctx context.Context, schema, table string) adapter
 	return a.QueryCtx(ctx, query, table, schema)
 }
 
-// GetDatabase returns the current DB name
-func (a Adapter) GetDatabase() string {
-	return connection.GetDatabase()
-}
-
 // getDBFromCtx tries to get the db from context if not present it will
 // fallback to the current setted db
-func getDBFromCtx(ctx context.Context) (db *sqlx.DB, err error) {
+func (a Adapter) getDBFromCtx(ctx context.Context) (db *sqlx.DB, err error) {
 	dbName, ok := ctx.Value(pctx.DBNameKey).(string)
-	if ok {
-		return connection.GetFromPool(dbName)
+	if !ok {
+		return a.conn.Get()
 	}
-	return connection.Get()
+	return a.conn.GetFromPool(dbName)
 }
