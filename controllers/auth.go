@@ -41,7 +41,7 @@ type Login struct {
 }
 
 // Token for user
-func (c *Config) Token(u auth.User) (t string, err error) {
+func Token(u auth.User, key string) (t string, err error) {
 	// add start time (NotBefore)
 	getToken := time.Now()
 	// add expiry time in configuration (in minute format, so we support the maximum need)
@@ -51,7 +51,7 @@ func (c *Config) Token(u auth.User) (t string, err error) {
 	sig, err := signer.NewSigner(
 		signer.SigningKey{
 			Algorithm: signer.HS256,
-			Key:       []byte(c.server.JWTKey)},
+			Key:       []byte(key)},
 		(&signer.SignerOptions{}).WithType("JWT"))
 	if err != nil {
 		return
@@ -93,7 +93,7 @@ func (c *Config) Auth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := c.Token(loggedUser)
+	token, err := Token(loggedUser, c.server.JWTKey)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
