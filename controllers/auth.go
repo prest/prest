@@ -106,14 +106,12 @@ func (c *Config) Auth(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// basicPasswordCheck
+// basicPasswordCheck will check if the user and password are valid
+//
+// table name, fields (user and password) and encryption must be defined in
+// the configuration file (toml) by default this endpoint will not be available,
+// it is necessary to activate in the configuration file
 func (c *Config) basicPasswordCheck(user, password string) (obj auth.User, err error) {
-	/**
-	table name, fields (user and password) and encryption must be defined in
-	the configuration file (toml)
-	by default this endpoint will not be available, it is necessary to activate
-	in the configuration file
-	*/
 	// TODO: use Queryctx
 	sc := c.adapter.Query(c.getSelectQuery(),
 		user,
