@@ -14,7 +14,26 @@ import (
 
 	"github.com/prest/prest/adapters/mockgen"
 	"github.com/prest/prest/config"
+	"github.com/prest/prest/controllers/auth"
 	"github.com/prest/prest/testutils"
+)
+
+var (
+	defaultConfig = &config.Prest{
+		AuthEnabled:  true,
+		AuthEncrypt:  "MD5",
+		AuthSchema:   "public",
+		AuthTable:    "prest_users",
+		AuthUsername: "username",
+		AuthPassword: "password",
+		Debug:        true,
+	}
+
+	authUser = auth.User{
+		ID:       1,
+		Name:     "prest-user",
+		Username: "arxdsilva",
+	}
 )
 
 // todo: fix these tests
@@ -27,8 +46,23 @@ func initAuthRoutes(enabled bool, c Config) *mux.Router {
 }
 
 func Test_basicPasswordCheck(t *testing.T) {
-	cfg := New(config.PrestConf, nil)
+	dc := *defaultConfig
+	ctrl := gomock.NewController(t)
+	adapter := mockgen.NewMockAdapter(ctrl)
 
+	ctrl2 := gomock.NewController(t)
+	adapter2 := mockgen.NewMockScanner(ctrl2)
+
+	adapter2.EXPECT().Err().Return(nil)
+	adapter2.EXPECT().Scan(&auth.User{}).Return(1, nil)
+
+	adapter.EXPECT().Query(
+		"SELECT * FROM public.prest_users WHERE username=$1 AND password=$2 LIMIT 1", "test@postgres.rest", "e10adc3949ba59abbe56e057f20f883e").
+		Return(adapter2)
+
+	dc.Adapter = adapter
+
+	cfg := New(&dc, nil)
 	_, err := cfg.basicPasswordCheck("test@postgres.rest", "123456")
 	if err != nil {
 		t.Errorf("expected authenticated user, got: %s", err)
@@ -36,7 +70,7 @@ func Test_basicPasswordCheck(t *testing.T) {
 }
 
 func Test_getSelectQuery(t *testing.T) {
-	cfg := New(config.PrestConf, nil)
+	cfg := New(&config.Prest{}, nil)
 
 	expected := "SELECT * FROM public.prest_users WHERE username=$1 AND password=$2 LIMIT 1"
 	query := cfg.getSelectQuery()
