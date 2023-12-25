@@ -1,7 +1,6 @@
 package router
 
 import (
-	"log"
 	"runtime"
 
 	"github.com/gorilla/mux"
@@ -28,31 +27,26 @@ func Routes(cfg *config.Prest) (*negroni.Negroni, error) {
 // v2: this is not used anywhere, so we can make it private
 //
 // todo: receive controller interface and mock handlers in tests
-func (r *Config) ConfigRoutes() error {
-	// TODO: allow logger customization
-	handlers, err := controllers.New(r.srvCfg, log.Default())
-	if err != nil {
-		return err
-	}
+func (r *Config) ConfigRoutes(srv controllers.Server) error {
 
 	r.router = mux.NewRouter().StrictSlash(true)
 
 	if r.srvCfg.AuthEnabled {
 		// can be db specific in the future, there's bellow a proposal
 		// maybe disable on multiple databases
-		r.router.HandleFunc("/auth", handlers.Auth).Methods("POST")
+		r.router.HandleFunc("/auth", srv.Auth).Methods("POST")
 		// multiple DB suggestion:
-		// router.HandleFunc("/db/{database}/auth", handlers.Auth).Methods("POST")
+		// router.HandleFunc("/db/{database}/auth", srv.Auth).Methods("POST")
 	}
 
-	r.router.HandleFunc("/databases", handlers.GetDatabases).Methods("GET")
-	r.router.HandleFunc("/schemas", handlers.GetSchemas).Methods("GET")
-	r.router.HandleFunc("/tables", handlers.GetTables).Methods("GET")
+	r.router.HandleFunc("/databases", srv.GetDatabases).Methods("GET")
+	r.router.HandleFunc("/schemas", srv.GetSchemas).Methods("GET")
+	r.router.HandleFunc("/tables", srv.GetTables).Methods("GET")
 
 	// v2: add this route to the router
 	// breaking change
-	r.router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", handlers.ExecuteFromScripts)
-	// r.router.HandleFunc("/_QUERIES/{database}/{queriesLocation}/{script}", handlers.ExecuteFromScripts)
+	r.router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", srv.ExecuteFromScripts)
+	// r.router.HandleFunc("/_QUERIES/{database}/{queriesLocation}/{script}", srv.ExecuteFromScripts)
 
 	// if it is windows it should not register the plugin endpoint
 	// we use go plugin system that does not support windows
@@ -61,21 +55,21 @@ func (r *Config) ConfigRoutes() error {
 		r.router.HandleFunc("/_PLUGIN/{file}/{func}", plugins.HandlerPlugin)
 	}
 
-	r.router.HandleFunc("/{database}/{schema}", handlers.GetTablesByDatabaseAndSchema).Methods("GET")
-	r.router.HandleFunc("/show/{database}/{schema}/{table}", handlers.ShowTable).Methods("GET")
+	r.router.HandleFunc("/{database}/{schema}", srv.GetTablesByDatabaseAndSchema).Methods("GET")
+	r.router.HandleFunc("/show/{database}/{schema}/{table}", srv.ShowTable).Methods("GET")
 
 	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
-	r.router.HandleFunc("/_health", handlers.WrappedHealthCheck(controllers.DefaultCheckList)).Methods("GET")
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", handlers.SelectFromTables).Methods("GET")
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", handlers.InsertInTables).Methods("POST")
-	crudRoutes.HandleFunc("/batch/{database}/{schema}/{table}", handlers.BatchInsertInTables).Methods("POST")
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", handlers.DeleteFromTable).Methods("DELETE")
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", handlers.UpdateTable).Methods("PUT", "PATCH")
+	r.router.HandleFunc("/_health", srv.WrappedHealthCheck(controllers.DefaultCheckList)).Methods("GET")
+	crudRoutes.HandleFunc("/{database}/{schema}/{table}", srv.SelectFromTables).Methods("GET")
+	crudRoutes.HandleFunc("/{database}/{schema}/{table}", srv.InsertInTables).Methods("POST")
+	crudRoutes.HandleFunc("/batch/{database}/{schema}/{table}", srv.BatchInsertInTables).Methods("POST")
+	crudRoutes.HandleFunc("/{database}/{schema}/{table}", srv.DeleteFromTable).Methods("DELETE")
+	crudRoutes.HandleFunc("/{database}/{schema}/{table}", srv.UpdateTable).Methods("PUT", "PATCH")
 
 	r.router.PathPrefix("/").Handler(
 		negroni.New(
 			middlewares.ExposureMiddleware(&r.srvCfg.ExposeConf),
-			middlewares.AccessControl(handlers.GetAdapter().TablePermissions),
+			middlewares.AccessControl(srv.GetAdapter().TablePermissions),
 			middlewares.AuthMiddleware(
 				r.srvCfg.AuthEnabled, r.srvCfg.JWTKey, r.srvCfg.JWTWhiteList),
 			middlewares.CacheMiddleware(r.srvCfg),

@@ -2,10 +2,47 @@ package controllers
 
 import (
 	"log"
+	"net/http"
 
 	"github.com/prest/prest/adapters"
 	"github.com/prest/prest/config"
 )
+
+type Server interface {
+	GetAdapter() adapters.Adapter
+
+	// auth file
+	Auth(w http.ResponseWriter, r *http.Request)
+
+	// databases file
+	GetDatabases(w http.ResponseWriter, r *http.Request)
+
+	// healthcheck file
+	WrappedHealthCheck(checks CheckList) http.HandlerFunc
+
+	// schemas file
+	GetSchemas(w http.ResponseWriter, r *http.Request)
+
+	// sql file
+	ExecuteFromScripts(w http.ResponseWriter, r *http.Request)
+
+	// tables file
+	GetTables(w http.ResponseWriter, r *http.Request)
+	GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request)
+	SelectFromTables(w http.ResponseWriter, r *http.Request)
+	InsertInTables(w http.ResponseWriter, r *http.Request)
+	BatchInsertInTables(w http.ResponseWriter, r *http.Request)
+	DeleteFromTable(w http.ResponseWriter, r *http.Request)
+	UpdateTable(w http.ResponseWriter, r *http.Request)
+	ShowTable(w http.ResponseWriter, r *http.Request)
+	// v2 auto generated ideas
+	// GetColumns(w http.ResponseWriter, r *http.Request)
+	// GetFunctions(w http.ResponseWriter, r *http.Request)
+	// GetIndexes(w http.ResponseWriter, r *http.Request)
+	// GetConstraints(w http.ResponseWriter, r *http.Request)
+	// GetTable(w http.ResponseWriter, r *http.Request)
+	// GetSchema(w http.ResponseWriter, r *http.Request)
+}
 
 // Config
 // server holds the configuration for the Prest server.
