@@ -65,7 +65,7 @@ func (r *Config) ConfigRoutes() error {
 	r.router.HandleFunc("/show/{database}/{schema}/{table}", handlers.ShowTable).Methods("GET")
 
 	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
-	r.router.HandleFunc("/_health", controllers.WrappedHealthCheck(controllers.DefaultCheckList)).Methods("GET")
+	r.router.HandleFunc("/_health", handlers.WrappedHealthCheck(controllers.DefaultCheckList)).Methods("GET")
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", handlers.SelectFromTables).Methods("GET")
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", handlers.InsertInTables).Methods("POST")
 	crudRoutes.HandleFunc("/batch/{database}/{schema}/{table}", handlers.BatchInsertInTables).Methods("POST")
