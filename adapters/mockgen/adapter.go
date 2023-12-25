@@ -11,7 +11,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	adapters "github.com/prest/prest/adapters"
+	scanner "github.com/prest/prest/adapters/scanner"
 )
 
 // MockAdapter is a mock of Adapter interface.
@@ -38,14 +38,14 @@ func (m *MockAdapter) EXPECT() *MockAdapterMockRecorder {
 }
 
 // BatchInsertCopy mocks base method.
-func (m *MockAdapter) BatchInsertCopy(dbname, schema, table string, keys []string, params ...interface{}) adapters.Scanner {
+func (m *MockAdapter) BatchInsertCopy(dbname, schema, table string, keys []string, params ...interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{dbname, schema, table, keys}
 	for _, a := range params {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "BatchInsertCopy", varargs...)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -57,14 +57,14 @@ func (mr *MockAdapterMockRecorder) BatchInsertCopy(dbname, schema, table, keys i
 }
 
 // BatchInsertCopyCtx mocks base method.
-func (m *MockAdapter) BatchInsertCopyCtx(ctx context.Context, dbname, schema, table string, keys []string, params ...interface{}) adapters.Scanner {
+func (m *MockAdapter) BatchInsertCopyCtx(ctx context.Context, dbname, schema, table string, keys []string, params ...interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, dbname, schema, table, keys}
 	for _, a := range params {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "BatchInsertCopyCtx", varargs...)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -76,14 +76,14 @@ func (mr *MockAdapterMockRecorder) BatchInsertCopyCtx(ctx, dbname, schema, table
 }
 
 // BatchInsertValues mocks base method.
-func (m *MockAdapter) BatchInsertValues(SQL string, params ...interface{}) adapters.Scanner {
+func (m *MockAdapter) BatchInsertValues(SQL string, params ...interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{SQL}
 	for _, a := range params {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "BatchInsertValues", varargs...)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -95,14 +95,14 @@ func (mr *MockAdapterMockRecorder) BatchInsertValues(SQL interface{}, params ...
 }
 
 // BatchInsertValuesCtx mocks base method.
-func (m *MockAdapter) BatchInsertValuesCtx(ctx context.Context, SQL string, params ...interface{}) adapters.Scanner {
+func (m *MockAdapter) BatchInsertValuesCtx(ctx context.Context, SQL string, params ...interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, SQL}
 	for _, a := range params {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "BatchInsertValuesCtx", varargs...)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -172,14 +172,14 @@ func (mr *MockAdapterMockRecorder) DatabaseWhere(requestWhere interface{}) *gomo
 }
 
 // Delete mocks base method.
-func (m *MockAdapter) Delete(SQL string, params ...interface{}) adapters.Scanner {
+func (m *MockAdapter) Delete(SQL string, params ...interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{SQL}
 	for _, a := range params {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Delete", varargs...)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -191,14 +191,14 @@ func (mr *MockAdapterMockRecorder) Delete(SQL interface{}, params ...interface{}
 }
 
 // DeleteCtx mocks base method.
-func (m *MockAdapter) DeleteCtx(ctx context.Context, SQL string, params ...interface{}) adapters.Scanner {
+func (m *MockAdapter) DeleteCtx(ctx context.Context, SQL string, params ...interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, SQL}
 	for _, a := range params {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "DeleteCtx", varargs...)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -224,14 +224,14 @@ func (mr *MockAdapterMockRecorder) DeleteSQL(database, schema, table interface{}
 }
 
 // DeleteWithTransaction mocks base method.
-func (m *MockAdapter) DeleteWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) adapters.Scanner {
+func (m *MockAdapter) DeleteWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{tx, SQL}
 	for _, a := range params {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "DeleteWithTransaction", varargs...)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -258,10 +258,10 @@ func (mr *MockAdapterMockRecorder) DistinctClause(r interface{}) *gomock.Call {
 }
 
 // ExecuteScripts mocks base method.
-func (m *MockAdapter) ExecuteScripts(method, sql string, values []interface{}) adapters.Scanner {
+func (m *MockAdapter) ExecuteScripts(method, sql string, values []interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ExecuteScripts", method, sql, values)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -272,10 +272,10 @@ func (mr *MockAdapterMockRecorder) ExecuteScripts(method, sql, values interface{
 }
 
 // ExecuteScriptsCtx mocks base method.
-func (m *MockAdapter) ExecuteScriptsCtx(ctx context.Context, method, sql string, values []interface{}) adapters.Scanner {
+func (m *MockAdapter) ExecuteScriptsCtx(ctx context.Context, method, sql string, values []interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ExecuteScriptsCtx", ctx, method, sql, values)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -374,14 +374,14 @@ func (mr *MockAdapterMockRecorder) GroupByClause(r interface{}) *gomock.Call {
 }
 
 // Insert mocks base method.
-func (m *MockAdapter) Insert(SQL string, params ...interface{}) adapters.Scanner {
+func (m *MockAdapter) Insert(SQL string, params ...interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{SQL}
 	for _, a := range params {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Insert", varargs...)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -393,14 +393,14 @@ func (mr *MockAdapterMockRecorder) Insert(SQL interface{}, params ...interface{}
 }
 
 // InsertCtx mocks base method.
-func (m *MockAdapter) InsertCtx(ctx context.Context, SQL string, params ...interface{}) adapters.Scanner {
+func (m *MockAdapter) InsertCtx(ctx context.Context, SQL string, params ...interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, SQL}
 	for _, a := range params {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "InsertCtx", varargs...)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -426,14 +426,14 @@ func (mr *MockAdapterMockRecorder) InsertSQL(database, schema, table, names, pla
 }
 
 // InsertWithTransaction mocks base method.
-func (m *MockAdapter) InsertWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) adapters.Scanner {
+func (m *MockAdapter) InsertWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{tx, SQL}
 	for _, a := range params {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "InsertWithTransaction", varargs...)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -540,14 +540,14 @@ func (mr *MockAdapterMockRecorder) ParseScript(scriptPath, templateData interfac
 }
 
 // Query mocks base method.
-func (m *MockAdapter) Query(SQL string, params ...interface{}) adapters.Scanner {
+func (m *MockAdapter) Query(SQL string, params ...interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{SQL}
 	for _, a := range params {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Query", varargs...)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -559,14 +559,14 @@ func (mr *MockAdapterMockRecorder) Query(SQL interface{}, params ...interface{})
 }
 
 // QueryCount mocks base method.
-func (m *MockAdapter) QueryCount(SQL string, params ...interface{}) adapters.Scanner {
+func (m *MockAdapter) QueryCount(SQL string, params ...interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{SQL}
 	for _, a := range params {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "QueryCount", varargs...)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -578,14 +578,14 @@ func (mr *MockAdapterMockRecorder) QueryCount(SQL interface{}, params ...interfa
 }
 
 // QueryCountCtx mocks base method.
-func (m *MockAdapter) QueryCountCtx(ctx context.Context, SQL string, params ...interface{}) adapters.Scanner {
+func (m *MockAdapter) QueryCountCtx(ctx context.Context, SQL string, params ...interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, SQL}
 	for _, a := range params {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "QueryCountCtx", varargs...)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -597,14 +597,14 @@ func (mr *MockAdapterMockRecorder) QueryCountCtx(ctx, SQL interface{}, params ..
 }
 
 // QueryCtx mocks base method.
-func (m *MockAdapter) QueryCtx(ctx context.Context, SQL string, params ...interface{}) adapters.Scanner {
+func (m *MockAdapter) QueryCtx(ctx context.Context, SQL string, params ...interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, SQL}
 	for _, a := range params {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "QueryCtx", varargs...)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -759,10 +759,10 @@ func (mr *MockAdapterMockRecorder) SetDatabase(name interface{}) *gomock.Call {
 }
 
 // ShowTable mocks base method.
-func (m *MockAdapter) ShowTable(schema, table string) adapters.Scanner {
+func (m *MockAdapter) ShowTable(schema, table string) scanner.Scanner {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShowTable", schema, table)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -773,10 +773,10 @@ func (mr *MockAdapterMockRecorder) ShowTable(schema, table interface{}) *gomock.
 }
 
 // ShowTableCtx mocks base method.
-func (m *MockAdapter) ShowTableCtx(ctx context.Context, schema, table string) adapters.Scanner {
+func (m *MockAdapter) ShowTableCtx(ctx context.Context, schema, table string) scanner.Scanner {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShowTableCtx", ctx, schema, table)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -843,14 +843,14 @@ func (mr *MockAdapterMockRecorder) TableWhere(requestWhere interface{}) *gomock.
 }
 
 // Update mocks base method.
-func (m *MockAdapter) Update(SQL string, params ...interface{}) adapters.Scanner {
+func (m *MockAdapter) Update(SQL string, params ...interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{SQL}
 	for _, a := range params {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Update", varargs...)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -862,14 +862,14 @@ func (mr *MockAdapterMockRecorder) Update(SQL interface{}, params ...interface{}
 }
 
 // UpdateCtx mocks base method.
-func (m *MockAdapter) UpdateCtx(ctx context.Context, SQL string, params ...interface{}) adapters.Scanner {
+func (m *MockAdapter) UpdateCtx(ctx context.Context, SQL string, params ...interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, SQL}
 	for _, a := range params {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "UpdateCtx", varargs...)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 
@@ -895,14 +895,14 @@ func (mr *MockAdapterMockRecorder) UpdateSQL(database, schema, table, setSyntax 
 }
 
 // UpdateWithTransaction mocks base method.
-func (m *MockAdapter) UpdateWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) adapters.Scanner {
+func (m *MockAdapter) UpdateWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{tx, SQL}
 	for _, a := range params {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "UpdateWithTransaction", varargs...)
-	ret0, _ := ret[0].(adapters.Scanner)
+	ret0, _ := ret[0].(scanner.Scanner)
 	return ret0
 }
 

@@ -22,5 +22,5 @@ dc-down:
 PHONY: mockgen
 mockgen:
 	go install github.com/golang/mock/mockgen@v1.6.0
-	mockgen -source=adapters/scanner.go -destination=adapters/mockgen/scanner.go -package=mockgen
+	mockgen -source=adapters/scanner/scanner.go -destination=adapters/mockgen/scanner.go -package=mockgen
 	mockgen -source=adapters/adapter.go -destination=adapters/mockgen/adapter.go -package=mockgen

@@ -61,9 +61,11 @@ func Test_basicPasswordCheck(t *testing.T) {
 		"SELECT * FROM public.prest_users WHERE username=$1 AND password=$2 LIMIT 1", "test@postgres.rest", "e10adc3949ba59abbe56e057f20f883e").
 		Return(adapter2)
 
-	dc.Adapter = adapter
+	cfg := &Config{
+		server:  &dc,
+		adapter: adapter,
+	}
 
-	cfg := New(&dc, nil)
 	_, err := cfg.basicPasswordCheck(context.Background(), "test@postgres.rest", "123456")
 	if err != nil {
 		t.Errorf("expected authenticated user, got: %s", err)
@@ -71,8 +73,7 @@ func Test_basicPasswordCheck(t *testing.T) {
 }
 
 func Test_getSelectQuery(t *testing.T) {
-	cfg := New(defaultConfig, nil)
-
+	cfg := &Config{}
 	expected := "SELECT * FROM public.prest_users WHERE username=$1 AND password=$2 LIMIT 1"
 	query := cfg.getSelectQuery()
 
@@ -80,7 +81,11 @@ func Test_getSelectQuery(t *testing.T) {
 }
 
 func Test_encrypt(t *testing.T) {
-	cfg := New(&config.Prest{AuthEncrypt: "MD5"}, nil)
+
+	cfg := &Config{
+		server:  &config.Prest{AuthEncrypt: "MD5"},
+		adapter: nil,
+	}
 
 	pwd := "123456"
 	enc := encrypt(cfg.server.AuthEncrypt, pwd)

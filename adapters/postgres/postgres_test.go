@@ -12,7 +12,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/prest/prest/adapters"
 	"github.com/prest/prest/adapters/postgres/statements"
 	"github.com/prest/prest/adapters/scanner"
 	"github.com/prest/prest/config"
@@ -20,17 +19,17 @@ import (
 	"github.com/structy/log"
 )
 
-func init() {
-	config.Load()
-	Load()
-}
+// func init() {
+// 	config.Load()
+// 	Load()
+// }
 
-func TestLoadHasDBSetted(t *testing.T) {
-	config.Load()
-	Load()
-	require.Equal(t, "prest-test", config.PrestConf.PGDatabase)
-	require.Equal(t, "prest-test", config.PrestConf.Adapter.GetDatabase())
-}
+// func TestLoadHasDBSetted(t *testing.T) {
+// 	config.Load()
+// 	Load()
+// 	require.Equal(t, "prest-test", config.PrestConf.PGDatabase)
+// 	require.Equal(t, "prest-test", adpt.GetDatabase())
+// }
 
 func TestLoad(t *testing.T) {
 	// Only run the failing part when a specific env variable is set
@@ -54,8 +53,8 @@ func TestLoad(t *testing.T) {
 }
 
 func TestParseInsertRequest(t *testing.T) {
-	config.Load()
-	Load()
+	// config.Load()
+	// Load()
 	m := make(map[string]interface{})
 	m["name"] = "prest"
 	mc := make(map[string]interface{})
@@ -77,15 +76,16 @@ func TestParseInsertRequest(t *testing.T) {
 	for _, tc := range testCases {
 		t.Log(tc.description)
 		body, err := json.Marshal(tc.body)
-		if err != nil {
-			t.Errorf("expected no errors in http request, got %v", err)
-		}
+		require.NoError(t, err)
+
 		req, err := http.NewRequest("POST", "/", bytes.NewReader(body))
 		if err != nil {
 			t.Errorf("expected no errors in http request, got %v", err)
 		}
 
-		colsNames, _, values, err := config.PrestConf.Adapter.ParseInsertRequest(req)
+		adpt := NewAdapter(&config.Prest{})
+
+		colsNames, _, values, err := adpt.ParseInsertRequest(req)
 		if err != tc.err {
 			t.Errorf("expected errors %v in where by request, got %v", tc.err, err)
 		}
@@ -146,7 +146,8 @@ func TestSetByRequest(t *testing.T) {
 			t.Errorf("expected no errors in http request, got %v", err)
 		}
 
-		setSyntax, values, err := config.PrestConf.Adapter.SetByRequest(req, 1)
+		adpt := NewAdapter(&config.Prest{})
+		setSyntax, values, err := adpt.SetByRequest(req, 1)
 		if err != tc.err {
 			t.Errorf("expected errors %v in where by request, got %v", tc.err, err)
 		}
@@ -200,7 +201,8 @@ func TestWhereByRequest(t *testing.T) {
 			t.Errorf("expected no errors in http request, got %v", err)
 		}
 
-		where, values, err := config.PrestConf.Adapter.WhereByRequest(req, 1)
+		adpt := NewAdapter(&config.Prest{})
+		where, values, err := adpt.WhereByRequest(req, 1)
 		t.Log("where:", where)
 		t.Log("values:", values)
 		if err != nil {
@@ -241,7 +243,8 @@ func TestInvalidWhereByRequest(t *testing.T) {
 			t.Errorf("expected no errors in http request, got %v", err)
 		}
 
-		where, values, err := config.PrestConf.Adapter.WhereByRequest(req, 1)
+		adpt := NewAdapter(&config.Prest{})
+		where, values, err := adpt.WhereByRequest(req, 1)
 		if err == nil {
 			t.Errorf("expected errors in where by request, got %v", err)
 		}
@@ -274,7 +277,8 @@ func TestReturningByRequest(t *testing.T) {
 		if err != nil {
 			t.Errorf("expected no errors in http request, got %v", err)
 		}
-		returning, err := config.PrestConf.Adapter.ReturningByRequest(req)
+		adpt := NewAdapter(&config.Prest{})
+		returning, err := adpt.ReturningByRequest(req)
 		t.Log("returning:", returning)
 		if err != nil {
 			t.Errorf("expected no errors in returning by request, got %v", err)
@@ -316,7 +320,8 @@ func TestGroupByClause(t *testing.T) {
 			t.Errorf("expected no errors in http request, got %v", err)
 		}
 
-		groupBySQL := config.PrestConf.Adapter.GroupByClause(req)
+		adpt := NewAdapter(&config.Prest{})
+		groupBySQL := adpt.GroupByClause(req)
 
 		if !tc.emptyCase && groupBySQL == "" {
 			t.Error("expected groupBySQL, got empty string")
@@ -333,17 +338,16 @@ func TestGroupByClause(t *testing.T) {
 }
 
 func TestEmptyTable(t *testing.T) {
-	sc := config.PrestConf.Adapter.Query("SELECT * FROM test_empty_table")
-	if sc.Err() != nil {
-		t.Fatal(sc.Err())
-	}
+	adpt := NewAdapter(&config.Prest{})
+	sc := adpt.Query("SELECT * FROM test_empty_table")
+	require.NoError(t, sc.Err())
 	if !bytes.Equal(sc.Bytes(), []byte("[]")) {
 		t.Fatalf("Query response returned '%v', expected '[]'", string(sc.Bytes()))
 	}
 }
 
 func TestQuery(t *testing.T) {
-	var sc adapters.Scanner
+	var sc scanner.Scanner
 
 	var testCases = []struct {
 		description string
@@ -360,10 +364,11 @@ func TestQuery(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
+		adpt := NewAdapter(&config.Prest{})
 		if tc.param {
-			sc = config.PrestConf.Adapter.Query(tc.sql, "public")
+			sc = adpt.Query(tc.sql, "public")
 		} else {
-			sc = config.PrestConf.Adapter.Query(tc.sql)
+			sc = adpt.Query(tc.sql)
 		}
 		if sc.Err() != tc.err {
 			t.Errorf("expected no errors, but got %s", sc.Err())
@@ -376,7 +381,7 @@ func TestQuery(t *testing.T) {
 }
 
 func TestQueryCtx(t *testing.T) {
-	var sc adapters.Scanner
+	var sc scanner.Scanner
 
 	ctx := context.Background()
 
@@ -395,10 +400,11 @@ func TestQueryCtx(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
+		adpt := NewAdapter(&config.Prest{})
 		if tc.param {
-			sc = config.PrestConf.Adapter.QueryCtx(ctx, tc.sql, "public")
+			sc = adpt.QueryCtx(ctx, tc.sql, "public")
 		} else {
-			sc = config.PrestConf.Adapter.QueryCtx(ctx, tc.sql)
+			sc = adpt.QueryCtx(ctx, tc.sql)
 		}
 		if sc.Err() != tc.err {
 			t.Errorf("expected no errors, but got %s", sc.Err())
@@ -421,7 +427,8 @@ func TestInvalidQuery(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.Query(tc.sql, "public")
+		adpt := NewAdapter(&config.Prest{})
+		sc := adpt.Query(tc.sql, "public")
 
 		if sc.Err() == nil {
 			t.Error("expected errors, but got nil")
@@ -452,7 +459,8 @@ func TestPaginateIfPossible(t *testing.T) {
 			t.Errorf("url: %s / expected no errors in http request, but got %s", tc.url, err)
 		}
 
-		sql, err := config.PrestConf.Adapter.PaginateIfPossible(req)
+		adpt := NewAdapter(&config.Prest{})
+		sql, err := adpt.PaginateIfPossible(req)
 		if err != nil {
 			t.Errorf("desc: %s / expected no errors, but got %s", tc.description, err)
 		}
@@ -479,7 +487,8 @@ func TestInvalidPaginateIfPossible(t *testing.T) {
 			t.Errorf("expected no errors in http request, but got %s", err)
 		}
 
-		sql, err := config.PrestConf.Adapter.PaginateIfPossible(req)
+		adpt := NewAdapter(&config.Prest{})
+		sql, err := adpt.PaginateIfPossible(req)
 		if err == nil {
 			t.Errorf("expected errors, but got %s", err)
 		}
@@ -503,7 +512,8 @@ func TestInsert(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.Insert(tc.sql, tc.values...)
+		adpt := NewAdapter(&config.Prest{})
+		sc := adpt.Insert(tc.sql, tc.values...)
 		if sc.Err() != nil {
 			t.Errorf("expected no errors, but got %s", sc.Err())
 		}
@@ -528,7 +538,8 @@ func TestInsertCtx(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.InsertCtx(ctx, tc.sql, tc.values...)
+		adpt := NewAdapter(&config.Prest{})
+		sc := adpt.InsertCtx(ctx, tc.sql, tc.values...)
 		if sc.Err() != nil {
 			t.Errorf("expected no errors, but got %s", sc.Err())
 		}
@@ -552,7 +563,8 @@ func TestInsertInvalid(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.Insert(tc.sql, tc.values...)
+		adpt := NewAdapter(&config.Prest{})
+		sc := adpt.Insert(tc.sql, tc.values...)
 		if sc.Err() == nil {
 			t.Errorf("expected  errors, but no has")
 		}
@@ -575,7 +587,8 @@ func TestDelete(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.Delete(tc.sql, tc.values)
+		adpt := NewAdapter(&config.Prest{})
+		sc := adpt.Delete(tc.sql, tc.values)
 		if sc.Err() == nil {
 			t.Errorf("expected error, but got: %s", sc.Err())
 		}
@@ -586,7 +599,8 @@ func TestDelete(t *testing.T) {
 	}
 
 	t.Log("Delete data from table")
-	sc := config.PrestConf.Adapter.Delete(`DELETE FROM "prest-test"."public"."test" WHERE "name"=$1`, "test")
+	adpt := NewAdapter(&config.Prest{})
+	sc := adpt.Delete(`DELETE FROM "prest-test"."public"."test" WHERE "name"=$1`, "test")
 	if sc.Err() != nil {
 		t.Errorf("expected no error, but got: %s", sc.Err())
 	}
@@ -611,7 +625,8 @@ func TestDeleteCtx(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.DeleteCtx(ctx, tc.sql, tc.values)
+		adpt := NewAdapter(&config.Prest{})
+		sc := adpt.DeleteCtx(ctx, tc.sql, tc.values)
 		if sc.Err() == nil {
 			t.Errorf("expected error, but got: %s", sc.Err())
 		}
@@ -622,7 +637,8 @@ func TestDeleteCtx(t *testing.T) {
 	}
 
 	t.Log("Delete data from table")
-	sc := config.PrestConf.Adapter.DeleteCtx(ctx, `DELETE FROM "prest-test"."public"."test" WHERE "name"=$1`, "test")
+	adpt := NewAdapter(&config.Prest{})
+	sc := adpt.DeleteCtx(ctx, `DELETE FROM "prest-test"."public"."test" WHERE "name"=$1`, "test")
 	if sc.Err() != nil {
 		t.Errorf("expected no error, but got: %s", sc.Err())
 	}
@@ -644,10 +660,9 @@ func TestUpdate(t *testing.T) {
 	}
 
 	t.Log("Update data into a table")
-	sc := config.PrestConf.Adapter.Update(`UPDATE "prest-test"."public"."test" SET "name"=$2 WHERE "name"=$1`, "prest tester", "prest")
-	if sc.Err() != nil {
-		t.Errorf("expected no errors, but got: %s", sc.Err())
-	}
+	adpt := NewAdapter(&config.Prest{})
+	sc := adpt.Update(`UPDATE "prest-test"."public"."test" SET "name"=$2 WHERE "name"=$1`, "prest tester", "prest")
+	require.NoError(t, sc.Err())
 
 	if len(sc.Bytes()) < 1 {
 		t.Errorf("expected a valid response body, but got %s", string(sc.Bytes()))
@@ -655,7 +670,8 @@ func TestUpdate(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.Update(tc.sql, tc.values...)
+		adpt := NewAdapter(&config.Prest{})
+		sc := adpt.Update(tc.sql, tc.values...)
 		if sc.Err() == nil {
 			t.Errorf("expected error, but got: %s", sc.Err())
 		}
@@ -680,7 +696,8 @@ func TestUpdateCtx(t *testing.T) {
 	}
 
 	t.Log("Update data into a table")
-	sc := config.PrestConf.Adapter.UpdateCtx(ctx, `UPDATE "prest-test"."public"."test" SET "name"=$2 WHERE "name"=$1`, "prest tester", "prest")
+	adpt := NewAdapter(&config.Prest{})
+	sc := adpt.UpdateCtx(ctx, `UPDATE "prest-test"."public"."test" SET "name"=$2 WHERE "name"=$1`, "prest tester", "prest")
 	if sc.Err() != nil {
 		t.Errorf("expected no errors, but got: %s", sc.Err())
 	}
@@ -691,7 +708,8 @@ func TestUpdateCtx(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.UpdateCtx(ctx, tc.sql, tc.values...)
+		adpt := NewAdapter(&config.Prest{})
+		sc := adpt.UpdateCtx(ctx, tc.sql, tc.values...)
 		if sc.Err() == nil {
 			t.Errorf("expected error, but got: %s", sc.Err())
 		}
@@ -754,7 +772,8 @@ func TestJoinByRequest(t *testing.T) {
 			t.Errorf("expected no errors on NewRequest, got %v", err)
 		}
 
-		join, err := config.PrestConf.Adapter.JoinByRequest(req)
+		adpt := NewAdapter(&config.Prest{})
+		join, err := adpt.JoinByRequest(req)
 		if tc.testEmptyResult {
 			if join != nil {
 				t.Errorf("expected empty response, but got: %v", join)
@@ -783,7 +802,8 @@ func TestJoinByRequest(t *testing.T) {
 		t.Errorf("expected no errorn on New Request, got %v", err)
 	}
 
-	join, err := config.PrestConf.Adapter.JoinByRequest(r)
+	adpt := NewAdapter(&config.Prest{})
+	join, err := adpt.JoinByRequest(r)
 	if err != nil {
 		t.Errorf("expected no errors, but got: %v", err)
 	}
@@ -794,7 +814,7 @@ func TestJoinByRequest(t *testing.T) {
 		t.Errorf(`expected %s in INNER JOIN "test2" ON "test2"."name" = "test"."name", but no was!`, joinStr)
 	}
 
-	where, values, err := config.PrestConf.Adapter.WhereByRequest(r, 1)
+	where, values, err := adpt.WhereByRequest(r, 1)
 	if err != nil {
 		t.Errorf("expected no errors, got: %v", err)
 	}
@@ -838,7 +858,8 @@ func TestCountFields(t *testing.T) {
 			t.Errorf("expected no errors on NewRequest, got: %v", err)
 		}
 
-		sql, err := config.PrestConf.Adapter.CountByRequest(req)
+		adpt := NewAdapter(&config.Prest{})
+		sql, err := adpt.CountByRequest(req)
 		if tc.testError {
 			if err == nil {
 				t.Error("expected errors, but no was!")
@@ -877,7 +898,8 @@ func TestDatabaseClause(t *testing.T) {
 			t.Errorf("expected no errors on NewRequest, got: %v", err)
 		}
 
-		query, _ := config.PrestConf.Adapter.DatabaseClause(r)
+		adpt := NewAdapter(&config.Prest{})
+		query, _ := adpt.DatabaseClause(r)
 		if query != tc.queryExpected {
 			t.Errorf("query unexpected, got: %s", query)
 		}
@@ -902,7 +924,8 @@ func TestSchemaClause(t *testing.T) {
 			t.Errorf("expected no errors on NewRequest, got: %v", err)
 		}
 
-		query, _ := config.PrestConf.Adapter.SchemaClause(r)
+		adpt := NewAdapter(&config.Prest{})
+		query, _ := adpt.SchemaClause(r)
 		if query != tc.queryExpected {
 			t.Errorf("query unexpected, got: %s", query)
 		}
@@ -963,7 +986,8 @@ func TestOrderByRequest(t *testing.T) {
 		t.Errorf("expected no errors on NewRequest, got: %v", err)
 	}
 
-	order, err := config.PrestConf.Adapter.OrderByRequest(r)
+	adpt := NewAdapter(&config.Prest{})
+	order, err := adpt.OrderByRequest(r)
 	if err != nil {
 		t.Errorf("expected no errors on OrderByRequest, got: %v", err)
 	}
@@ -981,7 +1005,7 @@ func TestOrderByRequest(t *testing.T) {
 		t.Errorf("expected no errors on NewRequest, got: %v", err)
 	}
 
-	order, err = config.PrestConf.Adapter.OrderByRequest(r)
+	order, err = adpt.OrderByRequest(r)
 	if err != nil {
 		t.Errorf("expected no errors on OrderByRequest, got: %v", err)
 	}
@@ -997,7 +1021,7 @@ func TestOrderByRequest(t *testing.T) {
 		t.Errorf("expected no errors on NewRequest, got: %v", err)
 	}
 
-	order, err = config.PrestConf.Adapter.OrderByRequest(r)
+	order, err = adpt.OrderByRequest(r)
 	if err != nil {
 		t.Errorf("expected no errors on OrderByRequest, got: %v", err)
 	}
@@ -1012,7 +1036,7 @@ func TestOrderByRequest(t *testing.T) {
 		t.Errorf("expected no errors on NewRequest, got: %v", err)
 	}
 
-	order, err = config.PrestConf.Adapter.OrderByRequest(r)
+	order, err = adpt.OrderByRequest(r)
 	if err == nil {
 		t.Errorf("expected errors on OrderByRequest, got: %v", err)
 	}
@@ -1040,7 +1064,8 @@ func TestTablePermissions(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		p := config.PrestConf.Adapter.TablePermissions(tc.table, tc.permission)
+		adpt := NewAdapter(&config.Prest{})
+		p := adpt.TablePermissions(tc.table, tc.permission)
 		if p != tc.out {
 			t.Errorf("expected %v, got %v", tc.out, p)
 		}
@@ -1065,7 +1090,8 @@ func TestRestrictFalse(t *testing.T) {
 		t.Errorf("expected no errors on NewRequest, but got: %v", err)
 	}
 
-	fields, err := config.PrestConf.Adapter.FieldsPermissions(r, "test_list_only_id", "read")
+	adpt := NewAdapter(&config.Prest{})
+	fields, err := adpt.FieldsPermissions(r, "test_list_only_id", "read")
 	if err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
@@ -1074,7 +1100,8 @@ func TestRestrictFalse(t *testing.T) {
 	}
 
 	t.Log("Restrict disabled")
-	p := config.PrestConf.Adapter.TablePermissions("test_readonly_access", "delete")
+	adpt = NewAdapter(&config.Prest{})
+	p := adpt.TablePermissions("test_readonly_access", "delete")
 	if !p {
 		t.Errorf("expected %v, got: %v", p, !p)
 	}
@@ -1102,7 +1129,8 @@ func TestSelectFields(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sql, err := config.PrestConf.Adapter.SelectFields(tc.fields)
+		adpt := NewAdapter(&config.Prest{})
+		sql, err := adpt.SelectFields(tc.fields)
 		if err != nil {
 			t.Errorf("expected no errors, but got: %v", err)
 		}
@@ -1114,7 +1142,8 @@ func TestSelectFields(t *testing.T) {
 
 	for _, tc := range testErrorCases {
 		t.Log(tc.description)
-		sql, err := config.PrestConf.Adapter.SelectFields(tc.fields)
+		adpt := NewAdapter(&config.Prest{})
+		sql, err := adpt.SelectFields(tc.fields)
 		if err == nil {
 			t.Errorf("expected errors, but got: %v", err)
 		}
@@ -1172,7 +1201,8 @@ func TestDistinctClause(t *testing.T) {
 			t.Errorf("expected no errors in http request, but got %s", err)
 		}
 
-		sql, err := config.PrestConf.Adapter.DistinctClause(req)
+		adpt := NewAdapter(&config.Prest{})
+		sql, err := adpt.DistinctClause(req)
 		if err != nil {
 			t.Errorf("expected no errors, but got %s", err)
 		}
@@ -1216,70 +1246,64 @@ func TestNormalizeGroupFunction(t *testing.T) {
 }
 
 func TestCacheQuery(t *testing.T) {
-	sc := config.PrestConf.Adapter.Query(`SELECT * FROM "Reply"`)
-	if err := sc.Err(); err != nil {
-		t.Errorf("expected no errors, but got %v", err)
-	}
-	sc = config.PrestConf.Adapter.Query(`SELECT * FROM "Reply"`)
-	if err := sc.Err(); err != nil {
-		t.Errorf("expected no errors, but got %v", err)
-	}
+	adpt := NewAdapter(&config.Prest{})
+	sc := adpt.Query(`SELECT * FROM "Reply"`)
+	require.NoError(t, sc.Err())
+
+	adpt = NewAdapter(&config.Prest{})
+	sc = adpt.Query(`SELECT * FROM "Reply"`)
+	require.NoError(t, sc.Err())
 }
 
 func TestCacheQueryCount(t *testing.T) {
-	sc := config.PrestConf.Adapter.QueryCount(`SELECT COUNT(*) FROM "Reply"`)
-	if err := sc.Err(); err != nil {
-		t.Errorf("expected no errors, but got %v", err)
-	}
-	sc = config.PrestConf.Adapter.QueryCount(`SELECT COUNT(*) FROM "Reply"`)
-	if err := sc.Err(); err != nil {
-		t.Errorf("expected no errors, but got %v", err)
-	}
+	adpt := NewAdapter(&config.Prest{})
+	sc := adpt.QueryCount(`SELECT COUNT(*) FROM "Reply"`)
+	require.NoError(t, sc.Err())
+
+	adpt = NewAdapter(&config.Prest{})
+	sc = adpt.QueryCount(`SELECT COUNT(*) FROM "Reply"`)
+	require.NoError(t, sc.Err())
 }
 
 func TestCacheQueryCountCtx(t *testing.T) {
+	adpt := NewAdapter(&config.Prest{})
 	ctx := context.Background()
-	sc := config.PrestConf.Adapter.QueryCountCtx(ctx, `SELECT COUNT(*) FROM "Reply"`)
-	if err := sc.Err(); err != nil {
-		t.Errorf("expected no errors, but got %v", err)
-	}
-	sc = config.PrestConf.Adapter.QueryCountCtx(ctx, `SELECT COUNT(*) FROM "Reply"`)
-	if err := sc.Err(); err != nil {
-		t.Errorf("expected no errors, but got %v", err)
-	}
+	sc := adpt.QueryCountCtx(ctx, `SELECT COUNT(*) FROM "Reply"`)
+	require.NoError(t, sc.Err())
+
+	adpt = NewAdapter(&config.Prest{})
+	sc = adpt.QueryCountCtx(ctx, `SELECT COUNT(*) FROM "Reply"`)
+	require.NoError(t, sc.Err())
 }
 
 func TestCacheInsert(t *testing.T) {
-	sc := config.PrestConf.Adapter.Insert("INSERT INTO test(name) VALUES('testcache')")
-	if err := sc.Err(); err != nil {
-		t.Errorf("expected no errors, but got %v", err)
-	}
-	sc = config.PrestConf.Adapter.Insert("INSERT INTO test(name) VALUES('testcache')")
-	if err := sc.Err(); err != nil {
-		t.Errorf("expected no errors, but got %v", err)
-	}
+	adpt := NewAdapter(&config.Prest{})
+	sc := adpt.Insert("INSERT INTO test(name) VALUES('testcache')")
+	require.NoError(t, sc.Err())
+
+	adpt = NewAdapter(&config.Prest{})
+	sc = adpt.Insert("INSERT INTO test(name) VALUES('testcache')")
+	require.NoError(t, sc.Err())
 }
 
 func TestCacheUpdate(t *testing.T) {
-	sc := config.PrestConf.Adapter.Update("UPDATE test SET name='test cache' WHERE name='testcache'")
-	if err := sc.Err(); err != nil {
-		t.Errorf("expected no errors, but got %v", err)
-	}
-	sc = config.PrestConf.Adapter.Update("UPDATE test SET name='test cache' WHERE name='testcache'")
-	if err := sc.Err(); err != nil {
-		t.Errorf("expected no errors, but got %v", err)
-	}
+	adpt := NewAdapter(&config.Prest{})
+	sc := adpt.Update("UPDATE test SET name='test cache' WHERE name='testcache'")
+	require.NoError(t, sc.Err())
+
+	adpt = NewAdapter(&config.Prest{})
+	sc = adpt.Update("UPDATE test SET name='test cache' WHERE name='testcache'")
+	require.NoError(t, sc.Err())
 }
 
 func TestCacheDelete(t *testing.T) {
-	sc := config.PrestConf.Adapter.Delete("DELETE FROM test WHERE name='test cache'")
-	if err := sc.Err(); err != nil {
-		t.Errorf("expected no errors, but got %v", err)
-	}
-	sc = config.PrestConf.Adapter.Delete("DELETE FROM test WHERE name='test cache'")
-	if err := sc.Err(); err != nil {
-		t.Errorf("expected no errors, but got %v", err)
-	}
+	adpt := NewAdapter(&config.Prest{})
+	sc := adpt.Delete("DELETE FROM test WHERE name='test cache'")
+	require.NoError(t, sc.Err())
+
+	adpt = NewAdapter(&config.Prest{})
+	sc = adpt.Delete("DELETE FROM test WHERE name='test cache'")
+	require.NoError(t, sc.Err())
 }
 
 // todo: fix these
@@ -1293,24 +1317,18 @@ func TestCacheDelete(t *testing.T) {
 // 	}
 // }
 
-// func TestDisableCache(t *testing.T) {
-// 	t.Setenv("PREST_PG_CACHE", "false")
-// 	config.Load()
-// 	Load()
-// 	ClearStmt()
-// 	sc := config.PrestConf.Adapter.Query(`SELECT * FROM "Reply"`)
-// 	if err := sc.Err(); err != nil {
-// 		t.Errorf("expected no errors, but got %v", err)
-// 	}
-// 	_, ok := stmts.PrepareMap[`SELECT jsonb_agg(s) FROM (SELECT * FROM "Reply") s`]
-// 	if ok {
-// 		t.Error("has query in cache")
-// 	}
-// }
+func TestDisableCache(t *testing.T) {
+	adpt := NewAdapter(&config.Prest{PGCache: false})
+
+	adpt.ClearStmt()
+	sc := adpt.Query(`SELECT * FROM "Reply"`)
+	require.NoError(t, sc.Err())
+
+	_, ok := adpt.stmt.PrepareMap[`SELECT jsonb_agg(s) FROM (SELECT * FROM "Reply") s`]
+	require.False(t, ok, "has query in cache")
+}
 
 func TestParseBatchInsertRequest(t *testing.T) {
-	config.Load()
-	Load()
 	m := make(map[string]interface{})
 	m["name"] = "prest"
 	m["pumpkin"] = "prest"
@@ -1344,7 +1362,8 @@ func TestParseBatchInsertRequest(t *testing.T) {
 			t.Errorf("expected no errors in http request, got %v", err)
 		}
 
-		colsNames, _, values, err := config.PrestConf.Adapter.ParseBatchInsertRequest(req)
+		adpt := NewAdapter(&config.Prest{})
+		colsNames, _, values, err := adpt.ParseBatchInsertRequest(req)
 		if err != tc.err {
 			t.Errorf("expected errors %v in where by request, got %v", tc.err, err)
 		}
@@ -1360,8 +1379,6 @@ func TestParseBatchInsertRequest(t *testing.T) {
 }
 
 func TestBatchInsertValues(t *testing.T) {
-	config.Load()
-	Load()
 	var testCases = []struct {
 		description string
 		sql         string
@@ -1384,10 +1401,10 @@ func TestBatchInsertValues(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.BatchInsertValues(tc.sql, tc.records...)
-		if sc.Err() != nil {
-			t.Errorf("expected no errors, but got %s", sc.Err())
-		}
+
+		adpt := NewAdapter(&config.Prest{})
+		sc := adpt.BatchInsertValues(tc.sql, tc.records...)
+		require.NoError(t, sc.Err())
 
 		if len(sc.Bytes()) < 2 {
 			t.Errorf("expected valid response body, but got %s", string(sc.Bytes()))
@@ -1396,9 +1413,7 @@ func TestBatchInsertValues(t *testing.T) {
 }
 
 func TestBatchInsertValuesCtx(t *testing.T) {
-	ctx := context.Background()
-	config.Load()
-	Load()
+
 	var testCases = []struct {
 		description string
 		sql         string
@@ -1421,10 +1436,10 @@ func TestBatchInsertValuesCtx(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.BatchInsertValuesCtx(ctx, tc.sql, tc.records...)
-		if sc.Err() != nil {
-			t.Errorf("expected no errors, but got %s", sc.Err())
-		}
+
+		adpt := NewAdapter(&config.Prest{})
+		sc := adpt.BatchInsertValuesCtx(context.Background(), tc.sql, tc.records...)
+		require.NoError(t, sc.Err())
 
 		if len(sc.Bytes()) < 2 {
 			t.Errorf("expected valid response body, but got %s", string(sc.Bytes()))
@@ -1435,8 +1450,6 @@ func TestBatchInsertValuesCtx(t *testing.T) {
 func TestPostgres_BatchInsertCopyCtx(t *testing.T) {
 	ctx := context.Background()
 
-	config.Load()
-	Load()
 	type args struct {
 		dbname string
 		schema string
@@ -1485,17 +1498,15 @@ func TestPostgres_BatchInsertCopyCtx(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotSc := config.PrestConf.Adapter.BatchInsertCopyCtx(ctx, tt.args.dbname, tt.args.schema, tt.args.table, tt.args.keys, tt.args.values...)
-			if (gotSc.Err() != nil) != tt.wantErr {
-				t.Errorf("Postgres.BatchInsertCopy() = %v, want %v", gotSc.Err(), tt.wantErr)
-			}
+			adpt := NewAdapter(&config.Prest{})
+
+			sc := adpt.BatchInsertCopyCtx(ctx, tt.args.dbname, tt.args.schema, tt.args.table, tt.args.keys, tt.args.values...)
+			require.Equal(t, tt.wantErr, sc.Err() != nil)
 		})
 	}
 }
 
 func TestPostgres_BatchInsertCopy(t *testing.T) {
-	config.Load()
-	Load()
 	type args struct {
 		dbname string
 		schema string
@@ -1544,10 +1555,10 @@ func TestPostgres_BatchInsertCopy(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotSc := config.PrestConf.Adapter.BatchInsertCopy(tt.args.dbname, tt.args.schema, tt.args.table, tt.args.keys, tt.args.values...)
-			if (gotSc.Err() != nil) != tt.wantErr {
-				t.Errorf("Postgres.BatchInsertCopy() = %v, want %v", gotSc.Err(), tt.wantErr)
-			}
+			adpt := NewAdapter(&config.Prest{})
+
+			sc := adpt.BatchInsertCopy(tt.args.dbname, tt.args.schema, tt.args.table, tt.args.keys, tt.args.values...)
+			require.Equal(t, tt.wantErr, sc.Err() != nil)
 		})
 	}
 }
@@ -1983,14 +1994,13 @@ func Test_ShowTableCtx(t *testing.T) {
 	}
 }
 
-func newScannerMock(t *testing.T) (sc adapters.Scanner) {
+func newScannerMock(t *testing.T) (sc scanner.Scanner) {
 	t.Helper()
-	sc = &scanner.PrestScanner{
+	return &scanner.PrestScanner{
 		Buff:    bytes.NewBuffer([]byte("[]")),
 		Error:   nil,
 		IsQuery: true,
 	}
-	return
 }
 
 func TestSliceToJSONList(t *testing.T) {

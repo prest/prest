@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/router"
 	"github.com/spf13/cobra"
@@ -19,13 +18,7 @@ var RootCmd = &cobra.Command{
 	Short: "Serve a RESTful API from any PostgreSQL database",
 	Long:  `prestd (PostgreSQL REST), simplify and accelerate development, ⚡ instant, realtime, high-performance on any Postgres application, existing or new`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cfg := config.New()
-		if cfg.Adapter == nil {
-			slog.Warningln("adapter is not set. Using the default (postgres)")
-			cfg.Adapter = postgres.NewAdapter(cfg)
-			// todo: load db name from config
-		}
-		startServer(cfg)
+		startServer(config.New())
 	},
 }
 

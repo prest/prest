@@ -8,20 +8,23 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
+	"github.com/prest/prest/adapters"
 	"github.com/prest/prest/testutils"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCheckDBHealth(t *testing.T) {
-	require.Nil(t, CheckDBHealth(context.Background()))
+	require.Nil(t, CheckDBHealth(context.Background(), nil))
 }
 
-func healthyDB(context.Context) error   { return nil }
-func unhealthyDB(context.Context) error { return errors.New("could not connect to the database") }
+func healthyDB(context.Context, adapters.Adapter) error { return nil }
+func unhealthyDB(context.Context, adapters.Adapter) error {
+	return errors.New("could not connect to the database")
+}
 
 func TestHealthStatus(t *testing.T) {
 	for _, tc := range []struct {
-		checkDBHealth func(context.Context) error
+		checkDBHealth func(context.Context, adapters.Adapter) error
 		desc          string
 		expected      int
 	}{
@@ -30,7 +33,8 @@ func TestHealthStatus(t *testing.T) {
 	} {
 		router := mux.NewRouter()
 		checks := CheckList{tc.checkDBHealth}
-		router.HandleFunc("/_health", WrappedHealthCheck(checks)).Methods("GET")
+		cfg := Config{adapter: nil}
+		router.HandleFunc("/_health", cfg.WrappedHealthCheck(checks)).Methods("GET")
 		server := httptest.NewServer(router)
 		defer server.Close()
 		testutils.DoRequest(t, server.URL+"/_health", nil, "GET", tc.expected, "")

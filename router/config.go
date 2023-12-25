@@ -2,6 +2,7 @@ package router
 
 import (
 	"github.com/gorilla/mux"
+
 	"github.com/prest/prest/config"
 )
 
@@ -10,10 +11,11 @@ type Config struct {
 	srvCfg *config.Prest
 }
 
-func New(c *config.Prest) *Config {
-	cfg := &Config{
-		srvCfg: c,
+func New(c *config.Prest) (*Config, error) {
+	cfg := &Config{srvCfg: c}
+	err := cfg.ConfigRoutes()
+	if err != nil {
+		return nil, err
 	}
-	cfg.Get()
-	return cfg
+	return cfg, nil
 }

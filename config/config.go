@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/prest/prest/adapters"
 	"github.com/prest/prest/cache"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -95,7 +94,7 @@ type Prest struct {
 	Debug                bool
 	// todo: remove this from config
 	// send to server
-	Adapter              adapters.Adapter
+	Adapter              string
 	EnableDefaultJWT     bool
 	SingleDB             bool
 	HTTPSMode            bool
@@ -134,8 +133,19 @@ func Load() {
 }
 
 func New() *Prest {
-	Load()
-	return PrestConf
+	viperCfg()
+	cfg := &Prest{}
+	Parse(cfg)
+	if _, err := os.Stat(cfg.QueriesPath); os.IsNotExist(err) {
+		if err = os.MkdirAll(cfg.QueriesPath, 0700); os.IsNotExist(err) {
+			log.Errorf("Queries directory %s was not created\n", cfg.QueriesPath)
+		}
+	}
+	if cfg.Adapter == "" {
+		log.Warningln("adapter is not set. Using the default (postgres)")
+		cfg.Adapter = "postgres"
+	}
+	return cfg
 }
 
 func viperCfg() {

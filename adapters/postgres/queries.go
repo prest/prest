@@ -11,7 +11,6 @@ import (
 
 	"github.com/structy/log"
 
-	"github.com/prest/prest/adapters"
 	"github.com/prest/prest/adapters/scanner"
 	"github.com/prest/prest/template"
 )
@@ -67,7 +66,7 @@ func (a Adapter) ParseScript(scriptPath string, templateData map[string]interfac
 }
 
 // WriteSQL perform INSERT's, UPDATE's, DELETE's operations
-func (a Adapter) WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
+func (a Adapter) WriteSQL(sql string, values []interface{}) (sc scanner.Scanner) {
 	db, err := a.conn.Get()
 	if err != nil {
 		log.Println(err)
@@ -113,7 +112,7 @@ func (a Adapter) WriteSQL(sql string, values []interface{}) (sc adapters.Scanner
 }
 
 // WriteSQLCtx perform INSERT's, UPDATE's, DELETE's operations
-func (a Adapter) WriteSQLCtx(ctx context.Context, sql string, values []interface{}) (sc adapters.Scanner) {
+func (a Adapter) WriteSQLCtx(ctx context.Context, sql string, values []interface{}) (sc scanner.Scanner) {
 	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Println(err)
@@ -159,7 +158,7 @@ func (a Adapter) WriteSQLCtx(ctx context.Context, sql string, values []interface
 }
 
 // ExecuteScripts run sql templates created by users
-func (a Adapter) ExecuteScripts(method, sql string, values []interface{}) (sc adapters.Scanner) {
+func (a Adapter) ExecuteScripts(method, sql string, values []interface{}) (sc scanner.Scanner) {
 	switch method {
 	case "GET":
 		return a.Query(sql, values...)
@@ -170,7 +169,7 @@ func (a Adapter) ExecuteScripts(method, sql string, values []interface{}) (sc ad
 }
 
 // ExecuteScriptsCtx run sql templates created by users
-func (a Adapter) ExecuteScriptsCtx(ctx context.Context, method, sql string, values []interface{}) (sc adapters.Scanner) {
+func (a Adapter) ExecuteScriptsCtx(ctx context.Context, method, sql string, values []interface{}) (sc scanner.Scanner) {
 	switch method {
 	case "GET":
 		return a.QueryCtx(ctx, sql, values...)

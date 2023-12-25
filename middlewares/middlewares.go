@@ -17,6 +17,8 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
+type PermsFn func(table string, op string) bool
+
 var (
 	ErrJWTParseFail = errors.New("failed JWT token parser")
 	ErrJWTValidate  = errors.New("failed JWT claims validated")
@@ -108,7 +110,7 @@ func Validate(c auth.Claims) error {
 }
 
 // AccessControl is a middleware to handle permissions on tables in pREST
-func AccessControl(cfg *config.Prest) negroni.Handler {
+func AccessControl(permFnc PermsFn) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
 		mapPath := getVars(rq.URL.Path)
 		if mapPath == nil {
@@ -122,7 +124,7 @@ func AccessControl(cfg *config.Prest) negroni.Handler {
 			return
 		}
 
-		if cfg.Adapter.TablePermissions(mapPath["table"], permission) {
+		if permFnc(mapPath["table"], permission) {
 			next(rw, rq)
 			return
 		}

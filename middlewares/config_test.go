@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/negroni/v3"
 
-	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/cache"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/controllers"
@@ -152,7 +151,7 @@ func Test_Middleware_DoesntBlock_CustomRoutes(t *testing.T) {
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", routerCfg.SelectFromTables).Methods("GET")
 
 	cfg := prestCfg
-	cfg.Adapter = postgres.NewAdapter(cfg)
+	cfg.Adapter = "postgres"
 
 	r.PathPrefix("/").Handler(negroni.New(
 		AccessControl(cfg),

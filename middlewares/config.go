@@ -21,7 +21,7 @@ var (
 )
 
 // GetApp gets the default negroni app
-func GetApp(cfg *config.Prest, opts ...OptMiddleware) *negroni.Negroni {
+func Get(cfg *config.Prest, opts ...OptMiddleware) *negroni.Negroni {
 	stack := []negroni.Handler{}
 	stack = append(stack, BaseStack...)
 	stack = append(stack, SetTimeoutToContext(cfg.HTTPTimeout))

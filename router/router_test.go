@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
 
 	"github.com/prest/prest/adapters/mockgen"
@@ -15,12 +16,16 @@ import (
 )
 
 func TestRoutes(t *testing.T) {
-	require.NotNil(t, New(&config.Prest{}))
+	cfg, err := New(&config.Prest{})
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
 }
 
 // todo: split this into mini tests
+// only verify route access
+// remove all adapter/handler necessity
+// move handler functionality test to controllers pkg
 func Test_DefaultRouters(t *testing.T) {
-
 	var testCases = []struct {
 		url    string
 		method string
@@ -127,10 +132,8 @@ func Test_DefaultRouters(t *testing.T) {
 		adapter.EXPECT().DatabaseOrderBy(gomock.Any(), gomock.Any()).Return("")
 		adapter.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
 
-		cfg := &config.Prest{
-			Adapter: adapter,
-		}
-		server := httptest.NewServer(New(cfg).router)
+		cfg := &Config{srvCfg: &config.Prest{}}
+		server := httptest.NewServer(cfg.router)
 
 		t.Log(tc.method, "\t", tc.url)
 		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, tc.url)
@@ -169,10 +172,9 @@ func Test_Route_Databases(t *testing.T) {
 	adapter.EXPECT().DatabaseOrderBy(gomock.Any(), gomock.Any()).Return("")
 	adapter.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
 
-	cfg := &config.Prest{
-		Adapter: adapter,
-	}
-	server := httptest.NewServer(New(cfg).router)
+	cfg := &Config{srvCfg: &config.Prest{}}
+	cfg.router = mux.NewRouter().StrictSlash(true)
+	server := httptest.NewServer(cfg.router)
 
 	for _, tc := range testCases {
 		t.Log(tc.method, "\t", tc.url)

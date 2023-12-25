@@ -21,7 +21,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/structy/log"
 
-	"github.com/prest/prest/adapters"
 	"github.com/prest/prest/adapters/postgres/formatters"
 	"github.com/prest/prest/adapters/postgres/internal/connection"
 	"github.com/prest/prest/adapters/postgres/statements"
@@ -41,7 +40,7 @@ const (
 
 var (
 	// ensure the adapter interface is implemented by the postgres adapter
-	_ adapters.Adapter = (*Adapter)(nil)
+	// _ adapters.Adapter = (*Adapter)(nil)
 
 	removeOperatorRegex        = regexp.MustCompile(`\$[a-z]+.`)
 	insertTableNameRegex       = regexp.MustCompile(`(?i)INTO\s+([\w|\.|-]*\.)*([\w|-]+)\s*\(`)
@@ -109,7 +108,7 @@ func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string, cache bool) (stateme
 
 // Load postgres
 func Load() {
-	config.PrestConf.Adapter = &Adapter{}
+	// config.PrestConf.Adapter = &Adapter{}
 
 	// if a.conn.GetDatabase() == "" {
 	// 	a.conn.SetDatabase(config.PrestConf.PGDatabase)
@@ -675,7 +674,7 @@ func (a Adapter) CountByRequest(req *http.Request) (countQuery string, err error
 // QueryCtx process queries using the DB name from Context
 //
 // allows setting timeout
-func (a Adapter) QueryCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) QueryCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	// use the db_name that was set on request to avoid runtime collisions
 	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
@@ -701,7 +700,7 @@ func (a Adapter) QueryCtx(ctx context.Context, SQL string, params ...interface{}
 	}
 }
 
-func (a Adapter) Query(SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) Query(SQL string, params ...interface{}) (sc scanner.Scanner) {
 	db, err := a.conn.Get()
 	if err != nil {
 		log.Println(err)
@@ -726,7 +725,7 @@ func (a Adapter) Query(SQL string, params ...interface{}) (sc adapters.Scanner) 
 }
 
 // QueryCount process queries with count
-func (a Adapter) QueryCount(SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) QueryCount(SQL string, params ...interface{}) (sc scanner.Scanner) {
 	db, err := a.conn.Get()
 	if err != nil {
 		return &scanner.PrestScanner{Error: err}
@@ -755,7 +754,7 @@ func (a Adapter) QueryCount(SQL string, params ...interface{}) (sc adapters.Scan
 }
 
 // QueryCount process queries with count
-func (a Adapter) QueryCountCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) QueryCountCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
@@ -807,7 +806,7 @@ func (a Adapter) PaginateIfPossible(r *http.Request) (paginatedQuery string, err
 }
 
 // BatchInsertCopy execute batch insert sql into a table unsing copy
-func (a Adapter) BatchInsertCopy(dbname, schema, table string, keys []string, values ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) BatchInsertCopy(dbname, schema, table string, keys []string, values ...interface{}) (sc scanner.Scanner) {
 	db, err := a.conn.Get()
 	if err != nil {
 		log.Errorln(err)
@@ -873,7 +872,7 @@ func (a Adapter) BatchInsertCopy(dbname, schema, table string, keys []string, va
 }
 
 // BatchInsertCopyCtx execute batch insert sql into a table unsing copy
-func (a Adapter) BatchInsertCopyCtx(ctx context.Context, dbname, schema, table string, keys []string, values ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) BatchInsertCopyCtx(ctx context.Context, dbname, schema, table string, keys []string, values ...interface{}) (sc scanner.Scanner) {
 	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
@@ -939,7 +938,7 @@ func (a Adapter) BatchInsertCopyCtx(ctx context.Context, dbname, schema, table s
 }
 
 // BatchInsertValues execute batch insert sql into a table unsing multi values
-func (a Adapter) BatchInsertValues(SQL string, values ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) BatchInsertValues(SQL string, values ...interface{}) (sc scanner.Scanner) {
 	db, err := a.conn.Get()
 	if err != nil {
 		log.Errorln(err)
@@ -984,7 +983,7 @@ func (a Adapter) BatchInsertValues(SQL string, values ...interface{}) (sc adapte
 }
 
 // BatchInsertValuesCtx execute batch insert sql into a table unsing multi values
-func (a Adapter) BatchInsertValuesCtx(ctx context.Context, SQL string, values ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) BatchInsertValuesCtx(ctx context.Context, SQL string, values ...interface{}) (sc scanner.Scanner) {
 	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
@@ -1045,7 +1044,7 @@ func (a Adapter) fullInsert(db *sqlx.DB, tx *sql.Tx, SQL string) (stmt *sql.Stmt
 }
 
 // Insert execute insert sql into a table
-func (a Adapter) Insert(SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) Insert(SQL string, params ...interface{}) (sc scanner.Scanner) {
 	db, err := a.conn.Get()
 	if err != nil {
 		log.Errorln(err)
@@ -1055,7 +1054,7 @@ func (a Adapter) Insert(SQL string, params ...interface{}) (sc adapters.Scanner)
 }
 
 // InsertCtx execute insert sql into a table
-func (a Adapter) InsertCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) InsertCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
@@ -1065,11 +1064,11 @@ func (a Adapter) InsertCtx(ctx context.Context, SQL string, params ...interface{
 }
 
 // InsertWithTransaction execute insert sql into a table
-func (a Adapter) InsertWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) InsertWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	return a.insert(nil, tx, SQL, params...)
 }
 
-func (a Adapter) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	stmt, err := a.fullInsert(db, tx, SQL)
 	if err != nil {
 		log.Errorln(err)
@@ -1085,7 +1084,7 @@ func (a Adapter) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface
 }
 
 // Delete execute delete sql into a table
-func (a Adapter) Delete(SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) Delete(SQL string, params ...interface{}) (sc scanner.Scanner) {
 	db, err := a.conn.Get()
 	if err != nil {
 		log.Errorln(err)
@@ -1095,7 +1094,7 @@ func (a Adapter) Delete(SQL string, params ...interface{}) (sc adapters.Scanner)
 }
 
 // Delete execute delete sql into a table
-func (a Adapter) DeleteCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) DeleteCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
@@ -1105,11 +1104,11 @@ func (a Adapter) DeleteCtx(ctx context.Context, SQL string, params ...interface{
 }
 
 // DeleteWithTransaction execute delete sql into a table
-func (a Adapter) DeleteWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) DeleteWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	return a.delete(nil, tx, SQL, params...)
 }
 
-func (a Adapter) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	log.Debugln("generated SQL:", SQL, " parameters: ", params)
 	var stmt *sql.Stmt
 	var err error
@@ -1176,7 +1175,7 @@ func (a Adapter) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface
 }
 
 // Update execute update sql into a table
-func (a Adapter) Update(SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) Update(SQL string, params ...interface{}) (sc scanner.Scanner) {
 	db, err := a.conn.Get()
 	if err != nil {
 		log.Errorln(err)
@@ -1186,7 +1185,7 @@ func (a Adapter) Update(SQL string, params ...interface{}) (sc adapters.Scanner)
 }
 
 // Update execute update sql into a table
-func (a Adapter) UpdateCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) UpdateCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
@@ -1196,11 +1195,11 @@ func (a Adapter) UpdateCtx(ctx context.Context, SQL string, params ...interface{
 }
 
 // UpdateWithTransaction execute update sql into a table
-func (a Adapter) UpdateWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) UpdateWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	return a.update(nil, tx, SQL, params...)
 }
 
-func (a Adapter) update(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (a Adapter) update(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	var stmt *sql.Stmt
 	var err error
 	if tx != nil {
@@ -1658,7 +1657,7 @@ func (a Adapter) SchemaTablesOrderBy(order string) (orderBy string) {
 }
 
 // ShowTable shows table structure
-func (a Adapter) ShowTable(schema, table string) adapters.Scanner {
+func (a Adapter) ShowTable(schema, table string) scanner.Scanner {
 	query := `SELECT table_schema, table_name, ordinal_position as position, column_name,data_type,
 			  	CASE WHEN character_maximum_length is not null
 					THEN character_maximum_length
@@ -1674,7 +1673,7 @@ func (a Adapter) ShowTable(schema, table string) adapters.Scanner {
 }
 
 // ShowTableCtx shows table structure
-func (a Adapter) ShowTableCtx(ctx context.Context, schema, table string) adapters.Scanner {
+func (a Adapter) ShowTableCtx(ctx context.Context, schema, table string) scanner.Scanner {
 	query := `SELECT table_schema, table_name, ordinal_position as position, column_name,data_type,
 			  	CASE WHEN character_maximum_length is not null
 					THEN character_maximum_length

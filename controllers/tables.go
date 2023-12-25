@@ -10,7 +10,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/structy/log"
 
-	"github.com/prest/prest/adapters"
+	"github.com/prest/prest/adapters/scanner"
 	pctx "github.com/prest/prest/context"
 )
 
@@ -314,7 +314,7 @@ func (c *Config) BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 		context.WithValue(r.Context(), pctx.DBNameKey, database))
 	defer cancel()
 
-	var sc adapters.Scanner
+	var sc scanner.Scanner
 	method := r.Header.Get("Prest-Batch-Method")
 	if strings.ToLower(method) != "copy" {
 		sql := c.adapter.InsertSQL(database, schema, table, names, placeholders)

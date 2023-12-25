@@ -5,9 +5,10 @@ import (
 	"os"
 
 	"github.com/lib/pq"
-	"github.com/prest/prest/adapters/postgres"
-	"github.com/prest/prest/config"
 	"github.com/spf13/cobra"
+
+	"github.com/prest/prest/adapters"
+	"github.com/prest/prest/config"
 )
 
 var authUpCmd = &cobra.Command{
@@ -15,19 +16,34 @@ var authUpCmd = &cobra.Command{
 	Short: "Create auth table",
 	Long:  "Create basic table to use on auth endpoint",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if config.PrestConf.Adapter == nil {
-			postgres.Load()
-		}
-		db, err := postgres.Get()
+		cfg := config.New()
+		adpt, err := adapters.New(cfg)
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
 			return err
 		}
-		_, err = db.Exec(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s.%s (id serial, name text, username text unique, password text, metadata jsonb)", pq.QuoteIdentifier(config.PrestConf.AuthSchema), pq.QuoteIdentifier(config.PrestConf.AuthTable)))
+
+		tx, err := adpt.GetTransactionCtx(cmd.Context())
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
 			return err
 		}
+
+		_, err = tx.Exec(fmt.Sprintf(
+			"CREATE TABLE IF NOT EXISTS %s.%s (id serial, name text, username text unique, password text, metadata jsonb)",
+			pq.QuoteIdentifier(config.PrestConf.AuthSchema),
+			pq.QuoteIdentifier(config.PrestConf.AuthTable)))
+		if err != nil {
+			fmt.Fprint(os.Stdout, err.Error())
+			return err
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			fmt.Fprint(os.Stdout, err.Error())
+			return err
+		}
+
 		return nil
 	},
 }
@@ -37,20 +53,34 @@ var authDownCmd = &cobra.Command{
 	Short: "Drop auth table",
 	Long:  "Drop basic table used on auth endpoint",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if config.PrestConf.Adapter == nil {
-			postgres.Load()
+		cfg := config.New()
+		adpt, err := adapters.New(cfg)
+		if err != nil {
+			fmt.Fprint(os.Stdout, err.Error())
+			return err
 		}
 
-		db, err := postgres.Get()
+		tx, err := adpt.GetTransactionCtx(cmd.Context())
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
 			return err
 		}
-		_, err = db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", pq.QuoteIdentifier(config.PrestConf.AuthSchema), pq.QuoteIdentifier(config.PrestConf.AuthTable)))
+
+		_, err = tx.Exec(fmt.Sprintf(
+			"DROP TABLE IF EXISTS %s.%s",
+			pq.QuoteIdentifier(config.PrestConf.AuthSchema),
+			pq.QuoteIdentifier(config.PrestConf.AuthTable)))
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
 			return err
 		}
+
+		err = tx.Commit()
+		if err != nil {
+			fmt.Fprint(os.Stdout, err.Error())
+			return err
+		}
+
 		return nil
 	},
 }
