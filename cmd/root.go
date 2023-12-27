@@ -46,9 +46,15 @@ func Execute() {
 
 // startServer starts the server
 func startServer(cfg *config.Prest) {
-	// pass config and log to router and controllers
-	http.Handle(cfg.ContextPath, router.Routes(cfg))
 	l := log.New(os.Stdout, "[prestd] ", 0)
+
+	rts, err := router.Routes(cfg)
+	if err != nil {
+		slog.Fatal(err)
+	}
+
+	// pass config and log to router and controllers
+	http.Handle(cfg.ContextPath, rts)
 
 	if !cfg.AccessConf.Restrict {
 		slog.Warningln("You are running prestd in public mode.")
