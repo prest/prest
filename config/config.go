@@ -104,14 +104,14 @@ type Prest struct {
 }
 
 func New() *Prest {
-	viperCfg()
+	configureViperCmd()
 	cfg := &Prest{}
 	Parse(cfg)
 	createMigrationPath(cfg.QueriesPath)
 	return cfg
 }
 
-func viperCfg() {
+func configureViperCmd() {
 	dir, file := filepath.Split(getPrestConfFile(os.Getenv("PREST_CONF")))
 	file = strings.TrimSuffix(file, filepath.Ext(file))
 	replacer := strings.NewReplacer(".", "_")
