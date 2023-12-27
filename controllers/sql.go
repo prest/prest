@@ -12,7 +12,7 @@ import (
 
 // ExecuteScriptQuery is a function to execute and return result of script query
 func (c *Config) ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]byte, error) {
-	c.adapter.SetDatabase(c.server.PGDatabase)
+	c.adapter.SetCurrentConnDatabase(c.server.PGDatabase)
 	sqlPath, err := c.adapter.GetScript(rq.Method, queriesPath, script)
 	if err != nil {
 		err = fmt.Errorf("could not get script %s/%s, %v", queriesPath, script, err)
@@ -46,7 +46,7 @@ func (c *Config) ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
 	database := vars["database"]
 
 	if database == "" {
-		database = c.adapter.GetDatabase()
+		database = c.adapter.GetCurrentConnDatabase()
 	}
 
 	ctx, cancel := pctx.WithTimeout(
