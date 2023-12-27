@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"sync"
@@ -76,10 +77,11 @@ func (p *Pool) Get() (*sqlx.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	DB.SetMaxIdleConns(config.PrestConf.PGMaxIdleConn)
-	DB.SetMaxOpenConns(config.PrestConf.PGMaxOpenConn)
 
-	p.AddDatabaseToPool(p.GetDatabase(), DB)
+	DB.SetMaxIdleConns(p.cfg.PGMaxIdleConn)
+	DB.SetMaxOpenConns(p.cfg.PGMaxOpenConn)
+
+	p.AddDatabaseToPool(p.GetDatabase(), DB.DB)
 
 	return DB, nil
 }
@@ -105,9 +107,10 @@ func (p *Pool) getDatabaseFromPool(name string) *sqlx.DB {
 }
 
 // AddDatabaseToPool add connection to pool
-func (p *Pool) AddDatabaseToPool(name string, DB *sqlx.DB) {
+func (p *Pool) AddDatabaseToPool(name string, DB *sql.DB) {
+	db := sqlx.NewDb(DB, "postgres")
 	p.Mtx.Lock()
-	p.DB[p.GetURI(name)] = DB
+	p.DB[p.GetURI(name)] = db
 	p.Mtx.Unlock()
 }
 

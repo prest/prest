@@ -106,39 +106,14 @@ type Prest struct {
 const defaultCacheDir = "./"
 
 var (
-	// PrestConf config variable
-	PrestConf      *Prest
-	configFile     string
 	defaultCfgFile = "./prest.toml"
 )
-
-// Load configuration
-func Load() {
-	viperCfg()
-	PrestConf = &Prest{}
-	Parse(PrestConf)
-	if _, err := os.Stat(PrestConf.QueriesPath); os.IsNotExist(err) {
-		if err = os.MkdirAll(PrestConf.QueriesPath, 0700); err != nil {
-			log.Errorf("Queries directory %s was not created, err: %v\n", PrestConf.QueriesPath, err)
-		}
-	}
-	if _, err := os.Stat(PrestConf.Cache.StoragePath); os.IsNotExist(err) {
-		if err = os.MkdirAll(PrestConf.Cache.StoragePath, 0700); err != nil {
-			log.Errorf("Cache directory %s was not created, falling back to default './', err: %v\n", PrestConf.Cache.StoragePath, err)
-			PrestConf.Cache.StoragePath = defaultCacheDir
-		}
-	}
-}
 
 func New() *Prest {
 	viperCfg()
 	cfg := &Prest{}
 	Parse(cfg)
-	if _, err := os.Stat(cfg.QueriesPath); os.IsNotExist(err) {
-		if err = os.MkdirAll(cfg.QueriesPath, 0700); os.IsNotExist(err) {
-			log.Errorf("Queries directory %s was not created\n", cfg.QueriesPath)
-		}
-	}
+	createMigrationPath(cfg.QueriesPath)
 	if cfg.Adapter == "" {
 		log.Warningln("adapter is not set. Using the default (postgres)")
 		cfg.Adapter = "postgres"
@@ -147,9 +122,7 @@ func New() *Prest {
 }
 
 func viperCfg() {
-	configFile = getPrestConfFile(os.Getenv("PREST_CONF"))
-
-	dir, file := filepath.Split(configFile)
+	dir, file := filepath.Split(getPrestConfFile(os.Getenv("PREST_CONF")))
 	file = strings.TrimSuffix(file, filepath.Ext(file))
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvPrefix("PREST")
@@ -205,6 +178,7 @@ func viperCfg() {
 	viper.SetDefault("cache.sufixfile", ".cache.prestd.db")
 
 	viper.SetDefault("version", 1)
+	viper.SetDefault("adapter", "postgres")
 	viper.SetDefault("debug", false)
 	viper.SetDefault("context", "/")
 	viper.SetDefault("pluginpath", "./lib")
@@ -234,9 +208,7 @@ func Parse(cfg *Prest) {
 	err := viper.ReadInConfig()
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			log.Warningf(
-				"file '%s' not found, falling back to default settings\n",
-				configFile)
+			log.Warningln("config file not found, falling back to default settings")
 			cfg.SSLMode = "disable"
 		}
 		log.Warningf("read env config error: %v\n", err)
@@ -264,6 +236,7 @@ func Parse(cfg *Prest) {
 	cfg.PGSSLCert = viper.GetString("pg.ssl.cert")
 	cfg.PGSSLRootCert = viper.GetString("pg.ssl.rootcert")
 
+	cfg.Adapter = viper.GetString("adapter")
 	cfg.Version = viper.GetInt("version")
 	// only use value if file is present
 	if cfg.SSLMode == "" {
@@ -431,4 +404,12 @@ func getJSONAgg() (config string) {
 		log.Warningln("JSON Agg type can only be 'json_agg' or 'jsonb_agg', using the later as default.")
 	}
 	return jsonAggDefault
+}
+
+func createMigrationPath(path string) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		if err = os.MkdirAll(path, 0700); os.IsNotExist(err) {
+			log.Errorf("Queries directory %s was not created\n", path)
+		}
+	}
 }
