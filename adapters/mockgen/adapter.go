@@ -37,6 +37,18 @@ func (m *MockAdapter) EXPECT() *MockAdapterMockRecorder {
 	return m.recorder
 }
 
+// AddDatabaseToConnPool mocks base method.
+func (m *MockAdapter) AddDatabaseToConnPool(name string, DB *sql.DB) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "AddDatabaseToConnPool", name, DB)
+}
+
+// AddDatabaseToConnPool indicates an expected call of AddDatabaseToConnPool.
+func (mr *MockAdapterMockRecorder) AddDatabaseToConnPool(name, DB interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddDatabaseToConnPool", reflect.TypeOf((*MockAdapter)(nil).AddDatabaseToConnPool), name, DB)
+}
+
 // BatchInsertCopy mocks base method.
 func (m *MockAdapter) BatchInsertCopy(dbname, schema, table string, keys []string, params ...interface{}) scanner.Scanner {
 	m.ctrl.T.Helper()
@@ -300,18 +312,47 @@ func (mr *MockAdapterMockRecorder) FieldsPermissions(r, table, op interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FieldsPermissions", reflect.TypeOf((*MockAdapter)(nil).FieldsPermissions), r, table, op)
 }
 
-// GetDatabase mocks base method.
-func (m *MockAdapter) GetDatabase() string {
+// GetConn mocks base method.
+func (m *MockAdapter) GetConn() (*sql.DB, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDatabase")
+	ret := m.ctrl.Call(m, "GetConn")
+	ret0, _ := ret[0].(*sql.DB)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetConn indicates an expected call of GetConn.
+func (mr *MockAdapterMockRecorder) GetConn() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConn", reflect.TypeOf((*MockAdapter)(nil).GetConn))
+}
+
+// GetConnURI mocks base method.
+func (m *MockAdapter) GetConnURI(DBName string) string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetConnURI", DBName)
 	ret0, _ := ret[0].(string)
 	return ret0
 }
 
-// GetDatabase indicates an expected call of GetDatabase.
-func (mr *MockAdapterMockRecorder) GetDatabase() *gomock.Call {
+// GetConnURI indicates an expected call of GetConnURI.
+func (mr *MockAdapterMockRecorder) GetConnURI(DBName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDatabase", reflect.TypeOf((*MockAdapter)(nil).GetDatabase))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConnURI", reflect.TypeOf((*MockAdapter)(nil).GetConnURI), DBName)
+}
+
+// GetCurrentConnDatabase mocks base method.
+func (m *MockAdapter) GetCurrentConnDatabase() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCurrentConnDatabase")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetCurrentConnDatabase indicates an expected call of GetCurrentConnDatabase.
+func (mr *MockAdapterMockRecorder) GetCurrentConnDatabase() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCurrentConnDatabase", reflect.TypeOf((*MockAdapter)(nil).GetCurrentConnDatabase))
 }
 
 // GetScript mocks base method.
@@ -457,6 +498,20 @@ func (m *MockAdapter) JoinByRequest(r *http.Request) ([]string, error) {
 func (mr *MockAdapterMockRecorder) JoinByRequest(r interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "JoinByRequest", reflect.TypeOf((*MockAdapter)(nil).JoinByRequest), r)
+}
+
+// MustGetConn mocks base method.
+func (m *MockAdapter) MustGetConn() *sql.DB {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MustGetConn")
+	ret0, _ := ret[0].(*sql.DB)
+	return ret0
+}
+
+// MustGetConn indicates an expected call of MustGetConn.
+func (mr *MockAdapterMockRecorder) MustGetConn() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MustGetConn", reflect.TypeOf((*MockAdapter)(nil).MustGetConn))
 }
 
 // OrderByRequest mocks base method.
@@ -746,16 +801,16 @@ func (mr *MockAdapterMockRecorder) SetByRequest(r, initialPlaceholderID interfac
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetByRequest", reflect.TypeOf((*MockAdapter)(nil).SetByRequest), r, initialPlaceholderID)
 }
 
-// SetDatabase mocks base method.
-func (m *MockAdapter) SetDatabase(name string) {
+// SetCurrentConnDatabase mocks base method.
+func (m *MockAdapter) SetCurrentConnDatabase(name string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetDatabase", name)
+	m.ctrl.Call(m, "SetCurrentConnDatabase", name)
 }
 
-// SetDatabase indicates an expected call of SetDatabase.
-func (mr *MockAdapterMockRecorder) SetDatabase(name interface{}) *gomock.Call {
+// SetCurrentConnDatabase indicates an expected call of SetCurrentConnDatabase.
+func (mr *MockAdapterMockRecorder) SetCurrentConnDatabase(name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDatabase", reflect.TypeOf((*MockAdapter)(nil).SetDatabase), name)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCurrentConnDatabase", reflect.TypeOf((*MockAdapter)(nil).SetCurrentConnDatabase), name)
 }
 
 // ShowTable mocks base method.
