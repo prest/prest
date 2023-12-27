@@ -40,8 +40,6 @@ type Server interface {
 	// GetFunctions(w http.ResponseWriter, r *http.Request)
 	// GetIndexes(w http.ResponseWriter, r *http.Request)
 	// GetConstraints(w http.ResponseWriter, r *http.Request)
-	// GetTable(w http.ResponseWriter, r *http.Request)
-	// GetSchema(w http.ResponseWriter, r *http.Request)
 }
 
 // Config

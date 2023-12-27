@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prest/prest/controllers/auth"
-
 	signer "gopkg.in/square/go-jose.v2"
 	jwt "gopkg.in/square/go-jose.v2/jwt"
+
+	"github.com/prest/prest/controllers/auth"
 )
 
 const unf = "user not found"

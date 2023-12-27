@@ -39,9 +39,6 @@ const (
 )
 
 var (
-	// ensure the adapter interface is implemented by the postgres adapter
-	// _ adapters.Adapter = (*Adapter)(nil)
-
 	removeOperatorRegex        = regexp.MustCompile(`\$[a-z]+.`)
 	insertTableNameRegex       = regexp.MustCompile(`(?i)INTO\s+([\w|\.|-]*\.)*([\w|-]+)\s*\(`)
 	insertTableNameQuotesRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.|"|-]*\.)*"([\w|-]+)"\s*\(`)

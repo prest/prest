@@ -92,8 +92,6 @@ type Prest struct {
 	CORSAllowMethods     []string
 	CORSAllowCredentials bool
 	Debug                bool
-	// todo: remove this from config
-	// send to server
 	Adapter              string
 	EnableDefaultJWT     bool
 	SingleDB             bool
@@ -173,7 +171,7 @@ func viperCfg() {
 	viper.SetDefault("http.port", 3000)
 	viper.SetDefault("http.timeout", 60)
 
-	viper.SetDefault("pg.host", "localhost")
+	viper.SetDefault("pg.host", "127.0.0.1")
 	viper.SetDefault("pg.port", 5432)
 	viper.SetDefault("pg.database", "prest")
 	viper.SetDefault("pg.user", "postgres")
