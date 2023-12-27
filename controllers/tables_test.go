@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
+	"github.com/stretchr/testify/require"
 
 	"github.com/prest/prest/adapters/mockgen"
 	"github.com/prest/prest/config"
@@ -411,5 +412,57 @@ func TestShowTable(t *testing.T) {
 func setHTTPTimeoutMiddleware(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		h.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), pctx.HTTPTimeoutKey, 60))) // nolint
+	}
+}
+
+func Test_DifferentDbQuery(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	adapter := mockgen.NewMockAdapter(ctrl)
+	adapter.EXPECT().GetCurrentConnDatabase().Return("db1").Times(3)
+	h := Config{
+		server: &config.Prest{
+			Debug:    true,
+			SingleDB: true,
+		},
+		adapter: adapter,
+	}
+
+	cases := []struct {
+		description string
+		database    string
+		singleDB    bool
+		expected    bool
+	}{
+		{
+			description: "Same database",
+			database:    "db1",
+			singleDB:    true,
+			expected:    false,
+		},
+		{
+			description: "Different database",
+			database:    "db2",
+			singleDB:    true,
+			expected:    true,
+		},
+		{
+			description: "Different database multiple config",
+			database:    "db2",
+			singleDB:    false,
+			expected:    false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.description, func(t *testing.T) {
+			t.Log(tc.description)
+			if !tc.singleDB {
+				h.server.SingleDB = tc.singleDB
+			}
+			result := h.differentDbQuery(tc.database)
+			require.Equal(t, tc.expected, result)
+		})
 	}
 }

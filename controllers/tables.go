@@ -59,8 +59,8 @@ func (c *Config) GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Req
 	database := vars["database"]
 	schema := vars["schema"]
 
-	if c.server.SingleDB && (c.adapter.GetDatabase() != database) {
-		err := fmt.Errorf("database not registered: %v", database)
+	if c.differentDbQuery(database) {
+		err := fmt.Errorf("database not allowed: %v", database)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -117,8 +117,8 @@ func (c *Config) SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	table := vars["table"]
 	queries := r.URL.Query()
 
-	if c.server.SingleDB && (c.adapter.GetDatabase() != database) {
-		err := fmt.Errorf("database not registered: %v", database)
+	if c.differentDbQuery(database) {
+		err := fmt.Errorf("database not allowed: %v", database)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -257,8 +257,8 @@ func (c *Config) InsertInTables(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	if c.server.SingleDB && (c.adapter.GetDatabase() != database) {
-		err := fmt.Errorf("database not registered: %v", database)
+	if c.differentDbQuery(database) {
+		err := fmt.Errorf("database not allowed: %v", database)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -297,8 +297,8 @@ func (c *Config) BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	if c.server.SingleDB && (c.adapter.GetDatabase() != database) {
-		err := fmt.Errorf("database not registered: %v", database)
+	if c.differentDbQuery(database) {
+		err := fmt.Errorf("database not allowed: %v", database)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -342,8 +342,8 @@ func (c *Config) DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	if c.server.SingleDB && (c.adapter.GetDatabase() != database) {
-		err := fmt.Errorf("database not registered: %v", database)
+	if c.differentDbQuery(database) {
+		err := fmt.Errorf("database not allowed: %v", database)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -398,8 +398,8 @@ func (c *Config) UpdateTable(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	if c.server.SingleDB && (c.adapter.GetDatabase() != database) {
-		err := fmt.Errorf("database not registered: %v", database)
+	if c.differentDbQuery(database) {
+		err := fmt.Errorf("database not allowed: %v", database)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -466,8 +466,8 @@ func (c *Config) ShowTable(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	if c.server.SingleDB && (c.adapter.GetDatabase() != database) {
-		err := fmt.Errorf("database not registered: %v", database)
+	if c.differentDbQuery(database) {
+		err := fmt.Errorf("database not allowed: %v", database)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -483,4 +483,19 @@ func (c *Config) ShowTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write(sc.Bytes())
+}
+
+// differentDbQuery checks if the query is for the same database
+//
+// by default the server is a single DB configuration
+//
+// queries for the same database are allowed and should return false
+// queries for different databases are not allowed in this config and should return true
+// thus returning an error
+//
+// should avoid the error if singleDB is disabled
+// then querying multiple databases is allowed
+func (c *Config) differentDbQuery(database string) bool {
+	return c.server.SingleDB &&
+		(c.adapter.GetCurrentConnDatabase() != database)
 }
