@@ -125,3 +125,30 @@ func TestValidate(t *testing.T) {
 		})
 	}
 }
+func Test_AccessControl(t *testing.T) {
+	permFnc := func(table, permission string) bool {
+		// TODO: Implement your permission function logic here
+		return true
+	}
+
+	handler := AccessControl(permFnc)
+
+	// Create a mock HTTP request and response
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	res := httptest.NewRecorder()
+
+	// Create a mock HTTP handler function
+	handlerFunc := http.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request) {
+		rw.WriteHeader(http.StatusOK)
+	})
+
+	// Call the AccessControl handler with the mock request, response, and handler function
+	handler.ServeHTTP(res, req, handlerFunc)
+
+	// Assert that the response status code is http.StatusOK
+	if res.Code != http.StatusOK {
+		t.Errorf("Expected status code %d, but got %d", http.StatusOK, res.Code)
+	}
+
+	// TODO: Add more test cases for different scenarios
+}

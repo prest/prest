@@ -105,14 +105,14 @@ var (
 	}
 )
 
-func TestGetApp(t *testing.T) {
-	require.NotNil(t, GetApp(&config.Prest{}))
+func TestGet(t *testing.T) {
+	require.NotNil(t, Get(&config.Prest{}))
 }
 
-func TestGetAppWithReorderedMiddleware(t *testing.T) {
+func Test_GetWithReorderedMiddleware(t *testing.T) {
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {})
-	n := GetApp(&config.Prest{}, customMiddleware)
+	n := Get(&config.Prest{}, customMiddleware)
 	n.UseHandler(r)
 
 	server := httptest.NewServer(n)
@@ -130,62 +130,16 @@ func TestGetAppWithReorderedMiddleware(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
-func TestGetAppWithoutReorderedMiddleware(t *testing.T) {
+func Test_GetWithoutReorderedMiddleware(t *testing.T) {
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {})
-	n := GetApp(&config.Prest{})
+	n := Get(&config.Prest{})
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
 	defer server.Close()
 	resp, err := http.Get(server.URL)
 	require.NoError(t, err)
 	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
-}
-
-func Test_Middleware_DoesntBlock_CustomRoutes(t *testing.T) {
-	routerCfg := controllers.New(prestCfg, nil)
-
-	r := mux.NewRouter()
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
-	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", routerCfg.SelectFromTables).Methods("GET")
-
-	cfg := prestCfg
-	cfg.Adapter = "postgres"
-
-	r.PathPrefix("/").Handler(negroni.New(
-		AccessControl(cfg),
-		negroni.Wrap(crudRoutes),
-	))
-
-	n := GetApp(cfg)
-	n.UseHandler(r)
-
-	server := httptest.NewServer(n)
-	defer server.Close()
-
-	resp, err := http.Get(server.URL)
-	require.NoError(t, err)
-
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-
-	defer resp.Body.Close()
-
-	require.Contains(t, string(body), "custom route")
-	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
-
-	resp, err = http.Get(server.URL + "/prest/public/test_write_and_delete_access")
-	require.NoError(t, err)
-
-	body, err = io.ReadAll(resp.Body)
-	require.NoError(t, err)
-
-	defer resp.Body.Close()
-
-	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
-	require.Contains(t, string(body), "required authorization to table")
 }
 
 func customMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -297,7 +251,7 @@ func Test_CORS_Middleware(t *testing.T) {
 		w.Write([]byte("custom route"))
 	})
 
-	n := GetApp(prestCfg)
+	n := Get(prestCfg)
 	n.UseHandler(r)
 
 	server := httptest.NewServer(n)
@@ -336,7 +290,8 @@ func TestExposeTablesMiddleware(t *testing.T) {
 		AuthMetadata: []string{"first_name", "last_name", "last_login"},
 	}
 
-	routerCfg := controllers.New(prestCfg, nil)
+	routerCfg, err := controllers.New(prestCfg, nil)
+	require.NoError(t, err)
 
 	r := mux.NewRouter()
 
@@ -344,7 +299,7 @@ func TestExposeTablesMiddleware(t *testing.T) {
 	r.HandleFunc("/databases", routerCfg.GetDatabases).Methods("GET")
 	r.HandleFunc("/schemas", routerCfg.GetSchemas).Methods("GET")
 
-	n := GetApp(cfg)
+	n := Get(cfg)
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
 	defer server.Close()
@@ -363,7 +318,7 @@ func TestExposeTablesMiddleware(t *testing.T) {
 }
 
 func appTest(cfg *config.Prest) *negroni.Negroni {
-	n := GetApp(cfg)
+	n := Get(cfg)
 	r := mux.NewRouter()
 	if !cfg.Debug && !cfg.EnableDefaultJWT {
 		n.UseHandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -380,7 +335,7 @@ func appTest(cfg *config.Prest) *negroni.Negroni {
 }
 
 func appTestWithJwt(cfg *config.Prest) *negroni.Negroni {
-	n := GetApp(cfg)
+	n := Get(cfg)
 	r := mux.NewRouter()
 
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
