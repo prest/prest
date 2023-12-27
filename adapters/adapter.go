@@ -93,8 +93,13 @@ type Adapter interface {
 	SelectFields(fields []string) (sql string, err error)
 	SelectSQL(selectStr string, database string, schema string, table string) string
 	SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, values []interface{}, err error)
-	SetDatabase(name string)
-	GetDatabase() string
+
+	GetConnURI(DBName string) string
+	GetConn() (*sql.DB, error)
+	AddDatabaseToConnPool(name string, DB *sql.DB)
+	MustGetConn() *sql.DB
+	SetCurrentConnDatabase(name string)
+	GetCurrentConnDatabase() string
 
 	TableClause() (query string)
 	TableOrderBy(order string) (orderBy string)
