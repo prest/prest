@@ -8,10 +8,6 @@ import (
 	config "github.com/prest/prest/config"
 )
 
-func init() {
-	config.Load()
-}
-
 func TestGet(t *testing.T) {
 	t.Log("Open connection")
 

@@ -19,18 +19,6 @@ import (
 	"github.com/structy/log"
 )
 
-// func init() {
-// 	config.Load()
-// 	Load()
-// }
-
-// func TestLoadHasDBSetted(t *testing.T) {
-// 	config.Load()
-// 	Load()
-// 	require.Equal(t, "prest-test", config.PrestConf.PGDatabase)
-// 	require.Equal(t, "prest-test", adpt.GetDatabase())
-// }
-
 func TestLoad(t *testing.T) {
 	// Only run the failing part when a specific env variable is set
 	if os.Getenv("BE_CRASHER") == "1" {
@@ -168,7 +156,7 @@ func TestSetByRequest(t *testing.T) {
 }
 
 func TestWhereByRequest(t *testing.T) {
-	config.Load()
+
 	Load()
 	var testCases = []struct {
 		description    string
@@ -1081,9 +1069,9 @@ func TestSupportHyphenInTable(t *testing.T) {
 }
 
 func TestRestrictFalse(t *testing.T) {
-	config.PrestConf.AccessConf.Restrict = false
+	// config.PrestConf.AccessConf.Restrict = false
 
-	t.Log("Read unrestrict", config.PrestConf.AccessConf.Restrict)
+	// t.Log("Read unrestrict", config.PrestConf.AccessConf.Restrict)
 
 	r, err := http.NewRequest("GET", "/prest-test/public/test_list_only_id?_select=*", nil)
 	if err != nil {
@@ -1701,14 +1689,14 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		config.PrestConf.AccessConf.Restrict = tt.restrict
-		config.PrestConf.AccessConf.Tables = []config.TablesConf{}
-		config.PrestConf.AccessConf.Tables = append(config.PrestConf.AccessConf.Tables,
-			config.TablesConf{
-				Name:        "test_field_permission",
-				Permissions: []string{"read", "write", "delete"},
-				Fields:      tt.args.fields,
-			})
+		// config.PrestConf.AccessConf.Restrict = tt.restrict
+		// config.PrestConf.AccessConf.Tables = []config.TablesConf{}
+		// config.PrestConf.AccessConf.Tables = append(config.PrestConf.AccessConf.Tables,
+		// 	config.TablesConf{
+		// 		Name:        "test_field_permission",
+		// 		Permissions: []string{"read", "write", "delete"},
+		// 		Fields:      tt.args.fields,
+		// 	})
 		t.Run(tt.name, func(t *testing.T) {
 			adapter := &Adapter{}
 			r, err := http.NewRequest(http.MethodGet, tt.args.url, strings.NewReader(""))

@@ -10,14 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// todo: remove this
-func TestMain(m *testing.M) {
-	os.Setenv("PREST_CONF", "./testdata/prest.toml")
-	config.Load()
-	code := m.Run()
-	os.Exit(code)
-}
-
 func TestValidGetScript(t *testing.T) {
 	var testCases = []struct {
 		description string

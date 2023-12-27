@@ -9,14 +9,10 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/prest/prest/adapters/mockgen"
-	"github.com/prest/prest/adapters/postgres"
-	"github.com/prest/prest/config"
 	"github.com/prest/prest/testutils"
 )
 
 func TestGetSchemas(t *testing.T) {
-	config.Load()
-	postgres.Load()
 
 	var testCases = []struct {
 		description string
