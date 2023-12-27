@@ -34,7 +34,7 @@ func TestJWTClaimsOk(t *testing.T) {
 	sig, err := jose.NewSigner(
 		jose.SigningKey{
 			Algorithm: jose.HS256,
-			Key:       []byte(config.PrestConf.JWTKey)},
+			Key:       []byte(cfg.JWTKey)},
 		(&jose.SignerOptions{}).WithType("JWT"))
 	require.NoError(t, err)
 
@@ -73,7 +73,7 @@ func TestJWTClaimsNotOk(t *testing.T) {
 	sig, err := jose.NewSigner(
 		jose.SigningKey{
 			Algorithm: jose.HS256,
-			Key:       []byte(config.PrestConf.JWTKey)},
+			Key:       []byte(cfg.JWTKey)},
 		(&jose.SignerOptions{}).WithType("JWT"))
 	require.NoError(t, err)
 
