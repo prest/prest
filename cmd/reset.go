@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/gosidekick/migration/v3"
 	"github.com/spf13/cobra"
+	slog "github.com/structy/log"
 )
 
 // resetCmd represents the reset command
@@ -19,19 +17,19 @@ var resetCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(os.Stdout, "exec migrations located in %v\n", path)
-		fmt.Fprintf(os.Stdout, "executed %v migrations\n", n)
+		slog.Printf("exec migrations located in %v\n", path)
+		slog.Printf("executed %v migrations\n", n)
 		for _, e := range executed {
-			fmt.Fprintf(os.Stdout, "%v SUCCESS\n", e)
+			slog.Printf("%v SUCCESS\n", e)
 		}
 		n, executed, err = migration.Run(cmd.Context(), path, urlConn, "up")
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(os.Stdout, "exec migrations located in %v\n", path)
-		fmt.Fprintf(os.Stdout, "executed %v migrations\n", n)
+		slog.Printf("exec migrations located in %v\n", path)
+		slog.Printf("executed %v migrations\n", n)
 		for _, e := range executed {
-			fmt.Fprintf(os.Stdout, "%v SUCCESS\n", e)
+			slog.Printf("%v SUCCESS\n", e)
 		}
 		return nil
 	},

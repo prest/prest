@@ -114,10 +114,6 @@ func New() *Prest {
 	cfg := &Prest{}
 	Parse(cfg)
 	createMigrationPath(cfg.QueriesPath)
-	if cfg.Adapter == "" {
-		log.Warningln("adapter is not set. Using the default (postgres)")
-		cfg.Adapter = "postgres"
-	}
 	return cfg
 }
 

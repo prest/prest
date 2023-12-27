@@ -1,26 +1,16 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 
-	"github.com/prest/prest/adapters/postgres"
-	"github.com/prest/prest/config"
 	"github.com/spf13/cobra"
+	slog "github.com/structy/log"
 
 	// pq driver
 	_ "github.com/lib/pq"
-)
 
-var (
-	urlConn string
-	path    string
-)
-
-var (
-	ErrPathNotSet = errors.New("Migrations path not set. \nPlease set it using --path flag or in your prest config file")
-	ErrURLNotSet  = errors.New("Database URL not set. \nPlease set it using --url flag or configure it on your prest config file")
+	"github.com/prest/prest/adapters"
 )
 
 // migrateCmd represents the migrate command
@@ -38,18 +28,24 @@ func checkTable(cmd *cobra.Command, args []string) error {
 		return ErrURLNotSet
 	}
 	cmd.SilenceUsage = true
-	if config.PrestConf.Adapter == nil {
-		postgres.Load()
+
+	adpt, err := adapters.New(cfg)
+	if err != nil {
+		slog.Errorln("checkTable adapters error: ", err)
+		return err
 	}
-	sc := config.PrestConf.Adapter.ShowTable("public", "schema_migrations")
+
+	sc := adpt.ShowTable("public", "schema_migrations")
 	if err := sc.Err(); err != nil {
+		slog.Errorln("checkTable ShowTable error: ", err)
 		return err
 	}
 	ts := []struct {
 		ColName string `json:"column_name,omitempty"`
 	}{}
-	_, err := sc.Scan(&ts)
+	_, err = sc.Scan(&ts)
 	if err != nil {
+		slog.Errorln("checkTable Scan error: ", err)
 		return err
 	}
 	var index *int
@@ -60,12 +56,14 @@ func checkTable(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if index != nil {
-		db, err := postgres.Get()
+		db, err := adpt.GetConn()
 		if err != nil {
+			slog.Errorln("checkTable GetConn error: ", err)
 			return err
 		}
 		_, err = db.Exec("ALTER TABLE public.schema_migrations DROP COLUMN dirty")
 		if err != nil {
+			slog.Errorln("checkTable Exec error: ", err)
 			return err
 		}
 	}
@@ -74,13 +72,13 @@ func checkTable(cmd *cobra.Command, args []string) error {
 
 func driverURL() string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s&sslcert=%s&sslkey=%s&sslrootcert=%s",
-		url.PathEscape(config.PrestConf.PGUser),
-		url.PathEscape(config.PrestConf.PGPass),
-		url.PathEscape(config.PrestConf.PGHost),
-		config.PrestConf.PGPort,
-		url.PathEscape(config.PrestConf.PGDatabase),
-		url.QueryEscape(config.PrestConf.PGSSLMode),
-		url.QueryEscape(config.PrestConf.PGSSLCert),
-		url.QueryEscape(config.PrestConf.PGSSLKey),
-		url.QueryEscape(config.PrestConf.PGSSLRootCert))
+		url.PathEscape(cfg.PGUser),
+		url.PathEscape(cfg.PGPass),
+		url.PathEscape(cfg.PGHost),
+		cfg.PGPort,
+		url.PathEscape(cfg.PGDatabase),
+		url.QueryEscape(cfg.PGSSLMode),
+		url.QueryEscape(cfg.PGSSLCert),
+		url.QueryEscape(cfg.PGSSLKey),
+		url.QueryEscape(cfg.PGSSLRootCert))
 }

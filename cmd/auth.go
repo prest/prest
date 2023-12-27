@@ -16,29 +16,22 @@ var authUpCmd = &cobra.Command{
 	Short: "Create auth table",
 	Long:  "Create basic table to use on auth endpoint",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg := config.New()
 		adpt, err := adapters.New(cfg)
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
 			return err
 		}
 
-		tx, err := adpt.GetTransactionCtx(cmd.Context())
+		db, err := adpt.GetConn()
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
 			return err
 		}
 
-		_, err = tx.Exec(fmt.Sprintf(
+		_, err = db.Exec(fmt.Sprintf(
 			"CREATE TABLE IF NOT EXISTS %s.%s (id serial, name text, username text unique, password text, metadata jsonb)",
-			pq.QuoteIdentifier(config.PrestConf.AuthSchema),
-			pq.QuoteIdentifier(config.PrestConf.AuthTable)))
-		if err != nil {
-			fmt.Fprint(os.Stdout, err.Error())
-			return err
-		}
-
-		err = tx.Commit()
+			pq.QuoteIdentifier(cfg.AuthSchema),
+			pq.QuoteIdentifier(cfg.AuthTable)))
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
 			return err
@@ -60,22 +53,16 @@ var authDownCmd = &cobra.Command{
 			return err
 		}
 
-		tx, err := adpt.GetTransactionCtx(cmd.Context())
+		db, err := adpt.GetConn()
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
 			return err
 		}
 
-		_, err = tx.Exec(fmt.Sprintf(
+		_, err = db.Exec(fmt.Sprintf(
 			"DROP TABLE IF EXISTS %s.%s",
-			pq.QuoteIdentifier(config.PrestConf.AuthSchema),
-			pq.QuoteIdentifier(config.PrestConf.AuthTable)))
-		if err != nil {
-			fmt.Fprint(os.Stdout, err.Error())
-			return err
-		}
-
-		err = tx.Commit()
+			pq.QuoteIdentifier(cfg.AuthSchema),
+			pq.QuoteIdentifier(cfg.AuthTable)))
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
 			return err

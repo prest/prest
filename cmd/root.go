@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,6 +11,15 @@ import (
 	"github.com/prest/prest/router"
 	"github.com/spf13/cobra"
 	slog "github.com/structy/log"
+)
+
+var (
+	urlConn string
+	path    string
+	cfg     = config.New()
+
+	ErrPathNotSet = errors.New("Migrations path not set. \nPlease set it using --path flag or in your prest config file")
+	ErrURLNotSet  = errors.New("Database URL not set. \nPlease set it using --url flag or configure it on your prest config file")
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -36,7 +46,7 @@ func Execute() {
 	RootCmd.AddCommand(versionCmd)
 	RootCmd.AddCommand(migrateCmd)
 	migrateCmd.PersistentFlags().StringVar(&urlConn, "url", driverURL(), "Database driver url")
-	migrateCmd.PersistentFlags().StringVar(&path, "path", config.PrestConf.MigrationsPath, "Migrations directory")
+	migrateCmd.PersistentFlags().StringVar(&path, "path", cfg.MigrationsPath, "Migrations directory")
 
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Println(err)
