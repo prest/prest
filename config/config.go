@@ -103,12 +103,6 @@ type Prest struct {
 	PluginMiddlewareList []PluginMiddleware
 }
 
-const defaultCacheDir = "./"
-
-var (
-	defaultCfgFile = "./prest.toml"
-)
-
 func New() *Prest {
 	viperCfg()
 	cfg := &Prest{}
@@ -191,11 +185,16 @@ func viperCfg() {
 	viper.SetDefault("queries.location", filepath.Join(hDir, "queries"))
 }
 
+// getPrestConfFile returns the path to the config file
+//
+// If PREST_CONF is set, it will use that value
+// if not, it will use the default value
+// that is ./prest.toml
 func getPrestConfFile(prestConf string) string {
 	if prestConf != "" {
 		return prestConf
 	}
-	return defaultCfgFile
+	return "./prest.toml"
 }
 
 // Parse pREST config
