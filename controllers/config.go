@@ -6,6 +6,7 @@ import (
 
 	"github.com/prest/prest/adapters"
 	"github.com/prest/prest/config"
+	"github.com/prest/prest/plugins"
 )
 
 type Server interface {
@@ -40,6 +41,9 @@ type Server interface {
 	// GetFunctions(w http.ResponseWriter, r *http.Request)
 	// GetIndexes(w http.ResponseWriter, r *http.Request)
 	// GetConstraints(w http.ResponseWriter, r *http.Request)
+
+	// plugins file
+	Plugin(w http.ResponseWriter, r *http.Request)
 }
 
 // Config
@@ -50,6 +54,7 @@ type Config struct {
 	server  *config.Prest
 	adapter adapters.Adapter
 	logger  *log.Logger
+	plugins *plugins.Config
 }
 
 // New creates a new Config instance with the given configuration and logger.
@@ -64,6 +69,7 @@ func New(cfg *config.Prest, logger *log.Logger) (*Config, error) {
 		server:  cfg,
 		adapter: adptr,
 		logger:  logger,
+		plugins: plugins.New(cfg.PluginPath),
 	}, nil
 }
 

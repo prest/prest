@@ -8,7 +8,6 @@ import (
 	"plugin"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/config"
 )
 
 // LoadedPlugin structure for controlling the loaded plugin
@@ -23,12 +22,22 @@ type PluginFuncReturn struct {
 	StatusCode int
 }
 
+type Config struct {
+	path string
+}
+
+func New(path string) *Config {
+	return &Config{
+		path: path,
+	}
+}
+
 // loadedFunc global variable to control plugins loaded, blocking duplicate loading
 var loadedFunc = map[string]LoadedPlugin{}
 
 // loadFunc private func to load and exec OS Library
-func loadFunc(fileName, funcName string, r *http.Request) (ret PluginFuncReturn, err error) {
-	libPath := filepath.Join(config.PrestConf.PluginPath, fmt.Sprintf("%s.so", fileName))
+func (c Config) LoadFunc(fileName, funcName string, r *http.Request) (ret PluginFuncReturn, err error) {
+	libPath := filepath.Join(c.path, fmt.Sprintf("%s.so", fileName))
 	loadedPlugin := loadedFunc[libPath]
 	p := loadedPlugin.Plugin
 	// plugin will be loaded only on the first call to the endpoint
@@ -57,6 +66,9 @@ func loadFunc(fileName, funcName string, r *http.Request) (ret PluginFuncReturn,
 	if err != nil {
 		return
 	}
+
+	// can this panic?
+	// why is urlQuery not being used after this?
 	*urlQuery.(*map[string][]string) = r.URL.Query()
 
 	// function name: HttpMethod+FunctionName+"Handler" (string sufix)
@@ -86,26 +98,4 @@ func loadFunc(fileName, funcName string, r *http.Request) (ret PluginFuncReturn,
 	}
 
 	return
-}
-
-// HandlerPlugin responsible for processing the `.so` function via http protocol
-func HandlerPlugin(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	fileName := vars["file"]
-	funcName := vars["func"]
-	ret, err := loadFunc(fileName, funcName, r)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-	// Cache arrow if enabled
-	config.PrestConf.Cache.BuntSet(r.URL.String(), ret.ReturnJson)
-
-	//nolint
-	if ret.StatusCode != -1 {
-		w.WriteHeader(ret.StatusCode)
-	}
-
-	w.Write([]byte(ret.ReturnJson))
 }

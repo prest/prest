@@ -52,7 +52,7 @@ func (r *Config) ConfigRoutes(srv controllers.Server) error {
 	// we use go plugin system that does not support windows
 	// https://github.com/golang/go/issues/19282
 	if runtime.GOOS != "windows" {
-		r.router.HandleFunc("/_PLUGIN/{file}/{func}", plugins.HandlerPlugin)
+		r.router.HandleFunc("/_PLUGIN/{file}/{func}", srv.Plugin)
 	}
 
 	r.router.HandleFunc("/{database}/{schema}", srv.GetTablesByDatabaseAndSchema).Methods("GET")
