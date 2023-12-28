@@ -104,6 +104,8 @@ type Prest struct {
 	PluginMiddlewareList []PluginMiddleware
 }
 
+const defaultCacheDir = "./"
+
 var (
 	// PrestConf config variable
 	PrestConf      *Prest
@@ -117,8 +119,14 @@ func Load() {
 	PrestConf = &Prest{}
 	Parse(PrestConf)
 	if _, err := os.Stat(PrestConf.QueriesPath); os.IsNotExist(err) {
-		if err = os.MkdirAll(PrestConf.QueriesPath, 0700); os.IsNotExist(err) {
-			log.Errorf("Queries directory %s was not created\n", PrestConf.QueriesPath)
+		if err = os.MkdirAll(PrestConf.QueriesPath, 0700); err != nil {
+			log.Errorf("Queries directory %s was not created, err: %v\n", PrestConf.QueriesPath, err)
+		}
+	}
+	if _, err := os.Stat(PrestConf.Cache.StoragePath); os.IsNotExist(err) {
+		if err = os.MkdirAll(PrestConf.Cache.StoragePath, 0700); err != nil {
+			log.Errorf("Cache directory %s was not created, falling back to default './', err: %v\n", PrestConf.Cache.StoragePath, err)
+			PrestConf.Cache.StoragePath = defaultCacheDir
 		}
 	}
 }
