@@ -20,7 +20,8 @@ var (
 	}
 )
 
-// GetApp gets the default negroni app
+// Get gets the default negroni app with
+// the default middlewares and the middlewares passed as parameters
 func Get(cfg *config.Prest, opts ...OptMiddleware) *negroni.Negroni {
 	stack := []negroni.Handler{}
 	stack = append(stack, BaseStack...)
