@@ -48,57 +48,64 @@ type PluginMiddleware struct {
 
 // Prest basic configuration
 type Prest struct {
-	Version              int
-	AuthEnabled          bool
-	AuthSchema           string
-	AuthTable            string
-	AuthUsername         string
-	AuthPassword         string
-	AuthEncrypt          string
-	AuthMetadata         []string
-	AuthType             string
-	HTTPHost             string // HTTPHost Declare which http address the PREST used
-	HTTPPort             int    // HTTPPort Declare which http port the PREST used
-	HTTPTimeout          int
-	PGHost               string
-	PGPort               int
-	PGUser               string
-	PGPass               string
-	PGDatabase           string
-	PGURL                string
-	PGSSLMode            string
-	PGSSLCert            string
-	PGSSLKey             string
-	PGSSLRootCert        string
+	// general app config
+	Version        int
+	Debug          bool
+	Adapter        string
+	MigrationsPath string
+	QueriesPath    string
+	SingleDB       bool
+	Cache          cache.Config
+	ExposeConf     ExposeConf
+	AccessConf     AccessConf
+
+	// auth configuration
+	AuthEnabled  bool
+	AuthSchema   string
+	AuthTable    string
+	AuthUsername string
+	AuthPassword string
+	AuthEncrypt  string
+	AuthMetadata []string
+	AuthType     string
+
+	// HTTP server configuration
 	ContextPath          string
-	SSLMode              string
-	SSLCert              string
-	SSLKey               string
-	SSLRootCert          string
-	PGMaxIdleConn        int
-	PGMaxOpenConn        int
-	PGConnTimeout        int
-	PGCache              bool
-	JWTKey               string
-	JWTAlgo              string
-	JWTWhiteList         []string
-	JSONAggType          string
-	MigrationsPath       string
-	QueriesPath          string
-	AccessConf           AccessConf
-	ExposeConf           ExposeConf
+	HTTPHost             string // host to be used
+	HTTPPort             int    // port to be used
+	HTTPTimeout          int
+	HTTPSMode            bool
+	HTTPSCert            string
+	HTTPSKey             string
 	CORSAllowOrigin      []string
 	CORSAllowHeaders     []string
 	CORSAllowMethods     []string
 	CORSAllowCredentials bool
-	Debug                bool
-	Adapter              string
-	EnableDefaultJWT     bool
-	SingleDB             bool
-	HTTPSMode            bool
-	HTTPSCert            string
-	HTTPSKey             string
-	Cache                cache.Config
+
+	// postgres connection configuration
+	PGHost        string
+	PGPort        int
+	PGUser        string
+	PGPass        string
+	PGDatabase    string
+	PGURL         string
+	PGSSLMode     string
+	PGSSLCert     string
+	PGSSLKey      string
+	PGSSLRootCert string
+	PGMaxIdleConn int
+	PGMaxOpenConn int
+	PGConnTimeout int
+	PGCache       bool
+	JSONAggType   string
+
+	// jwt configuration
+	JWTKey           string
+	EnableDefaultJWT bool
+	JWTAlgo          string
+	JWTWhiteList     []string
+
+	// plugin config
 	PluginPath           string
 	PluginMiddlewareList []PluginMiddleware
 }
@@ -145,7 +152,6 @@ func configureViperCmd() {
 	viper.SetDefault("pg.single", true)
 	viper.SetDefault("pg.cache", true)
 	viper.SetDefault("pg.ssl.mode", "require")
-	viper.SetDefault("ssl.mode", "require")
 
 	viper.SetDefault("jwt.default", true)
 	viper.SetDefault("jwt.algo", "HS256")
@@ -167,7 +173,7 @@ func configureViperCmd() {
 	viper.SetDefault("cache.storagepath", "./")
 	viper.SetDefault("cache.sufixfile", ".cache.prestd.db")
 
-	viper.SetDefault("version", 1)
+	viper.SetDefault("version", 2)
 	viper.SetDefault("adapter", "postgres")
 	viper.SetDefault("debug", false)
 	viper.SetDefault("context", "/")
@@ -203,10 +209,8 @@ func Parse(cfg *Prest) {
 	err := viper.ReadInConfig()
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			log.Warningln("config file not found, falling back to default settings")
-			cfg.SSLMode = "disable"
+			log.Warningln("config file not found, falling back to default settings, err: ", err)
 		}
-		log.Warningf("read env config error: %v\n", err)
 	}
 	cfg.AuthEnabled = viper.GetBool("auth.enabled")
 	cfg.AuthSchema = viper.GetString("auth.schema")
@@ -233,15 +237,7 @@ func Parse(cfg *Prest) {
 
 	cfg.Adapter = viper.GetString("adapter")
 	cfg.Version = viper.GetInt("version")
-	// only use value if file is present
-	if cfg.SSLMode == "" {
-		cfg.SSLMode = viper.GetString("ssl.mode")
-	}
-	cfg.SSLCert = viper.GetString("ssl.cert")
-	cfg.SSLKey = viper.GetString("ssl.key")
-	cfg.SSLRootCert = viper.GetString("ssl.rootcert")
 
-	parseSSLData(cfg)
 	if os.Getenv("DATABASE_URL") != "" {
 		// cloud factor support: https://devcenter.heroku.com/changelog-items/438
 		cfg.PGURL = os.Getenv("DATABASE_URL")
@@ -337,7 +333,7 @@ func parseDatabaseURL(cfg *Prest) {
 	}
 	cfg.PGDatabase = strings.Replace(u.Path, "/", "", -1)
 	if u.Query().Get("sslmode") != "" {
-		cfg.SSLMode = u.Query().Get("sslmode")
+		cfg.PGSSLMode = u.Query().Get("sslmode")
 	}
 }
 
@@ -353,37 +349,6 @@ func portFromEnv(cfg *Prest) {
 		return
 	}
 	cfg.HTTPPort = HTTPPort
-}
-
-// parseSSLData favors the config according to the version used
-// v1 uses PG from old config
-// v2 uses PG from new config (env/toml)
-//
-// todo: deprecate v1
-func parseSSLData(cfg *Prest) {
-	if cfg.Version <= 1 {
-		parseSSLV1Data(cfg)
-		return
-	}
-	log.Warningln(`
-You are using v2 of prestd configs, please note that v1 postgres SSL environment variables are ignored and you have to set them correctly.
-
-When using v2 the following environment variables will be ignored: PREST_SSL_MODE, PREST_SSL_CERT, PREST_SSL_KEY, PREST_SSL_ROOTCERT
-
-View more at https://docs.prestd.com/get-started/configuring-prest`)
-}
-
-func parseSSLV1Data(cfg *Prest) {
-	log.Warningln(`
-You are using v1 of prestd configs, please migrate to v2.
-
-v1 will be deprecated by Dec 31st 2023.
-
-View more at https://docs.prestd.com/get-started/configuring-prest`)
-	cfg.PGSSLMode = cfg.SSLMode
-	cfg.PGSSLKey = cfg.SSLKey
-	cfg.PGSSLCert = cfg.SSLCert
-	cfg.PGSSLRootCert = cfg.SSLRootCert
 }
 
 // getJSONAgg identifies which json aggregation function will be used,
