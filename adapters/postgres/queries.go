@@ -66,18 +66,16 @@ func (a Adapter) ParseScript(scriptPath string, templateData map[string]interfac
 }
 
 // WriteSQL perform INSERT's, UPDATE's, DELETE's operations
-func (a Adapter) WriteSQL(sql string, values []interface{}) (sc scanner.Scanner) {
-	db, err := a.conn.Get()
+func (a Adapter) WriteSQL(sql string, values []interface{}) scanner.Scanner {
+	db, err := a.pool.Get()
 	if err != nil {
-		log.Println(err)
-		sc = &scanner.PrestScanner{Error: err}
-		return
+		log.Errorln(err)
+		return &scanner.PrestScanner{Error: err}
 	}
 	stmt, err := a.Prepare(db, sql, false)
 	if err != nil {
-		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
-		sc = &scanner.PrestScanner{Error: err}
-		return
+		log.Errorf("could not prepare sql: %s\n Error: %v\n", sql, err)
+		return &scanner.PrestScanner{Error: err}
 	}
 
 	valuesAux := make([]interface{}, 0, len(values))
@@ -87,43 +85,38 @@ func (a Adapter) WriteSQL(sql string, values []interface{}) (sc scanner.Scanner)
 
 	result, err := stmt.Exec(valuesAux...)
 	if err != nil {
-		log.Printf("sql = %v\n", sql)
+		log.Errorf("sql = %v\n", sql)
 		err = fmt.Errorf("could not peform sql: %v", err)
-		sc = &scanner.PrestScanner{Error: err}
-		return
+		return &scanner.PrestScanner{Error: err}
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		err = fmt.Errorf("could not rows affected: %v", err)
-		sc = &scanner.PrestScanner{Error: err}
-		return
+		return &scanner.PrestScanner{Error: err}
 	}
 
 	data := make(map[string]interface{})
 	data["rows_affected"] = rowsAffected
 	var resultByte []byte
 	resultByte, err = json.Marshal(data)
-	sc = &scanner.PrestScanner{
+	return &scanner.PrestScanner{
 		Error: err,
 		Buff:  bytes.NewBuffer(resultByte),
 	}
-	return
 }
 
 // WriteSQLCtx perform INSERT's, UPDATE's, DELETE's operations
-func (a Adapter) WriteSQLCtx(ctx context.Context, sql string, values []interface{}) (sc scanner.Scanner) {
+func (a Adapter) WriteSQLCtx(ctx context.Context, sql string, values []interface{}) scanner.Scanner {
 	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
-		log.Println(err)
-		sc = &scanner.PrestScanner{Error: err}
-		return
+		log.Errorln(err)
+		return &scanner.PrestScanner{Error: err}
 	}
 	stmt, err := a.Prepare(db, sql, false)
 	if err != nil {
-		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
-		sc = &scanner.PrestScanner{Error: err}
-		return
+		log.Errorf("could not prepare sql: %s\n Error: %v\n", sql, err)
+		return &scanner.PrestScanner{Error: err}
 	}
 
 	valuesAux := make([]interface{}, 0, len(values))
@@ -133,28 +126,25 @@ func (a Adapter) WriteSQLCtx(ctx context.Context, sql string, values []interface
 
 	result, err := stmt.Exec(valuesAux...)
 	if err != nil {
-		log.Printf("sql = %v\n", sql)
+		log.Errorf("sql = %v\n", sql)
 		err = fmt.Errorf("could not peform sql: %v", err)
-		sc = &scanner.PrestScanner{Error: err}
-		return
+		return &scanner.PrestScanner{Error: err}
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		err = fmt.Errorf("could not rows affected: %v", err)
-		sc = &scanner.PrestScanner{Error: err}
-		return
+		return &scanner.PrestScanner{Error: err}
 	}
 
 	data := make(map[string]interface{})
 	data["rows_affected"] = rowsAffected
 	var resultByte []byte
 	resultByte, err = json.Marshal(data)
-	sc = &scanner.PrestScanner{
+	return &scanner.PrestScanner{
 		Error: err,
 		Buff:  bytes.NewBuffer(resultByte),
 	}
-	return
 }
 
 // ExecuteScripts run sql templates created by users
