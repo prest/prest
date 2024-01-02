@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestValidateType(t *testing.T) {
+func Test_ValidateType(t *testing.T) {
 	var tmap map[string]interface{}
 	var tint int
 	var testCases = []struct {
@@ -30,12 +30,14 @@ func TestValidateType(t *testing.T) {
 	}
 }
 
-func TestPrestScanQuery(t *testing.T) {
+func Test_PrestScanQuery(t *testing.T) {
 	type ComplexType struct {
 		Name string `json:"name,omitempty"`
 	}
 	act := make([]ComplexType, 0)
-	tac := []ComplexType{ComplexType{Name: "test"}}
+	tac := []ComplexType{
+		{Name: "test"},
+	}
 	byt, err := json.Marshal(tac)
 	if err != nil {
 		t.Errorf("expected no errors but got %v", err)
@@ -75,7 +77,7 @@ func TestPrestScanQuery(t *testing.T) {
 	}
 }
 
-func TestPrestScanNotQuery(t *testing.T) {
+func Test_PrestScanNotQuery(t *testing.T) {
 	type ComplexType struct {
 		Name string `json:"name,omitempty"`
 	}
@@ -121,19 +123,19 @@ func TestPrestScanNotQuery(t *testing.T) {
 	}
 }
 
-func TestPrestScan(t *testing.T) {
+func Test_PrestScan(t *testing.T) {
 	type ComplexType struct {
 		Name string `json:"name,omitempty"`
 	}
 	act := make([]ComplexType, 0)
-	tac := []ComplexType{ComplexType{Name: "test"}}
+	tac := []ComplexType{{Name: "test"}}
 	byt, err := json.Marshal(tac)
 	if err != nil {
 		t.Errorf("expected no errors but got %v", err)
 	}
 	tacs := []ComplexType{
-		ComplexType{Name: "test"},
-		ComplexType{Name: "Test"},
+		{Name: "test"},
+		{Name: "Test"},
 	}
 	byts, err := json.Marshal(tacs)
 	if err != nil {
