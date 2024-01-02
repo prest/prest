@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestValidGetScript(t *testing.T) {
+func Test_ValidGetScript(t *testing.T) {
 	var testCases = []struct {
 		description string
 		method      string
@@ -27,7 +27,9 @@ func TestValidGetScript(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		adpt := NewAdapter(&config.Prest{})
+		adpt := NewAdapter(&config.Prest{
+			QueriesPath: "../../testdata/queries",
+		})
 		_, err := adpt.GetScript(tc.method, tc.path, tc.file)
 		if err != tc.err {
 			t.Errorf("expected no errors, but got %s", err)
@@ -35,7 +37,7 @@ func TestValidGetScript(t *testing.T) {
 	}
 }
 
-func TestInvalidGetScript(t *testing.T) {
+func Test_InvalidGetScript(t *testing.T) {
 	var testCases = []struct {
 		description string
 		method      string
@@ -49,7 +51,9 @@ func TestInvalidGetScript(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		adpt := NewAdapter(&config.Prest{})
+		adpt := NewAdapter(&config.Prest{
+			QueriesPath: "../../testdata/queries",
+		})
 		_, err := adpt.GetScript(tc.method, tc.path, tc.file)
 		if err == nil {
 			t.Errorf("expected no error, but got %s", err)
@@ -57,14 +61,18 @@ func TestInvalidGetScript(t *testing.T) {
 	}
 }
 
-func TestParseScriptInvalid(t *testing.T) {
+func Test_ParseScriptInvalid(t *testing.T) {
 	templateData := map[string]interface{}{}
 	templateData["field1"] = "abc"
 
-	scriptPath := fmt.Sprint(os.Getenv("PREST_QUERIES_LOCATION"), "/fulltable/%s")
 	t.Log("Parse script with get_all file")
-	adpt := NewAdapter(&config.Prest{})
-	sql, _, err := adpt.ParseScript(fmt.Sprintf(scriptPath, "get_all.read.sql"), templateData)
+
+	adpt := NewAdapter(&config.Prest{
+		QueriesPath: "../../testdata/queries",
+	})
+	sql, _, err := adpt.ParseScript(
+		fmt.Sprintf(adpt.cfg.QueriesPath+"/fulltable/%s", "get_all.read.sql"),
+		templateData)
 	if err != nil {
 		t.Errorf("expected no error, but got: %v", err)
 	}
@@ -74,25 +82,34 @@ func TestParseScriptInvalid(t *testing.T) {
 	}
 }
 
-func TestParseScriptSyntaxInvalid(t *testing.T) {
+func Test_ParseScriptSyntaxInvalid(t *testing.T) {
 	templateData := map[string]interface{}{}
 	templateData["field1"] = 1
-	scriptPath := fmt.Sprint(os.Getenv("PREST_QUERIES_LOCATION"), "/fulltable/%s")
-	adpt := NewAdapter(&config.Prest{})
-	_, _, err := adpt.ParseScript(fmt.Sprintf(scriptPath, "parse_syntax_invalid.read.sql"), templateData)
+
+	adpt := NewAdapter(&config.Prest{
+		QueriesPath: "../../testdata/queries",
+	})
+	scriptPath := fmt.Sprintf(
+		adpt.cfg.QueriesPath+"/fulltable/%s", "parse_syntax_invalid.read.sql")
+
+	_, _, err := adpt.ParseScript(scriptPath, templateData)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "could not parse file")
 }
 
-func TestParseScript(t *testing.T) {
+func Test_ParseScript(t *testing.T) {
 	templateData := map[string]interface{}{}
 	templateData["field1"] = []string{"abc", "test"}
 
-	scriptPath := fmt.Sprint(os.Getenv("PREST_QUERIES_LOCATION"), "/fulltable/%s")
-
 	t.Log("Parse script with get_all_slice file")
-	adpt := NewAdapter(&config.Prest{}) // todo: mock
-	sql, _, err := adpt.ParseScript(fmt.Sprintf(scriptPath, "get_all_slice.read.sql"), templateData)
+
+	adpt := NewAdapter(&config.Prest{
+		QueriesPath: "../../testdata/queries",
+	})
+	scriptPath := fmt.Sprintf(
+		adpt.cfg.QueriesPath+"/fulltable/%s", "get_all_slice.read.sql")
+
+	sql, _, err := adpt.ParseScript(scriptPath, templateData)
 	require.NoError(t, err)
 	require.Equal(t, "SELECT * FROM test7 WHERE name IN ('abc', 'test')", sql)
 }
