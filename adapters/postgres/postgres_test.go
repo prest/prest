@@ -22,7 +22,6 @@ import (
 func TestLoad(t *testing.T) {
 	// Only run the failing part when a specific env variable is set
 	if os.Getenv("BE_CRASHER") == "1" {
-		Load()
 		t.Setenv("PREST_PG_DATABASE", "prest-test")
 		return
 	}
@@ -157,7 +156,6 @@ func TestSetByRequest(t *testing.T) {
 
 func TestWhereByRequest(t *testing.T) {
 
-	Load()
 	var testCases = []struct {
 		description    string
 		url            string

@@ -103,24 +103,6 @@ func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string, cache bool) (stateme
 	return
 }
 
-// Load postgres
-func Load() {
-	// config.PrestConf.Adapter = &Adapter{}
-
-	// if a.conn.GetDatabase() == "" {
-	// 	a.conn.SetDatabase(config.PrestConf.PGDatabase)
-	// }
-
-	// db, err := a.conn.Get()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// err = db.Ping()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-}
-
 // GetStmt get statement
 func (a Adapter) GetStmt() *Stmt {
 	if a.stmt == nil {
