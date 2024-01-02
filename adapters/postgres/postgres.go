@@ -52,7 +52,7 @@ type Postgres Adapter
 type Adapter struct {
 	cfg  *config.Prest
 	stmt *Stmt
-	conn *connection.Pool
+	pool *connection.Pool
 }
 
 // NewAdapter sets the postgresql adapter
@@ -63,7 +63,7 @@ func NewAdapter(cfg *config.Prest) *Adapter {
 			Mtx:        &sync.Mutex{},
 			PrepareMap: make(map[string]*sql.Stmt),
 		},
-		conn: connection.NewPool(cfg),
+		pool: connection.NewPool(cfg),
 	}
 }
 
@@ -124,9 +124,9 @@ func (a Adapter) ClearStmt() {
 
 // GetTransaction get transaction
 func (a Adapter) GetTransaction() (tx *sql.Tx, err error) {
-	db, err := a.conn.Get()
+	db, err := a.pool.Get()
 	if err != nil {
-		log.Println(err)
+		log.Errorln(err)
 		return
 	}
 	return db.Begin()
@@ -680,9 +680,9 @@ func (a Adapter) QueryCtx(ctx context.Context, SQL string, params ...interface{}
 }
 
 func (a Adapter) Query(SQL string, params ...interface{}) (sc scanner.Scanner) {
-	db, err := a.conn.Get()
+	db, err := a.pool.Get()
 	if err != nil {
-		log.Println(err)
+		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
 	}
 	SQL = fmt.Sprintf("SELECT %s(s) FROM (%s) s", a.cfg.JSONAggType, SQL)
@@ -705,7 +705,7 @@ func (a Adapter) Query(SQL string, params ...interface{}) (sc scanner.Scanner) {
 
 // QueryCount process queries with count
 func (a Adapter) QueryCount(SQL string, params ...interface{}) (sc scanner.Scanner) {
-	db, err := a.conn.Get()
+	db, err := a.pool.Get()
 	if err != nil {
 		return &scanner.PrestScanner{Error: err}
 	}
@@ -786,7 +786,7 @@ func (a Adapter) PaginateIfPossible(r *http.Request) (paginatedQuery string, err
 
 // BatchInsertCopy execute batch insert sql into a table unsing copy
 func (a Adapter) BatchInsertCopy(dbname, schema, table string, keys []string, values ...interface{}) (sc scanner.Scanner) {
-	db, err := a.conn.Get()
+	db, err := a.pool.Get()
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
@@ -823,7 +823,7 @@ func (a Adapter) BatchInsertCopy(dbname, schema, table string, keys []string, va
 	}
 	stmt, err := tx.Prepare(pq.CopyInSchema(schema, table, keys...))
 	if err != nil {
-		log.Println(err)
+		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
 	}
 	initOffSet := 0
@@ -918,7 +918,7 @@ func (a Adapter) BatchInsertCopyCtx(ctx context.Context, dbname, schema, table s
 
 // BatchInsertValues execute batch insert sql into a table unsing multi values
 func (a Adapter) BatchInsertValues(SQL string, values ...interface{}) (sc scanner.Scanner) {
-	db, err := a.conn.Get()
+	db, err := a.pool.Get()
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
@@ -1024,7 +1024,7 @@ func (a Adapter) fullInsert(db *sqlx.DB, tx *sql.Tx, SQL string) (stmt *sql.Stmt
 
 // Insert execute insert sql into a table
 func (a Adapter) Insert(SQL string, params ...interface{}) (sc scanner.Scanner) {
-	db, err := a.conn.Get()
+	db, err := a.pool.Get()
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
@@ -1064,7 +1064,7 @@ func (a Adapter) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface
 
 // Delete execute delete sql into a table
 func (a Adapter) Delete(SQL string, params ...interface{}) (sc scanner.Scanner) {
-	db, err := a.conn.Get()
+	db, err := a.pool.Get()
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
@@ -1155,7 +1155,7 @@ func (a Adapter) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface
 
 // Update execute update sql into a table
 func (a Adapter) Update(SQL string, params ...interface{}) (sc scanner.Scanner) {
-	db, err := a.conn.Get()
+	db, err := a.pool.Get()
 	if err != nil {
 		log.Errorln(err)
 		return &scanner.PrestScanner{Error: err}
@@ -1672,7 +1672,7 @@ func (a Adapter) ShowTableCtx(ctx context.Context, schema, table string) scanner
 func (a Adapter) getDBFromCtx(ctx context.Context) (db *sqlx.DB, err error) {
 	dbName, ok := ctx.Value(pctx.DBNameKey).(string)
 	if !ok {
-		return a.conn.Get()
+		return a.pool.Get()
 	}
-	return a.conn.GetFromPool(dbName)
+	return a.pool.GetFromPool(dbName)
 }

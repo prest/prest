@@ -2047,5 +2047,5 @@ func Test_NewAdapter(t *testing.T) {
 	require.NotNil(t, adapter.stmt.PrepareMap)
 
 	// Verify that the conn field is initialized correctly
-	require.NotNil(t, adapter.conn)
+	require.NotNil(t, adapter.pool)
 }
