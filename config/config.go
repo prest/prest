@@ -96,8 +96,9 @@ type Prest struct {
 	PGMaxIdleConn int
 	PGMaxOpenConn int
 	PGConnTimeout int
-	PGCache       bool
-	JSONAggType   string
+	// PGConnMaxLifetime int
+	PGCache     bool
+	JSONAggType string
 
 	// jwt configuration
 	JWTKey           string
