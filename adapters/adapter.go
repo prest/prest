@@ -11,7 +11,7 @@ import (
 	"github.com/prest/prest/config"
 )
 
-// Adapter interface
+// Adapter interface for database operations
 type Adapter interface {
 	// GetTransaction attempts to get a transaction from the db connection
 	GetTransaction() (tx *sql.Tx, err error)
@@ -20,11 +20,24 @@ type Adapter interface {
 	//
 	// use the adapter.DBNameKey for setting
 	GetTransactionCtx(ctx context.Context) (tx *sql.Tx, err error)
+	// GetConnURI returns the connection URI
+	GetConnURI(DBName string) string
+	// GetConn returns the current used connection from the pool
+	GetConn() (*sql.DB, error)
+	// GetConnCtx(ctx context.Context) (*sql.DB, error)
+
+	// AddDatabaseToConnPool adds a connection to the pool
+	AddDatabaseToConnPool(name string, DB *sql.DB)
+	// MustGetConn returns the current used connection from the pool or panics
+	MustGetConn() *sql.DB
+	// SetCurrentConnDatabase sets the current connection database
+	SetCurrentConnDatabase(name string)
+	// GetCurrentConnDatabase returns the current connection database
+	GetCurrentConnDatabase() string
 
 	// BatchInsertValues execute batch insert sql into a table unsing params values
 	BatchInsertValues(SQL string, params ...interface{}) (sc scanner.Scanner)
 	BatchInsertValuesCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner)
-
 	// BatchInsertCopy executes a batch insert sql into a table unsing copy and given params
 	BatchInsertCopy(dbname, schema, table string, keys []string, params ...interface{}) (sc scanner.Scanner)
 	BatchInsertCopyCtx(ctx context.Context, dbname, schema, table string, keys []string, params ...interface{}) (sc scanner.Scanner)
@@ -94,13 +107,6 @@ type Adapter interface {
 	SelectSQL(selectStr string, database string, schema string, table string) string
 	SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, values []interface{}, err error)
 
-	GetConnURI(DBName string) string
-	GetConn() (*sql.DB, error)
-	AddDatabaseToConnPool(name string, DB *sql.DB)
-	MustGetConn() *sql.DB
-	SetCurrentConnDatabase(name string)
-	GetCurrentConnDatabase() string
-
 	TableClause() (query string)
 	TableOrderBy(order string) (orderBy string)
 	TablePermissions(table string, op string) bool
@@ -120,7 +126,6 @@ type Adapter interface {
 // New returns a new adapter based on the configuration file
 //
 // currently only postgres is supported
-// TODO: add support to other databases
 // TODO: add support to multiple adapters
 func New(cfg *config.Prest) (Adapter, error) {
 	switch cfg.Adapter {
