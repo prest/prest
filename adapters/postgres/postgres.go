@@ -50,9 +50,10 @@ type Postgres Adapter
 
 // Adapter implements the postgres adapter
 type Adapter struct {
-	cfg  *config.Prest
-	stmt *Stmt
-	pool *connection.Pool
+	cfg         *config.Prest
+	stmt        *Stmt
+	pool        *connection.Pool
+	scriptVerbs map[string]string
 }
 
 // NewAdapter sets the postgresql adapter
@@ -64,6 +65,13 @@ func NewAdapter(cfg *config.Prest) *Adapter {
 			PrepareMap: make(map[string]*sql.Stmt),
 		},
 		pool: connection.NewPool(cfg),
+		scriptVerbs: map[string]string{
+			"GET":    ".read.sql",
+			"POST":   ".write.sql",
+			"PATCH":  ".update.sql",
+			"PUT":    ".update.sql",
+			"DELETE": ".delete.sql",
+		},
 	}
 }
 

@@ -15,17 +15,9 @@ import (
 	"github.com/prest/prest/template"
 )
 
-// GetScript get SQL template file
+// GetScript gets the SQL template file
 func (a Adapter) GetScript(verb, folder, scriptName string) (script string, err error) {
-	verbs := map[string]string{
-		"GET":    ".read.sql",
-		"POST":   ".write.sql",
-		"PATCH":  ".update.sql",
-		"PUT":    ".update.sql",
-		"DELETE": ".delete.sql",
-	}
-
-	sufix, ok := verbs[verb]
+	sufix, ok := a.scriptVerbs[verb]
 	if !ok {
 		err = fmt.Errorf("invalid http method %s", verb)
 		return
