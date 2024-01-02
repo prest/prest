@@ -25,8 +25,6 @@ func Routes(cfg *config.Prest) (*negroni.Negroni, error) {
 
 // ConfigRoutes reagister all handlers and routes
 // v2: this is not used anywhere, so we can make it private
-//
-// todo: receive controller interface and mock handlers in tests
 func (r *Config) ConfigRoutes(srv controllers.Server) error {
 
 	r.router = mux.NewRouter().StrictSlash(true)
