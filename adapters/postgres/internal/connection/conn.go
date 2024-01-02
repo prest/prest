@@ -61,7 +61,7 @@ func (p *Pool) GetURI(DBName string) string {
 	return dbURI
 }
 
-// Get get postgres connection
+// Get gets the currently set postgres connection
 func (p *Pool) Get() (*sqlx.DB, error) {
 	var (
 		DB  *sqlx.DB
