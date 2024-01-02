@@ -14,25 +14,16 @@ func TestParse(t *testing.T) {
 		cfg := &Prest{}
 		Parse(cfg)
 		require.Equal(t, 3000, cfg.HTTPPort)
-		require.Equal(t, "prest-test", cfg.PGDatabase)
-		require.Equal(t, "postgres", cfg.PGHost)
+		require.Equal(t, "prest", cfg.PGDatabase)
+		require.Equal(t, "127.0.0.1", cfg.PGHost)
 		require.Equal(t, "postgres", cfg.PGUser)
 		require.Equal(t, "postgres", cfg.PGPass)
 		require.Equal(t, true, cfg.PGCache)
 		require.Equal(t, true, cfg.SingleDB)
-		require.Equal(t, "disable", cfg.SSLMode)
+		require.Equal(t, "require", cfg.PGSSLMode)
 		require.Equal(t, false, cfg.Debug)
-		require.Equal(t, 1, cfg.Version)
-		require.Equal(t, true, cfg.AccessConf.Restrict)
-	})
-
-	t.Run("PREST_CONF", func(t *testing.T) {
-		t.Setenv("PREST_CONF", "../testdata/prest.toml")
-		configureViperCmd()
-		cfg := &Prest{}
-		Parse(cfg)
-		require.Equal(t, 3000, cfg.HTTPPort)
-		require.Equal(t, "prest-test", cfg.PGDatabase)
+		require.Equal(t, 2, cfg.Version)
+		require.Equal(t, false, cfg.AccessConf.Restrict)
 	})
 
 	t.Run("PREST_HTTP_PORT and unset PREST_JWT_DEFAULT", func(t *testing.T) {
@@ -45,7 +36,7 @@ func TestParse(t *testing.T) {
 		require.True(t, cfg.EnableDefaultJWT)
 	})
 
-	t.Run("empty PREST_CONF and falsey PREST_JWT_DEFAULT", func(t *testing.T) {
+	t.Run("empty PREST_CONF and false PREST_JWT_DEFAULT", func(t *testing.T) {
 		t.Setenv("PREST_CONF", "")
 		t.Setenv("PREST_JWT_DEFAULT", "false")
 		configureViperCmd()
@@ -103,6 +94,16 @@ func TestParse(t *testing.T) {
 		Parse(cfg)
 		require.Equal(t, jsonAggDefault, cfg.JSONAggType)
 	})
+
+	t.Run("with predefined PREST_CONF", func(t *testing.T) {
+		t.Setenv("PREST_CONF", "../testdata/prest.toml")
+		configureViperCmd()
+		cfg := &Prest{}
+		Parse(cfg)
+		require.Equal(t, 3002, cfg.HTTPPort)
+		require.Equal(t, "prest", cfg.PGDatabase)
+		require.True(t, cfg.Cache.Enabled)
+	})
 }
 
 func Test_getPrestConfFile(t *testing.T) {
@@ -134,7 +135,7 @@ func TestDatabaseURL(t *testing.T) {
 		require.Equal(t, 1234, cfg.PGPort)
 		require.Equal(t, "user", cfg.PGUser)
 		require.Equal(t, "pass", cfg.PGPass)
-		require.Equal(t, "disable", cfg.SSLMode)
+		require.Equal(t, "disable", cfg.PGSSLMode)
 	})
 
 	t.Run("DATABASE_URL", func(t *testing.T) {
@@ -145,7 +146,7 @@ func TestDatabaseURL(t *testing.T) {
 		require.Equal(t, 5432, cfg.PGPort)
 		require.Equal(t, "cloud", cfg.PGUser)
 		require.Equal(t, "cloudPass", cfg.PGPass)
-		require.Equal(t, "disable", cfg.SSLMode)
+		require.Equal(t, "disable", cfg.PGSSLMode)
 	})
 }
 
@@ -184,7 +185,7 @@ func Test_parseDatabaseURL(t *testing.T) {
 	require.Equal(t, 5432, c.PGPort)
 	require.Equal(t, "user", c.PGUser)
 	require.Equal(t, "pass", c.PGPass)
-	require.Equal(t, "require", c.SSLMode)
+	require.Equal(t, "require", c.PGSSLMode)
 
 	// errors
 	// todo: make this default on any problem
