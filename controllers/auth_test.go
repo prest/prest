@@ -5,18 +5,14 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
 
 	"github.com/prest/prest/adapters/mockgen"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/controllers/auth"
-	"github.com/prest/prest/testutils"
 )
 
 var (
@@ -36,15 +32,6 @@ var (
 		Username: "arxdsilva",
 	}
 )
-
-// todo: fix these tests
-func initAuthRoutes(enabled bool, c Config) *mux.Router {
-	r := mux.NewRouter()
-	if enabled {
-		r.HandleFunc("/auth", c.Auth).Methods("POST")
-	}
-	return r
-}
 
 func Test_basicPasswordCheck_ok(t *testing.T) {
 	ctrl := gomock.NewController(t)
