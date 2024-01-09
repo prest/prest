@@ -117,12 +117,15 @@ func Test_encrypt(t *testing.T) {
 }
 
 func Test_AuthController(t *testing.T) {
-	var testCases = []struct {
+	t.Parallel()
+	var tests = []struct {
 		description string
 		body        Login
 
+		wantPassCheck bool
 		wantPassResp  auth.User
 		wantPassNResp int
+		wantBasic     bool
 
 		wantRespStatus      int
 		wantRespBodyContain string
@@ -133,55 +136,84 @@ func Test_AuthController(t *testing.T) {
 				Username: "Satoshi",
 				Password: "Nakamoto",
 			},
+			wantPassCheck:       true,
 			wantPassResp:        auth.User{},
 			wantPassNResp:       0,
 			wantRespStatus:      http.StatusUnauthorized,
 			wantRespBodyContain: unf,
 		},
-		// {"/auth request GET method", "/auth", "GET", http.StatusMethodNotAllowed, false, ""},
-		// {"/auth request POST method basic auth", "/auth", "POST", http.StatusBadRequest, false, "basic"},
-		// {"/auth request POST method no auth provided", "/auth", "POST", http.StatusUnauthorized, true, ""},
+		{
+			description:         "basic check user not found error",
+			wantPassCheck:       false,
+			wantBasic:           true,
+			wantRespStatus:      http.StatusBadRequest,
+			wantRespBodyContain: unf,
+		},
+		{
+			description: "ok response",
+			body: Login{
+				Username: "Satoshi",
+				Password: "Nakamoto",
+			},
+			wantPassCheck:       true,
+			wantPassResp:        auth.User{},
+			wantPassNResp:       1,
+			wantRespStatus:      http.StatusOK,
+			wantRespBodyContain: "token",
+		},
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range tests {
 		tc := tc
-		t.Log(tc.description)
 
-		ctrl := gomock.NewController(t)
-		adapter := mockgen.NewMockAdapter(ctrl)
+		t.Run(tc.description, func(t *testing.T) {
+			t.Parallel()
+			t.Log(tc.description)
 
-		ctrl2 := gomock.NewController(t)
-		adapter2 := mockgen.NewMockScanner(ctrl2)
+			ctrl := gomock.NewController(t)
+			adapter := mockgen.NewMockAdapter(ctrl)
 
-		adapter.EXPECT().QueryCtx(
-			gomock.Any(),
-			"SELECT * FROM public.prest_users WHERE username=$1 AND password=$2 LIMIT 1",
-			gomock.Any(), gomock.Any()).Return(adapter2)
+			ctrl2 := gomock.NewController(t)
+			adapter2 := mockgen.NewMockScanner(ctrl2)
 
-		adapter2.EXPECT().Err().Return(nil)
-		adapter2.EXPECT().Scan(&tc.wantPassResp).Return(tc.wantPassNResp, nil)
+			if tc.wantPassCheck {
+				adapter.EXPECT().QueryCtx(
+					gomock.Any(),
+					"SELECT * FROM public.prest_users WHERE username=$1 AND password=$2 LIMIT 1",
+					gomock.Any(), gomock.Any()).Return(adapter2)
 
-		h := Config{
-			server:  defaultConfig,
-			adapter: adapter,
-		}
+				adapter2.EXPECT().Err().Return(nil)
+				adapter2.EXPECT().Scan(&tc.wantPassResp).Return(tc.wantPassNResp, nil)
+			}
 
-		bd, err := json.Marshal(tc.body)
-		require.NoError(t, err)
-		body := bytes.NewReader(bd)
-		req := httptest.NewRequest(http.MethodPost, "localhost:8080", body)
+			cfg := *defaultConfig
 
-		recorder := httptest.NewRecorder()
+			h := Config{
+				server:  &cfg,
+				adapter: adapter,
+			}
 
-		h.Auth(recorder, req)
+			if tc.wantBasic {
+				h.server.AuthType = "basic"
+			}
 
-		resp := recorder.Result()
-		require.Equal(t, tc.wantRespStatus, resp.StatusCode)
-		require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-		defer resp.Body.Close()
-		data, err := io.ReadAll(resp.Body)
-		require.NoError(t, err)
-		require.Contains(t, string(data), tc.wantRespBodyContain)
+			bd, err := json.Marshal(tc.body)
+			require.NoError(t, err)
+			body := bytes.NewReader(bd)
+			req := httptest.NewRequest(http.MethodPost, "localhost:8080", body)
+
+			recorder := httptest.NewRecorder()
+
+			h.Auth(recorder, req)
+
+			resp := recorder.Result()
+			require.Equal(t, tc.wantRespStatus, resp.StatusCode)
+			require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+			defer resp.Body.Close()
+			data, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.Contains(t, string(data), tc.wantRespBodyContain)
+		})
 	}
 }
 
