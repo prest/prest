@@ -134,6 +134,7 @@ func (c *Config) basicPasswordCheck(ctx context.Context, user, password string) 
 }
 
 // getSelectQuery create the query to authenticate the user
+// todo: fix how this password is queried/stored
 func (c *Config) getSelectQuery() (query string) {
 	return fmt.Sprintf(
 		`SELECT * FROM %s.%s WHERE %s=$1 AND %s=$2 LIMIT 1`,
