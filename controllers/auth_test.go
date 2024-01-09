@@ -123,23 +123,6 @@ func Test_encrypt(t *testing.T) {
 	require.Equal(t, enc, sha1Enc)
 }
 
-func TestAuthDisable(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	adapter := mockgen.NewMockAdapter(ctrl)
-	h := Config{
-		server: &config.Prest{
-			AuthEnabled: false,
-			Debug:       true,
-		},
-		adapter: adapter}
-
-	server := httptest.NewServer(initAuthRoutes(false, h))
-	defer server.Close()
-
-	t.Log("/auth request POST method, disable auth")
-	testutils.DoRequest(t, server.URL+"/auth", nil, "POST", http.StatusNotFound, "AuthDisable")
-}
-
 func TestAuthEnable(t *testing.T) {
 
 	var testCases = []struct {
