@@ -40,14 +40,18 @@ type Login struct {
 	Password string `json:"password"`
 }
 
-// Token for user
+// Token generates a JWT token for the given user with the specified key.
+// It uses the HS256 algorithm for signing the token.
+// The token includes the user information, start time (NotBefore), and expiration time.
+// The generated token is returned as a string.
+// If an error occurs during token generation, it is returned along with an empty string.
+//
+// todo: add expiry time in configuration (in minute format, so we support the maximum need
+// TODO: JWT any Algorithm support
 func Token(u auth.User, key string) (t string, err error) {
-	// add start time (NotBefore)
 	getToken := time.Now()
-	// add expiry time in configuration (in minute format, so we support the maximum need)
 	expireToken := time.Now().Add(time.Hour * 6)
 
-	// TODO: JWT any Algorithm support
 	sig, err := signer.NewSigner(
 		signer.SigningKey{
 			Algorithm: signer.HS256,
