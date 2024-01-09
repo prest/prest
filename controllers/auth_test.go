@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/md5"
 	"crypto/sha1"
+	"encoding/json"
 	"fmt"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -110,56 +112,67 @@ func Test_encrypt(t *testing.T) {
 	require.Equal(t, enc, sha1Enc)
 }
 
-// func Test_AuthController(t *testing.T) {
-// 	var testCases = []struct {
-// 		description string
+func Test_AuthController(t *testing.T) {
+	var testCases = []struct {
+		description string
 
-// 		request *http.Request
-// 		config  *Config
+		body Login
 
-// 		wantStatus int
+		wantStatus    int
+		wantPassResp  auth.User
+		wantPassNResp int
 
-// 		wantPassCheck bool
-// 		wantPassResp auth.User
-// 	}{
-// 		{"/auth request GET method", "/auth", "GET", http.StatusMethodNotAllowed, false, ""},
-// 		{"/auth request POST method basic auth", "/auth", "POST", http.StatusBadRequest, false, "basic"},
-// 		{"/auth request POST method no auth provided", "/auth", "POST", http.StatusUnauthorized, true, ""},
-// 	}
+		wantErr require.ErrorAssertionFunc
+	}{
+		{
+			description: "pass check not found error",
+			body: Login{
+				Username: "Satoshi",
+				Password: "Nakamoto",
+			},
+			wantPassResp:  auth.User{},
+			wantPassNResp: 0,
+			// request:     &http.Request{},
+		},
+		// {"/auth request GET method", "/auth", "GET", http.StatusMethodNotAllowed, false, ""},
+		// {"/auth request POST method basic auth", "/auth", "POST", http.StatusBadRequest, false, "basic"},
+		// {"/auth request POST method no auth provided", "/auth", "POST", http.StatusUnauthorized, true, ""},
+	}
 
-// 	for _, tc := range testCases {
-// 		t.Log(tc.description)
+	for _, tc := range testCases {
+		tc := tc
+		t.Log(tc.description)
 
-// 		ctrl := gomock.NewController(t)
-// 		adapter := mockgen.NewMockAdapter(ctrl)
+		ctrl := gomock.NewController(t)
+		adapter := mockgen.NewMockAdapter(ctrl)
 
-// 		if tc.wantPassCheck {
-// 			ctrl2 := gomock.NewController(t)
-// 			adapter2 := mockgen.NewMockScanner(ctrl2)
+		ctrl2 := gomock.NewController(t)
+		adapter2 := mockgen.NewMockScanner(ctrl2)
 
-// 			adapter.EXPECT().QueryCtx(gomock.Any(), "SELECT * FROM . WHERE =$1 AND =$2 LIMIT 1",
-// 				gomock.Any(), gomock.Any()).Return(adapter2)
+		adapter.EXPECT().QueryCtx(
+			gomock.Any(),
+			"SELECT * FROM public.prest_users WHERE username=$1 AND password=$2 LIMIT 1",
+			gomock.Any(), gomock.Any()).Return(adapter2)
 
-// 			adapter2.EXPECT().Err().Return(nil)
-// 			adapter2.EXPECT().Scan(&auth.User{}).Return(0, nil)
-// 		}
+		adapter2.EXPECT().Err().Return(nil)
+		adapter2.EXPECT().Scan(&tc.wantPassResp).Return(tc.wantPassNResp, nil)
 
-// 		h := Config{
-// 			server: &config.Prest{
-// 				Debug:       true,
-// 				AuthEnabled: true,
-// 				AuthType:    tc.authType,
-// 			},
-// 			adapter: adapter,
-// 		}
+		h := Config{
+			server: &config.Prest{
+				Debug:       true,
+				AuthEnabled: true,
+				AuthType:    "basic",
+			},
+			adapter: adapter,
+		}
+		_ = h
 
-// 		server := httptest.NewServer(initAuthRoutes(true, h))
+		bd, err := json.Marshal(tc.body)
+		require.NoError(t, err)
 
-// 		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "AuthEnable")
-
-// 		server.Close()
-// 	}
-// }
+		httptest.NewRequest("GET", "localhost:8080", bd)
+	}
+}
 
 func Test_Token(t *testing.T) {
 	u := auth.User{
