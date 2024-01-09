@@ -70,6 +70,31 @@ func Test_basicPasswordCheck_ok(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func Test_basicPasswordCheck_notFound(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	adapter := mockgen.NewMockAdapter(ctrl)
+
+	ctrl2 := gomock.NewController(t)
+	adapter2 := mockgen.NewMockScanner(ctrl2)
+
+	adapter.EXPECT().QueryCtx(gomock.Any(),
+		"SELECT * FROM public.prest_users WHERE username=$1 AND password=$2 LIMIT 1",
+		"test@postgres.rest", "e10adc3949ba59abbe56e057f20f883e").
+		Return(adapter2)
+
+	adapter2.EXPECT().Err().Return(nil)
+	adapter2.EXPECT().Scan(&auth.User{}).Return(0, nil)
+
+	cfg := &Config{
+		server:  defaultConfig,
+		adapter: adapter,
+	}
+
+	_, err := cfg.basicPasswordCheck(context.Background(), "test@postgres.rest", "123456")
+	require.Error(t, err)
+	require.Equal(t, unf, err.Error())
+}
+
 func Test_getSelectQuery(t *testing.T) {
 	cfg := &Config{}
 	expected := "SELECT * FROM public.prest_users WHERE username=$1 AND password=$2 LIMIT 1"
