@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/structy/log"
 	signer "gopkg.in/square/go-jose.v2"
 	jwt "gopkg.in/square/go-jose.v2/jwt"
 
@@ -79,6 +80,7 @@ func Token(u auth.User, key string) (t string, err error) {
 //
 // todo: add form support
 func (c *Config) Auth(w http.ResponseWriter, r *http.Request) {
+	log.Debugln("Authenticating user")
 	login := Login{}
 	switch c.server.AuthType {
 	case "body":
@@ -92,6 +94,7 @@ func (c *Config) Auth(w http.ResponseWriter, r *http.Request) {
 		var ok bool
 		login.Username, login.Password, ok = r.BasicAuth()
 		if !ok {
+			log.Errorln(unf)
 			JSONWrite(w, unf, http.StatusBadRequest)
 			return
 		}
@@ -100,12 +103,14 @@ func (c *Config) Auth(w http.ResponseWriter, r *http.Request) {
 	loggedUser, err := c.basicPasswordCheck(r.Context(),
 		strings.ToLower(login.Username), login.Password)
 	if err != nil {
+		log.Errorln(err)
 		JSONWrite(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	token, err := Token(loggedUser, c.server.JWTKey)
 	if err != nil {
+		log.Errorln(err)
 		JSONWrite(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -115,6 +120,7 @@ func (c *Config) Auth(w http.ResponseWriter, r *http.Request) {
 		Token:      token,
 	}
 
+	log.Debugln("User authenticated")
 	JSONWrite(w, resp, http.StatusOK)
 }
 
