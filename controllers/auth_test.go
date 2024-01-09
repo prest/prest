@@ -96,7 +96,7 @@ func Test_basicPasswordCheck_notFound(t *testing.T) {
 }
 
 func Test_getSelectQuery(t *testing.T) {
-	cfg := &Config{}
+	cfg := &Config{server: defaultConfig}
 	expected := "SELECT * FROM public.prest_users WHERE username=$1 AND password=$2 LIMIT 1"
 	query := cfg.getSelectQuery()
 
@@ -104,7 +104,6 @@ func Test_getSelectQuery(t *testing.T) {
 }
 
 func Test_encrypt(t *testing.T) {
-
 	cfg := &Config{
 		server:  &config.Prest{AuthEncrypt: "MD5"},
 		adapter: nil,
@@ -114,18 +113,14 @@ func Test_encrypt(t *testing.T) {
 	enc := encrypt(cfg.server.AuthEncrypt, pwd)
 
 	md5Enc := fmt.Sprintf("%x", md5.Sum([]byte(pwd)))
-	if enc != md5Enc {
-		t.Errorf("expected encrypted password to be: %s, got: %s", enc, md5Enc)
-	}
+	require.Equal(t, enc, md5Enc)
 
 	cfg.server.AuthEncrypt = "SHA1"
 
 	enc = encrypt(cfg.server.AuthEncrypt, pwd)
 
 	sha1Enc := fmt.Sprintf("%x", sha1.Sum([]byte(pwd)))
-	if enc != sha1Enc {
-		t.Errorf("expected encrypted password to be: %s, got: %s", enc, sha1Enc)
-	}
+	require.Equal(t, enc, sha1Enc)
 }
 
 func TestAuthDisable(t *testing.T) {
