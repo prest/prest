@@ -1,11 +1,14 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
 	"crypto/sha1"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -19,6 +22,7 @@ import (
 
 var (
 	defaultConfig = &config.Prest{
+		AuthType:     "body",
 		AuthEnabled:  true,
 		AuthEncrypt:  "MD5",
 		AuthSchema:   "public",
@@ -115,14 +119,13 @@ func Test_encrypt(t *testing.T) {
 func Test_AuthController(t *testing.T) {
 	var testCases = []struct {
 		description string
+		body        Login
 
-		body Login
-
-		wantStatus    int
 		wantPassResp  auth.User
 		wantPassNResp int
 
-		wantErr require.ErrorAssertionFunc
+		wantRespStatus      int
+		wantRespBodyContain string
 	}{
 		{
 			description: "pass check not found error",
@@ -130,9 +133,10 @@ func Test_AuthController(t *testing.T) {
 				Username: "Satoshi",
 				Password: "Nakamoto",
 			},
-			wantPassResp:  auth.User{},
-			wantPassNResp: 0,
-			// request:     &http.Request{},
+			wantPassResp:        auth.User{},
+			wantPassNResp:       0,
+			wantRespStatus:      http.StatusUnauthorized,
+			wantRespBodyContain: unf,
 		},
 		// {"/auth request GET method", "/auth", "GET", http.StatusMethodNotAllowed, false, ""},
 		// {"/auth request POST method basic auth", "/auth", "POST", http.StatusBadRequest, false, "basic"},
@@ -158,19 +162,26 @@ func Test_AuthController(t *testing.T) {
 		adapter2.EXPECT().Scan(&tc.wantPassResp).Return(tc.wantPassNResp, nil)
 
 		h := Config{
-			server: &config.Prest{
-				Debug:       true,
-				AuthEnabled: true,
-				AuthType:    "basic",
-			},
+			server:  defaultConfig,
 			adapter: adapter,
 		}
-		_ = h
 
 		bd, err := json.Marshal(tc.body)
 		require.NoError(t, err)
+		body := bytes.NewReader(bd)
+		req := httptest.NewRequest(http.MethodPost, "localhost:8080", body)
 
-		httptest.NewRequest("GET", "localhost:8080", bd)
+		recorder := httptest.NewRecorder()
+
+		h.Auth(recorder, req)
+
+		resp := recorder.Result()
+		require.Equal(t, tc.wantRespStatus, resp.StatusCode)
+		require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+		defer resp.Body.Close()
+		data, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.Contains(t, string(data), tc.wantRespBodyContain)
 	}
 }
 

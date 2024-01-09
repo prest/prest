@@ -69,11 +69,18 @@ func Token(u auth.User, key string) (t string, err error) {
 	return jwt.Signed(sig).Claims(cl).CompactSerialize()
 }
 
-// Auth controller
+// Auth handles the authentication logic based on the configured authentication type.
+//
+// The authentication type can be either "body" or "basic".
+// If the authentication type is "body", it expects the login credentials to be provided in the request body as JSON.
+// If the authentication type is "basic", it expects the login credentials to be provided in the request headers using HTTP Basic Authentication.
+// It returns the logged-in user information and a token if the authentication is successful.
+// If there is an error during the authentication process, it returns an HTTP error response.
+//
+// todo: add form support
 func (c *Config) Auth(w http.ResponseWriter, r *http.Request) {
 	login := Login{}
 	switch c.server.AuthType {
-	// TODO: form support
 	case "body":
 		// to use body field authentication
 		dec := json.NewDecoder(r.Body)
@@ -85,7 +92,7 @@ func (c *Config) Auth(w http.ResponseWriter, r *http.Request) {
 		var ok bool
 		login.Username, login.Password, ok = r.BasicAuth()
 		if !ok {
-			http.Error(w, unf, http.StatusBadRequest)
+			JSONWrite(w, unf, http.StatusBadRequest)
 			return
 		}
 	}
@@ -93,13 +100,13 @@ func (c *Config) Auth(w http.ResponseWriter, r *http.Request) {
 	loggedUser, err := c.basicPasswordCheck(r.Context(),
 		strings.ToLower(login.Username), login.Password)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		JSONWrite(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	token, err := Token(loggedUser, c.server.JWTKey)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		JSONWrite(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -108,11 +115,7 @@ func (c *Config) Auth(w http.ResponseWriter, r *http.Request) {
 		Token:      token,
 	}
 
-	err = json.NewEncoder(w).Encode(resp)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	JSONWrite(w, resp, http.StatusOK)
 }
 
 // basicPasswordCheck will check if the user and password are valid
