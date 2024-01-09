@@ -40,6 +40,7 @@ var (
 )
 
 func Test_basicPasswordCheck_ok(t *testing.T) {
+	t.Parallel()
 	ctrl := gomock.NewController(t)
 	adapter := mockgen.NewMockAdapter(ctrl)
 
@@ -54,8 +55,9 @@ func Test_basicPasswordCheck_ok(t *testing.T) {
 	adapter2.EXPECT().Err().Return(nil)
 	adapter2.EXPECT().Scan(&auth.User{}).Return(1, nil)
 
+	dc := *defaultConfig
 	cfg := &Config{
-		server:  defaultConfig,
+		server:  &dc,
 		adapter: adapter,
 	}
 
@@ -64,6 +66,7 @@ func Test_basicPasswordCheck_ok(t *testing.T) {
 }
 
 func Test_basicPasswordCheck_notFound(t *testing.T) {
+	t.Parallel()
 	ctrl := gomock.NewController(t)
 	adapter := mockgen.NewMockAdapter(ctrl)
 
@@ -78,8 +81,9 @@ func Test_basicPasswordCheck_notFound(t *testing.T) {
 	adapter2.EXPECT().Err().Return(nil)
 	adapter2.EXPECT().Scan(&auth.User{}).Return(0, nil)
 
+	dc := *defaultConfig
 	cfg := &Config{
-		server:  defaultConfig,
+		server:  &dc,
 		adapter: adapter,
 	}
 
@@ -89,7 +93,9 @@ func Test_basicPasswordCheck_notFound(t *testing.T) {
 }
 
 func Test_getSelectQuery(t *testing.T) {
-	cfg := &Config{server: defaultConfig}
+	t.Parallel()
+	dc := *defaultConfig
+	cfg := &Config{server: &dc}
 	expected := "SELECT * FROM public.prest_users WHERE username=$1 AND password=$2 LIMIT 1"
 	query := cfg.getSelectQuery()
 
@@ -97,6 +103,7 @@ func Test_getSelectQuery(t *testing.T) {
 }
 
 func Test_encrypt(t *testing.T) {
+	t.Parallel()
 	cfg := &Config{
 		server:  &config.Prest{AuthEncrypt: "MD5"},
 		adapter: nil,
@@ -209,6 +216,7 @@ func Test_AuthController(t *testing.T) {
 			resp := recorder.Result()
 			require.Equal(t, tc.wantRespStatus, resp.StatusCode)
 			require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
 			defer resp.Body.Close()
 			data, err := io.ReadAll(resp.Body)
 			require.NoError(t, err)
@@ -218,6 +226,7 @@ func Test_AuthController(t *testing.T) {
 }
 
 func Test_Token(t *testing.T) {
+	t.Parallel()
 	u := auth.User{
 		ID:       1,
 		Name:     "prest-user",
@@ -226,12 +235,14 @@ func Test_Token(t *testing.T) {
 	key := "secret-key"
 
 	t.Run("Token generation", func(t *testing.T) {
+		t.Parallel()
 		token, err := Token(u, key)
 		require.NoError(t, err)
 		require.NotEmpty(t, token)
 	})
 
 	t.Run("Token verification", func(t *testing.T) {
+		t.Parallel()
 		token, err := Token(u, key)
 		require.NoError(t, err)
 		require.NotEmpty(t, token)
