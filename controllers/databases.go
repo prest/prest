@@ -6,11 +6,13 @@ import (
 	"strings"
 )
 
-// GetDatabases list all (or filter) databases
+// GetDatabases retrieves the list of databases based on the provided HTTP request.
+// It applies filters, distinct clause, order by clause, pagination, and executes the query.
+// The resulting list of databases is written as JSON to the HTTP response writer.
 func (c *Config) GetDatabases(w http.ResponseWriter, r *http.Request) {
 	requestWhere, values, err := c.adapter.WhereByRequest(r, 1)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	requestWhere = c.adapter.DatabaseWhere(requestWhere)
@@ -20,7 +22,7 @@ func (c *Config) GetDatabases(w http.ResponseWriter, r *http.Request) {
 
 	distinct, err := c.adapter.DistinctClause(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if distinct != "" {
@@ -29,7 +31,7 @@ func (c *Config) GetDatabases(w http.ResponseWriter, r *http.Request) {
 
 	order, err := c.adapter.OrderByRequest(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	order = c.adapter.DatabaseOrderBy(order, hasCount)
@@ -38,7 +40,7 @@ func (c *Config) GetDatabases(w http.ResponseWriter, r *http.Request) {
 
 	page, err := c.adapter.PaginateIfPossible(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -48,6 +50,6 @@ func (c *Config) GetDatabases(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
 	}
-	//nolint
-	w.Write(sc.Bytes())
+
+	JSONWrite(w, sc.Bytes(), http.StatusOK)
 }
