@@ -95,7 +95,7 @@ func (c *Config) Auth(w http.ResponseWriter, r *http.Request) {
 		login.Username, login.Password, ok = r.BasicAuth()
 		if !ok {
 			log.Errorln(unf)
-			JSONWrite(w, unf, http.StatusBadRequest)
+			JSONError(w, unf, http.StatusBadRequest)
 			return
 		}
 	}
@@ -104,14 +104,14 @@ func (c *Config) Auth(w http.ResponseWriter, r *http.Request) {
 		strings.ToLower(login.Username), login.Password)
 	if err != nil {
 		log.Errorln(err)
-		JSONWrite(w, err.Error(), http.StatusUnauthorized)
+		JSONError(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	token, err := Token(loggedUser, c.server.JWTKey)
 	if err != nil {
 		log.Errorln(err)
-		JSONWrite(w, err.Error(), http.StatusInternalServerError)
+		JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
