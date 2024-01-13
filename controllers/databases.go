@@ -52,5 +52,5 @@ func (c *Config) GetDatabases(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	JSONWrite(w, sc.Bytes(), http.StatusOK)
+	JSONWrite(w, string(sc.Bytes()), http.StatusOK)
 }

@@ -20,26 +20,36 @@ var (
 func Test_GetDatabases(t *testing.T) {
 	t.Parallel()
 	var testCases = []struct {
-		description string
+		description     string
+		wantRespContain string
+		wantStatus      int
+		wantParams      bool
+		params          map[string]string
 
 		whereByRequestSyntaxResp string
 		whereByRequestValuesResp []interface{}
 		whereByRequestErrResp    error
 
-		wantParams bool
-		params     map[string]string
-
-		wantDistinct      bool
-		databaseWhereResp string
-
+		wantDistinct       bool
+		databaseWhereResp  string
 		databaseClauseResp string
 		hasCount           bool
-
 		distinctClauseResp string
 		distinctClauseErr  error
 
-		wantRespContain string
-		wantStatus      int
+		wantOrderBy     bool
+		wantOrderByErr  error
+		wantOrderByResp string
+
+		wantDatabaseOrderByResp string
+
+		wantPaginate     bool
+		wantPaginateErr  error
+		wantPaginateResp string
+
+		wantQuery     bool
+		wantQueryErr  error
+		wantQueryResp string
 	}{
 		{
 			description:     "Get databases without custom where clause with error",
@@ -63,10 +73,113 @@ func Test_GetDatabases(t *testing.T) {
 			databaseWhereResp:  "where",
 			databaseClauseResp: "",
 			hasCount:           false,
-
 			distinctClauseResp: "",
 			distinctClauseErr:  dbErr,
 		},
+		{
+			description:     "Get databases with order by request error",
+			wantStatus:      http.StatusBadRequest,
+			wantRespContain: dbErr.Error(),
+
+			whereByRequestSyntaxResp: "syntax",
+			whereByRequestValuesResp: nil,
+			whereByRequestErrResp:    nil,
+
+			wantDistinct:       true,
+			databaseWhereResp:  "where",
+			databaseClauseResp: "",
+			hasCount:           false,
+			distinctClauseResp: "",
+			distinctClauseErr:  nil,
+
+			wantOrderBy:     true,
+			wantOrderByErr:  dbErr,
+			wantOrderByResp: "",
+		},
+		{
+			description:     "Get databases with paginate error",
+			wantStatus:      http.StatusBadRequest,
+			wantRespContain: dbErr.Error(),
+
+			whereByRequestSyntaxResp: "syntax",
+			whereByRequestValuesResp: nil,
+			whereByRequestErrResp:    nil,
+
+			wantDistinct:       true,
+			databaseWhereResp:  "where",
+			databaseClauseResp: "",
+			hasCount:           false,
+			distinctClauseResp: "",
+			distinctClauseErr:  nil,
+
+			wantOrderBy:     true,
+			wantOrderByErr:  nil,
+			wantOrderByResp: "",
+
+			wantPaginate:            true,
+			wantPaginateErr:         dbErr,
+			wantPaginateResp:        "",
+			wantDatabaseOrderByResp: "",
+		},
+		{
+			description:     "Get databases with query error",
+			wantStatus:      http.StatusBadRequest,
+			wantRespContain: dbErr.Error(),
+
+			whereByRequestSyntaxResp: "syntax",
+			whereByRequestValuesResp: nil,
+			whereByRequestErrResp:    nil,
+
+			wantDistinct:       true,
+			databaseWhereResp:  "where",
+			databaseClauseResp: "",
+			hasCount:           false,
+			distinctClauseResp: "",
+			distinctClauseErr:  nil,
+
+			wantOrderBy:     true,
+			wantOrderByErr:  nil,
+			wantOrderByResp: "",
+
+			wantPaginate:            true,
+			wantPaginateErr:         nil,
+			wantPaginateResp:        "",
+			wantDatabaseOrderByResp: "",
+
+			wantQuery:     true,
+			wantQueryErr:  dbErr,
+			wantQueryResp: "",
+		},
+		{
+			description:     "Get databases happy path",
+			wantStatus:      http.StatusOK,
+			wantRespContain: "test",
+
+			whereByRequestSyntaxResp: "syntax",
+			whereByRequestValuesResp: nil,
+			whereByRequestErrResp:    nil,
+
+			wantDistinct:       true,
+			databaseWhereResp:  "where",
+			databaseClauseResp: "",
+			hasCount:           false,
+			distinctClauseResp: "",
+			distinctClauseErr:  nil,
+
+			wantOrderBy:     true,
+			wantOrderByErr:  nil,
+			wantOrderByResp: "",
+
+			wantPaginate:            true,
+			wantPaginateErr:         nil,
+			wantPaginateResp:        "",
+			wantDatabaseOrderByResp: "",
+
+			wantQuery:     true,
+			wantQueryErr:  nil,
+			wantQueryResp: `{"test": "test"}`,
+		},
+		// todo: add these to integration tests
 		// {"Get databases without custom where clause", "/databases", "GET", http.StatusOK},
 		// {"Get databases with custom where clause", "/databases?datname=$eq.prest", "GET", http.StatusOK},
 		// {"Get databases with custom order clause", "/databases?_order=datname", "GET", http.StatusOK},
@@ -92,7 +205,6 @@ func Test_GetDatabases(t *testing.T) {
 
 			ctrl2 := gomock.NewController(t)
 			adapter2 := mockgen.NewMockScanner(ctrl2)
-			_ = adapter2
 
 			adapter.EXPECT().WhereByRequest(
 				gomock.Any(), gomock.Any()).
@@ -108,6 +220,29 @@ func Test_GetDatabases(t *testing.T) {
 
 				adapter.EXPECT().DistinctClause(gomock.Any()).
 					Return(tc.distinctClauseResp, tc.distinctClauseErr)
+			}
+
+			if tc.wantOrderBy {
+				adapter.EXPECT().OrderByRequest(gomock.Any()).
+					Return(tc.wantOrderByResp, tc.wantOrderByErr)
+			}
+
+			if tc.wantPaginate {
+				adapter.EXPECT().DatabaseOrderBy(gomock.Any(), gomock.Any()).
+					Return(tc.wantDatabaseOrderByResp)
+				adapter.EXPECT().PaginateIfPossible(gomock.Any()).
+					Return(tc.wantPaginateResp, tc.wantPaginateErr)
+			}
+
+			if tc.wantQuery {
+				adapter.EXPECT().QueryCtx(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(adapter2)
+
+				adapter2.EXPECT().Err().Return(tc.wantQueryErr)
+
+				if tc.wantQueryErr == nil {
+					adapter2.EXPECT().Bytes().Return([]byte(tc.wantQueryResp))
+				}
 			}
 
 			cfg := *defaultConfig
