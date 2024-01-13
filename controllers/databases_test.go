@@ -18,12 +18,25 @@ var (
 )
 
 func Test_GetDatabases(t *testing.T) {
+	t.Parallel()
 	var testCases = []struct {
 		description string
 
 		whereByRequestSyntaxResp string
 		whereByRequestValuesResp []interface{}
 		whereByRequestErrResp    error
+
+		wantParams bool
+		params     map[string]string
+
+		wantDistinct      bool
+		databaseWhereResp string
+
+		databaseClauseResp string
+		hasCount           bool
+
+		distinctClauseResp string
+		distinctClauseErr  error
 
 		wantRespContain string
 		wantStatus      int
@@ -36,6 +49,23 @@ func Test_GetDatabases(t *testing.T) {
 			whereByRequestSyntaxResp: "",
 			whereByRequestValuesResp: nil,
 			whereByRequestErrResp:    dbErr,
+		},
+		{
+			description:     "Get databases with distinct clause error",
+			wantStatus:      http.StatusBadRequest,
+			wantRespContain: dbErr.Error(),
+
+			whereByRequestSyntaxResp: "syntax",
+			whereByRequestValuesResp: nil,
+			whereByRequestErrResp:    nil,
+
+			wantDistinct:       true,
+			databaseWhereResp:  "where",
+			databaseClauseResp: "",
+			hasCount:           false,
+
+			distinctClauseResp: "",
+			distinctClauseErr:  dbErr,
 		},
 		// {"Get databases without custom where clause", "/databases", "GET", http.StatusOK},
 		// {"Get databases with custom where clause", "/databases?datname=$eq.prest", "GET", http.StatusOK},
@@ -54,7 +84,7 @@ func Test_GetDatabases(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.description, func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 			t.Log(tc.description)
 
 			ctrl := gomock.NewController(t)
@@ -68,6 +98,17 @@ func Test_GetDatabases(t *testing.T) {
 				gomock.Any(), gomock.Any()).
 				Return(tc.whereByRequestSyntaxResp,
 					tc.whereByRequestValuesResp, tc.whereByRequestErrResp)
+
+			if tc.wantDistinct {
+				adapter.EXPECT().DatabaseWhere(gomock.Any()).
+					Return(tc.databaseWhereResp)
+
+				adapter.EXPECT().DatabaseClause(gomock.Any()).
+					Return(tc.databaseClauseResp, tc.hasCount)
+
+				adapter.EXPECT().DistinctClause(gomock.Any()).
+					Return(tc.distinctClauseResp, tc.distinctClauseErr)
+			}
 
 			cfg := *defaultConfig
 
