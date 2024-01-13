@@ -45,9 +45,10 @@ func (c *Config) GetDatabases(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dbsQuery = fmt.Sprint(dbsQuery, " ", page)
-	sc := c.adapter.Query(dbsQuery, values...)
-	if sc.Err() != nil {
-		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
+	sc := c.adapter.QueryCtx(r.Context(), dbsQuery, values...)
+	err = sc.Err()
+	if err != nil {
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
