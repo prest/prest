@@ -18,7 +18,7 @@ func (c *Config) GetDatabases(w http.ResponseWriter, r *http.Request) {
 	requestWhere = c.adapter.DatabaseWhere(requestWhere)
 
 	query, hasCount := c.adapter.DatabaseClause(r)
-	sqlDatabases := fmt.Sprint(query, requestWhere)
+	dbsQuery := fmt.Sprint(query, requestWhere)
 
 	distinct, err := c.adapter.DistinctClause(r)
 	if err != nil {
@@ -26,7 +26,7 @@ func (c *Config) GetDatabases(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if distinct != "" {
-		sqlDatabases = strings.Replace(sqlDatabases, "SELECT", distinct, 1)
+		dbsQuery = strings.Replace(dbsQuery, "SELECT", distinct, 1)
 	}
 
 	order, err := c.adapter.OrderByRequest(r)
@@ -36,7 +36,7 @@ func (c *Config) GetDatabases(w http.ResponseWriter, r *http.Request) {
 	}
 	order = c.adapter.DatabaseOrderBy(order, hasCount)
 
-	sqlDatabases = fmt.Sprint(sqlDatabases, order)
+	dbsQuery = fmt.Sprint(dbsQuery, order)
 
 	page, err := c.adapter.PaginateIfPossible(r)
 	if err != nil {
@@ -44,8 +44,8 @@ func (c *Config) GetDatabases(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sqlDatabases = fmt.Sprint(sqlDatabases, " ", page)
-	sc := c.adapter.Query(sqlDatabases, values...)
+	dbsQuery = fmt.Sprint(dbsQuery, " ", page)
+	sc := c.adapter.Query(dbsQuery, values...)
 	if sc.Err() != nil {
 		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
 		return
