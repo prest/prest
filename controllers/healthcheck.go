@@ -15,8 +15,6 @@ var DefaultCheckList = CheckList{
 	CheckDBHealth,
 }
 
-// todo: detach postgres from here
-// this will allow us to use other databases
 func CheckDBHealth(ctx context.Context, adptr adapters.Adapter) error {
 	conn, err := adptr.GetTransactionCtx(ctx)
 	if err != nil {
