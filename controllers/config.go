@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/prest/prest/adapters"
+	"github.com/prest/prest/cache"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/plugins"
 )
@@ -53,23 +54,28 @@ type Server interface {
 type Config struct {
 	server  *config.Prest
 	adapter adapters.Adapter
-	logger  *log.Logger
 	plugins *plugins.Config
+
+	logger       *log.Logger
+	pluginLoader plugins.Loader
+	cache        cache.Cacher
 }
 
 // New creates a new Config instance with the given configuration and logger.
 // It initializes the adapter based on the provided configuration.
 // Returns a pointer to the newly created Config instance and an error if any.
-func New(cfg *config.Prest, logger *log.Logger) (*Config, error) {
+func New(cfg *config.Prest, logger *log.Logger, c cache.Cacher, ld plugins.Loader) (*Config, error) {
 	adptr, err := adapters.New(cfg)
 	if err != nil {
 		return nil, err
 	}
 	return &Config{
-		server:  cfg,
-		adapter: adptr,
-		logger:  logger,
-		plugins: plugins.New(cfg.PluginPath),
+		server:       cfg,
+		adapter:      adptr,
+		logger:       logger,
+		plugins:      plugins.New(cfg.PluginPath),
+		cache:        c,
+		pluginLoader: ld,
 	}, nil
 }
 

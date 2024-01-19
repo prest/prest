@@ -36,3 +36,16 @@ func (c Config) EndpointRules(uri string) (bool, int) {
 	}
 	return enabled, time
 }
+
+// New creates a new Config instance with the given configuration and logger.
+// It initializes the adapter based on the provided configuration.
+// Returns a pointer to the newly created Config instance and an error if any.
+func New(cfg *Config) *Config {
+	return &Config{
+		Enabled:     cfg.Enabled,
+		Time:        cfg.Time,
+		StoragePath: cfg.StoragePath,
+		SufixFile:   cfg.SufixFile,
+		Endpoints:   cfg.Endpoints,
+	}
+}

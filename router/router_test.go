@@ -15,7 +15,7 @@ import (
 )
 
 func TestRoutes(t *testing.T) {
-	cfg, err := New(&config.Prest{})
+	cfg, err := New(&config.Prest{}, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, cfg)
 }

@@ -11,8 +11,13 @@ import (
 	"github.com/tidwall/buntdb"
 )
 
-// BuntConnect connects to database BuntDB - used for caching
-func (c *Config) BuntConnect(key string) (db *buntdb.DB, err error) {
+type Cacher interface {
+	BuntGet(key string, w http.ResponseWriter) (cacheExist bool)
+	BuntSet(key, value string)
+}
+
+// getConn connects to database BuntDB - used for caching
+func (c *Config) getConn(key string) (db *buntdb.DB, err error) {
 	if key != "" {
 		// each url will have its own cache,
 		// this will avoid slowing down the cache base
@@ -30,7 +35,7 @@ func (c *Config) BuntConnect(key string) (db *buntdb.DB, err error) {
 // BuntGet downloads the data - if any - that is in the buntdb (embedded cache database)
 // using response.URL.String() as key
 func (c Config) BuntGet(key string, w http.ResponseWriter) (cacheExist bool) {
-	db, err := c.BuntConnect(key)
+	db, err := c.getConn(key)
 	if err != nil {
 		return
 	}
@@ -58,7 +63,7 @@ func (c Config) BuntSet(key, value string) {
 	if !c.Enabled || !cacheRule {
 		return
 	}
-	db, err := c.BuntConnect(key)
+	db, err := c.getConn(key)
 	if err != nil {
 		return
 	}

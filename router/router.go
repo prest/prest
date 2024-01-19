@@ -6,6 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/urfave/negroni/v3"
 
+	"github.com/prest/prest/cache"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/controllers"
 	"github.com/prest/prest/middlewares"
@@ -13,9 +14,9 @@ import (
 )
 
 // Routes gets pREST routes
-func Routes(cfg *config.Prest) (*negroni.Negroni, error) {
-	n := middlewares.Get(cfg)
-	r, err := New(cfg)
+func Routes(cfg *config.Prest, cacher cache.Cacher, pl plugins.Loader) (*negroni.Negroni, error) {
+	n := middlewares.Get(cfg, cacher)
+	r, err := New(cfg, cacher, pl)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +71,7 @@ func (r *Config) ConfigRoutes(srv controllers.Server) error {
 			middlewares.AccessControl(srv.GetAdapter().TablePermissions),
 			middlewares.AuthMiddleware(
 				r.srvCfg.AuthEnabled, r.srvCfg.JWTKey, r.srvCfg.JWTWhiteList),
-			middlewares.CacheMiddleware(r.srvCfg),
+			middlewares.CacheMiddleware(r.srvCfg, r.cache),
 			// plugins middleware
 			plugins.MiddlewarePlugin(r.srvCfg.PluginPath, r.srvCfg.PluginMiddlewareList),
 			negroni.Wrap(crudRoutes),

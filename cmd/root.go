@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/prest/prest/cache"
 	"github.com/prest/prest/config"
+	"github.com/prest/prest/plugins"
 	"github.com/prest/prest/router"
 	"github.com/spf13/cobra"
 	slog "github.com/structy/log"
@@ -58,7 +60,7 @@ func Execute() {
 func startServer(cfg *config.Prest) {
 	l := log.New(os.Stdout, "[prestd] ", 0)
 
-	rts, err := router.Routes(cfg)
+	rts, err := router.Routes(cfg, cache.New(&cfg.Cache), plugins.New(cfg.PluginPath))
 	if err != nil {
 		slog.Fatal(err)
 	}
@@ -79,5 +81,5 @@ func startServer(cfg *config.Prest) {
 	if cfg.HTTPSMode {
 		l.Fatal(http.ListenAndServeTLS(addr, cfg.HTTPSCert, cfg.HTTPSKey, nil))
 	}
-	l.Fatal(http.ListenAndServe(addr, nil))
+	l.Fatal(http.ListenAndServe(addr, rts))
 }

@@ -1,10 +1,10 @@
 package controllers
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
+	slog "github.com/structy/log"
 )
 
 // Plugin responsible for processing the `.so` function via http protocol
@@ -13,15 +13,15 @@ func (c *Config) Plugin(w http.ResponseWriter, r *http.Request) {
 	fileName := vars["file"]
 	funcName := vars["func"]
 
-	ret, err := c.plugins.LoadFunc(fileName, funcName, r)
+	ret, err := c.pluginLoader.LoadFunc(fileName, funcName, r)
 	if err != nil {
-		log.Println(err)
+		slog.Errorln(err.Error())
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
 	// Cache arrow if enabled
-	c.server.Cache.BuntSet(r.URL.String(), ret.ReturnJson)
+	c.cache.BuntSet(r.URL.String(), ret.ReturnJson)
 
 	//nolint
 	if ret.StatusCode != -1 {

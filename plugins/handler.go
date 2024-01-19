@@ -10,6 +10,10 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type Loader interface {
+	LoadFunc(fileName, funcName string, r *http.Request) (ret PluginFuncReturn, err error)
+}
+
 // LoadedPlugin structure for controlling the loaded plugin
 type LoadedPlugin struct {
 	Loaded bool

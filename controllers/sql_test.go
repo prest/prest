@@ -110,7 +110,7 @@ func TestRenderWithXML(t *testing.T) {
 		adapter: adapter,
 	}
 
-	n := middlewares.Get(&config.Prest{Debug: true})
+	n := middlewares.Get(&config.Prest{Debug: true}, nil) // todo: fix it
 	r := mux.NewRouter()
 	r.HandleFunc("/schemas", h.GetSchemas).Methods("GET")
 	n.UseHandler(r)

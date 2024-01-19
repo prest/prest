@@ -3,6 +3,7 @@ package middlewares
 import (
 	"net/http"
 
+	"github.com/prest/prest/cache"
 	"github.com/prest/prest/config"
 
 	"github.com/rs/cors"
@@ -22,7 +23,7 @@ var (
 
 // Get gets the default negroni app with
 // the default middlewares and the middlewares passed as parameters
-func Get(cfg *config.Prest, opts ...OptMiddleware) *negroni.Negroni {
+func Get(cfg *config.Prest, cacher cache.Cacher, opts ...OptMiddleware) *negroni.Negroni {
 	stack := []negroni.Handler{}
 	stack = append(stack, BaseStack...)
 	stack = append(stack, SetTimeoutToContext(cfg.HTTPTimeout))
@@ -41,7 +42,7 @@ func Get(cfg *config.Prest, opts ...OptMiddleware) *negroni.Negroni {
 		stack = append(stack, JwtMiddleware(cfg.JWTKey, cfg.JWTWhiteList))
 	}
 	if cfg.Cache.Enabled {
-		stack = append(stack, CacheMiddleware(cfg))
+		stack = append(stack, CacheMiddleware(cfg, cacher))
 	}
 	if cfg.ExposeConf.Enabled {
 		stack = append(stack, ExposureMiddleware(&cfg.ExposeConf))

@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/prest/prest/cache"
 	"github.com/prest/prest/config"
 	"github.com/urfave/negroni/v3"
 )
 
 // CacheMiddleware simple caching to avoid equal queries to the database
-func CacheMiddleware(cfg *config.Prest) negroni.Handler {
+func CacheMiddleware(cfg *config.Prest, cacher cache.Cacher) negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		match, err := MatchURL(cfg.JWTWhiteList, r.URL.String())
 		if err != nil {
@@ -19,7 +20,7 @@ func CacheMiddleware(cfg *config.Prest) negroni.Handler {
 		// team will not be used when downloading information, second result ignored
 		cacheRule, _ := cfg.Cache.EndpointRules(r.URL.Path)
 		if cfg.Cache.Enabled && r.Method == "GET" && !match && cacheRule {
-			if cfg.Cache.BuntGet(r.URL.String(), w) {
+			if cacher.BuntGet(r.URL.String(), w) {
 				return
 			}
 		}
