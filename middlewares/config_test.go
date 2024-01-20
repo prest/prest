@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/negroni/v3"
 
-	"github.com/prest/prest/cache"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/controllers"
 )
@@ -25,9 +24,9 @@ var (
 		AuthPassword:    "password",
 		AuthMetadata:    []string{"first_name", "last_name", "last_login"},
 		HTTPPort:        3000,
-		Cache: cache.Config{
+		Cache: config.CacheConf{
 			Enabled: true,
-			Endpoints: []cache.Endpoint{
+			Endpoints: []config.Endpoint{
 				{
 					Endpoint: "/prest/public/test",
 					Time:     5,
@@ -106,13 +105,13 @@ var (
 )
 
 func TestGet(t *testing.T) {
-	require.NotNil(t, Get(&config.Prest{}))
+	require.NotNil(t, Get(&config.Prest{}, nil))
 }
 
 func Test_GetWithReorderedMiddleware(t *testing.T) {
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {})
-	n := Get(&config.Prest{}, customMiddleware)
+	n := Get(&config.Prest{}, nil, customMiddleware)
 	n.UseHandler(r)
 
 	server := httptest.NewServer(n)
@@ -133,7 +132,7 @@ func Test_GetWithReorderedMiddleware(t *testing.T) {
 func Test_GetWithoutReorderedMiddleware(t *testing.T) {
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {})
-	n := Get(&config.Prest{})
+	n := Get(&config.Prest{}, nil)
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
 	defer server.Close()
@@ -251,7 +250,7 @@ func Test_CORS_Middleware(t *testing.T) {
 		w.Write([]byte("custom route"))
 	})
 
-	n := Get(prestCfg)
+	n := Get(prestCfg, nil)
 	n.UseHandler(r)
 
 	server := httptest.NewServer(n)
@@ -290,7 +289,7 @@ func TestExposeTablesMiddleware(t *testing.T) {
 		AuthMetadata: []string{"first_name", "last_name", "last_login"},
 	}
 
-	routerCfg, err := controllers.New(prestCfg, nil)
+	routerCfg, err := controllers.New(prestCfg, nil, nil, nil)
 	require.NoError(t, err)
 
 	r := mux.NewRouter()
@@ -299,7 +298,7 @@ func TestExposeTablesMiddleware(t *testing.T) {
 	r.HandleFunc("/databases", routerCfg.GetDatabases).Methods("GET")
 	r.HandleFunc("/schemas", routerCfg.GetSchemas).Methods("GET")
 
-	n := Get(cfg)
+	n := Get(cfg, nil)
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
 	defer server.Close()
@@ -318,7 +317,7 @@ func TestExposeTablesMiddleware(t *testing.T) {
 }
 
 func appTest(cfg *config.Prest) *negroni.Negroni {
-	n := Get(cfg)
+	n := Get(cfg, nil)
 	r := mux.NewRouter()
 	if !cfg.Debug && !cfg.EnableDefaultJWT {
 		n.UseHandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -335,7 +334,7 @@ func appTest(cfg *config.Prest) *negroni.Negroni {
 }
 
 func appTestWithJwt(cfg *config.Prest) *negroni.Negroni {
-	n := Get(cfg)
+	n := Get(cfg, nil)
 	r := mux.NewRouter()
 
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

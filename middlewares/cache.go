@@ -18,9 +18,9 @@ func CacheMiddleware(cfg *config.Prest, cacher cache.Cacher) negroni.Handler {
 			return
 		}
 		// team will not be used when downloading information, second result ignored
-		cacheRule, _ := cfg.Cache.EndpointRules(r.URL.Path)
+		cacheRule, _ := cacher.EndpointRules(r.URL.Path)
 		if cfg.Cache.Enabled && r.Method == "GET" && !match && cacheRule {
-			if cacher.BuntGet(r.URL.String(), w) {
+			if cacher.Get(r.URL.String(), w) {
 				return
 			}
 		}

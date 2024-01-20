@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/prest/prest/cache"
-
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 	"github.com/structy/log"
@@ -55,7 +53,7 @@ type Prest struct {
 	MigrationsPath string
 	QueriesPath    string
 	SingleDB       bool
-	Cache          cache.Config
+	Cache          CacheConf
 	ExposeConf     ExposeConf
 	AccessConf     AccessConf
 
@@ -109,6 +107,21 @@ type Prest struct {
 	// plugin config
 	PluginPath           string
 	PluginMiddlewareList []PluginMiddleware
+}
+
+// CacheConf structure for storing cache system configuration
+type CacheConf struct {
+	Enabled     bool       `mapstructure:"enabled"`
+	Time        int        `mapstructure:"time"`
+	StoragePath string     `mapstructure:"storagepath"`
+	SufixFile   string     `mapstructure:"sufixfile"`
+	Endpoints   []Endpoint `mapstructure:"endpoints"`
+}
+
+type Endpoint struct {
+	Enabled  bool   `mapstructure:"enabled"`
+	Endpoint string `mapstructure:"endpoint"`
+	Time     int    `mapstructure:"time"`
 }
 
 func New() *Prest {
@@ -280,7 +293,7 @@ func Parse(cfg *Prest) {
 	cfg.ExposeConf.DatabaseListing = viper.GetBool("expose.databases")
 
 	// cache endpoints config
-	var cacheendpoints = []cache.Endpoint{}
+	var cacheendpoints = []Endpoint{}
 	err = viper.UnmarshalKey("cache.endpoints", &cacheendpoints)
 	if err != nil {
 		log.Errorln("could not unmarshal cache endpoints")

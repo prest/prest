@@ -21,7 +21,7 @@ func (c *Config) Plugin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Cache arrow if enabled
-	c.cache.BuntSet(r.URL.String(), ret.ReturnJson)
+	c.cache.Set(r.URL.String(), ret.ReturnJson)
 
 	//nolint
 	if ret.StatusCode != -1 {

@@ -246,7 +246,8 @@ func (c *Config) SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Cache arrow if enabled
-	c.server.Cache.BuntSet(r.URL.String(), string(sc.Bytes()))
+	c.cache.Set(r.URL.String(), string(sc.Bytes()))
+
 	w.Write(sc.Bytes())
 }
 

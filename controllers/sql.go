@@ -61,7 +61,7 @@ func (c *Config) ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "GET" {
 		// Cache arrow if enabled
-		c.server.Cache.BuntSet(r.URL.String(), string(result))
+		c.cache.Set(r.URL.String(), string(result))
 	}
 	//nolint
 	w.Write(result)

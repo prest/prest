@@ -1,4 +1,4 @@
-package cache
+package bunt
 
 import (
 	"fmt"
@@ -9,32 +9,39 @@ import (
 
 	"github.com/avelino/slugify"
 	"github.com/tidwall/buntdb"
+
+	cf "github.com/prest/prest/config"
 )
 
-type Cacher interface {
-	BuntGet(key string, w http.ResponseWriter) (cacheExist bool)
-	BuntSet(key, value string)
+func New(cfg *cf.CacheConf) *config {
+	return &config{
+		prestcfg: *cfg,
+	}
 }
 
-// getConn connects to database BuntDB - used for caching
-func (c *Config) getConn(key string) (db *buntdb.DB, err error) {
+type config struct {
+	prestcfg cf.CacheConf
+}
+
+// getConn connects to database BuntDB
+func (c *config) getConn(key string) (db *buntdb.DB, err error) {
 	if key != "" {
 		// each url will have its own cache,
 		// this will avoid slowing down the cache base
 		// it is saved in a file on the file system
 		key = slugify.Slugify(key)
 	}
-	db, err = buntdb.Open(filepath.Join(c.StoragePath, fmt.Sprint(key, c.SufixFile)))
+	db, err = buntdb.Open(filepath.Join(c.prestcfg.StoragePath, fmt.Sprint(key, c.prestcfg.SufixFile)))
 	if err != nil {
 		// in case of an error to open buntdb the prestd cache is forced to false
-		c.Enabled = false
+		c.prestcfg.Enabled = false
 	}
 	return
 }
 
-// BuntGet downloads the data - if any - that is in the buntdb (embedded cache database)
+// Get downloads the data - if any - that is in the buntdb (embedded cache database)
 // using response.URL.String() as key
-func (c Config) BuntGet(key string, w http.ResponseWriter) (cacheExist bool) {
+func (c config) Get(key string, w http.ResponseWriter) (cacheExist bool) {
 	db, err := c.getConn(key)
 	if err != nil {
 		return
@@ -55,12 +62,12 @@ func (c Config) BuntGet(key string, w http.ResponseWriter) (cacheExist bool) {
 	return
 }
 
-// BuntSet sets data as cache in buntdb (embedded cache database)
+// Set sets data as cache in buntdb (embedded cache database)
 // using response.URL.String() as key
-func (c Config) BuntSet(key, value string) {
+func (c config) Set(key, value string) {
 	uri := strings.Split(key, "?")
 	cacheRule, cacheTime := c.EndpointRules(uri[0])
-	if !c.Enabled || !cacheRule {
+	if !c.prestcfg.Enabled || !cacheRule {
 		return
 	}
 	db, err := c.getConn(key)
@@ -77,4 +84,25 @@ func (c Config) BuntSet(key, value string) {
 		return nil
 	})
 	defer db.Close()
+}
+
+func (c *config) ClearEndpoints() {
+	c.prestcfg.Endpoints = []cf.Endpoint{}
+}
+
+// EndpointRules checks if there is a custom caching rule for the endpoint
+func (c config) EndpointRules(uri string) (bool, int) {
+	enabled := false
+	time := c.prestcfg.Time
+
+	if c.prestcfg.Enabled && len(c.prestcfg.Endpoints) == 0 {
+		enabled = true
+	}
+	for _, endpoint := range c.prestcfg.Endpoints {
+		if endpoint.Endpoint == uri {
+			enabled = true
+			return enabled, endpoint.Time
+		}
+	}
+	return enabled, time
 }
