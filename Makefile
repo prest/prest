@@ -25,3 +25,4 @@ mockgen:
 	mockgen -source=adapters/scanner/scanner.go -destination=adapters/mockgen/scanner.go -package=mockgen
 	mockgen -source=adapters/adapter.go -destination=adapters/mockgen/adapter.go -package=mockgen
 	mockgen -source=controllers/config.go -destination=controllers/mockgen/server.go -package=mockgen
+	mockgen -source=plugins/loader.go -destination=plugins/mockgen/loader.go -package=mockgen
