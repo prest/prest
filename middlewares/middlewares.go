@@ -89,8 +89,8 @@ func AuthMiddleware(enabled bool, key string, ignoreList []string) negroni.Handl
 		}
 
 		// pass user_info to the next handler
-		ctx := r.Context()
-		ctx = context.WithValue(ctx, pctx.UserInfoKey, claims.UserInfo)
+		ctx := context.WithValue(
+			r.Context(), pctx.UserInfoKey, claims.UserInfo)
 		r = r.WithContext(ctx)
 
 		next(rw, r)
