@@ -3,16 +3,17 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
+
+	"github.com/spf13/cobra"
+	"github.com/structy/log"
+	slog "github.com/structy/log"
 
 	"github.com/prest/prest/cache"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/plugins"
 	"github.com/prest/prest/router"
-	"github.com/spf13/cobra"
-	slog "github.com/structy/log"
 )
 
 var (
@@ -30,7 +31,7 @@ var RootCmd = &cobra.Command{
 	Short: "Serve a RESTful API from any PostgreSQL database",
 	Long:  `prestd (PostgreSQL REST), simplify and accelerate development, ⚡ instant, realtime, high-performance on any Postgres application, existing or new`,
 	Run: func(cmd *cobra.Command, args []string) {
-		startServer(config.New())
+		startServer(cfg)
 	},
 }
 
@@ -51,16 +52,15 @@ func Execute() {
 	migrateCmd.PersistentFlags().StringVar(&path, "path", cfg.MigrationsPath, "Migrations directory")
 
 	if err := RootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		log.Errorln(err)
 		os.Exit(1)
 	}
 }
 
 // startServer starts the server
 func startServer(cfg *config.Prest) {
-	l := log.New(os.Stdout, "[prestd] ", 0)
-
-	rts, err := router.Routes(cfg, cache.New(&cfg.Cache), plugins.New(cfg.PluginPath))
+	rts, err := router.Routes(cfg,
+		cache.New(&cfg.Cache), plugins.New(cfg.PluginPath))
 	if err != nil {
 		slog.Fatal(err)
 	}
@@ -77,9 +77,10 @@ func startServer(cfg *config.Prest) {
 		slog.Warningln("You are running prestd in debug mode.")
 	}
 	addr := fmt.Sprintf("%s:%d", cfg.HTTPHost, cfg.HTTPPort)
-	l.Printf("listening on %s and serving on %s", addr, cfg.ContextPath)
+
+	slog.Printf("listening on %s and serving on %s\n", addr, cfg.ContextPath)
 	if cfg.HTTPSMode {
-		l.Fatal(http.ListenAndServeTLS(addr, cfg.HTTPSCert, cfg.HTTPSKey, nil))
+		slog.Fatal(http.ListenAndServeTLS(addr, cfg.HTTPSCert, cfg.HTTPSKey, nil))
 	}
-	l.Fatal(http.ListenAndServe(addr, rts))
+	slog.Fatal(http.ListenAndServe(addr, rts))
 }

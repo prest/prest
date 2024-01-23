@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/gosidekick/migration/v3"
 	"github.com/spf13/cobra"
+	slog "github.com/structy/log"
 )
 
 // mversionCmd represents the version command
@@ -17,12 +15,13 @@ var mversionCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		n, executed, err := migration.Run(cmd.Context(), path, urlConn, "status")
 		if err != nil {
+			slog.Errorln("exec migrations failed: ", err)
 			return err
 		}
-		fmt.Fprintf(os.Stdout, "check migrations located in %v\n", path)
-		fmt.Fprintf(os.Stdout, "%v needs to be executed\n", n)
+		slog.Printf("check migrations located in %v\n", path)
+		slog.Printf("%v needs to be executed\n", n)
 		for _, e := range executed {
-			fmt.Fprintf(os.Stdout, "%v\n", e)
+			slog.Printf("%v executed\n", e)
 		}
 		return nil
 	},

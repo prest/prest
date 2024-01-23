@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/prest/prest/adapters"
-	"github.com/prest/prest/config"
 )
 
 var authUpCmd = &cobra.Command{
@@ -46,7 +45,6 @@ var authDownCmd = &cobra.Command{
 	Short: "Drop auth table",
 	Long:  "Drop basic table used on auth endpoint",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg := config.New()
 		adpt, err := adapters.New(cfg)
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())

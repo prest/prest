@@ -15,6 +15,7 @@ var upCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		n, executed, err := migration.Run(cmd.Context(), path, urlConn, "up")
 		if err != nil {
+			slog.Errorln("exec migrations failed: ", err)
 			return err
 		}
 		slog.Printf("exec migrations located in %v\n", path)

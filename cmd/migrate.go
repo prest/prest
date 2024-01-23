@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"net/url"
 
+	// load pq driver
+	_ "github.com/lib/pq"
 	"github.com/spf13/cobra"
 	slog "github.com/structy/log"
-
-	// pq driver
-	_ "github.com/lib/pq"
 
 	"github.com/prest/prest/adapters"
 )
