@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/avelino/slugify"
+	slog "github.com/structy/log"
 	"github.com/tidwall/buntdb"
 
 	cf "github.com/prest/prest/config"
@@ -33,6 +34,7 @@ func (c *config) getConn(key string) (db *buntdb.DB, err error) {
 	}
 	db, err = buntdb.Open(filepath.Join(c.prestcfg.StoragePath, fmt.Sprint(key, c.prestcfg.SufixFile)))
 	if err != nil {
+		slog.Warningln("bunt cache error:", err)
 		// in case of an error to open buntdb the prestd cache is forced to false
 		c.prestcfg.Enabled = false
 	}
@@ -46,11 +48,13 @@ func (c config) Get(key string, w http.ResponseWriter) (cacheExist bool) {
 	if err != nil {
 		return
 	}
+	defer db.Close()
 	cacheExist = false
 	//nolint:errcheck
 	db.View(func(tx *buntdb.Tx) error {
 		val, err := tx.Get(key)
 		if err == nil {
+			slog.Warningln("bunt Get cache error:", err)
 			cacheExist = true
 			w.Header().Set("Cache-Server", "prestd")
 			w.WriteHeader(http.StatusOK)
@@ -58,7 +62,6 @@ func (c config) Get(key string, w http.ResponseWriter) (cacheExist bool) {
 		}
 		return nil
 	})
-	defer db.Close()
 	return
 }
 
@@ -72,18 +75,22 @@ func (c config) Set(key, value string) {
 	}
 	db, err := c.getConn(key)
 	if err != nil {
+		slog.Warningln("bunt getConn cache error:", err)
 		return
 	}
+	defer db.Close()
 	//nolint:errcheck
 	db.Update(func(tx *buntdb.Tx) error {
 		//nolint:errcheck
-		tx.Set(key, value,
+		_, _, err = tx.Set(key, value,
 			&buntdb.SetOptions{
 				Expires: true,
 				TTL:     time.Duration(cacheTime) * time.Minute})
+		if err != nil {
+			slog.Warningln("bunt Set cache error:", err)
+		}
 		return nil
 	})
-	defer db.Close()
 }
 
 func (c *config) ClearEndpoints() {
