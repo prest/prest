@@ -1,10 +1,16 @@
 package controllers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	slog "github.com/structy/log"
+)
+
+var (
+	// ErrPluginNotFound is returned when the plugin is not found
+	ErrPluginNotFound = errors.New("plugin not found")
 )
 
 // Plugin responsible for processing the `.so` function via http protocol
@@ -16,17 +22,17 @@ func (c *Config) Plugin(w http.ResponseWriter, r *http.Request) {
 	ret, err := c.pluginLoader.LoadFunc(fileName, funcName, r)
 	if err != nil {
 		slog.Errorln(err.Error())
-		http.Error(w, err.Error(), http.StatusNotFound)
+		JSONError(w, ErrPluginNotFound.Error(), http.StatusNotFound)
 		return
 	}
 
 	// Cache arrow if enabled
 	c.cache.Set(r.URL.String(), ret.ReturnJson)
 
+	code := http.StatusOK
 	//nolint
 	if ret.StatusCode != -1 {
-		w.WriteHeader(ret.StatusCode)
+		code = ret.StatusCode
 	}
-
-	w.Write([]byte(ret.ReturnJson))
+	JSONWrite(w, ret.ReturnJson, code)
 }
