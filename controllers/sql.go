@@ -77,10 +77,10 @@ func (c *Config) ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
 }
 
 // extractHeaders gets from the given request the headers and populate the provided templateData accordingly.
-func extractHeaders(rq *http.Request, templateData map[string]interface{}) {
+func extractHeaders(req *http.Request, templateData map[string]interface{}) {
 	headers := map[string]interface{}{}
 
-	for key, value := range rq.Header {
+	for key, value := range req.Header {
 		if len(value) == 1 {
 			headers[key] = value[0]
 			continue
