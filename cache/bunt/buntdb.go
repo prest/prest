@@ -69,6 +69,9 @@ func (c config) Get(key string, w http.ResponseWriter) (cacheExist bool) {
 // using response.URL.String() as key
 func (c config) Set(key, value string) {
 	uri := strings.Split(key, "?")
+	if len(uri) == 0 {
+		return
+	}
 	cacheRule, cacheTime := c.EndpointRules(uri[0])
 	if !c.prestcfg.Enabled || !cacheRule {
 		return
