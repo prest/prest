@@ -289,7 +289,7 @@ func TestExposeTablesMiddleware(t *testing.T) {
 		AuthMetadata: []string{"first_name", "last_name", "last_login"},
 	}
 
-	routerCfg, err := controllers.New(prestCfg, nil, nil, nil)
+	routerCfg, err := controllers.New(prestCfg, nil, nil)
 	require.NoError(t, err)
 
 	r := mux.NewRouter()

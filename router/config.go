@@ -1,8 +1,6 @@
 package router
 
 import (
-	"log"
-
 	"github.com/gorilla/mux"
 
 	"github.com/prest/prest/cache"
@@ -22,7 +20,7 @@ func New(c *config.Prest, cacher cache.Cacher, pl plugins.Loader) (*Config, erro
 		srvCfg: c,
 		cache:  cacher,
 	}
-	server, err := controllers.New(c, log.Default(), cacher, pl)
+	server, err := controllers.New(c, cacher, pl)
 	if err != nil {
 		return nil, err
 	}

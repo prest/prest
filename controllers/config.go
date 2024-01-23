@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/prest/prest/adapters"
@@ -56,7 +55,6 @@ type Config struct {
 	adapter adapters.Adapter
 	plugins *plugins.Config
 
-	logger       *log.Logger
 	pluginLoader plugins.Loader
 	cache        cache.Cacher
 }
@@ -64,7 +62,7 @@ type Config struct {
 // New creates a new Config instance with the given configuration and logger.
 // It initializes the adapter based on the provided configuration.
 // Returns a pointer to the newly created Config instance and an error if any.
-func New(cfg *config.Prest, logger *log.Logger, c cache.Cacher, ld plugins.Loader) (*Config, error) {
+func New(cfg *config.Prest, c cache.Cacher, ld plugins.Loader) (*Config, error) {
 	adptr, err := adapters.New(cfg)
 	if err != nil {
 		return nil, err
@@ -72,7 +70,6 @@ func New(cfg *config.Prest, logger *log.Logger, c cache.Cacher, ld plugins.Loade
 	return &Config{
 		server:       cfg,
 		adapter:      adptr,
-		logger:       logger,
 		plugins:      plugins.New(cfg.PluginPath),
 		cache:        c,
 		pluginLoader: ld,
