@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
+	slog "github.com/structy/log"
+
 	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/adapters/scanner"
 	"github.com/prest/prest/config"
@@ -137,6 +139,7 @@ func New(cfg *config.Prest) (Adapter, error) {
 	case "postgres":
 		return postgres.NewAdapter(cfg), nil
 	case "":
+		slog.Warningln("no adapter defined, using postgres")
 		return postgres.NewAdapter(cfg), nil
 	}
 	return nil, ErrAdapterNotSupported
