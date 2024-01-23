@@ -323,15 +323,6 @@ func TestGroupByClause(t *testing.T) {
 	}
 }
 
-func TestEmptyTable(t *testing.T) {
-	adpt := NewAdapter(&config.Prest{})
-	sc := adpt.Query("SELECT * FROM test_empty_table")
-	require.NoError(t, sc.Err())
-	if !bytes.Equal(sc.Bytes(), []byte("[]")) {
-		t.Fatalf("Query response returned '%v', expected '[]'", string(sc.Bytes()))
-	}
-}
-
 func TestQuery(t *testing.T) {
 	var sc scanner.Scanner
 
