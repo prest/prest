@@ -123,6 +123,11 @@ type Adapter interface {
 	ShowTableCtx(ctx context.Context, schema, table string) (sc scanner.Scanner)
 }
 
+var (
+	// ErrAdapterNotSupported is returned when the adapter is not supported
+	ErrAdapterNotSupported = fmt.Errorf("adapter not supported")
+)
+
 // New returns a new adapter based on the configuration file
 //
 // currently only postgres is supported
@@ -134,5 +139,5 @@ func New(cfg *config.Prest) (Adapter, error) {
 	case "":
 		return postgres.NewAdapter(cfg), nil
 	}
-	return nil, fmt.Errorf("adapter '%s' not supported", cfg.Adapter)
+	return nil, ErrAdapterNotSupported
 }
