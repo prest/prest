@@ -12,19 +12,18 @@ import (
 func (c *Config) GetSchemas(w http.ResponseWriter, r *http.Request) {
 	requestWhere, values, err := c.adapter.WhereByRequest(r, 1)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	sqlSchemas, hasCount := c.adapter.SchemaClause(r)
-
 	if requestWhere != "" {
 		sqlSchemas = fmt.Sprint(sqlSchemas, " WHERE ", requestWhere)
 	}
 
 	distinct, err := c.adapter.DistinctClause(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if distinct != "" {
@@ -33,26 +32,24 @@ func (c *Config) GetSchemas(w http.ResponseWriter, r *http.Request) {
 
 	order, err := c.adapter.OrderByRequest(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	order = c.adapter.SchemaOrderBy(order, hasCount)
 
 	page, err := c.adapter.PaginateIfPossible(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	ctx, cancel := pctx.WithTimeout(r.Context())
-	defer cancel()
-
+	ctx, _ := pctx.WithTimeout(r.Context())
 	sqlSchemas = fmt.Sprint(sqlSchemas, order, " ", page)
 	sc := c.adapter.QueryCtx(ctx, sqlSchemas, values...)
-	if sc.Err() != nil {
-		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
+	if err = sc.Err(); err != nil {
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	//nolint
-	w.Write(sc.Bytes())
+
+	JSONWrite(w, string(sc.Bytes()), http.StatusOK)
 }
