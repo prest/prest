@@ -14,6 +14,8 @@ type OptMiddleware func(w http.ResponseWriter, r *http.Request, next http.Handle
 
 var (
 	// BaseStack Middlewares
+	// Recovery
+	// Logger
 	BaseStack = []negroni.Handler{
 		negroni.Handler(negroni.NewRecovery()),
 		negroni.Handler(negroni.NewLogger()),
@@ -23,6 +25,9 @@ var (
 
 // Get gets the default negroni app with
 // the default middlewares and the middlewares passed as parameters
+//
+// the middlewares passed as parameters will be executed after the default middlewares
+// and before the router
 func Get(cfg *config.Prest, cacher cache.Cacher, opts ...OptMiddleware) *negroni.Negroni {
 	stack := []negroni.Handler{}
 	stack = append(stack, BaseStack...)
