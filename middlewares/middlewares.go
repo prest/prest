@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"time"
 
@@ -175,27 +174,6 @@ func JwtMiddleware(key string, ignoreList []string) negroni.Handler {
 		}
 		if err := Validate(out); err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
-			return
-		}
-		next(w, r)
-	})
-}
-
-// Cors middleware
-//
-// Deprecated: use github.com/rs/cors instead
-func Cors(origin []string, headers []string) negroni.Handler {
-	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		w.Header().Set(headerAllowOrigin, strings.Join(origin, ","))
-		w.Header().Set(headerAllowCredentials, strconv.FormatBool(true))
-		if r.Method == "OPTIONS" && r.Header.Get("Access-Control-Request-Method") != "" {
-			w.Header().Set(headerAllowMethods, strings.Join(defaultAllowMethods, ","))
-			w.Header().Set(headerAllowHeaders, strings.Join(headers, ","))
-			if allowed := checkCors(r, origin); !allowed {
-				w.WriteHeader(http.StatusForbidden)
-				return
-			}
-			w.WriteHeader(http.StatusOK)
 			return
 		}
 		next(w, r)
