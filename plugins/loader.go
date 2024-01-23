@@ -2,12 +2,12 @@ package plugins
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"path/filepath"
 	"plugin"
 
 	"github.com/gorilla/mux"
+	slog "github.com/structy/log"
 )
 
 type Loader interface {
@@ -82,23 +82,22 @@ func (c Config) LoadFunc(fileName, funcName string, r *http.Request) (ret Plugin
 	if err != nil {
 		return
 	}
-	// Exec (call) function name, return string (In case which return status code does not matter)
+	// Exec (call) function name, return string (
+	// In case which return status code does not matter)
 	function, ok := f.(func() string)
 
 	if !ok {
 		// It is probable that plugin function return not only json but also status code.
 		function := f.(func() (string, int))
-		retJson, code := function()
-		ret.ReturnJson = retJson
-		ret.StatusCode = code
+		ret.ReturnJson, ret.StatusCode = function()
 
-		log.Printf("ret plugin(status %d): %s\n", code, ret.ReturnJson)
+		slog.Printf("ret plugin(status %d): %s\n", ret.StatusCode, ret.ReturnJson)
 	} else {
 		retJson := function()
 		ret.ReturnJson = retJson
 		ret.StatusCode = -1
 
-		log.Println("ret plugin:", ret.ReturnJson)
+		slog.Println("ret plugin:", ret.ReturnJson)
 	}
 
 	return
