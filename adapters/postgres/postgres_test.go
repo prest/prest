@@ -3,7 +3,6 @@ package postgres
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,25 +12,12 @@ import (
 	"strings"
 	"testing"
 
-	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/prest/prest/adapters/postgres/statements"
 	"github.com/prest/prest/adapters/scanner"
 	"github.com/prest/prest/config"
 	"github.com/stretchr/testify/require"
 	"github.com/structy/log"
 )
-
-func mockDB() (a *Adapter, mock sqlmock.Sqlmock, err error) {
-	var db *sql.DB
-	db, mock, err = sqlmock.New()
-	if err != nil {
-		return
-	}
-	a = NewAdapter(&config.Prest{PGDatabase: "prest"})
-	a.AddDatabaseToConnPool("prest", db)
-	a.SetCurrentConnDatabase("prest")
-	return
-}
 
 func TestLoad(t *testing.T) {
 	// Only run the failing part when a specific env variable is set
@@ -1710,7 +1696,7 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 		// 		Fields:      tt.args.fields,
 		// 	})
 		t.Run(tt.name, func(t *testing.T) {
-			adapter := &Adapter{}
+			adapter := &adapter{}
 			r, err := http.NewRequest(http.MethodGet, tt.args.url, strings.NewReader(""))
 			if err != nil {
 				t.Fatal(err)
@@ -1806,7 +1792,7 @@ func Test_Postgres_GeneratesFuncs(t *testing.T) {
 
 	//Postgres struct MOCK
 	// will be used just to invoke the functions
-	pg := Adapter{}
+	pg := adapter{}
 
 	// all of this tests is for functions whats returns a string. We can use two string as args of tests. The string we will got by the function, and the expected string.
 	type args struct {
@@ -1973,7 +1959,7 @@ ORDER BY
 }
 
 func Test_ShowTable(t *testing.T) {
-	pg := Adapter{}
+	pg := adapter{}
 	sc := pg.ShowTable("testschema", "testtable")
 
 	scMock := newScannerMock(t)
@@ -1984,7 +1970,7 @@ func Test_ShowTable(t *testing.T) {
 }
 
 func Test_ShowTableCtx(t *testing.T) {
-	pg := Adapter{}
+	pg := adapter{}
 
 	sc := pg.ShowTableCtx(context.Background(), "testschema", "testtable")
 

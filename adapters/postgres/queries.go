@@ -16,7 +16,7 @@ import (
 )
 
 // GetScript gets the SQL template file
-func (a Adapter) GetScript(verb, folder, scriptName string) (script string, err error) {
+func (a adapter) GetScript(verb, folder, scriptName string) (script string, err error) {
 	sufix, ok := a.scriptVerbs[verb]
 	if !ok {
 		err = fmt.Errorf("invalid http method %s", verb)
@@ -34,7 +34,7 @@ func (a Adapter) GetScript(verb, folder, scriptName string) (script string, err 
 }
 
 // ParseScript use values sent by users and add on script
-func (a Adapter) ParseScript(scriptPath string, templateData map[string]interface{}) (sqlQuery string, values []interface{}, err error) {
+func (a adapter) ParseScript(scriptPath string, templateData map[string]interface{}) (sqlQuery string, values []interface{}, err error) {
 	_, tplName := filepath.Split(scriptPath)
 
 	funcs := &template.FuncRegistry{TemplateData: templateData}
@@ -58,7 +58,7 @@ func (a Adapter) ParseScript(scriptPath string, templateData map[string]interfac
 }
 
 // WriteSQL perform INSERT's, UPDATE's, DELETE's operations
-func (a Adapter) WriteSQL(sql string, values []interface{}) scanner.Scanner {
+func (a adapter) WriteSQL(sql string, values []interface{}) scanner.Scanner {
 	db, err := a.pool.Get()
 	if err != nil {
 		log.Errorln(err)
@@ -99,7 +99,7 @@ func (a Adapter) WriteSQL(sql string, values []interface{}) scanner.Scanner {
 }
 
 // WriteSQLCtx perform INSERT's, UPDATE's, DELETE's operations
-func (a Adapter) WriteSQLCtx(ctx context.Context, sql string, values []interface{}) scanner.Scanner {
+func (a adapter) WriteSQLCtx(ctx context.Context, sql string, values []interface{}) scanner.Scanner {
 	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
@@ -140,7 +140,7 @@ func (a Adapter) WriteSQLCtx(ctx context.Context, sql string, values []interface
 }
 
 // ExecuteScripts run sql templates created by users
-func (a Adapter) ExecuteScripts(method, sql string, values []interface{}) (sc scanner.Scanner) {
+func (a adapter) ExecuteScripts(method, sql string, values []interface{}) (sc scanner.Scanner) {
 	switch method {
 	case "GET":
 		return a.Query(sql, values...)
@@ -151,7 +151,7 @@ func (a Adapter) ExecuteScripts(method, sql string, values []interface{}) (sc sc
 }
 
 // ExecuteScriptsCtx run sql templates created by users
-func (a Adapter) ExecuteScriptsCtx(ctx context.Context, method, sql string, values []interface{}) (sc scanner.Scanner) {
+func (a adapter) ExecuteScriptsCtx(ctx context.Context, method, sql string, values []interface{}) (sc scanner.Scanner) {
 	switch method {
 	case "GET":
 		return a.QueryCtx(ctx, sql, values...)

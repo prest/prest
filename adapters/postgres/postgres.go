@@ -45,11 +45,8 @@ var (
 	groupRegex                 = regexp.MustCompile(`\"(.+?)\"`)
 )
 
-// Postgres struct to keep compatibility
-type Postgres Adapter
-
-// Adapter implements the postgres adapter
-type Adapter struct {
+// adapter implements the postgres adapter
+type adapter struct {
 	cfg         *config.Prest
 	stmt        *Stmt
 	pool        *connection.Pool
@@ -57,8 +54,8 @@ type Adapter struct {
 }
 
 // NewAdapter sets the postgresql adapter
-func NewAdapter(cfg *config.Prest) *Adapter {
-	return &Adapter{
+func NewAdapter(cfg *config.Prest) *adapter {
+	return &adapter{
 		cfg: cfg,
 		stmt: &Stmt{
 			Mtx:        &sync.Mutex{},
@@ -112,7 +109,7 @@ func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string, cache bool) (stateme
 }
 
 // GetStmt get statement
-func (a Adapter) GetStmt() *Stmt {
+func (a adapter) GetStmt() *Stmt {
 	if a.stmt == nil {
 		a.stmt = &Stmt{
 			Mtx:        &sync.Mutex{},
@@ -123,7 +120,7 @@ func (a Adapter) GetStmt() *Stmt {
 }
 
 // ClearStmt used to reset the cache and allow multiple tests
-func (a Adapter) ClearStmt() {
+func (a adapter) ClearStmt() {
 	if a.stmt != nil {
 		a.stmt = nil
 		a.stmt = a.GetStmt()
@@ -131,7 +128,7 @@ func (a Adapter) ClearStmt() {
 }
 
 // GetTransaction get transaction
-func (a Adapter) GetTransaction() (tx *sql.Tx, err error) {
+func (a adapter) GetTransaction() (tx *sql.Tx, err error) {
 	db, err := a.pool.Get()
 	if err != nil {
 		log.Errorln(err)
@@ -141,7 +138,7 @@ func (a Adapter) GetTransaction() (tx *sql.Tx, err error) {
 }
 
 // GetTransactionCtx get transaction
-func (a Adapter) GetTransactionCtx(ctx context.Context) (tx *sql.Tx, err error) {
+func (a adapter) GetTransactionCtx(ctx context.Context) (tx *sql.Tx, err error) {
 	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
@@ -151,12 +148,12 @@ func (a Adapter) GetTransactionCtx(ctx context.Context) (tx *sql.Tx, err error) 
 }
 
 // Prepare statement func
-func (a Adapter) Prepare(db *sqlx.DB, SQL string, cache bool) (stmt *sql.Stmt, err error) {
+func (a adapter) Prepare(db *sqlx.DB, SQL string, cache bool) (stmt *sql.Stmt, err error) {
 	return a.GetStmt().Prepare(db, nil, SQL, cache)
 }
 
 // PrepareTx statement func
-func (a Adapter) PrepareTx(tx *sql.Tx, SQL string, cache bool) (stmt *sql.Stmt, err error) {
+func (a adapter) PrepareTx(tx *sql.Tx, SQL string, cache bool) (stmt *sql.Stmt, err error) {
 	return a.GetStmt().Prepare(nil, tx, SQL, cache)
 }
 
@@ -203,7 +200,7 @@ func chkInvalidIdentifier(identifer ...string) bool {
 }
 
 // WhereByRequest create interface for queries + where
-func (a Adapter) WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []interface{}, err error) {
+func (a adapter) WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []interface{}, err error) {
 	whereKey := []string{}
 	whereValues := []string{}
 	var value, op string
@@ -306,7 +303,7 @@ func (a Adapter) WhereByRequest(r *http.Request, initialPlaceholderID int) (wher
 }
 
 // ReturningByRequest create interface for queries + returning
-func (a Adapter) ReturningByRequest(r *http.Request) (returningSyntax string, err error) {
+func (a adapter) ReturningByRequest(r *http.Request) (returningSyntax string, err error) {
 	// TODO: write documentation:
 	// https://docs.prestd.com/api-reference/parameters
 	queries := r.URL.Query()["_returning"]
@@ -346,7 +343,7 @@ func sliceToJSONList(ifaceSlice interface{}) (returnValue string, err error) {
 }
 
 // SetByRequest create a set clause for SQL
-func (a Adapter) SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, values []interface{}, err error) {
+func (a adapter) SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, values []interface{}, err error) {
 	body := make(map[string]interface{})
 	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return
@@ -399,7 +396,7 @@ func closer(body io.Closer) {
 }
 
 // ParseBatchInsertRequest create insert SQL to batch request
-func (a Adapter) ParseBatchInsertRequest(r *http.Request) (colsName string, placeholders string, values []interface{}, err error) {
+func (a adapter) ParseBatchInsertRequest(r *http.Request) (colsName string, placeholders string, values []interface{}, err error) {
 	recordSet := make([]map[string]interface{}, 0)
 	if err = json.NewDecoder(r.Body).Decode(&recordSet); err != nil {
 		return
@@ -415,7 +412,7 @@ func (a Adapter) ParseBatchInsertRequest(r *http.Request) (colsName string, plac
 	return
 }
 
-func (a Adapter) operationValues(recordSet []map[string]interface{}, recordKeys []string) (values []interface{}, placeholders string, err error) {
+func (a adapter) operationValues(recordSet []map[string]interface{}, recordKeys []string) (values []interface{}, placeholders string, err error) {
 	for i, record := range recordSet {
 		initPH := len(values) + 1
 		for _, key := range recordKeys {
@@ -440,7 +437,7 @@ func (a Adapter) operationValues(recordSet []map[string]interface{}, recordKeys 
 	return
 }
 
-func (a Adapter) tableKeys(json map[string]interface{}) (keys []string) {
+func (a adapter) tableKeys(json map[string]interface{}) (keys []string) {
 	for key := range json {
 		keys = append(keys, strconv.Quote(key))
 	}
@@ -448,7 +445,7 @@ func (a Adapter) tableKeys(json map[string]interface{}) (keys []string) {
 	return
 }
 
-func (a Adapter) createPlaceholders(initial, lenValues int) (ret string) {
+func (a adapter) createPlaceholders(initial, lenValues int) (ret string) {
 	for i := initial; i <= lenValues; i++ {
 		if ret != "" {
 			ret += ","
@@ -460,7 +457,7 @@ func (a Adapter) createPlaceholders(initial, lenValues int) (ret string) {
 }
 
 // ParseInsertRequest create insert SQL
-func (a Adapter) ParseInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error) {
+func (a adapter) ParseInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error) {
 	body := make(map[string]interface{})
 	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return
@@ -494,7 +491,7 @@ func (a Adapter) ParseInsertRequest(r *http.Request) (colsName string, colsValue
 }
 
 // DatabaseClause return a SELECT `query`
-func (a Adapter) DatabaseClause(req *http.Request) (query string, hasCount bool) {
+func (a adapter) DatabaseClause(req *http.Request) (query string, hasCount bool) {
 	queries := req.URL.Query()
 	countQuery := queries.Get("_count")
 
@@ -507,7 +504,7 @@ func (a Adapter) DatabaseClause(req *http.Request) (query string, hasCount bool)
 }
 
 // SchemaClause return a SELECT `query`
-func (a Adapter) SchemaClause(req *http.Request) (query string, hasCount bool) {
+func (a adapter) SchemaClause(req *http.Request) (query string, hasCount bool) {
 	queries := req.URL.Query()
 	countQuery := queries.Get("_count")
 
@@ -520,7 +517,7 @@ func (a Adapter) SchemaClause(req *http.Request) (query string, hasCount bool) {
 }
 
 // JoinByRequest implements join in queries
-func (a Adapter) JoinByRequest(r *http.Request) (values []string, err error) {
+func (a adapter) JoinByRequest(r *http.Request) (values []string, err error) {
 	queries := r.URL.Query()
 
 	if queries.Get("_join") == "" {
@@ -563,7 +560,7 @@ func (a Adapter) JoinByRequest(r *http.Request) (values []string, err error) {
 }
 
 // SelectFields query
-func (a Adapter) SelectFields(fields []string) (sql string, err error) {
+func (a adapter) SelectFields(fields []string) (sql string, err error) {
 	if len(fields) == 0 {
 		err = ErrMustSelectOneField
 		return
@@ -600,7 +597,7 @@ func (a Adapter) SelectFields(fields []string) (sql string, err error) {
 }
 
 // OrderByRequest implements ORDER BY in queries
-func (a Adapter) OrderByRequest(r *http.Request) (values string, err error) {
+func (a adapter) OrderByRequest(r *http.Request) (values string, err error) {
 	queries := r.URL.Query()
 	reqOrder := queries.Get("_order")
 
@@ -633,7 +630,7 @@ func (a Adapter) OrderByRequest(r *http.Request) (values string, err error) {
 }
 
 // CountByRequest implements COUNT(fields) OPERTATION
-func (a Adapter) CountByRequest(req *http.Request) (countQuery string, err error) {
+func (a adapter) CountByRequest(req *http.Request) (countQuery string, err error) {
 	queries := req.URL.Query()
 	countFields := queries.Get("_count")
 	selectFields := queries.Get("_select")
@@ -661,7 +658,7 @@ func (a Adapter) CountByRequest(req *http.Request) (countQuery string, err error
 // QueryCtx process queries using the DB name from Context
 //
 // allows setting timeout
-func (a Adapter) QueryCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner) {
+func (a adapter) QueryCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	// use the db_name that was set on request to avoid runtime collisions
 	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
@@ -687,7 +684,7 @@ func (a Adapter) QueryCtx(ctx context.Context, SQL string, params ...interface{}
 	}
 }
 
-func (a Adapter) Query(SQL string, params ...interface{}) (sc scanner.Scanner) {
+func (a adapter) Query(SQL string, params ...interface{}) (sc scanner.Scanner) {
 	db, err := a.pool.Get()
 	if err != nil {
 		log.Errorln(err)
@@ -712,7 +709,7 @@ func (a Adapter) Query(SQL string, params ...interface{}) (sc scanner.Scanner) {
 }
 
 // QueryCount process queries with count
-func (a Adapter) QueryCount(SQL string, params ...interface{}) (sc scanner.Scanner) {
+func (a adapter) QueryCount(SQL string, params ...interface{}) (sc scanner.Scanner) {
 	db, err := a.pool.Get()
 	if err != nil {
 		return &scanner.PrestScanner{Error: err}
@@ -741,7 +738,7 @@ func (a Adapter) QueryCount(SQL string, params ...interface{}) (sc scanner.Scann
 }
 
 // QueryCount process queries with count
-func (a Adapter) QueryCountCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner) {
+func (a adapter) QueryCountCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
@@ -772,7 +769,7 @@ func (a Adapter) QueryCountCtx(ctx context.Context, SQL string, params ...interf
 }
 
 // PaginateIfPossible when passing non-valid paging parameters (conversion to integer) the query will be made with default value
-func (a Adapter) PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
+func (a adapter) PaginateIfPossible(r *http.Request) (paginatedQuery string, err error) {
 	values := r.URL.Query()
 	if _, ok := values[pageNumberKey]; !ok {
 		paginatedQuery = ""
@@ -793,7 +790,7 @@ func (a Adapter) PaginateIfPossible(r *http.Request) (paginatedQuery string, err
 }
 
 // BatchInsertCopy execute batch insert sql into a table unsing copy
-func (a Adapter) BatchInsertCopy(dbname, schema, table string, keys []string, values ...interface{}) (sc scanner.Scanner) {
+func (a adapter) BatchInsertCopy(dbname, schema, table string, keys []string, values ...interface{}) (sc scanner.Scanner) {
 	db, err := a.pool.Get()
 	if err != nil {
 		log.Errorln(err)
@@ -859,7 +856,7 @@ func (a Adapter) BatchInsertCopy(dbname, schema, table string, keys []string, va
 }
 
 // BatchInsertCopyCtx execute batch insert sql into a table unsing copy
-func (a Adapter) BatchInsertCopyCtx(ctx context.Context, dbname, schema, table string, keys []string, values ...interface{}) (sc scanner.Scanner) {
+func (a adapter) BatchInsertCopyCtx(ctx context.Context, dbname, schema, table string, keys []string, values ...interface{}) (sc scanner.Scanner) {
 	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
@@ -925,7 +922,7 @@ func (a Adapter) BatchInsertCopyCtx(ctx context.Context, dbname, schema, table s
 }
 
 // BatchInsertValues execute batch insert sql into a table unsing multi values
-func (a Adapter) BatchInsertValues(SQL string, values ...interface{}) (sc scanner.Scanner) {
+func (a adapter) BatchInsertValues(SQL string, values ...interface{}) (sc scanner.Scanner) {
 	db, err := a.pool.Get()
 	if err != nil {
 		log.Errorln(err)
@@ -970,7 +967,7 @@ func (a Adapter) BatchInsertValues(SQL string, values ...interface{}) (sc scanne
 }
 
 // BatchInsertValuesCtx execute batch insert sql into a table unsing multi values
-func (a Adapter) BatchInsertValuesCtx(ctx context.Context, SQL string, values ...interface{}) (sc scanner.Scanner) {
+func (a adapter) BatchInsertValuesCtx(ctx context.Context, SQL string, values ...interface{}) (sc scanner.Scanner) {
 	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
@@ -1014,7 +1011,7 @@ func (a Adapter) BatchInsertValuesCtx(ctx context.Context, SQL string, values ..
 	}
 }
 
-func (a Adapter) fullInsert(db *sqlx.DB, tx *sql.Tx, SQL string) (stmt *sql.Stmt, err error) {
+func (a adapter) fullInsert(db *sqlx.DB, tx *sql.Tx, SQL string) (stmt *sql.Stmt, err error) {
 	tableName := insertTableNameQuotesRegex.FindStringSubmatch(SQL)
 	if len(tableName) < 2 {
 		tableName = insertTableNameRegex.FindStringSubmatch(SQL)
@@ -1031,7 +1028,7 @@ func (a Adapter) fullInsert(db *sqlx.DB, tx *sql.Tx, SQL string) (stmt *sql.Stmt
 }
 
 // Insert execute insert sql into a table
-func (a Adapter) Insert(SQL string, params ...interface{}) (sc scanner.Scanner) {
+func (a adapter) Insert(SQL string, params ...interface{}) (sc scanner.Scanner) {
 	db, err := a.pool.Get()
 	if err != nil {
 		log.Errorln(err)
@@ -1041,7 +1038,7 @@ func (a Adapter) Insert(SQL string, params ...interface{}) (sc scanner.Scanner) 
 }
 
 // InsertCtx execute insert sql into a table
-func (a Adapter) InsertCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner) {
+func (a adapter) InsertCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
@@ -1051,11 +1048,11 @@ func (a Adapter) InsertCtx(ctx context.Context, SQL string, params ...interface{
 }
 
 // InsertWithTransaction execute insert sql into a table
-func (a Adapter) InsertWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner) {
+func (a adapter) InsertWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	return a.insert(nil, tx, SQL, params...)
 }
 
-func (a Adapter) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner) {
+func (a adapter) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	stmt, err := a.fullInsert(db, tx, SQL)
 	if err != nil {
 		log.Errorln(err)
@@ -1071,7 +1068,7 @@ func (a Adapter) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface
 }
 
 // Delete execute delete sql into a table
-func (a Adapter) Delete(SQL string, params ...interface{}) (sc scanner.Scanner) {
+func (a adapter) Delete(SQL string, params ...interface{}) (sc scanner.Scanner) {
 	db, err := a.pool.Get()
 	if err != nil {
 		log.Errorln(err)
@@ -1081,7 +1078,7 @@ func (a Adapter) Delete(SQL string, params ...interface{}) (sc scanner.Scanner) 
 }
 
 // Delete execute delete sql into a table
-func (a Adapter) DeleteCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner) {
+func (a adapter) DeleteCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
@@ -1091,11 +1088,11 @@ func (a Adapter) DeleteCtx(ctx context.Context, SQL string, params ...interface{
 }
 
 // DeleteWithTransaction execute delete sql into a table
-func (a Adapter) DeleteWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner) {
+func (a adapter) DeleteWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	return a.delete(nil, tx, SQL, params...)
 }
 
-func (a Adapter) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner) {
+func (a adapter) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	log.Debugln("generated SQL:", SQL, " parameters: ", params)
 	var stmt *sql.Stmt
 	var err error
@@ -1162,7 +1159,7 @@ func (a Adapter) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface
 }
 
 // Update execute update sql into a table
-func (a Adapter) Update(SQL string, params ...interface{}) (sc scanner.Scanner) {
+func (a adapter) Update(SQL string, params ...interface{}) (sc scanner.Scanner) {
 	db, err := a.pool.Get()
 	if err != nil {
 		log.Errorln(err)
@@ -1172,7 +1169,7 @@ func (a Adapter) Update(SQL string, params ...interface{}) (sc scanner.Scanner) 
 }
 
 // Update execute update sql into a table
-func (a Adapter) UpdateCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner) {
+func (a adapter) UpdateCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	db, err := a.getDBFromCtx(ctx)
 	if err != nil {
 		log.Errorln(err)
@@ -1182,11 +1179,11 @@ func (a Adapter) UpdateCtx(ctx context.Context, SQL string, params ...interface{
 }
 
 // UpdateWithTransaction execute update sql into a table
-func (a Adapter) UpdateWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner) {
+func (a adapter) UpdateWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	return a.update(nil, tx, SQL, params...)
 }
 
-func (a Adapter) update(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner) {
+func (a adapter) update(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner) {
 	var stmt *sql.Stmt
 	var err error
 	if tx != nil {
@@ -1315,7 +1312,7 @@ func GetQueryOperator(op string) (string, error) {
 }
 
 // TablePermissions get tables permissions based in prest configuration
-func (a Adapter) TablePermissions(table string, op string) (access bool) {
+func (a adapter) TablePermissions(table string, op string) (access bool) {
 	access = false
 	restrict := a.cfg.AccessConf.Restrict
 	if !restrict {
@@ -1378,7 +1375,7 @@ func intersection(set, other []string) (intersection []string) {
 }
 
 // FieldsPermissions get fields permissions based in prest configuration
-func (a Adapter) FieldsPermissions(r *http.Request, table string, op string) (fields []string, err error) {
+func (a adapter) FieldsPermissions(r *http.Request, table string, op string) (fields []string, err error) {
 	cols, err := columnsByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("error on parse columns from request: %s", err)
@@ -1466,7 +1463,7 @@ func columnsByRequest(r *http.Request) (columns []string, err error) {
 }
 
 // DistinctClause get params in request to add distinct clause
-func (a Adapter) DistinctClause(r *http.Request) (distinctQuery string, err error) {
+func (a adapter) DistinctClause(r *http.Request) (distinctQuery string, err error) {
 	queries := r.URL.Query()
 	checkQuery := queries.Get("_distinct")
 	distinctQuery = ""
@@ -1478,7 +1475,7 @@ func (a Adapter) DistinctClause(r *http.Request) (distinctQuery string, err erro
 }
 
 // GroupByClause get params in request to add group by clause
-func (a Adapter) GroupByClause(r *http.Request) (groupBySQL string) {
+func (a adapter) GroupByClause(r *http.Request) (groupBySQL string) {
 	queries := r.URL.Query()
 	groupQuery := queries.Get("_groupby")
 	if groupQuery == "" {
@@ -1549,27 +1546,27 @@ func NormalizeGroupFunction(paramValue string) (groupFuncSQL string, err error) 
 }
 
 // SelectSQL generate select sql
-func (a Adapter) SelectSQL(selectStr string, database string, schema string, table string) string {
+func (a adapter) SelectSQL(selectStr string, database string, schema string, table string) string {
 	return fmt.Sprintf(`%s "%s"."%s"."%s"`, selectStr, database, schema, table)
 }
 
 // InsertSQL generate insert sql
-func (a Adapter) InsertSQL(database string, schema string, table string, names string, placeholders string) string {
+func (a adapter) InsertSQL(database string, schema string, table string, names string, placeholders string) string {
 	return fmt.Sprintf(statements.InsertQuery, database, schema, table, names, placeholders)
 }
 
 // DeleteSQL generate delete sql
-func (a Adapter) DeleteSQL(database string, schema string, table string) string {
+func (a adapter) DeleteSQL(database string, schema string, table string) string {
 	return fmt.Sprintf(statements.DeleteQuery, database, schema, table)
 }
 
 // UpdateSQL generate update sql
-func (a Adapter) UpdateSQL(database string, schema string, table string, setSyntax string) string {
+func (a adapter) UpdateSQL(database string, schema string, table string, setSyntax string) string {
 	return fmt.Sprintf(statements.UpdateQuery, database, schema, table, setSyntax)
 }
 
 // DatabaseWhere generate database where syntax
-func (a Adapter) DatabaseWhere(requestWhere string) (whereSyntax string) {
+func (a adapter) DatabaseWhere(requestWhere string) (whereSyntax string) {
 	whereSyntax = statements.DatabasesWhere
 	if requestWhere != "" {
 		whereSyntax = fmt.Sprint(whereSyntax, " AND ", requestWhere)
@@ -1578,7 +1575,7 @@ func (a Adapter) DatabaseWhere(requestWhere string) (whereSyntax string) {
 }
 
 // DatabaseOrderBy generate database order by
-func (a Adapter) DatabaseOrderBy(order string, hasCount bool) (orderBy string) {
+func (a adapter) DatabaseOrderBy(order string, hasCount bool) (orderBy string) {
 	if order != "" {
 		orderBy = order
 	} else if !hasCount {
@@ -1588,7 +1585,7 @@ func (a Adapter) DatabaseOrderBy(order string, hasCount bool) (orderBy string) {
 }
 
 // SchemaOrderBy generate schema order by
-func (a Adapter) SchemaOrderBy(order string, hasCount bool) (orderBy string) {
+func (a adapter) SchemaOrderBy(order string, hasCount bool) (orderBy string) {
 	if order != "" {
 		orderBy = order
 	} else if !hasCount {
@@ -1598,12 +1595,12 @@ func (a Adapter) SchemaOrderBy(order string, hasCount bool) (orderBy string) {
 }
 
 // TableClause generate table clause
-func (a Adapter) TableClause() (query string) {
+func (a adapter) TableClause() (query string) {
 	return statements.TablesSelect
 }
 
 // TableWhere generate table where syntax
-func (a Adapter) TableWhere(requestWhere string) (whereSyntax string) {
+func (a adapter) TableWhere(requestWhere string) (whereSyntax string) {
 	whereSyntax = statements.TablesWhere
 	if requestWhere != "" {
 		return fmt.Sprint(whereSyntax, " AND ", requestWhere)
@@ -1612,7 +1609,7 @@ func (a Adapter) TableWhere(requestWhere string) (whereSyntax string) {
 }
 
 // TableOrderBy generate table order by
-func (a Adapter) TableOrderBy(order string) (orderBy string) {
+func (a adapter) TableOrderBy(order string) (orderBy string) {
 	if order != "" {
 		return order
 	}
@@ -1620,12 +1617,12 @@ func (a Adapter) TableOrderBy(order string) (orderBy string) {
 }
 
 // SchemaTablesClause generate schema tables clause
-func (a Adapter) SchemaTablesClause() (query string) {
+func (a adapter) SchemaTablesClause() (query string) {
 	return statements.SchemaTablesSelect
 }
 
 // SchemaTablesWhere generate schema tables where syntax
-func (a Adapter) SchemaTablesWhere(requestWhere string) (whereSyntax string) {
+func (a adapter) SchemaTablesWhere(requestWhere string) (whereSyntax string) {
 	whereSyntax = statements.SchemaTablesWhere
 	if requestWhere != "" {
 		whereSyntax = fmt.Sprint(whereSyntax, " AND ", requestWhere)
@@ -1634,7 +1631,7 @@ func (a Adapter) SchemaTablesWhere(requestWhere string) (whereSyntax string) {
 }
 
 // SchemaTablesOrderBy generate schema tables order by
-func (a Adapter) SchemaTablesOrderBy(order string) (orderBy string) {
+func (a adapter) SchemaTablesOrderBy(order string) (orderBy string) {
 	if order != "" {
 		orderBy = order
 	} else {
@@ -1644,7 +1641,7 @@ func (a Adapter) SchemaTablesOrderBy(order string) (orderBy string) {
 }
 
 // ShowTable shows table structure
-func (a Adapter) ShowTable(schema, table string) scanner.Scanner {
+func (a adapter) ShowTable(schema, table string) scanner.Scanner {
 	query := `SELECT table_schema, table_name, ordinal_position as position, column_name,data_type,
 			  	CASE WHEN character_maximum_length is not null
 					THEN character_maximum_length
@@ -1660,7 +1657,7 @@ func (a Adapter) ShowTable(schema, table string) scanner.Scanner {
 }
 
 // ShowTableCtx shows table structure
-func (a Adapter) ShowTableCtx(ctx context.Context, schema, table string) scanner.Scanner {
+func (a adapter) ShowTableCtx(ctx context.Context, schema, table string) scanner.Scanner {
 	query := `SELECT table_schema, table_name, ordinal_position as position, column_name,data_type,
 			  	CASE WHEN character_maximum_length is not null
 					THEN character_maximum_length
@@ -1677,7 +1674,7 @@ func (a Adapter) ShowTableCtx(ctx context.Context, schema, table string) scanner
 
 // getDBFromCtx tries to get the db from context if not present it will
 // fallback to the current setted db
-func (a Adapter) getDBFromCtx(ctx context.Context) (db *sqlx.DB, err error) {
+func (a adapter) getDBFromCtx(ctx context.Context) (db *sqlx.DB, err error) {
 	dbName, ok := ctx.Value(pctx.DBNameKey).(string)
 	if !ok {
 		return a.pool.Get()
