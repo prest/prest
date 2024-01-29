@@ -16,6 +16,8 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
+// todo: replace http.Error() with JSONError() helper function
+
 type PermsFn func(table string, op string) bool
 
 var (
