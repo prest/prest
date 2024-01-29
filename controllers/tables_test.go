@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -24,8 +25,6 @@ func Test_GetTables(t *testing.T) {
 
 	var testCases = []struct {
 		description string
-		url         string
-		method      string
 
 		wherebyRequestSyntax string
 		wherebyRequestValues []interface{}
@@ -223,41 +222,258 @@ func Test_GetTables(t *testing.T) {
 	}
 }
 
-func TestGetTablesByDatabaseAndSchema(t *testing.T) {
+func Test_GetTablesByDatabaseAndSchema(t *testing.T) {
+	t.Parallel()
+
 	var testCases = []struct {
 		description string
 		url         string
-		method      string
-		status      int
-	}{
-		{"Get tables by database and schema without custom where clause", "/prest-test/public", "GET", http.StatusOK},
-		{"Get tables by database and schema with custom where clause", "/prest-test/public?t.tablename=$eq.test", "GET", http.StatusOK},
-		{"Get tables by database and schema with order clause", "/prest-test/public?t.tablename=$eq.test&_order=t.tablename", "GET", http.StatusOK},
-		{"Get tables by database and schema with custom where clause and pagination", "/prest-test/public?t.tablename=$eq.test&_page=1&_page_size=20", "GET", http.StatusOK},
-		{"Get tables by database and schema with distinct clause", "/prest-test/public?_distinct=true", "GET", http.StatusOK},
-		// errors
-		{"Get tables by database and schema with custom where invalid clause", "/prest-test/public?0t.tablename=$eq.test", "GET", http.StatusBadRequest},
-		{"Get tables by databases and schema with custom where and pagination invalid", "/prest-test/public?t.tablename=$eq.test&_page=A&_page_size=20", "GET", http.StatusBadRequest},
-		{"Get tables by databases and schema with ORDER BY and column invalid", "/prest-test/public?_order=0t.tablename", "GET", http.StatusBadRequest},
-		{"Get tables by databases with noexistent column", "/prest-test/public?t.taababa=$eq.test", "GET", http.StatusBadRequest},
-		{"Get tables by databases with not configured database", "/random/public?t.taababa=$eq.test", "GET", http.StatusBadRequest},
-	}
-	ctrl := gomock.NewController(t)
-	adapter := mockgen.NewMockAdapter(ctrl)
-	h := Config{
-		server:  &config.Prest{Debug: true},
-		adapter: adapter,
-	}
 
-	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}", setHTTPTimeoutMiddleware(h.GetTablesByDatabaseAndSchema)).
-		Methods("GET")
-	server := httptest.NewServer(router)
-	defer server.Close()
+		wantSingleDB        bool
+		wantDifferentDBResp string
+
+		wantWherByRequest    bool
+		wherebyRequestSyntax string
+		wherebyRequestValues []interface{}
+		wherebyRequestErr    error
+
+		wantOrderBy                bool
+		wantSchemaTablesWhereResp  string
+		wantSchemaTablesClauseResp string
+		wantOrderByRequestResp     string
+		wantOrderByRequestErr      error
+
+		wantPaginate                bool
+		wantSchemaTablesOrderByResp string
+		wantPaginateResp            string
+		wantPaginateErr             error
+
+		wantQuery        bool
+		wantQueryResp    bool
+		wantQueryRespStr string
+		wantQueryErr     error
+
+		wantedResponseContains string
+		wantStatus             int
+	}{
+		{
+			description: "different db error",
+			url:         "localhost:8080/prest-test/public",
+
+			wantSingleDB:        true,
+			wantDifferentDBResp: "prest-test",
+
+			wantedResponseContains: ErrDatabaseNotAllowed.Error(),
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description: "where by request error",
+			url:         "localhost:8080/prest-test/public",
+
+			wantSingleDB:        false,
+			wantDifferentDBResp: "prest-test",
+
+			wantWherByRequest:    true,
+			wherebyRequestSyntax: "",
+			wherebyRequestValues: nil,
+			wherebyRequestErr:    dbErr,
+
+			wantedResponseContains: dbErr.Error(),
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description: "order by request error",
+			url:         "localhost:8080/prest-test/public",
+
+			wantSingleDB:        false,
+			wantDifferentDBResp: "prest-test",
+
+			wantWherByRequest:    true,
+			wherebyRequestSyntax: "syntax",
+			wherebyRequestValues: []interface{}{},
+			wherebyRequestErr:    nil,
+
+			wantOrderBy:                true,
+			wantSchemaTablesWhereResp:  "schema tables where response",
+			wantSchemaTablesClauseResp: "schema tables clause response",
+			wantOrderByRequestResp:     "",
+			wantOrderByRequestErr:      dbErr,
+
+			wantedResponseContains: dbErr.Error(),
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description: "paginate error",
+			url:         "localhost:8080/prest-test/public",
+
+			wantSingleDB:        false,
+			wantDifferentDBResp: "prest-test",
+
+			wantWherByRequest:    true,
+			wherebyRequestSyntax: "syntax",
+			wherebyRequestValues: []interface{}{},
+			wherebyRequestErr:    nil,
+
+			wantOrderBy:                true,
+			wantSchemaTablesWhereResp:  "schema tables where response",
+			wantSchemaTablesClauseResp: "schema tables clause response",
+			wantOrderByRequestResp:     "",
+			wantOrderByRequestErr:      nil,
+
+			wantPaginate:                true,
+			wantSchemaTablesOrderByResp: "schema tables order by response",
+			wantPaginateResp:            "paginate response",
+			wantPaginateErr:             errors.New("paginate error"),
+
+			wantedResponseContains: "paginate error",
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description: "query error",
+			url:         "localhost:8080/prest-test/public",
+
+			wantSingleDB:        false,
+			wantDifferentDBResp: "prest-test",
+
+			wantWherByRequest:    true,
+			wherebyRequestSyntax: "syntax",
+			wherebyRequestValues: []interface{}{},
+			wherebyRequestErr:    nil,
+
+			wantOrderBy:                true,
+			wantSchemaTablesWhereResp:  "schema tables where response",
+			wantSchemaTablesClauseResp: "schema tables clause response",
+			wantOrderByRequestResp:     "",
+			wantOrderByRequestErr:      nil,
+
+			wantPaginate:                true,
+			wantSchemaTablesOrderByResp: "schema tables order by response",
+			wantPaginateResp:            "paginate response",
+			wantPaginateErr:             nil,
+
+			wantQuery:        true,
+			wantQueryResp:    false,
+			wantQueryRespStr: "query response",
+			wantQueryErr:     errors.New("query error"),
+
+			wantedResponseContains: ErrCouldNotPerformQuery.Error(),
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description: "query ok",
+			url:         "localhost:8080/prest-test/public",
+
+			wantSingleDB:        false,
+			wantDifferentDBResp: "prest-test",
+
+			wantWherByRequest:    true,
+			wherebyRequestSyntax: "syntax",
+			wherebyRequestValues: []interface{}{},
+			wherebyRequestErr:    nil,
+
+			wantOrderBy:                true,
+			wantSchemaTablesWhereResp:  "schema tables where response",
+			wantSchemaTablesClauseResp: "schema tables clause response",
+			wantOrderByRequestResp:     "",
+			wantOrderByRequestErr:      nil,
+
+			wantPaginate:                true,
+			wantSchemaTablesOrderByResp: "schema tables order by response",
+			wantPaginateResp:            "paginate response",
+			wantPaginateErr:             nil,
+
+			wantQuery:        true,
+			wantQueryResp:    true,
+			wantQueryRespStr: "query response",
+			wantQueryErr:     nil,
+
+			wantedResponseContains: "query response",
+			wantStatus:             http.StatusOK,
+		},
+		// todo: verify adapter has these cases
+		// {"Get tables by database and schema without custom where clause", "/prest-test/public", "GET", http.StatusOK},
+		// {"Get tables by database and schema with custom where clause", "/prest-test/public?t.tablename=$eq.test", "GET", http.StatusOK},
+		// {"Get tables by database and schema with order clause", "/prest-test/public?t.tablename=$eq.test&_order=t.tablename", "GET", http.StatusOK},
+		// {"Get tables by database and schema with custom where clause and pagination", "/prest-test/public?t.tablename=$eq.test&_page=1&_page_size=20", "GET", http.StatusOK},
+		// {"Get tables by database and schema with distinct clause", "/prest-test/public?_distinct=true", "GET", http.StatusOK},
+		// errors
+		// {"Get tables by database and schema with custom where invalid clause", "/prest-test/public?0t.tablename=$eq.test", "GET", http.StatusBadRequest},
+		// {"Get tables by databases and schema with custom where and pagination invalid", "/prest-test/public?t.tablename=$eq.test&_page=A&_page_size=20", "GET", http.StatusBadRequest},
+		// {"Get tables by databases and schema with ORDER BY and column invalid", "/prest-test/public?_order=0t.tablename", "GET", http.StatusBadRequest},
+		// {"Get tables by databases with noexistent column", "/prest-test/public?t.taababa=$eq.test", "GET", http.StatusBadRequest},
+		// {"Get tables by databases with not configured database", "/random/public?t.taababa=$eq.test", "GET", http.StatusBadRequest},
+	}
 
 	for _, tc := range testCases {
-		t.Log(tc.description)
-		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetTablesByDatabaseAndSchema")
+		tc := tc
+
+		t.Run(tc.description, func(t *testing.T) {
+			t.Parallel()
+			t.Log(tc.description)
+
+			ctrl := gomock.NewController(t)
+			adapter := mockgen.NewMockAdapter(ctrl)
+
+			ctrl2 := gomock.NewController(t)
+			adapter2 := mockgen.NewMockScanner(ctrl2)
+
+			adapter.EXPECT().GetCurrentConnDatabase().Return(tc.wantDifferentDBResp)
+
+			if tc.wantWherByRequest {
+				adapter.EXPECT().WhereByRequest(gomock.Any(), 3).
+					Return(tc.wherebyRequestSyntax, tc.wherebyRequestValues, tc.wherebyRequestErr)
+			}
+
+			if tc.wantOrderBy {
+				adapter.EXPECT().SchemaTablesWhere(gomock.Any()).
+					Return(tc.wantSchemaTablesWhereResp)
+
+				adapter.EXPECT().SchemaTablesClause().Return(
+					tc.wantSchemaTablesClauseResp)
+
+				adapter.EXPECT().OrderByRequest(gomock.Any()).Return(
+					tc.wantOrderByRequestResp, tc.wantOrderByRequestErr)
+			}
+
+			if tc.wantPaginate {
+				adapter.EXPECT().SchemaTablesOrderBy(gomock.Any()).
+					Return(tc.wantSchemaTablesOrderByResp)
+
+				adapter.EXPECT().PaginateIfPossible(gomock.Any()).
+					Return(tc.wantPaginateResp, tc.wantPaginateErr)
+			}
+
+			if tc.wantQuery {
+				adapter.EXPECT().QueryCtx(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(adapter2)
+
+				adapter2.EXPECT().Err().Return(tc.wantQueryErr)
+			}
+
+			if tc.wantQueryResp {
+				adapter2.EXPECT().Bytes().Return([]byte(tc.wantQueryRespStr))
+			}
+
+			h := Config{
+				server:  &config.Prest{SingleDB: tc.wantSingleDB},
+				adapter: adapter,
+			}
+
+			request := httptest.NewRequest(http.MethodGet, tc.url, nil)
+
+			recorder := httptest.NewRecorder()
+
+			h.GetTablesByDatabaseAndSchema(recorder, request)
+
+			resp := recorder.Result()
+			require.Equal(t, tc.wantStatus, resp.StatusCode)
+			require.Equal(t,
+				"application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.Contains(t, string(body), tc.wantedResponseContains)
+		})
 	}
 }
 
