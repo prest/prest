@@ -19,40 +19,207 @@ import (
 	"github.com/prest/prest/testutils"
 )
 
-func TestGetTables(t *testing.T) {
+func Test_GetTables(t *testing.T) {
+	t.Parallel()
+
 	var testCases = []struct {
 		description string
 		url         string
 		method      string
-		status      int
+
+		wherebyRequestSyntax string
+		wherebyRequestValues []interface{}
+		wherebyRequestErr    error
+
+		wantTableWhere         bool
+		wantTableWhereResp     string
+		wantOrderByRequestResp string
+		wantOrderByRequestErr  error
+
+		tableOrderByResp string
+		tableClauseResp  string
+		wantDistinct     bool
+		wantDistinctResp string
+		wantDistinctErr  error
+
+		wantQuery        bool
+		wantQueryResp    bool
+		wantQueryRespStr string
+		wantQueryErr     error
+
+		wantedResponseContains string
+		wantStatus             int
 	}{
-		{"Get tables without custom where clause", "/tables", "GET", http.StatusOK},
-		{"Get tables with custom where clause", "/tables?c.relname=$eq.test", "GET", http.StatusOK},
-		{"Get tables with custom order clause", "/tables?_order=c.relname", "GET", http.StatusOK},
-		{"Get tables with custom where clause and pagination", "/tables?c.relname=$eq.test&_page=1&_page_size=20", "GET", http.StatusOK},
-		{"Get tables with COUNT clause", "/tables?_count=*", "GET", http.StatusOK},
-		{"Get tables with distinct clause", "/tables?_distinct=true", "GET", http.StatusOK},
-		{"Get tables with custom where invalid clause", "/tables?0c.relname=$eq.test", "GET", http.StatusBadRequest},
-		{"Get tables with ORDER BY and invalid column", "/tables?_order=0c.relname", "GET", http.StatusBadRequest},
-		{"Get tables with noexistent column", "/tables?c.rolooo=$eq.test", "GET", http.StatusBadRequest},
-	}
+		{
+			description: "where clause error",
 
-	ctrl := gomock.NewController(t)
-	adapter := mockgen.NewMockAdapter(ctrl)
-	h := Config{
-		server:  &config.Prest{Debug: true},
-		adapter: adapter,
-	}
+			wherebyRequestSyntax: "",
+			wherebyRequestValues: nil,
+			wherebyRequestErr:    dbErr,
 
-	router := mux.NewRouter()
-	router.HandleFunc("/tables", setHTTPTimeoutMiddleware(h.GetTables)).
-		Methods("GET")
-	server := httptest.NewServer(router)
-	defer server.Close()
+			wantedResponseContains: dbErr.Error(),
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description: "order by request error",
+
+			wherebyRequestSyntax: "syntax",
+			wherebyRequestValues: []interface{}{},
+			wherebyRequestErr:    nil,
+
+			wantTableWhere:         true,
+			wantTableWhereResp:     "table where response",
+			wantOrderByRequestResp: "",
+			wantOrderByRequestErr:  dbErr,
+
+			wantedResponseContains: dbErr.Error(),
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description: "distinct error",
+
+			wherebyRequestSyntax: "syntax",
+			wherebyRequestValues: []interface{}{},
+			wherebyRequestErr:    nil,
+
+			wantTableWhere:         true,
+			wantTableWhereResp:     "table where response",
+			wantOrderByRequestResp: "",
+			wantOrderByRequestErr:  nil,
+
+			tableOrderByResp: "table order by response",
+			tableClauseResp:  "table clause response",
+			wantDistinct:     true,
+			wantDistinctErr:  dbErr,
+
+			wantedResponseContains: dbErr.Error(),
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description: "query error",
+
+			wherebyRequestSyntax: "syntax",
+			wherebyRequestValues: []interface{}{},
+			wherebyRequestErr:    nil,
+
+			wantTableWhere:         true,
+			wantTableWhereResp:     "table where response",
+			wantOrderByRequestResp: "",
+			wantOrderByRequestErr:  nil,
+
+			tableOrderByResp: "table order by response",
+			tableClauseResp:  "table clause response",
+			wantDistinct:     true,
+			wantDistinctErr:  nil,
+
+			wantQuery:        true,
+			wantQueryResp:    false,
+			wantQueryRespStr: "query response",
+			wantQueryErr:     dbErr,
+
+			wantedResponseContains: "check logs",
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description: "query ok",
+
+			wherebyRequestSyntax: "syntax",
+			wherebyRequestValues: []interface{}{},
+			wherebyRequestErr:    nil,
+
+			wantTableWhere:         true,
+			wantTableWhereResp:     "table where response",
+			wantOrderByRequestResp: "",
+			wantOrderByRequestErr:  nil,
+
+			tableOrderByResp: "table order by response",
+			tableClauseResp:  "table clause response",
+			wantDistinct:     true,
+			wantDistinctErr:  nil,
+
+			wantQuery:        true,
+			wantQueryResp:    true,
+			wantQueryRespStr: "query ok",
+			wantQueryErr:     nil,
+
+			wantedResponseContains: "query ok",
+			wantStatus:             http.StatusOK,
+		},
+		// todo: verify adapter has these cases
+		// {"Get tables without custom where clause", "/tables", "GET", http.StatusOK},
+		// {"Get tables with custom where clause", "/tables?c.relname=$eq.test", "GET", http.StatusOK},
+		// {"Get tables with custom order clause", "/tables?_order=c.relname", "GET", http.StatusOK},
+		// {"Get tables with custom where clause and pagination", "/tables?c.relname=$eq.test&_page=1&_page_size=20", "GET", http.StatusOK},
+		// {"Get tables with COUNT clause", "/tables?_count=*", "GET", http.StatusOK},
+		// {"Get tables with distinct clause", "/tables?_distinct=true", "GET", http.StatusOK},
+		// {"Get tables with custom where invalid clause", "/tables?0c.relname=$eq.test", "GET", http.StatusBadRequest},
+		// {"Get tables with ORDER BY and invalid column", "/tables?_order=0c.relname", "GET", http.StatusBadRequest},
+		// {"Get tables with noexistent column", "/tables?c.rolooo=$eq.test", "GET", http.StatusBadRequest},
+	}
 
 	for _, tc := range testCases {
-		t.Log(tc.description)
-		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetTables")
+		tc := tc
+		t.Run(tc.description, func(t *testing.T) {
+			t.Parallel()
+			t.Log(tc.description)
+
+			ctrl := gomock.NewController(t)
+			adapter := mockgen.NewMockAdapter(ctrl)
+
+			ctrl2 := gomock.NewController(t)
+			adapter2 := mockgen.NewMockScanner(ctrl2)
+
+			adapter.EXPECT().WhereByRequest(gomock.Any(), 1).
+				Return(tc.wherebyRequestSyntax, tc.wherebyRequestValues, tc.wherebyRequestErr)
+
+			if tc.wantTableWhere {
+				adapter.EXPECT().TableWhere(tc.wherebyRequestSyntax).
+					Return(tc.wantTableWhereResp)
+
+				adapter.EXPECT().OrderByRequest(gomock.Any()).Return(
+					tc.wantOrderByRequestResp, tc.wantOrderByRequestErr)
+			}
+
+			if tc.wantDistinct {
+				adapter.EXPECT().TableOrderBy(gomock.Any()).Return(tc.tableOrderByResp)
+
+				adapter.EXPECT().TableClause().Return(tc.tableClauseResp)
+
+				adapter.EXPECT().DistinctClause(gomock.Any()).Return(
+					tc.wantDistinctResp, tc.wantDistinctErr)
+			}
+
+			if tc.wantQuery {
+				adapter.EXPECT().QueryCtx(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(adapter2)
+
+				adapter2.EXPECT().Err().Return(tc.wantQueryErr)
+			}
+
+			if tc.wantQueryResp {
+				adapter2.EXPECT().Bytes().Return([]byte(tc.wantQueryRespStr))
+			}
+
+			h := Config{
+				server:  &config.Prest{Debug: true},
+				adapter: adapter,
+			}
+
+			req := httptest.NewRequest(http.MethodGet, "localhost:8080", nil)
+
+			recorder := httptest.NewRecorder()
+
+			h.GetTables(recorder, req)
+
+			resp := recorder.Result()
+			require.Equal(t, tc.wantStatus, resp.StatusCode)
+			require.Equal(t,
+				"application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.Contains(t, string(body), tc.wantedResponseContains)
+		})
 	}
 }
 
