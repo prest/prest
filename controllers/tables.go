@@ -37,8 +37,8 @@ func (c *Config) GetTables(w http.ResponseWriter, r *http.Request) {
 		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	order = c.adapter.TableOrderBy(order)
 
+	order = c.adapter.TableOrderBy(order)
 	sqlTables := c.adapter.TableClause()
 
 	distinct, err := c.adapter.DistinctClause(r)
@@ -85,8 +85,8 @@ func (c *Config) GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Req
 		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	requestWhere = c.adapter.SchemaTablesWhere(requestWhere)
 
+	requestWhere = c.adapter.SchemaTablesWhere(requestWhere)
 	sqlSchemaTables := c.adapter.SchemaTablesClause()
 
 	order, err := c.adapter.OrderByRequest(r)
@@ -114,7 +114,6 @@ func (c *Config) GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Req
 		context.WithValue(r.Context(), pctx.DBNameKey, database))
 	defer cancel()
 
-	// send ctx to query the proper DB
 	sc := c.adapter.QueryCtx(ctx, sqlSchemaTables, valuesAux...)
 	if err = sc.Err(); err != nil {
 		slog.Errorln("could not execute query", err)
@@ -182,6 +181,7 @@ func (c *Config) SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
 	// _count_first: query string
 	countFirst := false
 	if countQuery != "" {
@@ -212,12 +212,10 @@ func (c *Config) SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
 	sqlSelect := query
 	if requestWhere != "" {
-		sqlSelect = fmt.Sprint(
-			query,
-			" WHERE ",
-			requestWhere)
+		sqlSelect = fmt.Sprint(query, " WHERE ", requestWhere)
 	}
 
 	// sql query formatting if there is a groupby rule
@@ -255,6 +253,7 @@ func (c *Config) SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	if countFirst {
 		runQuery = c.adapter.QueryCountCtx
 	}
+
 	sc := runQuery(ctx, sqlSelect, values...)
 	if err = sc.Err(); err != nil {
 		errMsg := err.Error()
@@ -539,7 +538,8 @@ func (c *Config) ShowTable(w http.ResponseWriter, r *http.Request) {
 //
 // should avoid the error if singleDB is disabled
 // then querying multiple databases is allowed
-func (c *Config) differentDbQuery(database string) bool {
+func (c *Config) differentDbQuery(contextDB string) bool {
+	currentDB := c.adapter.GetCurrentConnDatabase()
 	return c.server.SingleDB &&
-		(c.adapter.GetCurrentConnDatabase() != database)
+		(currentDB != contextDB)
 }
