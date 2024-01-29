@@ -43,7 +43,8 @@ func (c *Config) GetTables(w http.ResponseWriter, r *http.Request) {
 
 	distinct, err := c.adapter.DistinctClause(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("could not perform DistinctClause", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if distinct != "" {
@@ -58,7 +59,7 @@ func (c *Config) GetTables(w http.ResponseWriter, r *http.Request) {
 	sc := c.adapter.QueryCtx(ctx, sqlTables, values...)
 	if err = sc.Err(); err != nil {
 		slog.Errorln("could not execute query", err)
-		http.Error(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
+		JSONError(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -117,7 +118,7 @@ func (c *Config) GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Req
 	sc := c.adapter.QueryCtx(ctx, sqlSchemaTables, valuesAux...)
 	if err = sc.Err(); err != nil {
 		slog.Errorln("could not execute query", err)
-		http.Error(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
+		JSONError(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -265,7 +266,7 @@ func (c *Config) SelectFromTables(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.Error(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
+		JSONError(w, ErrCouldNotPerformQuery.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -312,7 +313,7 @@ func (c *Config) InsertInTables(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.Error(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
+		JSONError(w, ErrCouldNotPerformQuery.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -364,7 +365,7 @@ func (c *Config) BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.Error(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
+		JSONError(w, ErrCouldNotPerformQuery.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -415,6 +416,7 @@ func (c *Config) DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	sc := c.adapter.DeleteCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
 		errMsg := err.Error()
+		slog.Errorln("could not execute query", err)
 
 		if strings.Contains(errMsg,
 			fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
@@ -422,7 +424,7 @@ func (c *Config) DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.Error(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
+		JSONError(w, ErrCouldNotPerformQuery.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -491,7 +493,7 @@ func (c *Config) UpdateTable(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.Error(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
+		JSONError(w, ErrCouldNotPerformQuery.Error(), http.StatusNotFound)
 		return
 	}
 
