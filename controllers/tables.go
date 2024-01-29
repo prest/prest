@@ -256,10 +256,9 @@ func (c *Config) SelectFromTables(w http.ResponseWriter, r *http.Request) {
 
 	sc := runQuery(ctx, sqlSelect, values...)
 	if err = sc.Err(); err != nil {
-		errMsg := err.Error()
 		slog.Errorln("could not execute query", err)
 
-		if strings.Contains(errMsg,
+		if strings.Contains(err.Error(),
 			fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
 			JSONError(w, ErrRelationDoesntExist.Error(), http.StatusNotFound)
 			return
@@ -303,10 +302,9 @@ func (c *Config) InsertInTables(w http.ResponseWriter, r *http.Request) {
 
 	sc := c.adapter.InsertCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
-		errMsg := err.Error()
 		slog.Errorln("could not execute query", err)
 
-		if strings.Contains(errMsg,
+		if strings.Contains(err.Error(),
 			fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
 			JSONError(w, ErrRelationDoesntExist.Error(), http.StatusNotFound)
 			return
@@ -355,10 +353,9 @@ func (c *Config) BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = sc.Err(); err != nil {
-		errMsg := err.Error()
 		slog.Errorln("could not execute query", err)
 
-		if strings.Contains(errMsg,
+		if strings.Contains(err.Error(),
 			fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
 			JSONError(w, ErrRelationDoesntExist.Error(), http.StatusNotFound)
 			return
@@ -414,10 +411,9 @@ func (c *Config) DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 
 	sc := c.adapter.DeleteCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
-		errMsg := err.Error()
 		slog.Errorln("could not execute query", err)
 
-		if strings.Contains(errMsg,
+		if strings.Contains(err.Error(),
 			fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
 			JSONError(w, ErrRelationDoesntExist.Error(), http.StatusNotFound)
 			return
@@ -483,10 +479,9 @@ func (c *Config) UpdateTable(w http.ResponseWriter, r *http.Request) {
 
 	sc := c.adapter.UpdateCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
-		errMsg := err.Error()
 		slog.Errorln("could not execute query", err)
 
-		if strings.Contains(errMsg,
+		if strings.Contains(err.Error(),
 			fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
 			JSONError(w, ErrRelationDoesntExist.Error(), http.StatusNotFound)
 			return
