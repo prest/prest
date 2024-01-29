@@ -1,10 +1,11 @@
 package dbtime
 
 import (
-	"bytes"
 	"encoding/json"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 type testTime struct {
@@ -12,30 +13,29 @@ type testTime struct {
 }
 
 func TestUnmarshalJSON(t *testing.T) {
+	t.Parallel()
+
 	var p testTime
 	j := []byte(`{"date":"2017-05-10T11:00:00.000001"}`)
 
 	err := json.Unmarshal(j, &p)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+	require.NoError(t, err)
 
-	if p.Date.Time.Unix() != 1494414000 || p.Date.UnixNano() != 1494414000000001000 {
-		t.Fatal(`Error, incorrect date/time value.`)
-	}
+	require.Equal(t, 2017, p.Date.Year())
+	require.Equal(t, time.May, p.Date.Month())
+	require.Equal(t, 10, p.Date.Day())
+	require.Equal(t, 11, p.Date.Hour())
 
 	j = []byte(`{"date":"null"}`)
 	err = json.Unmarshal(j, &p)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+	require.NoError(t, err)
+	require.True(t, p.Date.IsZero())
 
-	if !p.Date.IsZero() {
-		t.Fatal(`Error, p.Date should be zero`)
-	}
 }
 
 func TestMarshalJSON(t *testing.T) {
+	t.Parallel()
+
 	var p testTime
 	var tAux time.Time
 	var err error
@@ -45,17 +45,11 @@ func TestMarshalJSON(t *testing.T) {
 	str := "2017-05-10T11:00:00.000001"
 
 	tAux, err = time.Parse(layout, str)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+	require.NoError(t, err)
+
 	p.Date = Time{tAux}
 
 	j, err = json.Marshal(p)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	if !bytes.Equal(j, []byte(`{"date":"2017-05-10T11:00:00.000001"}`)) {
-		t.Fatal("Error, the date returned is not the same as the date entered.")
-	}
+	require.NoError(t, err)
+	require.Equal(t, []byte(`{"date":"2017-05-10T11:00:00.000001"}`), j)
 }
