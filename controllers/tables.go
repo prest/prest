@@ -8,26 +8,33 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/structy/log"
+	slog "github.com/structy/log"
 
 	"github.com/prest/prest/adapters/scanner"
 	pctx "github.com/prest/prest/context"
+)
+
+var (
+	ErrNoPermissions        = errors.New("you don't have permission for this action, please check the permitted fields for this table")
+	ErrDatabaseNotAllowed   = errors.New("database not allowed")
+	ErrCouldNotPerformQuery = errors.New("could not perform query, check logs for more details")
+	ErrRelationDoesntExist  = errors.New("relation does not exist")
 )
 
 // GetTables list all (or filter) tables
 func (c *Config) GetTables(w http.ResponseWriter, r *http.Request) {
 	requestWhere, values, err := c.adapter.WhereByRequest(r, 1)
 	if err != nil {
-		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("could not perform WhereByRequest", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	requestWhere = c.adapter.TableWhere(requestWhere)
 
 	order, err := c.adapter.OrderByRequest(r)
 	if err != nil {
-		err = fmt.Errorf("could not perform OrderByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("could not perform OrderByRequest", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	order = c.adapter.TableOrderBy(order)
@@ -45,12 +52,18 @@ func (c *Config) GetTables(w http.ResponseWriter, r *http.Request) {
 
 	sqlTables = fmt.Sprint(sqlTables, requestWhere, order)
 
-	sc := c.adapter.Query(sqlTables, values...)
-	if sc.Err() != nil {
-		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
+	ctx, cancel := pctx.WithTimeout(r.Context())
+	defer cancel()
+
+	sc := c.adapter.QueryCtx(ctx, sqlTables, values...)
+	if err = sc.Err(); err != nil {
+		slog.Errorln("could not execute query", err)
+		http.Error(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
 		return
 	}
-	w.Write(sc.Bytes())
+
+	slog.Debugln("[GetTables] query executed successfully")
+	JSONWrite(w, string(sc.Bytes()), http.StatusOK)
 }
 
 // GetTablesByDatabaseAndSchema list all (or filter) tables based on database and schema
@@ -60,15 +73,15 @@ func (c *Config) GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Req
 	schema := vars["schema"]
 
 	if c.differentDbQuery(database) {
-		err := fmt.Errorf("database not allowed: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("database not allowed", database)
+		JSONError(w, ErrDatabaseNotAllowed.Error(), http.StatusBadRequest)
 		return
 	}
 
 	requestWhere, values, err := c.adapter.WhereByRequest(r, 3)
 	if err != nil {
-		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("could not perform WhereByRequest", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	requestWhere = c.adapter.SchemaTablesWhere(requestWhere)
@@ -77,16 +90,16 @@ func (c *Config) GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Req
 
 	order, err := c.adapter.OrderByRequest(r)
 	if err != nil {
-		err = fmt.Errorf("could not perform OrderByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("could not perform OrderByRequest", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	order = c.adapter.SchemaTablesOrderBy(order)
 
 	page, err := c.adapter.PaginateIfPossible(r)
 	if err != nil {
-		err = fmt.Errorf("could not perform PaginateIfPossible: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("could not perform PaginateIfPossible", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -102,11 +115,14 @@ func (c *Config) GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Req
 
 	// send ctx to query the proper DB
 	sc := c.adapter.QueryCtx(ctx, sqlSchemaTables, valuesAux...)
-	if sc.Err() != nil {
-		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
+	if err = sc.Err(); err != nil {
+		slog.Errorln("could not execute query", err)
+		http.Error(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
 		return
 	}
-	w.Write(sc.Bytes())
+
+	slog.Debugln("[GetTablesByDatabaseAndSchema] query executed successfully")
+	JSONWrite(w, string(sc.Bytes()), http.StatusOK)
 }
 
 // SelectFromTables perform select in database
@@ -118,27 +134,30 @@ func (c *Config) SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	queries := r.URL.Query()
 
 	if c.differentDbQuery(database) {
-		err := fmt.Errorf("database not allowed: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("database not allowed", database)
+		JSONError(w, ErrDatabaseNotAllowed.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// get selected columns, "*" if empty "_columns"
 	cols, err := c.adapter.FieldsPermissions(r, table, "read")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("could not perform FieldsPermissions", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if len(cols) == 0 {
-		err := errors.New("you don't have permission for this action, please check the permitted fields for this table")
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		err := ErrNoPermissions
+		slog.Errorln("could not perform FieldsPermissions", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	selectStr, err := c.adapter.SelectFields(cols)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("could not perform SelectFields", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	query := c.adapter.SelectSQL(selectStr, database, schema, table)
@@ -147,7 +166,8 @@ func (c *Config) SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	distinct, err := c.adapter.DistinctClause(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform Distinct: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("distinct error", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if distinct != "" {
@@ -157,8 +177,8 @@ func (c *Config) SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	// sql query formatting if there is a count rule
 	countQuery, err := c.adapter.CountByRequest(r)
 	if err != nil {
-		err = fmt.Errorf("could not perform CountByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("could not perform CountByRequest", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	// _count_first: query string
@@ -175,8 +195,8 @@ func (c *Config) SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	// sql query formatting if there is a join (inner, left, ...) rule
 	joinValues, err := c.adapter.JoinByRequest(r)
 	if err != nil {
-		err = fmt.Errorf("could not perform JoinByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("could not perform JoinByRequest", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -187,8 +207,8 @@ func (c *Config) SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	// sql query formatting if there is a where rule
 	requestWhere, values, err := c.adapter.WhereByRequest(r, 1)
 	if err != nil {
-		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("could not perform WhereByRequest", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	sqlSelect := query
@@ -208,8 +228,8 @@ func (c *Config) SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	// sql query formatting if there is a orderby rule
 	order, err := c.adapter.OrderByRequest(r)
 	if err != nil {
-		err = fmt.Errorf("could not perform OrderByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("could not perform OrderByRequest", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if order != "" {
@@ -219,8 +239,8 @@ func (c *Config) SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	// sql query formatting if there is a paganate rule
 	page, err := c.adapter.PaginateIfPossible(r)
 	if err != nil {
-		err = fmt.Errorf("could not perform PaginateIfPossible: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("could not perform PaginateIfPossible", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	sqlSelect = fmt.Sprint(sqlSelect, " ", page)
@@ -236,19 +256,23 @@ func (c *Config) SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 	sc := runQuery(ctx, sqlSelect, values...)
 	if err = sc.Err(); err != nil {
-		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
-			log.Println(err.Error())
-			http.Error(w, err.Error(), http.StatusNotFound)
+		errMsg := err.Error()
+		slog.Errorln("could not execute query", err)
+
+		if strings.Contains(errMsg,
+			fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
+			JSONError(w, ErrRelationDoesntExist.Error(), http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+
+		http.Error(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// Cache arrow if enabled
 	c.cache.Set(r.URL.String(), string(sc.Bytes()))
 
-	w.Write(sc.Bytes())
+	JSONWrite(w, string(sc.Bytes()), http.StatusOK)
 }
 
 // InsertInTables perform insert in specific table
@@ -259,15 +283,15 @@ func (c *Config) InsertInTables(w http.ResponseWriter, r *http.Request) {
 	table := vars["table"]
 
 	if c.differentDbQuery(database) {
-		err := fmt.Errorf("database not allowed: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("database not allowed", database)
+		JSONError(w, ErrDatabaseNotAllowed.Error(), http.StatusBadRequest)
 		return
 	}
 
 	names, placeholders, values, err := c.adapter.ParseInsertRequest(r)
 	if err != nil {
-		err = fmt.Errorf("could not perform InsertInTables: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("could not perform ParseInsertRequest", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -279,16 +303,21 @@ func (c *Config) InsertInTables(w http.ResponseWriter, r *http.Request) {
 
 	sc := c.adapter.InsertCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
-		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
-			log.Println(err.Error())
-			http.Error(w, err.Error(), http.StatusNotFound)
+		errMsg := err.Error()
+		slog.Errorln("could not execute query", err)
+
+		if strings.Contains(errMsg,
+			fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
+			JSONError(w, ErrRelationDoesntExist.Error(), http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+
+		http.Error(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	w.Write(sc.Bytes())
+
+	slog.Debugln("[InsertInTables] query executed successfully")
+	JSONWrite(w, string(sc.Bytes()), http.StatusCreated)
 }
 
 // BatchInsertInTables perform insert in specific table from a batch request
@@ -299,15 +328,15 @@ func (c *Config) BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 	table := vars["table"]
 
 	if c.differentDbQuery(database) {
-		err := fmt.Errorf("database not allowed: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("database not allowed", database)
+		JSONError(w, ErrDatabaseNotAllowed.Error(), http.StatusBadRequest)
 		return
 	}
 
 	names, placeholders, values, err := c.adapter.ParseBatchInsertRequest(r)
 	if err != nil {
-		err = fmt.Errorf("could not perform BatchInsertInTables: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("could not perform ParseBatchInsertRequest", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -321,19 +350,26 @@ func (c *Config) BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 		sql := c.adapter.InsertSQL(database, schema, table, names, placeholders)
 		sc = c.adapter.BatchInsertValuesCtx(ctx, sql, values...)
 	} else {
-		sc = c.adapter.BatchInsertCopyCtx(ctx, database, schema, table, strings.Split(names, ","), values...)
+		sc = c.adapter.BatchInsertCopyCtx(ctx, database, schema, table,
+			strings.Split(names, ","), values...)
 	}
+
 	if err = sc.Err(); err != nil {
-		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
-			log.Println(sc.Err().Error())
-			http.Error(w, err.Error(), http.StatusNotFound)
+		errMsg := err.Error()
+		slog.Errorln("could not execute query", err)
+
+		if strings.Contains(errMsg,
+			fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
+			JSONError(w, ErrRelationDoesntExist.Error(), http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+
+		http.Error(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	w.Write(sc.Bytes())
+
+	slog.Debugln("[BatchInsertInTables] query executed successfully")
+	JSONWrite(w, string(sc.Bytes()), http.StatusCreated)
 }
 
 // DeleteFromTable perform delete sql
@@ -344,15 +380,15 @@ func (c *Config) DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	table := vars["table"]
 
 	if c.differentDbQuery(database) {
-		err := fmt.Errorf("database not allowed: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("database not allowed", database)
+		JSONError(w, ErrDatabaseNotAllowed.Error(), http.StatusBadRequest)
 		return
 	}
 
 	where, values, err := c.adapter.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -364,15 +400,12 @@ func (c *Config) DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	returningSyntax, err := c.adapter.ReturningByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform ReturningByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if returningSyntax != "" {
-		sql = fmt.Sprint(
-			sql,
-			" RETURNING ",
-			returningSyntax)
+		sql = fmt.Sprint(sql, " RETURNING ", returningSyntax)
 	}
 
 	ctx, cancel := pctx.WithTimeout(
@@ -381,15 +414,20 @@ func (c *Config) DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 
 	sc := c.adapter.DeleteCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
-		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
-			log.Println(sc.Err().Error())
-			http.Error(w, err.Error(), http.StatusNotFound)
+		errMsg := err.Error()
+
+		if strings.Contains(errMsg,
+			fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
+			JSONError(w, ErrRelationDoesntExist.Error(), http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+
+		http.Error(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
 		return
 	}
-	w.Write(sc.Bytes())
+
+	slog.Debugln("[DeleteFromTable] query executed successfully")
+	JSONWrite(w, string(sc.Bytes()), http.StatusOK)
 }
 
 // UpdateTable perform update table
@@ -400,15 +438,15 @@ func (c *Config) UpdateTable(w http.ResponseWriter, r *http.Request) {
 	table := vars["table"]
 
 	if c.differentDbQuery(database) {
-		err := fmt.Errorf("database not allowed: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("database not allowed", database)
+		JSONError(w, ErrDatabaseNotAllowed.Error(), http.StatusBadRequest)
 		return
 	}
 
 	setSyntax, values, err := c.adapter.SetByRequest(r, 1)
 	if err != nil {
-		err = fmt.Errorf("could not perform UPDATE: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("could not perform SetByRequest", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	sql := c.adapter.UpdateSQL(database, schema, table, setSyntax)
@@ -417,31 +455,25 @@ func (c *Config) UpdateTable(w http.ResponseWriter, r *http.Request) {
 
 	where, whereValues, err := c.adapter.WhereByRequest(r, pid)
 	if err != nil {
-		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("could not perform WhereByRequest", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if where != "" {
-		sql = fmt.Sprint(
-			sql,
-			" WHERE ",
-			where)
+		sql = fmt.Sprint(sql, " WHERE ", where)
 		values = append(values, whereValues...)
 	}
 
 	returningSyntax, err := c.adapter.ReturningByRequest(r)
 	if err != nil {
-		err = fmt.Errorf("could not perform ReturningByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("could not perform ReturningByRequest", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if returningSyntax != "" {
-		sql = fmt.Sprint(
-			sql,
-			" RETURNING ",
-			returningSyntax)
+		sql = fmt.Sprint(sql, " RETURNING ", returningSyntax)
 	}
 
 	ctx, cancel := pctx.WithTimeout(
@@ -450,14 +482,21 @@ func (c *Config) UpdateTable(w http.ResponseWriter, r *http.Request) {
 
 	sc := c.adapter.UpdateCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
-		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
-			http.Error(w, err.Error(), http.StatusNotFound)
+		errMsg := err.Error()
+		slog.Errorln("could not execute query", err)
+
+		if strings.Contains(errMsg,
+			fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
+			JSONError(w, ErrRelationDoesntExist.Error(), http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+
+		http.Error(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
 		return
 	}
-	w.Write(sc.Bytes())
+
+	slog.Debugln("[UpdateTable] query executed successfully")
+	JSONWrite(w, string(sc.Bytes()), http.StatusOK)
 }
 
 // ShowTable show information from table
@@ -468,8 +507,8 @@ func (c *Config) ShowTable(w http.ResponseWriter, r *http.Request) {
 	table := vars["table"]
 
 	if c.differentDbQuery(database) {
-		err := fmt.Errorf("database not allowed: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("database not allowed", database)
+		JSONError(w, ErrDatabaseNotAllowed.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -478,12 +517,14 @@ func (c *Config) ShowTable(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	sc := c.adapter.ShowTableCtx(ctx, schema, table)
-	if sc.Err() != nil {
-		errorMessage := fmt.Sprintf("error to execute query, schema error %s", sc.Err())
-		http.Error(w, errorMessage, http.StatusBadRequest)
+	if err := sc.Err(); err != nil {
+		slog.Errorln("could not execute query", err)
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	w.Write(sc.Bytes())
+
+	slog.Debugln("[ShowTable] query executed successfully")
+	JSONWrite(w, string(sc.Bytes()), http.StatusOK)
 }
 
 // differentDbQuery checks if the query is for the same database
