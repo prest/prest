@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/prest/prest/adapters/mockgen"
+	mockgenc "github.com/prest/prest/cache/mockgen"
 	"github.com/prest/prest/config"
 	pctx "github.com/prest/prest/context"
 	"github.com/prest/prest/testutils"
@@ -144,7 +145,7 @@ func Test_GetTables(t *testing.T) {
 			wantedResponseContains: "query ok",
 			wantStatus:             http.StatusOK,
 		},
-		// todo: verify adapter has these cases
+		// todo: make sure integration tests cover these cases
 		// {"Get tables without custom where clause", "/tables", "GET", http.StatusOK},
 		// {"Get tables with custom where clause", "/tables?c.relname=$eq.test", "GET", http.StatusOK},
 		// {"Get tables with custom order clause", "/tables?_order=c.relname", "GET", http.StatusOK},
@@ -390,7 +391,7 @@ func Test_GetTablesByDatabaseAndSchema(t *testing.T) {
 			wantedResponseContains: "query response",
 			wantStatus:             http.StatusOK,
 		},
-		// todo: verify adapter has these cases
+		// todo: make sure integration tests cover these cases
 		// {"Get tables by database and schema without custom where clause", "/prest-test/public", "GET", http.StatusOK},
 		// {"Get tables by database and schema with custom where clause", "/prest-test/public?t.tablename=$eq.test", "GET", http.StatusOK},
 		// {"Get tables by database and schema with order clause", "/prest-test/public?t.tablename=$eq.test&_order=t.tablename", "GET", http.StatusOK},
@@ -477,82 +478,559 @@ func Test_GetTablesByDatabaseAndSchema(t *testing.T) {
 	}
 }
 
-func TestSelectFromTables(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	adapter := mockgen.NewMockAdapter(ctrl)
-	h := Config{
-		server:  &config.Prest{Debug: true},
-		adapter: adapter,
-	}
-
-	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(h.SelectFromTables)).
-		Methods("GET")
-	server := httptest.NewServer(router)
-	defer server.Close()
+func Test_SelectFromTables(t *testing.T) {
+	t.Parallel()
 
 	var testCases = []struct {
 		description string
 		url         string
-		method      string
-		status      int
-		body        string
+
+		wantSingleDB        bool
+		wantDifferentDBResp string
+
+		wantFieldsPermissions bool
+		fieldsPermissions     []string
+		fieldsPermissionsErr  error
+
+		wantSelectFields bool
+		selectStr        string
+		selectErr        error
+
+		wantDistinct   bool
+		selectSQL      string
+		distinctClause string
+		distinctErr    error
+
+		wantCountByRequest bool
+		countByRequestSQL  string
+		countByRequestErr  error
+
+		wantJoinByRequest   bool
+		joinByRequestValues []string
+		joinByRequestErr    error
+
+		wantWhereByRequest   bool
+		wherebyRequestSyntax string
+		wherebyRequestValues []interface{}
+		wherebyRequestErr    error
+
+		wantOrderByRequest bool
+		groupByClause      string
+		orderByRequestResp string
+		orderByRequestErr  error
+
+		wantPaginateIfPossible bool
+		paginateIfPossibleResp string
+		paginateIfPossibleErr  error
+
+		wantQuery        bool
+		wantQueryResp    bool
+		wantQueryRespStr string
+		wantQueryErr     error
+
+		wantCache bool
+
+		wantedResponseContains string
+		wantStatus             int
 	}{
-		{"execute select in a table with array", "/prest-test/public/testarray", "GET", http.StatusOK, "[{\"id\": 100, \"data\": [\"Gohan\", \"Goten\"]}]"},
-		{"execute select in a table without custom where clause", "/prest-test/public/test", "GET", http.StatusOK, ""},
-		{"execute select in a table case sentive", "/prest-test/public/Reply", "GET", http.StatusOK, "[{\"id\": 1, \"name\": \"prest tester\"}, {\"id\": 2, \"name\": \"prest-test-insert\"}, {\"id\": 3, \"name\": \"prest-test-insert-ctx\"}, {\"id\": 4, \"name\": \"3prest-test-batch-insert\"}, {\"id\": 5, \"name\": \"3batch-prest-test-insert\"}, {\"id\": 6, \"name\": \"3prest-test-batch-insert-ctx\"}, {\"id\": 7, \"name\": \"3batch-prest-test-insert-ctx\"}, {\"id\": 8, \"name\": \"copy-ctx\"}, {\"id\": 9, \"name\": \"copy-ctx\"}, {\"id\": 10, \"name\": \"copy\"}, {\"id\": 11, \"name\": \"copy\"}]"},
-		{"execute select in a table with count all fields *", "/prest-test/public/test?_count=*", "GET", http.StatusOK, ""},
-		{"execute select in a table with count function", "/prest-test/public/test?_count=name", "GET", http.StatusOK, ""},
-		{"execute select in a table with custom where clause", "/prest-test/public/test?name=$eq.test", "GET", http.StatusOK, ""},
-		{"execute select in a table with custom join clause", "/prest-test/public/test?_join=inner:test8:test8.nameforjoin:$eq:test.name", "GET", http.StatusOK, ""},
-		{"execute select in a table with order clause empty", "/prest-test/public/test?_order=", "GET", http.StatusOK, ""},
-		{"execute select in a table with custom where clause and pagination", "/prest-test/public/test?name=$eq.test&_page=1&_page_size=20", "GET", http.StatusOK, ""},
-		{"execute select in a table with select fields", "/prest-test/public/test5?_select=celphone,name", "GET", http.StatusOK, ""},
-		{"execute select in a table with select *", "/prest-test/public/test5?_select=*", "GET", http.StatusOK, ""},
-		{"execute select in a table with select * and distinct", "/prest-test/public/test5?_select=*&_distinct=true", "GET", http.StatusOK, ""},
+		{
+			description:            "different db error",
+			url:                    "localhost:8080/prest-test/public/test",
+			wantSingleDB:           true,
+			wantDifferentDBResp:    "prest-test",
+			wantedResponseContains: ErrDatabaseNotAllowed.Error(),
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description:         "FieldsPermissions error",
+			url:                 "localhost:8080/prest-test/public/test",
+			wantSingleDB:        false,
+			wantDifferentDBResp: "prest-test",
 
-		{"execute select in a table with group by clause", "/prest-test/public/test_group_by_table?_select=age,sum:salary&_groupby=age", "GET", http.StatusOK, ""},
-		{"execute select in a table with group by and having clause", "/prest-test/public/test_group_by_table?_select=age,sum:salary&_groupby=age->>having:sum:salary:$gt:3000", "GET", http.StatusOK, "[{\"age\": 19, \"sum\": 7997}]"},
+			wantFieldsPermissions: true,
+			fieldsPermissions:     []string{"id", "name"},
+			fieldsPermissionsErr:  errors.New("FieldsPermissions error"),
 
-		{"execute select in a view without custom where clause", "/prest-test/public/view_test", "GET", http.StatusOK, ""},
-		{"execute select in a view with count all fields *", "/prest-test/public/view_test?_count=*", "GET", http.StatusOK, ""},
-		{"execute select in a view with count function", "/prest-test/public/view_test?_count=player", "GET", http.StatusOK, ""},
-		{"execute select in a view with count function check return list", "/prest-test/public/view_test?_count=player", "GET", http.StatusOK, "[{\"count\": 1}]"},
-		{"execute select in a view with count function check return object (_count_first)", "/prest-test/public/view_test?_count=player&_count_first=true", "GET", http.StatusOK, "{\"count\":1}"},
-		{"execute select in a view with order function", "/prest-test/public/view_test?_order=-player", "GET", http.StatusOK, ""},
-		{"execute select in a view with custom where clause", "/prest-test/public/view_test?player=$eq.gopher", "GET", http.StatusOK, ""},
-		{"execute select in a view with custom join clause", "/prest-test/public/view_test?_join=inner:test2:test2.name:eq:view_test.player", "GET", http.StatusOK, ""},
-		{"execute select in a view with custom where clause and pagination", "/prest-test/public/view_test?player=$eq.gopher&_page=1&_page_size=20", "GET", http.StatusOK, ""},
-		{"execute select in a view with select fields", "/prest-test/public/view_test?_select=player", "GET", http.StatusOK, ""},
+			wantedResponseContains: "FieldsPermissions",
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description:         "FieldsPermissions error no permissions",
+			url:                 "localhost:8080/prest-test/public/test",
+			wantSingleDB:        false,
+			wantDifferentDBResp: "prest-test",
 
-		{"execute select in a table with invalid join clause", "/prest-test/public/test?_join=inner:test2:test2.name", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with invalid where clause", "/prest-test/public/test?0name=$eq.test", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with order clause and column invalid", "/prest-test/public/test?_order=0name", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with invalid pagination clause", "/prest-test/public/test?name=$eq.test&_page=A", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with invalid where clause", "/prest-test/public/test?0name=$eq.test", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with invalid count clause", "/prest-test/public/test?_count=0name", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with invalid order clause", "/prest-test/public/test?_order=0name", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with invalid fields using group by clause", "/prest-test/public/test_group_by_table?_select=pa,sum:pum&_groupby=pa", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with invalid fields using group by and having clause", "/prest-test/public/test_group_by_table?_select=pa,sum:pum&_groupby=pa->>having:sum:pmu:$eq:150", "GET", http.StatusBadRequest, ""},
+			wantFieldsPermissions: true,
+			fieldsPermissions:     []string{},
+			fieldsPermissionsErr:  nil,
 
-		{"execute select in a view with an other column", "/prest-test/public/view_test?_select=celphone", "GET", http.StatusBadRequest, ""},
-		{"execute select in a view with where and column invalid", "/prest-test/public/view_test?0celphone=$eq.888888", "GET", http.StatusBadRequest, ""},
-		{"execute select in a view with custom join clause invalid", "/prest-test/public/view_test?_join=inner:test2.name:eq:view_test.player", "GET", http.StatusBadRequest, ""},
-		{"execute select in a view with custom where clause and pagination invalid", "/prest-test/public/view_test?player=$eq.gopher&_page=A&_page_size=20", "GET", http.StatusBadRequest, ""},
-		{"execute select in a view with order by and column invalid", "/prest-test/public/view_test?_order=0celphone", "GET", http.StatusBadRequest, ""},
-		{"execute select in a view with count column invalid", "/prest-test/public/view_test?_count=0celphone", "GET", http.StatusBadRequest, ""},
+			wantedResponseContains: "don't have permission",
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description:         "selectFields error",
+			url:                 "localhost:8080/prest-test/public/test",
+			wantSingleDB:        false,
+			wantDifferentDBResp: "prest-test",
 
-		{"execute select in a db that does not exist", "/invalid/public/view_test?_count=0celphone", "GET", http.StatusBadRequest, ""},
+			wantFieldsPermissions: true,
+			fieldsPermissions:     []string{"id", "name"},
+			fieldsPermissionsErr:  nil,
+
+			wantSelectFields: true,
+			selectStr:        "selectFields error",
+			selectErr:        errors.New("selectFields error"),
+
+			wantedResponseContains: "selectFields",
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description:         "DISTINCT error",
+			url:                 "localhost:8080/prest-test/public/test",
+			wantSingleDB:        false,
+			wantDifferentDBResp: "prest-test",
+
+			wantFieldsPermissions: true,
+			fieldsPermissions:     []string{"id", "name"},
+			fieldsPermissionsErr:  nil,
+
+			wantSelectFields: true,
+			selectStr:        "selectFields",
+			selectErr:        nil,
+
+			wantDistinct:   true,
+			selectSQL:      "selectSQL",
+			distinctClause: "distinctClause",
+			distinctErr:    errors.New("DISTINCT error"),
+
+			wantedResponseContains: "DISTINCT",
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description:         "count by request error",
+			url:                 "localhost:8080/prest-test/public/test",
+			wantSingleDB:        false,
+			wantDifferentDBResp: "prest-test",
+
+			wantFieldsPermissions: true,
+			fieldsPermissions:     []string{"id", "name"},
+			fieldsPermissionsErr:  nil,
+
+			wantSelectFields: true,
+			selectStr:        "selectFields",
+			selectErr:        nil,
+
+			wantDistinct:   true,
+			selectSQL:      "selectSQL",
+			distinctClause: "distinctClause",
+			distinctErr:    nil,
+
+			wantCountByRequest: true,
+			countByRequestSQL:  "countByRequestSQL",
+			countByRequestErr:  errors.New("countByRequest error"),
+
+			wantedResponseContains: "countByRequest",
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description:         "join by request error",
+			url:                 "localhost:8080/prest-test/public/test",
+			wantSingleDB:        false,
+			wantDifferentDBResp: "prest-test",
+
+			wantFieldsPermissions: true,
+			fieldsPermissions:     []string{"id", "name"},
+			fieldsPermissionsErr:  nil,
+
+			wantSelectFields: true,
+			selectStr:        "selectFields",
+			selectErr:        nil,
+
+			wantDistinct:   true,
+			selectSQL:      "selectSQL",
+			distinctClause: "distinctClause",
+			distinctErr:    nil,
+
+			wantCountByRequest: true,
+			countByRequestSQL:  "",
+			countByRequestErr:  nil,
+
+			wantJoinByRequest:   true,
+			joinByRequestValues: []string{"joinByRequestValues"},
+			joinByRequestErr:    errors.New("joinByRequest error"),
+
+			wantedResponseContains: "joinByRequest",
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description: "where by request error",
+			url:         "localhost:8080/prest-test/public/test",
+
+			wantSingleDB:        false,
+			wantDifferentDBResp: "prest-test",
+
+			wantFieldsPermissions: true,
+			fieldsPermissions:     []string{"id", "name"},
+			fieldsPermissionsErr:  nil,
+
+			wantSelectFields: true,
+			selectStr:        "selectFields",
+			selectErr:        nil,
+
+			wantDistinct:   true,
+			selectSQL:      "selectSQL",
+			distinctClause: "distinctClause",
+			distinctErr:    nil,
+
+			wantCountByRequest: true,
+			countByRequestSQL:  "",
+			countByRequestErr:  nil,
+
+			wantJoinByRequest:   true,
+			joinByRequestValues: []string{"joinByRequestValues"},
+			joinByRequestErr:    nil,
+
+			wantWhereByRequest:   true,
+			wherebyRequestSyntax: "wherebyRequestSyntax",
+			wherebyRequestValues: []interface{}{},
+			wherebyRequestErr:    errors.New("wherebyRequest error"),
+
+			wantedResponseContains: "wherebyRequest",
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description: "order by request error",
+			url:         "localhost:8080/prest-test/public/test",
+
+			wantSingleDB:        false,
+			wantDifferentDBResp: "prest-test",
+
+			wantFieldsPermissions: true,
+			fieldsPermissions:     []string{"id", "name"},
+			fieldsPermissionsErr:  nil,
+
+			wantSelectFields: true,
+			selectStr:        "selectFields",
+			selectErr:        nil,
+
+			wantDistinct:   true,
+			selectSQL:      "selectSQL",
+			distinctClause: "distinctClause",
+			distinctErr:    nil,
+
+			wantCountByRequest: true,
+			countByRequestSQL:  "",
+			countByRequestErr:  nil,
+
+			wantJoinByRequest:   true,
+			joinByRequestValues: []string{"joinByRequestValues"},
+			joinByRequestErr:    nil,
+
+			wantWhereByRequest:   true,
+			wherebyRequestSyntax: "wherebyRequestSyntax",
+			wherebyRequestValues: []interface{}{},
+			wherebyRequestErr:    nil,
+
+			wantOrderByRequest: true,
+			groupByClause:      "groupByClause",
+			orderByRequestResp: "orderByRequestResp",
+			orderByRequestErr:  errors.New("orderByRequest error"),
+
+			wantedResponseContains: "orderByRequest",
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description: "paginate error",
+			url:         "localhost:8080/prest-test/public/test",
+
+			wantSingleDB:        false,
+			wantDifferentDBResp: "prest-test",
+
+			wantFieldsPermissions: true,
+			fieldsPermissions:     []string{"id", "name"},
+			fieldsPermissionsErr:  nil,
+
+			wantSelectFields: true,
+			selectStr:        "selectFields",
+			selectErr:        nil,
+
+			wantDistinct:   true,
+			selectSQL:      "selectSQL",
+			distinctClause: "distinctClause",
+			distinctErr:    nil,
+
+			wantCountByRequest: true,
+			countByRequestSQL:  "",
+			countByRequestErr:  nil,
+
+			wantJoinByRequest:   true,
+			joinByRequestValues: []string{"joinByRequestValues"},
+			joinByRequestErr:    nil,
+
+			wantWhereByRequest:   true,
+			wherebyRequestSyntax: "wherebyRequestSyntax",
+			wherebyRequestValues: []interface{}{},
+			wherebyRequestErr:    nil,
+
+			wantOrderByRequest: true,
+			groupByClause:      "groupByClause",
+			orderByRequestResp: "orderByRequestResp",
+			orderByRequestErr:  nil,
+
+			wantPaginateIfPossible: true,
+			paginateIfPossibleResp: "paginateIfPossibleResp",
+			paginateIfPossibleErr:  errors.New("paginateIfPossible error"),
+
+			wantedResponseContains: "paginateIfPossible",
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description: "query error",
+			url:         "localhost:8080/prest-test/public/test",
+
+			wantSingleDB:        false,
+			wantDifferentDBResp: "prest-test",
+
+			wantFieldsPermissions: true,
+			fieldsPermissions:     []string{"id", "name"},
+			fieldsPermissionsErr:  nil,
+
+			wantSelectFields: true,
+			selectStr:        "selectFields",
+			selectErr:        nil,
+
+			wantDistinct:   true,
+			selectSQL:      "selectSQL",
+			distinctClause: "distinctClause",
+			distinctErr:    nil,
+
+			wantCountByRequest: true,
+			countByRequestSQL:  "",
+			countByRequestErr:  nil,
+
+			wantJoinByRequest:   true,
+			joinByRequestValues: []string{"joinByRequestValues"},
+			joinByRequestErr:    nil,
+
+			wantWhereByRequest:   true,
+			wherebyRequestSyntax: "wherebyRequestSyntax",
+			wherebyRequestValues: []interface{}{},
+			wherebyRequestErr:    nil,
+
+			wantOrderByRequest: true,
+			groupByClause:      "groupByClause",
+			orderByRequestResp: "orderByRequestResp",
+			orderByRequestErr:  nil,
+
+			wantPaginateIfPossible: true,
+			paginateIfPossibleResp: "paginateIfPossibleResp",
+			paginateIfPossibleErr:  nil,
+
+			wantQuery:        true,
+			wantQueryResp:    false,
+			wantQueryRespStr: "query response",
+			wantQueryErr:     errors.New("queryctx error"),
+
+			wantedResponseContains: "perform query",
+			wantStatus:             http.StatusBadRequest,
+		},
+		{
+			description: "query ok",
+			url:         "localhost:8080/prest-test/public/test",
+
+			wantSingleDB:        false,
+			wantDifferentDBResp: "prest-test",
+
+			wantFieldsPermissions: true,
+			fieldsPermissions:     []string{"id", "name"},
+			fieldsPermissionsErr:  nil,
+
+			wantSelectFields: true,
+			selectStr:        "selectFields",
+			selectErr:        nil,
+
+			wantDistinct:   true,
+			selectSQL:      "selectSQL",
+			distinctClause: "distinctClause",
+			distinctErr:    nil,
+
+			wantCountByRequest: true,
+			countByRequestSQL:  "",
+			countByRequestErr:  nil,
+
+			wantJoinByRequest:   true,
+			joinByRequestValues: []string{"joinByRequestValues"},
+			joinByRequestErr:    nil,
+
+			wantWhereByRequest:   true,
+			wherebyRequestSyntax: "wherebyRequestSyntax",
+			wherebyRequestValues: []interface{}{},
+			wherebyRequestErr:    nil,
+
+			wantOrderByRequest: true,
+			groupByClause:      "groupByClause",
+			orderByRequestResp: "orderByRequestResp",
+			orderByRequestErr:  nil,
+
+			wantPaginateIfPossible: true,
+			paginateIfPossibleResp: "paginateIfPossibleResp",
+			paginateIfPossibleErr:  nil,
+
+			wantQuery:        true,
+			wantQueryResp:    true,
+			wantQueryRespStr: "ok query response",
+			wantQueryErr:     nil,
+
+			wantCache: true,
+
+			wantedResponseContains: "ok query response",
+			wantStatus:             http.StatusOK,
+		},
+		// todo: make sure integration tests cover these cases
+		// {"execute select in a table with array", "/prest-test/public/testarray", "GET", http.StatusOK, "[{\"id\": 100, \"data\": [\"Gohan\", \"Goten\"]}]"},
+		// {"execute select in a table without custom where clause", "/prest-test/public/test", "GET", http.StatusOK, ""},
+		// {"execute select in a table case sentive", "/prest-test/public/Reply", "GET", http.StatusOK, "[{\"id\": 1, \"name\": \"prest tester\"}, {\"id\": 2, \"name\": \"prest-test-insert\"}, {\"id\": 3, \"name\": \"prest-test-insert-ctx\"}, {\"id\": 4, \"name\": \"3prest-test-batch-insert\"}, {\"id\": 5, \"name\": \"3batch-prest-test-insert\"}, {\"id\": 6, \"name\": \"3prest-test-batch-insert-ctx\"}, {\"id\": 7, \"name\": \"3batch-prest-test-insert-ctx\"}, {\"id\": 8, \"name\": \"copy-ctx\"}, {\"id\": 9, \"name\": \"copy-ctx\"}, {\"id\": 10, \"name\": \"copy\"}, {\"id\": 11, \"name\": \"copy\"}]"},
+		// {"execute select in a table with count all fields *", "/prest-test/public/test?_count=*", "GET", http.StatusOK, ""},
+		// {"execute select in a table with count function", "/prest-test/public/test?_count=name", "GET", http.StatusOK, ""},
+		// {"execute select in a table with custom where clause", "/prest-test/public/test?name=$eq.test", "GET", http.StatusOK, ""},
+		// {"execute select in a table with custom join clause", "/prest-test/public/test?_join=inner:test8:test8.nameforjoin:$eq:test.name", "GET", http.StatusOK, ""},
+		// {"execute select in a table with order clause empty", "/prest-test/public/test?_order=", "GET", http.StatusOK, ""},
+		// {"execute select in a table with custom where clause and pagination", "/prest-test/public/test?name=$eq.test&_page=1&_page_size=20", "GET", http.StatusOK, ""},
+		// {"execute select in a table with select fields", "/prest-test/public/test5?_select=celphone,name", "GET", http.StatusOK, ""},
+		// {"execute select in a table with select *", "/prest-test/public/test5?_select=*", "GET", http.StatusOK, ""},
+		// {"execute select in a table with select * and distinct", "/prest-test/public/test5?_select=*&_distinct=true", "GET", http.StatusOK, ""},
+
+		// {"execute select in a table with group by clause", "/prest-test/public/test_group_by_table?_select=age,sum:salary&_groupby=age", "GET", http.StatusOK, ""},
+		// {"execute select in a table with group by and having clause", "/prest-test/public/test_group_by_table?_select=age,sum:salary&_groupby=age->>having:sum:salary:$gt:3000", "GET", http.StatusOK, "[{\"age\": 19, \"sum\": 7997}]"},
+
+		// {"execute select in a view without custom where clause", "/prest-test/public/view_test", "GET", http.StatusOK, ""},
+		// {"execute select in a view with count all fields *", "/prest-test/public/view_test?_count=*", "GET", http.StatusOK, ""},
+		// {"execute select in a view with count function", "/prest-test/public/view_test?_count=player", "GET", http.StatusOK, ""},
+		// {"execute select in a view with count function check return list", "/prest-test/public/view_test?_count=player", "GET", http.StatusOK, "[{\"count\": 1}]"},
+		// {"execute select in a view with count function check return object (_count_first)", "/prest-test/public/view_test?_count=player&_count_first=true", "GET", http.StatusOK, "{\"count\":1}"},
+		// {"execute select in a view with order function", "/prest-test/public/view_test?_order=-player", "GET", http.StatusOK, ""},
+		// {"execute select in a view with custom where clause", "/prest-test/public/view_test?player=$eq.gopher", "GET", http.StatusOK, ""},
+		// {"execute select in a view with custom join clause", "/prest-test/public/view_test?_join=inner:test2:test2.name:eq:view_test.player", "GET", http.StatusOK, ""},
+		// {"execute select in a view with custom where clause and pagination", "/prest-test/public/view_test?player=$eq.gopher&_page=1&_page_size=20", "GET", http.StatusOK, ""},
+		// {"execute select in a view with select fields", "/prest-test/public/view_test?_select=player", "GET", http.StatusOK, ""},
+
+		// {"execute select in a table with invalid join clause", "/prest-test/public/test?_join=inner:test2:test2.name", "GET", http.StatusBadRequest, ""},
+		// {"execute select in a table with invalid where clause", "/prest-test/public/test?0name=$eq.test", "GET", http.StatusBadRequest, ""},
+		// {"execute select in a table with order clause and column invalid", "/prest-test/public/test?_order=0name", "GET", http.StatusBadRequest, ""},
+		// {"execute select in a table with invalid pagination clause", "/prest-test/public/test?name=$eq.test&_page=A", "GET", http.StatusBadRequest, ""},
+		// {"execute select in a table with invalid where clause", "/prest-test/public/test?0name=$eq.test", "GET", http.StatusBadRequest, ""},
+		// {"execute select in a table with invalid count clause", "/prest-test/public/test?_count=0name", "GET", http.StatusBadRequest, ""},
+		// {"execute select in a table with invalid order clause", "/prest-test/public/test?_order=0name", "GET", http.StatusBadRequest, ""},
+		// {"execute select in a table with invalid fields using group by clause", "/prest-test/public/test_group_by_table?_select=pa,sum:pum&_groupby=pa", "GET", http.StatusBadRequest, ""},
+		// {"execute select in a table with invalid fields using group by and having clause", "/prest-test/public/test_group_by_table?_select=pa,sum:pum&_groupby=pa->>having:sum:pmu:$eq:150", "GET", http.StatusBadRequest, ""},
+
+		// {"execute select in a view with an other column", "/prest-test/public/view_test?_select=celphone", "GET", http.StatusBadRequest, ""},
+		// {"execute select in a view with where and column invalid", "/prest-test/public/view_test?0celphone=$eq.888888", "GET", http.StatusBadRequest, ""},
+		// {"execute select in a view with custom join clause invalid", "/prest-test/public/view_test?_join=inner:test2.name:eq:view_test.player", "GET", http.StatusBadRequest, ""},
+		// {"execute select in a view with custom where clause and pagination invalid", "/prest-test/public/view_test?player=$eq.gopher&_page=A&_page_size=20", "GET", http.StatusBadRequest, ""},
+		// {"execute select in a view with order by and column invalid", "/prest-test/public/view_test?_order=0celphone", "GET", http.StatusBadRequest, ""},
+		// {"execute select in a view with count column invalid", "/prest-test/public/view_test?_count=0celphone", "GET", http.StatusBadRequest, ""},
+
+		// {"execute select in a db that does not exist", "/invalid/public/view_test?_count=0celphone", "GET", http.StatusBadRequest, ""},
 	}
 
 	for _, tc := range testCases {
-		t.Log(tc.description)
+		tc := tc
+		t.Run(tc.description, func(t *testing.T) {
+			t.Parallel()
+			t.Log(tc.description)
 
-		if tc.body != "" {
-			testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "SelectFromTables", tc.body)
-			continue
-		}
-		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "SelectFromTables")
+			ctrl := gomock.NewController(t)
+			adapter := mockgen.NewMockAdapter(ctrl)
+			ctrl2 := gomock.NewController(t)
+			adapter2 := mockgen.NewMockScanner(ctrl2)
+			ctrl3 := gomock.NewController(t)
+			cache := mockgenc.NewMockCacher(ctrl3)
+
+			adapter.EXPECT().GetCurrentConnDatabase().Return(tc.wantDifferentDBResp)
+
+			if tc.wantFieldsPermissions {
+				adapter.EXPECT().FieldsPermissions(gomock.Any(), gomock.Any(), "read").
+					Return(tc.fieldsPermissions, tc.fieldsPermissionsErr)
+			}
+
+			if tc.wantSelectFields {
+				adapter.EXPECT().SelectFields(tc.fieldsPermissions).
+					Return(tc.selectStr, tc.selectErr)
+			}
+
+			if tc.wantDistinct {
+				adapter.EXPECT().SelectSQL(
+					tc.selectStr, gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(tc.selectSQL)
+
+				adapter.EXPECT().DistinctClause(gomock.Any()).Return(
+					tc.distinctClause, tc.distinctErr)
+			}
+
+			if tc.wantCountByRequest {
+				adapter.EXPECT().CountByRequest(gomock.Any()).
+					Return(tc.countByRequestSQL, tc.countByRequestErr)
+			}
+
+			if tc.wantJoinByRequest {
+				adapter.EXPECT().JoinByRequest(gomock.Any()).
+					Return(tc.joinByRequestValues, tc.joinByRequestErr)
+			}
+
+			if tc.wantWhereByRequest {
+				adapter.EXPECT().WhereByRequest(gomock.Any(), 1).
+					Return(tc.wherebyRequestSyntax, tc.wherebyRequestValues, tc.wherebyRequestErr)
+			}
+
+			if tc.wantOrderByRequest {
+				adapter.EXPECT().GroupByClause(gomock.Any()).Return(tc.groupByClause)
+
+				adapter.EXPECT().OrderByRequest(gomock.Any()).Return(
+					tc.orderByRequestResp, tc.orderByRequestErr)
+			}
+
+			if tc.wantPaginateIfPossible {
+				adapter.EXPECT().PaginateIfPossible(gomock.Any()).
+					Return(tc.paginateIfPossibleResp, tc.paginateIfPossibleErr)
+			}
+
+			if tc.wantQuery {
+				adapter2.EXPECT().Err().Return(tc.wantQueryErr)
+
+				adapter.EXPECT().QueryCtx(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(adapter2)
+			}
+
+			if tc.wantQueryResp {
+				adapter2.EXPECT().Bytes().Return([]byte(tc.wantQueryRespStr))
+			}
+
+			if tc.wantCache {
+				cache.EXPECT().Set(gomock.Any(), gomock.Any())
+			}
+
+			h := Config{
+				server:  &config.Prest{SingleDB: tc.wantSingleDB},
+				adapter: adapter,
+				cache:   cache,
+			}
+
+			request := httptest.NewRequest(http.MethodGet, tc.url, nil)
+
+			recorder := httptest.NewRecorder()
+
+			h.SelectFromTables(recorder, request)
+
+			resp := recorder.Result()
+			require.Equal(t, tc.wantStatus, resp.StatusCode)
+			require.Equal(t,
+				"application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.Contains(t, string(body), tc.wantedResponseContains)
+		})
 	}
 }
 
