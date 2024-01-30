@@ -13,7 +13,9 @@ var redoCmd = &cobra.Command{
 	Long:    `roll back the most recently applied migration, then run it again.`,
 	PreRunE: checkTable,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		n, executed, err := migration.Run(cmd.Context(), path, urlConn, "down 1")
+		ctx := cmd.Context()
+
+		n, executed, err := migration.Run(ctx, path, urlConn, "down 1")
 		if err != nil {
 			slog.Errorln("exec migrations failed: ", err)
 			return err
@@ -25,7 +27,7 @@ var redoCmd = &cobra.Command{
 			slog.Printf("%v SUCCESS\n", e)
 		}
 
-		n, executed, err = migration.Run(cmd.Context(), path, urlConn, "up")
+		n, executed, err = migration.Run(ctx, path, urlConn, "up")
 		if err != nil {
 			slog.Errorln("exec migrations failed: ", err)
 			return err

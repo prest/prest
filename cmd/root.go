@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/structy/log"
 	slog "github.com/structy/log"
 
 	"github.com/prest/prest/cache"
@@ -21,8 +20,8 @@ var (
 	path    string
 	cfg     = config.New()
 
-	ErrPathNotSet = errors.New("Migrations path not set. \nPlease set it using --path flag or in your prest config file")
-	ErrURLNotSet  = errors.New("Database URL not set. \nPlease set it using --url flag or configure it on your prest config file")
+	ErrPathNotSet = errors.New("migrations path not set. \nPlease set it using --path flag or in your prest config file")
+	ErrURLNotSet  = errors.New("database URL not set. \nPlease set it using --url flag or configure it on your prest config file")
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -52,7 +51,7 @@ func Execute() {
 	migrateCmd.PersistentFlags().StringVar(&path, "path", cfg.MigrationsPath, "Migrations directory")
 
 	if err := RootCmd.Execute(); err != nil {
-		log.Errorln(err)
+		slog.Errorln(err)
 		os.Exit(1)
 	}
 }

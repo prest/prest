@@ -60,7 +60,8 @@ func checkTable(cmd *cobra.Command, args []string) error {
 			slog.Errorln("checkTable GetConn error: ", err)
 			return err
 		}
-		_, err = db.Exec("ALTER TABLE public.schema_migrations DROP COLUMN dirty")
+		_, err = db.ExecContext(cmd.Context(),
+			"ALTER TABLE public.schema_migrations DROP COLUMN dirty")
 		if err != nil {
 			slog.Errorln("checkTable Exec error: ", err)
 			return err
