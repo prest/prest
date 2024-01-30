@@ -264,14 +264,16 @@ func (c *Config) SelectFromTables(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		JSONError(w, ErrCouldNotPerformQuery.Error(), http.StatusNotFound)
+		JSONError(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Cache arrow if enabled
-	c.cache.Set(r.URL.String(), string(sc.Bytes()))
+	resp := string(sc.Bytes())
 
-	JSONWrite(w, string(sc.Bytes()), http.StatusOK)
+	// Cache arrow if enabled
+	c.cache.Set(r.URL.String(), resp)
+
+	JSONWrite(w, resp, http.StatusOK)
 }
 
 // InsertInTables perform insert in specific table
@@ -310,7 +312,7 @@ func (c *Config) InsertInTables(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		JSONError(w, ErrCouldNotPerformQuery.Error(), http.StatusNotFound)
+		JSONError(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -361,7 +363,7 @@ func (c *Config) BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		JSONError(w, ErrCouldNotPerformQuery.Error(), http.StatusNotFound)
+		JSONError(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -419,7 +421,7 @@ func (c *Config) DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		JSONError(w, ErrCouldNotPerformQuery.Error(), http.StatusNotFound)
+		JSONError(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -487,7 +489,7 @@ func (c *Config) UpdateTable(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		JSONError(w, ErrCouldNotPerformQuery.Error(), http.StatusNotFound)
+		JSONError(w, ErrCouldNotPerformQuery.Error(), http.StatusBadRequest)
 		return
 	}
 
