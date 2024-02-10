@@ -36,7 +36,7 @@ type Server interface {
 	DeleteFromTable(w http.ResponseWriter, r *http.Request)
 	UpdateTable(w http.ResponseWriter, r *http.Request)
 	ShowTable(w http.ResponseWriter, r *http.Request)
-	// v2 auto generated ideas
+	// v2 ideas
 	// GetColumns(w http.ResponseWriter, r *http.Request)
 	// GetFunctions(w http.ResponseWriter, r *http.Request)
 	// GetIndexes(w http.ResponseWriter, r *http.Request)
