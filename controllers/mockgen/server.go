@@ -158,6 +158,18 @@ func (mr *MockServerMockRecorder) InsertInTables(w, r interface{}) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertInTables", reflect.TypeOf((*MockServer)(nil).InsertInTables), w, r)
 }
 
+// Plugin mocks base method.
+func (m *MockServer) Plugin(w http.ResponseWriter, r *http.Request) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Plugin", w, r)
+}
+
+// Plugin indicates an expected call of Plugin.
+func (mr *MockServerMockRecorder) Plugin(w, r interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Plugin", reflect.TypeOf((*MockServer)(nil).Plugin), w, r)
+}
+
 // SelectFromTables mocks base method.
 func (m *MockServer) SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	m.ctrl.T.Helper()
