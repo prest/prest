@@ -4,6 +4,10 @@ PHONY: build_test_image
 build_test_image:
 	$(DOCKER_COMPOSE) run --rm postgres -d
 
+PHONY: unit_test
+unit_test:
+	go test -v -cover ./...
+
 PHONY: test
 test:
 	$(DOCKER_COMPOSE) -f testdata/docker-compose.yml up --abort-on-container-exit --remove-orphans
