@@ -12,6 +12,10 @@ import (
 // CacheMiddleware simple caching to avoid equal queries to the database
 func CacheMiddleware(cfg *config.Prest, cacher cache.Cacher) negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+		if !cfg.Cache.Enabled || cacher == nil {
+			next(w, r)
+			return
+		}
 		match, err := MatchURL(cfg.JWTWhiteList, r.URL.String())
 		if err != nil {
 			http.Error(w, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
