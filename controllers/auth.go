@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"crypto/md5"
 	"crypto/sha1"
 	"encoding/json"
@@ -9,11 +10,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prest/prest/config"
-	"github.com/prest/prest/controllers/auth"
-	"gopkg.in/square/go-jose.v2"
+	"github.com/structy/log"
+	signer "gopkg.in/square/go-jose.v2"
 	jwt "gopkg.in/square/go-jose.v2/jwt"
+
+	"github.com/prest/prest/controllers/auth"
 )
+
+const unf = "user not found"
 
 // Response representation
 type Response struct {
@@ -37,19 +41,23 @@ type Login struct {
 	Password string `json:"password"`
 }
 
-// Token for user
-func Token(u auth.User) (t string, err error) {
-	// add start time (NotBefore)
+// Token generates a JWT token for the given user with the specified key.
+// It uses the HS256 algorithm for signing the token.
+// The token includes the user information, start time (NotBefore), and expiration time.
+// The generated token is returned as a string.
+// If an error occurs during token generation, it is returned along with an empty string.
+//
+// todo: add expiry time in configuration (in minute format, so we support the maximum need
+// TODO: JWT any Algorithm support
+func Token(u auth.User, key string) (t string, err error) {
 	getToken := time.Now()
-	// add expiry time in configuration (in minute format, so we support the maximum need)
 	expireToken := time.Now().Add(time.Hour * 6)
 
-	// TODO: JWT any Algorithm support
-	sig, err := jose.NewSigner(
-		jose.SigningKey{
-			Algorithm: jose.HS256,
-			Key:       []byte(config.PrestConf.JWTKey)},
-		(&jose.SignerOptions{}).WithType("JWT"))
+	sig, err := signer.NewSigner(
+		signer.SigningKey{
+			Algorithm: signer.HS256,
+			Key:       []byte(key)},
+		(&signer.SignerOptions{}).WithType("JWT"))
 	if err != nil {
 		return
 	}
@@ -62,13 +70,19 @@ func Token(u auth.User) (t string, err error) {
 	return jwt.Signed(sig).Claims(cl).CompactSerialize()
 }
 
-const unf = "user not found"
-
-// Auth controller
-func Auth(w http.ResponseWriter, r *http.Request) {
+// Auth handles the authentication logic based on the configured authentication type.
+//
+// The authentication type can be either "body" or "basic".
+// If the authentication type is "body", it expects the login credentials to be provided in the request body as JSON.
+// If the authentication type is "basic", it expects the login credentials to be provided in the request headers using HTTP Basic Authentication.
+// It returns the logged-in user information and a token if the authentication is successful.
+// If there is an error during the authentication process, it returns an HTTP error response.
+//
+// todo: add form support
+func (c *Config) Auth(w http.ResponseWriter, r *http.Request) {
+	log.Debugln("Authenticating user")
 	login := Login{}
-	switch config.PrestConf.AuthType {
-	// TODO: form support
+	switch c.server.AuthType {
 	case "body":
 		// to use body field authentication
 		dec := json.NewDecoder(r.Body)
@@ -80,41 +94,44 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 		var ok bool
 		login.Username, login.Password, ok = r.BasicAuth()
 		if !ok {
-			http.Error(w, unf, http.StatusBadRequest)
+			log.Errorln(unf)
+			JSONError(w, unf, http.StatusBadRequest)
 			return
 		}
 	}
 
-	loggedUser, err := basicPasswordCheck(strings.ToLower(login.Username), login.Password)
+	loggedUser, err := c.basicPasswordCheck(r.Context(),
+		strings.ToLower(login.Username), login.Password)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		log.Errorln(err)
+		JSONError(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
-	token, err := Token(loggedUser)
+
+	token, err := Token(loggedUser, c.server.JWTKey)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Errorln(err)
+		JSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	resp := Response{
 		LoggedUser: loggedUser,
 		Token:      token,
 	}
-	err = json.NewEncoder(w).Encode(resp)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+
+	log.Debugln("User authenticated")
+	JSONWrite(w, resp, http.StatusOK)
 }
 
-// basicPasswordCheck
-func basicPasswordCheck(user, password string) (obj auth.User, err error) {
-	/**
-	table name, fields (user and password) and encryption must be defined in
-	the configuration file (toml)
-	by default this endpoint will not be available, it is necessary to activate
-	in the configuration file
-	*/
-	sc := config.PrestConf.Adapter.Query(getSelectQuery(), user, encrypt(password))
+// basicPasswordCheck will check if the user and password are valid
+//
+// table name, fields (user and password) and encryption must be defined in
+// the configuration file (toml) by default this endpoint will not be available,
+// it is necessary to activate in the configuration file
+func (c *Config) basicPasswordCheck(ctx context.Context, user, password string) (obj auth.User, err error) {
+	sc := c.adapter.QueryCtx(ctx,
+		c.getSelectQuery(), user, encrypt(c.server.AuthEncrypt, password))
 	if sc.Err() != nil {
 		err = sc.Err()
 		return
@@ -126,21 +143,21 @@ func basicPasswordCheck(user, password string) (obj auth.User, err error) {
 	if n != 1 {
 		err = fmt.Errorf(unf)
 	}
-
 	return
 }
 
 // getSelectQuery create the query to authenticate the user
-func getSelectQuery() (query string) {
+// todo: fix how this password is queried/stored
+func (c *Config) getSelectQuery() (query string) {
 	return fmt.Sprintf(
 		`SELECT * FROM %s.%s WHERE %s=$1 AND %s=$2 LIMIT 1`,
-		config.PrestConf.AuthSchema, config.PrestConf.AuthTable,
-		config.PrestConf.AuthUsername, config.PrestConf.AuthPassword)
+		c.server.AuthSchema, c.server.AuthTable,
+		c.server.AuthUsername, c.server.AuthPassword)
 }
 
 // encrypt will apply the encryption algorithm to the password
-func encrypt(password string) (encrypted string) {
-	switch config.PrestConf.AuthEncrypt {
+func encrypt(encrypt, password string) (encrypted string) {
+	switch encrypt {
 	case "MD5":
 		return fmt.Sprintf("%x", md5.Sum([]byte(password)))
 	case "SHA1":

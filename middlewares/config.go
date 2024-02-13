@@ -1,58 +1,59 @@
 package middlewares
 
 import (
+	"net/http"
+
+	"github.com/prest/prest/cache"
 	"github.com/prest/prest/config"
+
 	"github.com/rs/cors"
 	"github.com/urfave/negroni/v3"
 )
 
+type OptMiddleware func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)
+
 var (
-	app *negroni.Negroni
-
-	// MiddlewareStack on pREST
-	MiddlewareStack []negroni.Handler
-
 	// BaseStack Middlewares
+	// Recovery
+	// Logger
 	BaseStack = []negroni.Handler{
 		negroni.Handler(negroni.NewRecovery()),
 		negroni.Handler(negroni.NewLogger()),
 		HandlerSet(),
-		SetTimeoutToContext(),
 	}
 )
 
-func initApp() {
-	if len(MiddlewareStack) == 0 {
-		MiddlewareStack = append(MiddlewareStack, BaseStack...)
-		if config.PrestConf.CORSAllowOrigin != nil {
-			MiddlewareStack = append(
-				MiddlewareStack,
-				cors.New(cors.Options{
-					AllowedOrigins:   config.PrestConf.CORSAllowOrigin,
-					AllowedMethods:   config.PrestConf.CORSAllowMethods,
-					AllowedHeaders:   config.PrestConf.CORSAllowHeaders,
-					AllowCredentials: config.PrestConf.CORSAllowCredentials,
-				}))
-		}
-		if !config.PrestConf.Debug && config.PrestConf.EnableDefaultJWT {
-			MiddlewareStack = append(
-				MiddlewareStack,
-				JwtMiddleware(config.PrestConf.JWTKey, config.PrestConf.JWTAlgo))
-		}
-		if config.PrestConf.Cache.Enabled {
-			MiddlewareStack = append(MiddlewareStack, CacheMiddleware(&config.PrestConf.Cache))
-		}
-		if config.PrestConf.ExposeConf.Enabled {
-			MiddlewareStack = append(MiddlewareStack, ExposureMiddleware())
-		}
-	}
-	app = negroni.New(MiddlewareStack...)
-}
+// Get gets the default negroni app with
+// the default middlewares and the middlewares passed as parameters
+//
+// the middlewares passed as parameters will be executed after the default middlewares
+// and before the router
+func Get(cfg *config.Prest, cacher cache.Cacher, opts ...OptMiddleware) *negroni.Negroni {
+	stack := []negroni.Handler{}
+	stack = append(stack, BaseStack...)
+	stack = append(stack, SetTimeoutToContext(cfg.HTTPTimeout))
 
-// GetApp get negroni
-func GetApp() *negroni.Negroni {
-	if app == nil {
-		initApp()
+	if cfg.CORSAllowOrigin != nil {
+		stack = append(
+			stack,
+			cors.New(cors.Options{
+				AllowedOrigins:   cfg.CORSAllowOrigin,
+				AllowedMethods:   cfg.CORSAllowMethods,
+				AllowedHeaders:   cfg.CORSAllowHeaders,
+				AllowCredentials: cfg.CORSAllowCredentials,
+			}))
 	}
-	return app
+	if !cfg.Debug && cfg.EnableDefaultJWT {
+		stack = append(stack, JwtMiddleware(cfg.JWTKey, cfg.JWTWhiteList))
+	}
+	if cfg.Cache.Enabled {
+		stack = append(stack, CacheMiddleware(cfg, cacher))
+	}
+	if cfg.ExposeConf.Enabled {
+		stack = append(stack, ExposureMiddleware(&cfg.ExposeConf))
+	}
+	for _, opt := range opts {
+		stack = append(stack, negroni.HandlerFunc(opt))
+	}
+	return negroni.New(stack...)
 }

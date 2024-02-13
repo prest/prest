@@ -16,9 +16,9 @@ import (
 var loadedMiddlewareFunc = map[string]LoadedPlugin{}
 
 // loadFunc private func to load and exec OS Library
-func loadMiddlewareFunc(fileName, funcName string) (handlerFunc negroni.HandlerFunc, err error) {
+func loadMiddlewareFunc(path string, fileName, funcName string) (handlerFunc negroni.HandlerFunc, err error) {
 	// path to plugin file ex: `./libs/middlewares/hello.so`
-	libPath := filepath.Join(config.PrestConf.PluginPath, "middlewares", fmt.Sprintf("%s.so", fileName))
+	libPath := filepath.Join(path, "middlewares", fmt.Sprintf("%s.so", fileName))
 	loadedPlugin := loadedMiddlewareFunc[libPath]
 	p := loadedPlugin.Plugin
 	// plugin will be loaded only on the first call to the endpoint
@@ -56,21 +56,23 @@ example .toml config:
 file = "hello_midlleware.so"
 func = "Hello"
 */
-func MiddlewarePlugin() negroni.Handler {
-	if runtime.GOOS != "windows" {
-		// list of plugins configured to be loaded
-		pluginMiddlewareList := config.PrestConf.PluginMiddlewareList
-		for _, plugin := range pluginMiddlewareList {
-			fn, err := loadMiddlewareFunc(plugin.File, plugin.Func)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			if fn == nil {
-				continue
-			}
-			return negroni.HandlerFunc(fn)
+func MiddlewarePlugin(path string, middlewares []config.PluginMiddleware) negroni.Handler {
+	if runtime.GOOS == "windows" {
+		return negroni.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
+			next(rw, rq)
+		})
+	}
+	for _, plugin := range middlewares {
+		fn, err := loadMiddlewareFunc(path, plugin.File, plugin.Func)
+		if err != nil {
+			log.Println(err)
+			continue
 		}
+
+		if fn == nil {
+			continue
+		}
+		return negroni.HandlerFunc(fn)
 	}
 	// negroni not support nil, return empty middleware to continue request
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {

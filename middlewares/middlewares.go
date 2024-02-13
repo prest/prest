@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"time"
 
@@ -17,12 +16,17 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
+// todo: replace http.Error() with JSONError() helper function
+
+type PermsFn func(table string, op string) bool
+
 var (
 	ErrJWTParseFail = errors.New("failed JWT token parser")
 	ErrJWTValidate  = errors.New("failed JWT claims validated")
 )
 
-// HandlerSet add content type header
+// HandlerSet add content type to the header response
+// and set the response format to the requested format
 func HandlerSet() negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		format := r.URL.Query().Get("_renderer")
@@ -36,51 +40,61 @@ func HandlerSet() negroni.Handler {
 // SetTimeoutToContext adds the configured timeout in seconds to the request context
 //
 // By default it is 60 seconds, can be modified to a different value
-func SetTimeoutToContext() negroni.Handler {
+func SetTimeoutToContext(timeout int) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		next(rw, r.WithContext(context.WithValue(r.Context(), pctx.HTTPTimeoutKey, config.PrestConf.HTTPTimeout))) // nolint
+		next(rw, r.WithContext(context.WithValue(r.Context(), pctx.HTTPTimeoutKey, timeout))) // nolint
 	})
 }
 
-// AuthMiddleware handle request token validation
-func AuthMiddleware() negroni.Handler {
+// AuthMiddleware handles request token validation and user info extraction from token
+//
+// if token is valid, it will pass user_info to the next handler
+//
+// if token is invalid, it will return 401
+//
+// if token is not present, it will return 401
+//
+// if token is present but not valid, it will return 401
+func AuthMiddleware(enabled bool, key string, ignoreList []string) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		match, err := MatchURL(r.URL.String())
+		match, err := MatchURL(ignoreList, r.URL.String())
 		if err != nil {
 			http.Error(rw, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
 			return
 		}
-		if config.PrestConf.AuthEnabled && !match {
-			// extract authorization token
-			token := strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1)
-			if token == "" {
-				err := fmt.Errorf("authorization token is empty")
-				http.Error(rw, err.Error(), http.StatusUnauthorized)
-				return
-			}
-
-			tok, err := jwt.ParseSigned(token)
-			if err != nil {
-				http.Error(rw, ErrJWTParseFail.Error(), http.StatusUnauthorized)
-				return
-			}
-			claims := auth.Claims{}
-			if err := tok.Claims([]byte(config.PrestConf.JWTKey), &claims); err != nil {
-				http.Error(rw, err.Error(), http.StatusUnauthorized)
-				return
-			}
-			if err := Validate(claims); err != nil {
-				http.Error(rw, err.Error(), http.StatusUnauthorized)
-				return
-			}
-
-			// pass user_info to the next handler
-			ctx := r.Context()
-			ctx = context.WithValue(ctx, pctx.UserInfoKey, claims.UserInfo)
-			r = r.WithContext(ctx)
+		if !enabled || match {
+			next(rw, r)
+			return
 		}
 
-		// if auth isn't enabled
+		// extract authorization token
+		token := strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1)
+		if token == "" {
+			err := fmt.Errorf("authorization token is empty")
+			http.Error(rw, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		tok, err := jwt.ParseSigned(token)
+		if err != nil {
+			http.Error(rw, ErrJWTParseFail.Error(), http.StatusUnauthorized)
+			return
+		}
+		claims := auth.Claims{}
+		if err := tok.Claims([]byte(key), &claims); err != nil {
+			http.Error(rw, err.Error(), http.StatusUnauthorized)
+			return
+		}
+		if err := Validate(claims); err != nil {
+			http.Error(rw, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		// pass user_info to the next handler
+		ctx := context.WithValue(
+			r.Context(), pctx.UserInfoKey, claims.UserInfo)
+		r = r.WithContext(ctx)
+
 		next(rw, r)
 	})
 }
@@ -97,7 +111,7 @@ func Validate(c auth.Claims) error {
 }
 
 // AccessControl is a middleware to handle permissions on tables in pREST
-func AccessControl() negroni.Handler {
+func AccessControl(permFnc PermsFn) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
 		mapPath := getVars(rq.URL.Path)
 		if mapPath == nil {
@@ -111,7 +125,7 @@ func AccessControl() negroni.Handler {
 			return
 		}
 
-		if config.PrestConf.Adapter.TablePermissions(mapPath["table"], permission) {
+		if permFnc(mapPath["table"], permission) {
 			next(rw, rq)
 			return
 		}
@@ -121,10 +135,19 @@ func AccessControl() negroni.Handler {
 	})
 }
 
-// JwtMiddleware check if actual request have JWT
-func JwtMiddleware(key string, algo string) negroni.Handler {
+// JwtMiddleware check if actual request have JWT token in header Authorization
+// and validate it with JWTKey and JWTWhiteList
+//
+// if token is valid, it will pass user_info to the next handler
+//
+// if token is invalid, it will return 401
+//
+// if token is not present, it will return 401
+//
+// if token is present but not valid, it will return 401
+func JwtMiddleware(key string, ignoreList []string) negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		match, err := MatchURL(r.URL.String())
+		match, err := MatchURL(ignoreList, r.URL.String())
 		if err != nil {
 			http.Error(w, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
 			return
@@ -159,43 +182,21 @@ func JwtMiddleware(key string, algo string) negroni.Handler {
 	})
 }
 
-// Cors middleware
-//
-// Deprecated: we'll use github.com/rs/cors instead
-func Cors(origin []string, headers []string) negroni.Handler {
-	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		w.Header().Set(headerAllowOrigin, strings.Join(origin, ","))
-		w.Header().Set(headerAllowCredentials, strconv.FormatBool(true))
-		if r.Method == "OPTIONS" && r.Header.Get("Access-Control-Request-Method") != "" {
-			w.Header().Set(headerAllowMethods, strings.Join(defaultAllowMethods, ","))
-			w.Header().Set(headerAllowHeaders, strings.Join(headers, ","))
-			if allowed := checkCors(r, origin); !allowed {
-				w.WriteHeader(http.StatusForbidden)
-				return
-			}
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		next(w, r)
-	})
-}
-
-func ExposureMiddleware() negroni.Handler {
+func ExposureMiddleware(cfg *config.ExposeConf) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
 		url := rq.URL.Path
-		exposeConf := config.PrestConf.ExposeConf
 
-		if strings.HasPrefix(url, "/databases") && !exposeConf.DatabaseListing {
+		if strings.HasPrefix(url, "/databases") && !cfg.DatabaseListing {
 			http.Error(rw, "unauthorized listing", http.StatusUnauthorized)
 			return
 		}
 
-		if strings.HasPrefix(url, "/tables") && !exposeConf.TableListing {
+		if strings.HasPrefix(url, "/tables") && !cfg.TableListing {
 			http.Error(rw, "unauthorized listing", http.StatusUnauthorized)
 			return
 		}
 
-		if strings.HasPrefix(url, "/schemas") && !exposeConf.SchemaListing {
+		if strings.HasPrefix(url, "/schemas") && !cfg.SchemaListing {
 			http.Error(rw, "unauthorized listing", http.StatusUnauthorized)
 			return
 		}

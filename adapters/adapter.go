@@ -3,10 +3,17 @@ package adapters
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"net/http"
+
+	slog "github.com/structy/log"
+
+	"github.com/prest/prest/adapters/postgres"
+	"github.com/prest/prest/adapters/scanner"
+	"github.com/prest/prest/config"
 )
 
-// Adapter interface
+// Adapter interface for database operations
 type Adapter interface {
 	// GetTransaction attempts to get a transaction from the db connection
 	GetTransaction() (tx *sql.Tx, err error)
@@ -15,14 +22,27 @@ type Adapter interface {
 	//
 	// use the adapter.DBNameKey for setting
 	GetTransactionCtx(ctx context.Context) (tx *sql.Tx, err error)
+	// GetConnURI returns the connection URI
+	GetConnURI(DBName string) string
+	// GetConn returns the current used connection from the pool
+	GetConn() (*sql.DB, error)
+	// GetConnCtx(ctx context.Context) (*sql.DB, error)
+
+	// AddDatabaseToConnPool adds a connection to the pool
+	AddDatabaseToConnPool(name string, DB *sql.DB)
+	// MustGetConn returns the current used connection from the pool or panics
+	MustGetConn() *sql.DB
+	// SetCurrentConnDatabase sets the current connection database
+	SetCurrentConnDatabase(name string)
+	// GetCurrentConnDatabase returns the current connection database
+	GetCurrentConnDatabase() string
 
 	// BatchInsertValues execute batch insert sql into a table unsing params values
-	BatchInsertValues(SQL string, params ...interface{}) (sc Scanner)
-	BatchInsertValuesCtx(ctx context.Context, SQL string, params ...interface{}) (sc Scanner)
-
+	BatchInsertValues(SQL string, params ...interface{}) (sc scanner.Scanner)
+	BatchInsertValuesCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner)
 	// BatchInsertCopy executes a batch insert sql into a table unsing copy and given params
-	BatchInsertCopy(dbname, schema, table string, keys []string, params ...interface{}) (sc Scanner)
-	BatchInsertCopyCtx(ctx context.Context, dbname, schema, table string, keys []string, params ...interface{}) (sc Scanner)
+	BatchInsertCopy(dbname, schema, table string, keys []string, params ...interface{}) (sc scanner.Scanner)
+	BatchInsertCopyCtx(ctx context.Context, dbname, schema, table string, keys []string, params ...interface{}) (sc scanner.Scanner)
 
 	// CountByRequest implements COUNT(fields) OPERTATION
 	//
@@ -48,24 +68,24 @@ type Adapter interface {
 	// returns 'WHERE NOT datistemplate AND <requestWhere>' if provided
 	DatabaseWhere(requestWhere string) (whereSyntax string)
 
-	Delete(SQL string, params ...interface{}) (sc Scanner)
-	DeleteCtx(ctx context.Context, SQL string, params ...interface{}) (sc Scanner)
+	Delete(SQL string, params ...interface{}) (sc scanner.Scanner)
+	DeleteCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner)
 
-	DeleteWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc Scanner)
+	DeleteWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner)
 	DeleteSQL(database string, schema string, table string) string
 	DistinctClause(r *http.Request) (distinctQuery string, err error)
 
-	ExecuteScripts(method, sql string, values []interface{}) (sc Scanner)
-	ExecuteScriptsCtx(ctx context.Context, method, sql string, values []interface{}) (sc Scanner)
+	ExecuteScripts(method, sql string, values []interface{}) (sc scanner.Scanner)
+	ExecuteScriptsCtx(ctx context.Context, method, sql string, values []interface{}) (sc scanner.Scanner)
 
 	FieldsPermissions(r *http.Request, table string, op string) (fields []string, err error)
 	GetScript(verb, folder, scriptName string) (script string, err error)
 	GroupByClause(r *http.Request) (groupBySQL string)
 
-	Insert(SQL string, params ...interface{}) (sc Scanner)
-	InsertCtx(ctx context.Context, SQL string, params ...interface{}) (sc Scanner)
+	Insert(SQL string, params ...interface{}) (sc scanner.Scanner)
+	InsertCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner)
 
-	InsertWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc Scanner)
+	InsertWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner)
 	InsertSQL(database string, schema string, table string, names string, placeholders string) string
 	JoinByRequest(r *http.Request) (values []string, err error)
 	OrderByRequest(r *http.Request) (values string, err error)
@@ -74,10 +94,10 @@ type Adapter interface {
 	ParseInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error)
 	ParseScript(scriptPath string, templateData map[string]interface{}) (sqlQuery string, values []interface{}, err error)
 
-	Query(SQL string, params ...interface{}) (sc Scanner)
-	QueryCtx(ctx context.Context, SQL string, params ...interface{}) (sc Scanner)
-	QueryCount(SQL string, params ...interface{}) (sc Scanner)
-	QueryCountCtx(ctx context.Context, SQL string, params ...interface{}) (sc Scanner)
+	Query(SQL string, params ...interface{}) (sc scanner.Scanner)
+	QueryCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner)
+	QueryCount(SQL string, params ...interface{}) (sc scanner.Scanner)
+	QueryCountCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner)
 
 	ReturningByRequest(r *http.Request) (returningSyntax string, err error)
 	SchemaClause(req *http.Request) (query string, hasCount bool)
@@ -88,20 +108,39 @@ type Adapter interface {
 	SelectFields(fields []string) (sql string, err error)
 	SelectSQL(selectStr string, database string, schema string, table string) string
 	SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, values []interface{}, err error)
-	SetDatabase(name string)
-	GetDatabase() string
+
 	TableClause() (query string)
 	TableOrderBy(order string) (orderBy string)
 	TablePermissions(table string, op string) bool
 	TableWhere(requestWhere string) (whereSyntax string)
 
-	Update(SQL string, params ...interface{}) (sc Scanner)
-	UpdateCtx(ctx context.Context, SQL string, params ...interface{}) (sc Scanner)
+	Update(SQL string, params ...interface{}) (sc scanner.Scanner)
+	UpdateCtx(ctx context.Context, SQL string, params ...interface{}) (sc scanner.Scanner)
 
-	UpdateWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc Scanner)
+	UpdateWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc scanner.Scanner)
 	UpdateSQL(database string, schema string, table string, setSyntax string) string
 	WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []interface{}, err error)
 
-	ShowTable(schema, table string) (sc Scanner)
-	ShowTableCtx(ctx context.Context, schema, table string) (sc Scanner)
+	ShowTable(schema, table string) (sc scanner.Scanner)
+	ShowTableCtx(ctx context.Context, schema, table string) (sc scanner.Scanner)
+}
+
+var (
+	// ErrAdapterNotSupported is returned when the adapter is not supported
+	ErrAdapterNotSupported = fmt.Errorf("adapter not supported")
+)
+
+// New returns a new adapter based on the configuration file
+//
+// currently only postgres is supported
+// TODO: add support to multiple adapters
+func New(cfg *config.Prest) (Adapter, error) {
+	switch cfg.Adapter {
+	case "postgres":
+		return postgres.NewAdapter(cfg), nil
+	case "":
+		slog.Warningln("no adapter defined, using postgres")
+		return postgres.NewAdapter(cfg), nil
+	}
+	return nil, ErrAdapterNotSupported
 }

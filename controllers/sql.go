@@ -4,79 +4,83 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/mux"
+	slog "github.com/structy/log"
 
-	"github.com/prest/prest/config"
 	pctx "github.com/prest/prest/context"
 )
 
+var (
+	ErrCouldNotGetScript     = fmt.Errorf("could not get script")
+	ErrCouldNotParseScript   = fmt.Errorf("could not parse script")
+	ErrCouldNotExecuteScript = fmt.Errorf("could not execute script")
+)
+
 // ExecuteScriptQuery is a function to execute and return result of script query
-func ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]byte, error) {
-	config.PrestConf.Adapter.SetDatabase(config.PrestConf.PGDatabase)
-	sqlPath, err := config.PrestConf.Adapter.GetScript(rq.Method, queriesPath, script)
+func (c *Config) ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]byte, error) {
+	c.adapter.SetCurrentConnDatabase(c.server.PGDatabase)
+	sqlPath, err := c.adapter.GetScript(rq.Method, queriesPath, script)
 	if err != nil {
-		err = fmt.Errorf("could not get script %s/%s, %v", queriesPath, script, err)
-		return nil, err
+		slog.Errorln("could not get script", queriesPath, script, err)
+		return nil, ErrCouldNotGetScript
 	}
 
 	templateData := make(map[string]interface{})
 	extractHeaders(rq, templateData)
 	extractQueryParameters(rq, templateData)
 
-	sql, values, err := config.PrestConf.Adapter.ParseScript(sqlPath, templateData)
+	sql, values, err := c.adapter.ParseScript(sqlPath, templateData)
 	if err != nil {
-		err = fmt.Errorf("could not parse script %s/%s, %v", queriesPath, script, err)
-		return nil, err
+		slog.Errorln("could not parse script", queriesPath, script, err)
+		return nil, ErrCouldNotParseScript
 	}
 
-	sc := config.PrestConf.Adapter.ExecuteScriptsCtx(rq.Context(), rq.Method, sql, values)
+	sc := c.adapter.ExecuteScriptsCtx(rq.Context(), rq.Method, sql, values)
 	if sc.Err() != nil {
-		err = fmt.Errorf("could not execute sql, check your prest logs")
-		return nil, err
+		slog.Errorln("could not execute script", queriesPath, script, err)
+		return nil, ErrCouldNotExecuteScript
 	}
 
 	return sc.Bytes(), nil
 }
 
 // ExecuteFromScripts is a controller to peform SQL in scripts created by users
-func ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
+func (c *Config) ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	queriesPath := vars["queriesLocation"]
 	script := vars["script"]
 	database := vars["database"]
 
 	if database == "" {
-		database = config.PrestConf.Adapter.GetDatabase()
+		database = c.adapter.GetCurrentConnDatabase()
 	}
 
-	// set db name on ctx
-	ctx := context.WithValue(r.Context(), pctx.DBNameKey, database)
-
-	timeout, _ := ctx.Value(pctx.HTTPTimeoutKey).(int)
-	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
+	ctx, cancel := pctx.WithTimeout(
+		context.WithValue(r.Context(), pctx.DBNameKey, database))
 	defer cancel()
 
-	result, err := ExecuteScriptQuery(r.WithContext(ctx), queriesPath, script)
+	result, err := c.ExecuteScriptQuery(r.WithContext(ctx), queriesPath, script)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Errorln("execute script error")
+		JSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if r.Method == "GET" {
 		// Cache arrow if enabled
-		config.PrestConf.Cache.BuntSet(r.URL.String(), string(result))
+		c.cache.Set(r.URL.String(), string(result))
 	}
-	//nolint
-	w.Write(result)
+
+	slog.Debugln("execute script success")
+	JSONWrite(w, string(result), http.StatusOK)
 }
 
 // extractHeaders gets from the given request the headers and populate the provided templateData accordingly.
-func extractHeaders(rq *http.Request, templateData map[string]interface{}) {
+func extractHeaders(req *http.Request, templateData map[string]interface{}) {
 	headers := map[string]interface{}{}
 
-	for key, value := range rq.Header {
+	for key, value := range req.Header {
 		if len(value) == 1 {
 			headers[key] = value[0]
 			continue

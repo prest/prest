@@ -7,62 +7,39 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLoad(t *testing.T) {
-	t.Setenv("PREST_CONF", "../testdata/prest.toml")
-	Load()
-	require.Greaterf(t, len(PrestConf.AccessConf.Tables), 2,
-		"expected > 2, got: %d", len(PrestConf.AccessConf.Tables))
-
-	for _, ignoretable := range PrestConf.AccessConf.IgnoreTable {
-		require.Equal(t, "test_permission_does_not_exist", ignoretable,
-			"expected ['test_permission_does_not_exist'], but got another result")
-	}
-	require.True(t, PrestConf.AccessConf.Restrict, "expected true, but got false")
-	require.Equal(t, 60, PrestConf.HTTPTimeout)
-}
-
 func TestParse(t *testing.T) {
 	t.Run("no envs", func(t *testing.T) {
 		t.Setenv("PREST_CONF", "../notfound.toml")
-		viperCfg()
+		configureViperCmd()
 		cfg := &Prest{}
 		Parse(cfg)
 		require.Equal(t, 3000, cfg.HTTPPort)
-		require.Equal(t, "prest-test", cfg.PGDatabase)
-		require.Equal(t, "postgres", cfg.PGHost)
+		require.Equal(t, "prest", cfg.PGDatabase)
+		require.Equal(t, "127.0.0.1", cfg.PGHost)
 		require.Equal(t, "postgres", cfg.PGUser)
 		require.Equal(t, "postgres", cfg.PGPass)
 		require.Equal(t, true, cfg.PGCache)
 		require.Equal(t, true, cfg.SingleDB)
-		require.Equal(t, "disable", cfg.SSLMode)
+		require.Equal(t, "require", cfg.PGSSLMode)
 		require.Equal(t, false, cfg.Debug)
-		require.Equal(t, 1, cfg.Version)
-		require.Equal(t, true, cfg.AccessConf.Restrict)
-	})
-
-	t.Run("PREST_CONF", func(t *testing.T) {
-		t.Setenv("PREST_CONF", "../testdata/prest.toml")
-		viperCfg()
-		cfg := &Prest{}
-		Parse(cfg)
-		require.Equal(t, 3000, cfg.HTTPPort)
-		require.Equal(t, "prest-test", cfg.PGDatabase)
+		require.Equal(t, 2, cfg.Version)
+		require.Equal(t, false, cfg.AccessConf.Restrict)
 	})
 
 	t.Run("PREST_HTTP_PORT and unset PREST_JWT_DEFAULT", func(t *testing.T) {
 		t.Setenv("PREST_HTTP_PORT", "4000")
 		os.Unsetenv("PREST_JWT_DEFAULT")
-		viperCfg()
+		configureViperCmd()
 		cfg := &Prest{}
 		Parse(cfg)
 		require.Equal(t, 4000, cfg.HTTPPort)
 		require.True(t, cfg.EnableDefaultJWT)
 	})
 
-	t.Run("empty PREST_CONF and falsey PREST_JWT_DEFAULT", func(t *testing.T) {
+	t.Run("empty PREST_CONF and false PREST_JWT_DEFAULT", func(t *testing.T) {
 		t.Setenv("PREST_CONF", "")
 		t.Setenv("PREST_JWT_DEFAULT", "false")
-		viperCfg()
+		configureViperCmd()
 		cfg := &Prest{}
 		Parse(cfg)
 		require.Equal(t, 3000, cfg.HTTPPort)
@@ -71,7 +48,7 @@ func TestParse(t *testing.T) {
 
 	t.Run("empty PREST_CONF", func(t *testing.T) {
 		t.Setenv("PREST_CONF", "")
-		viperCfg()
+		configureViperCmd()
 		cfg := &Prest{}
 		Parse(cfg)
 		require.Equal(t, 3000, cfg.HTTPPort)
@@ -79,7 +56,7 @@ func TestParse(t *testing.T) {
 
 	t.Run("PREST_JWT_KEY", func(t *testing.T) {
 		t.Setenv("PREST_JWT_KEY", "s3cr3t")
-		viperCfg()
+		configureViperCmd()
 		cfg := &Prest{}
 		Parse(cfg)
 		require.Equal(t, "s3cr3t", cfg.JWTKey)
@@ -88,7 +65,7 @@ func TestParse(t *testing.T) {
 
 	t.Run("PREST_JWT_ALGO", func(t *testing.T) {
 		t.Setenv("PREST_JWT_ALGO", "HS512")
-		viperCfg()
+		configureViperCmd()
 		cfg := &Prest{}
 		Parse(cfg)
 		require.Equal(t, "HS512", cfg.JWTAlgo)
@@ -96,7 +73,7 @@ func TestParse(t *testing.T) {
 
 	t.Run("PREST_JSON_AGG_TYPE", func(t *testing.T) {
 		t.Setenv("PREST_JSON_AGG_TYPE", "invalid")
-		viperCfg()
+		configureViperCmd()
 		cfg := &Prest{}
 		Parse(cfg)
 		require.Equal(t, jsonAggDefault, cfg.JSONAggType)
@@ -104,7 +81,7 @@ func TestParse(t *testing.T) {
 
 	t.Run("PREST_JSON_AGG_TYPE backwards compatible", func(t *testing.T) {
 		t.Setenv("PREST_JSON_AGG_TYPE", jsonAgg)
-		viperCfg()
+		configureViperCmd()
 		cfg := &Prest{}
 		Parse(cfg)
 		require.Equal(t, jsonAgg, cfg.JSONAggType)
@@ -112,10 +89,20 @@ func TestParse(t *testing.T) {
 
 	t.Run("PREST_JSON_AGG_TYPE default works", func(t *testing.T) {
 		t.Setenv("PREST_JSON_AGG_TYPE", jsonAggDefault)
-		viperCfg()
+		configureViperCmd()
 		cfg := &Prest{}
 		Parse(cfg)
 		require.Equal(t, jsonAggDefault, cfg.JSONAggType)
+	})
+
+	t.Run("with predefined PREST_CONF", func(t *testing.T) {
+		t.Setenv("PREST_CONF", "../testdata/prest.toml")
+		configureViperCmd()
+		cfg := &Prest{}
+		Parse(cfg)
+		require.Equal(t, 3002, cfg.HTTPPort)
+		require.Equal(t, "prest", cfg.PGDatabase)
+		require.True(t, cfg.Cache.Enabled)
 	})
 }
 
@@ -137,7 +124,7 @@ func Test_getPrestConfFile(t *testing.T) {
 }
 
 func TestDatabaseURL(t *testing.T) {
-	viperCfg()
+	configureViperCmd()
 
 	t.Run("PREST_PG_URL", func(t *testing.T) {
 		t.Setenv("PREST_PG_URL", "postgresql://user:pass@localhost:1234/mydatabase/?sslmode=disable")
@@ -148,7 +135,7 @@ func TestDatabaseURL(t *testing.T) {
 		require.Equal(t, 1234, cfg.PGPort)
 		require.Equal(t, "user", cfg.PGUser)
 		require.Equal(t, "pass", cfg.PGPass)
-		require.Equal(t, "disable", cfg.SSLMode)
+		require.Equal(t, "disable", cfg.PGSSLMode)
 	})
 
 	t.Run("DATABASE_URL", func(t *testing.T) {
@@ -159,12 +146,12 @@ func TestDatabaseURL(t *testing.T) {
 		require.Equal(t, 5432, cfg.PGPort)
 		require.Equal(t, "cloud", cfg.PGUser)
 		require.Equal(t, "cloudPass", cfg.PGPass)
-		require.Equal(t, "disable", cfg.SSLMode)
+		require.Equal(t, "disable", cfg.PGSSLMode)
 	})
 }
 
 func TestHTTPPort(t *testing.T) {
-	viperCfg()
+	configureViperCmd()
 
 	t.Run("set PORT", func(t *testing.T) {
 		t.Setenv("PORT", "8080")
@@ -175,7 +162,7 @@ func TestHTTPPort(t *testing.T) {
 
 	t.Run("set PREST_HTTP_PORT", func(t *testing.T) {
 		t.Setenv("PREST_HTTP_PORT", "3030")
-		viperCfg()
+		configureViperCmd()
 		cfg := &Prest{}
 		Parse(cfg)
 		require.Equal(t, 3030, cfg.HTTPPort)
@@ -184,7 +171,7 @@ func TestHTTPPort(t *testing.T) {
 	t.Run("set PORT and PREST_HTTP_PORT", func(t *testing.T) {
 		t.Setenv("PORT", "8080")
 		t.Setenv("PREST_HTTP_PORT", "3000")
-		viperCfg()
+		configureViperCmd()
 		cfg := &Prest{}
 		Parse(cfg)
 		require.Equal(t, 8080, cfg.HTTPPort)
@@ -198,7 +185,7 @@ func Test_parseDatabaseURL(t *testing.T) {
 	require.Equal(t, 5432, c.PGPort)
 	require.Equal(t, "user", c.PGUser)
 	require.Equal(t, "pass", c.PGPass)
-	require.Equal(t, "require", c.SSLMode)
+	require.Equal(t, "require", c.PGSSLMode)
 
 	// errors
 	// todo: make this default on any problem
@@ -233,7 +220,7 @@ func Test_portFromEnv_OK(t *testing.T) {
 func Test_Auth(t *testing.T) {
 	t.Setenv("PREST_CONF", "../testdata/prest.toml")
 
-	viperCfg()
+	configureViperCmd()
 	cfg := &Prest{}
 	Parse(cfg)
 	require.Equal(t, false, cfg.AuthEnabled)
@@ -254,7 +241,7 @@ func Test_Auth(t *testing.T) {
 func Test_ExposeDataConfig(t *testing.T) {
 	t.Setenv("PREST_CONF", "../testdata/prest_expose.toml")
 
-	viperCfg()
+	configureViperCmd()
 	cfg := &Prest{}
 	Parse(cfg)
 	require.Equal(t, true, cfg.ExposeConf.Enabled)

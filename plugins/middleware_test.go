@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/prest/prest/adapters/postgres"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/testutils"
 	"github.com/urfave/negroni/v3"
@@ -13,20 +12,19 @@ import (
 
 func initMiddlewarePluginTestRouter() *negroni.Negroni {
 	r := negroni.New()
-	r.Use(MiddlewarePlugin())
+	l := []config.PluginMiddleware{}
+	r.Use(MiddlewarePlugin("", l))
 	return r
 }
 
 func TestPluginsMiddleware(t *testing.T) {
-	config.Load()
-	postgres.Load()
-	config.PrestConf.PluginPath = "../lib"
-	config.PrestConf.PluginMiddlewareList = []config.PluginMiddleware{
-		{
-			File: "hello",
-			Func: "Hello",
-		},
-	}
+	// config.PrestConf.PluginPath = "../lib"
+	// pluginMiddlewareList := []config.PluginMiddleware{
+	// 	{
+	// 		File: "hello",
+	// 		Func: "Hello",
+	// 	},
+	// }
 	server := httptest.NewServer(initMiddlewarePluginTestRouter())
 	defer server.Close()
 

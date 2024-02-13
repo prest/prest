@@ -1,22 +1,25 @@
-package cache
+package bunt
 
 import (
 	"testing"
 
+	cf "github.com/prest/prest/config"
 	"github.com/stretchr/testify/require"
 )
 
 var (
-	cfg = &Config{
-		Enabled:     true,
-		Time:        10,
-		Endpoints:   []Endpoint{},
-		StoragePath: "./",
+	cfg = &config{
+		prestcfg: cf.CacheConf{
+			Enabled:     true,
+			Time:        10,
+			Endpoints:   []cf.Endpoint{},
+			StoragePath: "./",
+		},
 	}
 )
 
 func TestEndpointRulesEnable(t *testing.T) {
-	cfg.Endpoints = append(cfg.Endpoints, Endpoint{
+	cfg.prestcfg.Endpoints = append(cfg.prestcfg.Endpoints, cf.Endpoint{
 		Time:     5,
 		Endpoint: "/prest/public/test",
 		Enabled:  true,
@@ -28,7 +31,7 @@ func TestEndpointRulesEnable(t *testing.T) {
 }
 
 func TestEndpointRulesNotExist(t *testing.T) {
-	cfg.Endpoints = append(cfg.Endpoints, Endpoint{
+	cfg.prestcfg.Endpoints = append(cfg.prestcfg.Endpoints, cf.Endpoint{
 		Time:     5,
 		Endpoint: "/prest/public/something",
 		Enabled:  true,
@@ -46,7 +49,7 @@ func TestEndpointRulesNotExistWithoutEndpoints(t *testing.T) {
 }
 
 func TestEndpointRulesDisable(t *testing.T) {
-	cfg.Endpoints = append(cfg.Endpoints, Endpoint{
+	cfg.prestcfg.Endpoints = append(cfg.prestcfg.Endpoints, cf.Endpoint{
 		Endpoint: "/prest/public/test-disable",
 		Enabled:  false,
 	})

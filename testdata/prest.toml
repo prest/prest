@@ -5,7 +5,7 @@ password = "password"
 metadata = ["first_name", "last_name", "last_login"]
 
 [http]
-port = 3000
+port = 3002
 
 [cache]
 enabled = true

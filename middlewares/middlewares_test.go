@@ -14,14 +14,13 @@ import (
 )
 
 func TestJWTClaimsOk(t *testing.T) {
-	app = nil
-	MiddlewareStack = nil
-	t.Setenv("PREST_JWT_DEFAULT", "true")
-	t.Setenv("PREST_DEBUG", "false")
-	t.Setenv("PREST_JWT_KEY", "s3cr3t")
-	t.Setenv("PREST_JWT_ALGO", "HS512")
-	config.Load()
-	nd := appTestWithJwt()
+	cfg := &config.Prest{
+		EnableDefaultJWT: true,
+		Debug:            false,
+		JWTKey:           "s3cr3t",
+		JWTAlgo:          "HS512",
+	}
+	nd := appTestWithJwt(cfg)
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
 
@@ -35,7 +34,7 @@ func TestJWTClaimsOk(t *testing.T) {
 	sig, err := jose.NewSigner(
 		jose.SigningKey{
 			Algorithm: jose.HS256,
-			Key:       []byte(config.PrestConf.JWTKey)},
+			Key:       []byte(cfg.JWTKey)},
 		(&jose.SignerOptions{}).WithType("JWT"))
 	require.NoError(t, err)
 
@@ -54,13 +53,13 @@ func TestJWTClaimsOk(t *testing.T) {
 }
 
 func TestJWTClaimsNotOk(t *testing.T) {
-	app = nil
-	t.Setenv("PREST_JWT_DEFAULT", "true")
-	t.Setenv("PREST_DEBUG", "false")
-	t.Setenv("PREST_JWT_KEY", "s3cr3t")
-	t.Setenv("PREST_JWT_ALGO", "HS256")
-	config.Load()
-	nd := appTestWithJwt()
+	cfg := &config.Prest{
+		EnableDefaultJWT: true,
+		Debug:            false,
+		JWTKey:           "s3cr3t",
+		JWTAlgo:          "HS512",
+	}
+	nd := appTestWithJwt(cfg)
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
 
@@ -74,7 +73,7 @@ func TestJWTClaimsNotOk(t *testing.T) {
 	sig, err := jose.NewSigner(
 		jose.SigningKey{
 			Algorithm: jose.HS256,
-			Key:       []byte(config.PrestConf.JWTKey)},
+			Key:       []byte(cfg.JWTKey)},
 		(&jose.SignerOptions{}).WithType("JWT"))
 	require.NoError(t, err)
 
@@ -125,4 +124,31 @@ func TestValidate(t *testing.T) {
 			}
 		})
 	}
+}
+func Test_AccessControl(t *testing.T) {
+	permFnc := func(table, permission string) bool {
+		// TODO: Implement your permission function logic here
+		return true
+	}
+
+	handler := AccessControl(permFnc)
+
+	// Create a mock HTTP request and response
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	res := httptest.NewRecorder()
+
+	// Create a mock HTTP handler function
+	handlerFunc := http.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request) {
+		rw.WriteHeader(http.StatusOK)
+	})
+
+	// Call the AccessControl handler with the mock request, response, and handler function
+	handler.ServeHTTP(res, req, handlerFunc)
+
+	// Assert that the response status code is http.StatusOK
+	if res.Code != http.StatusOK {
+		t.Errorf("Expected status code %d, but got %d", http.StatusOK, res.Code)
+	}
+
+	// TODO: Add more test cases for different scenarios
 }
