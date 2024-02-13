@@ -23,6 +23,7 @@ var (
 			JWTWhiteList: []string{"/auth"},
 			ExposeConf:   config.ExposeConf{Enabled: true},
 			PluginPath:   "/path/to/plugins",
+			Cache:        config.CacheConf{Enabled: false},
 		},
 		router: mux.NewRouter().StrictSlash(true),
 		cache:  nil, // provide cache implementation if needed
@@ -65,6 +66,37 @@ func Test_ConfigRoutes_auth(t *testing.T) {
 	resp, err := http.Post(testSrv.URL+"/auth", "application/json", nil)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func Test_ConfigRoutes_auth_notFound(t *testing.T) {
+	t.Parallel()
+
+	r := cfg
+	ctrl := gomock.NewController(t)
+	srv := srvMock.NewMockServer(ctrl)
+
+	srv.EXPECT().WrappedHealthCheck(gomock.Any()).AnyTimes().Do(
+		func(check interface{}) {})
+
+	ma := adptMock.NewMockAdapter(ctrl)
+
+	srv.EXPECT().GetAdapter().AnyTimes().Return(ma)
+
+	srv.EXPECT().Auth(gomock.Any(), gomock.Any()).AnyTimes().Do(
+		func(w, r interface{}) {})
+
+	err := r.ConfigRoutes(srv)
+	require.NoError(t, err)
+
+	nr := negroni.New()
+	nr.UseHandler(r.router)
+
+	testSrv := httptest.NewServer(nr)
+	defer testSrv.Close()
+
+	resp, err := http.Get(testSrv.URL + "/auth")
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
 
 func Test_ConfigRoutes_databases(t *testing.T) {
