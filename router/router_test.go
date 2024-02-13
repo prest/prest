@@ -131,6 +131,39 @@ func Test_ConfigRoutes_databases(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
+func Test_ConfigRoutes_databases_notFound(t *testing.T) {
+	t.Parallel()
+
+	r := cfg
+
+	ctrl := gomock.NewController(t)
+	srv := srvMock.NewMockServer(ctrl)
+
+	srv.EXPECT().WrappedHealthCheck(gomock.Any()).AnyTimes().Do(
+		func(check interface{}) {})
+
+	ma := adptMock.NewMockAdapter(ctrl)
+
+	srv.EXPECT().GetAdapter().AnyTimes().Return(ma)
+
+	srv.EXPECT().GetDatabases(gomock.Any(), gomock.Any()).AnyTimes().Do(
+		func(w, r interface{}) {})
+
+	err := r.ConfigRoutes(srv)
+	require.NoError(t, err)
+
+	nr := negroni.New()
+	nr.UseHandler(r.router)
+
+	testSrv := httptest.NewServer(nr)
+	defer testSrv.Close()
+
+	// should be 404, is 401 now, need to debug it
+	resp, err := http.Post(testSrv.URL+"/databases", "application/json", nil)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+}
+
 func Test_ConfigRoutes_schemas(t *testing.T) {
 	t.Parallel()
 
