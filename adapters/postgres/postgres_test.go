@@ -503,7 +503,7 @@ func TestInsert(t *testing.T) {
 	}{
 		{"Insert data into a table with one field", `INSERT INTO "prest-test"."public"."test4"("name") VALUES($1)`, []interface{}{"prest-test-insert"}},
 		{"Insert data into a table with more than one field", `INSERT INTO "prest-test"."public"."test5"("name", "celphone") VALUES($1, $2)`, []interface{}{"prest-test-insert", "88888888"}},
-		{"Insert data into a table with more than one field and with quotes case sensitive", `INSERT INTO "prest-test"."public"."Reply"("name") VALUES($1)`, []interface{}{"prest-test-insert"}},
+		{"Insert data into a table with more than one field and with quotes case sensitive", `INSERT INTO "prest-test"."public"."TestCase"("name") VALUES($1)`, []interface{}{"prest-test-insert"}},
 	}
 
 	for _, tc := range testCases {
@@ -526,7 +526,7 @@ func TestInsertCtx(t *testing.T) {
 	}{
 		{"Insert data into a table with one field", `INSERT INTO "%s"."public"."test4"("name") VALUES($1)`, []interface{}{"prest-test-insert-ctx"}},
 		{"Insert data into a table with more than one field", `INSERT INTO "%s"."public"."test5"("name", "celphone") VALUES($1, $2)`, []interface{}{"prest-test-insert-ctx", "88888888"}},
-		{"Insert data into a table with more than one field and with quotes case sensitive", `INSERT INTO "%s"."public"."Reply"("name") VALUES($1)`, []interface{}{"prest-test-insert-ctx"}},
+		{"Insert data into a table with more than one field and with quotes case sensitive", `INSERT INTO "%s"."public"."TestCase"("name") VALUES($1)`, []interface{}{"prest-test-insert-ctx"}},
 	}
 
 	for _, db := range databases {
@@ -1223,22 +1223,22 @@ func TestNormalizeGroupFunction(t *testing.T) {
 }
 
 func TestCacheQuery(t *testing.T) {
-	sc := config.PrestConf.Adapter.Query(`SELECT * FROM "Reply"`)
+	sc := config.PrestConf.Adapter.Query(`SELECT * FROM "TestCase"`)
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
-	sc = config.PrestConf.Adapter.Query(`SELECT * FROM "Reply"`)
+	sc = config.PrestConf.Adapter.Query(`SELECT * FROM "TestCase"`)
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
 }
 
 func TestCacheQueryCount(t *testing.T) {
-	sc := config.PrestConf.Adapter.QueryCount(`SELECT COUNT(*) FROM "Reply"`)
+	sc := config.PrestConf.Adapter.QueryCount(`SELECT COUNT(*) FROM "TestCase"`)
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
-	sc = config.PrestConf.Adapter.QueryCount(`SELECT COUNT(*) FROM "Reply"`)
+	sc = config.PrestConf.Adapter.QueryCount(`SELECT COUNT(*) FROM "TestCase"`)
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
@@ -1249,11 +1249,11 @@ func TestCacheQueryCountCtx(t *testing.T) {
 		ctx := context.WithValue(context.Background(), pctx.DBNameKey, db)
 
 		t.Log(fmt.Sprintf("(DB: %s) Cached query count", db))
-		sc := config.PrestConf.Adapter.QueryCountCtx(ctx, `SELECT COUNT(*) FROM "Reply"`)
+		sc := config.PrestConf.Adapter.QueryCountCtx(ctx, `SELECT COUNT(*) FROM "TestCase"`)
 		if err := sc.Err(); err != nil {
 			t.Errorf("expected no errors, but got %v", err)
 		}
-		sc = config.PrestConf.Adapter.QueryCountCtx(ctx, `SELECT COUNT(*) FROM "Reply"`)
+		sc = config.PrestConf.Adapter.QueryCountCtx(ctx, `SELECT COUNT(*) FROM "TestCase"`)
 		if err := sc.Err(); err != nil {
 			t.Errorf("expected no errors, but got %v", err)
 		}
@@ -1296,7 +1296,7 @@ func TestCacheDelete(t *testing.T) {
 func BenchmarkPrepare(b *testing.B) {
 	db := connection.MustGet()
 	for index := 0; index < b.N; index++ {
-		_, err := Prepare(db, `SELECT * FROM "Reply"`)
+		_, err := Prepare(db, `SELECT * FROM "TestCase"`)
 		if err != nil {
 			b.Fail()
 		}
@@ -1308,11 +1308,11 @@ func TestDisableCache(t *testing.T) {
 	config.Load()
 	Load()
 	ClearStmt()
-	sc := config.PrestConf.Adapter.Query(`SELECT * FROM "Reply"`)
+	sc := config.PrestConf.Adapter.Query(`SELECT * FROM "TestCase"`)
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
-	_, ok := stmts.PrepareMap[`SELECT jsonb_agg(s) FROM (SELECT * FROM "Reply") s`]
+	_, ok := stmts.PrepareMap[`SELECT jsonb_agg(s) FROM (SELECT * FROM "TestCase") s`]
 	if ok {
 		t.Error("has query in cache")
 	}
@@ -1387,7 +1387,7 @@ func TestBatchInsertValues(t *testing.T) {
 			[]interface{}{"2prest-test-batch-insert", "88888888", "2batch-prest-test-insert", "98888888"},
 		}, {
 			"Insert data into a table with more than one field and with quotes case sensitive",
-			`INSERT INTO "prest-test"."public"."Reply"("name") VALUES($1),($2)`,
+			`INSERT INTO "prest-test"."public"."TestCase"("name") VALUES($1),($2)`,
 			[]interface{}{"3prest-test-batch-insert", "3batch-prest-test-insert"},
 		},
 	}
@@ -1421,7 +1421,7 @@ func TestBatchInsertValuesCtx(t *testing.T) {
 			[]interface{}{"2prest-test-batch-insert", "88888888", "2batch-prest-test-insert", "98888888"},
 		}, {
 			"Insert data into a table with more than one field and with quotes case sensitive",
-			`INSERT INTO "%s"."public"."Reply"("name") VALUES($1),($2)`,
+			`INSERT INTO "%s"."public"."TestCase"("name") VALUES($1),($2)`,
 			[]interface{}{"3prest-test-batch-insert-ctx", "3batch-prest-test-insert-ctx"},
 		},
 	}
@@ -1463,7 +1463,7 @@ func TestPostgres_BatchInsertCopyCtx(t *testing.T) {
 			"batch copy",
 			args{
 				"public",
-				"Reply",
+				"TestCase",
 				[]string{`"name"`},
 				[]interface{}{"copy-ctx"},
 			},
@@ -1473,7 +1473,7 @@ func TestPostgres_BatchInsertCopyCtx(t *testing.T) {
 			"batch copy without quotes",
 			args{
 				"public",
-				"Reply",
+				"TestCase",
 				[]string{"name"},
 				[]interface{}{"copy-ctx"},
 			},
@@ -1483,7 +1483,7 @@ func TestPostgres_BatchInsertCopyCtx(t *testing.T) {
 			"batch copy with err",
 			args{
 				"public",
-				"Reply",
+				"TestCase",
 				[]string{"na"},
 				[]interface{}{"copy-ctx"},
 			},
@@ -1527,7 +1527,7 @@ func TestPostgres_BatchInsertCopy(t *testing.T) {
 			args{
 				"prest-test",
 				"public",
-				"Reply",
+				"TestCase",
 				[]string{`"name"`},
 				[]interface{}{"copy"},
 			},
@@ -1538,7 +1538,7 @@ func TestPostgres_BatchInsertCopy(t *testing.T) {
 			args{
 				"prest-test",
 				"public",
-				"Reply",
+				"TestCase",
 				[]string{"name"},
 				[]interface{}{"copy"},
 			},
@@ -1549,7 +1549,7 @@ func TestPostgres_BatchInsertCopy(t *testing.T) {
 			args{
 				"prest-test",
 				"public",
-				"Reply",
+				"TestCase",
 				[]string{"na"},
 				[]interface{}{"copy"},
 			},
