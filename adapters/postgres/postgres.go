@@ -1695,7 +1695,11 @@ func (adapter *Postgres) GetDatabase() string {
 func getDBFromCtx(ctx context.Context) (db *sqlx.DB, err error) {
 	dbName, ok := ctx.Value(pctx.DBNameKey).(string)
 	if ok {
-		return connection.GetFromPool(dbName)
+		DB, err := connection.GetFromPool(dbName)
+		if err == nil {
+			return DB, err
+		}
+		return connection.AddDatabaseToPool(dbName)
 	}
 	return connection.Get()
 }

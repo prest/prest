@@ -1,8 +1,12 @@
-echo "\n\n.:: POSTGRES: DROP/CREATE DATABASE"
-psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -c "DROP DATABASE IF EXISTS \"$PREST_PG_DATABASE\";"
-psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -c "CREATE DATABASE \"$PREST_PG_DATABASE\";"
-echo "\n\n.:: POSTGRES: LOAD DATA SCHEMA"
-psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -d $PREST_PG_DATABASE -f ./testdata/schema.sql
+DATABASES="$PREST_PG_DATABASE secondary-db"
+
+for db in $DATABASES; do
+    echo "\n\n.:: POSTGRES: DROP/CREATE DATABASE $db"
+    psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -c "DROP DATABASE IF EXISTS \"$db\";"
+    psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -c "CREATE DATABASE \"$db\";"
+    echo "\n\n.:: POSTGRES: LOAD DATA SCHEMA"
+    psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -d $db -f ./testdata/schema.sql
+done
 
 echo "\n\n.:: GOLANG: DOWNLOAD MODULES"
 go mod download
@@ -15,10 +19,12 @@ go run ./cmd/prestd/main.go migrate up
 
 echo "\n\n.:: PRESTD: TESTING STARTING..."
 if [ -z ${1+x} ]; then
-    go test -v -race -covermode=atomic -coverprofile=coverage.out ./...;
+    go test -v -race -failfast -covermode=atomic -coverprofile=coverage.out ./...;
 else
-    go test -v -race -covermode=atomic -coverprofile=coverage.out $@
+    go test -v -race -failfast -covermode=atomic -coverprofile=coverage.out $@
 fi
 
-echo "\n\n.:: POSTGRES: DROP DATABASES"
-psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -c "DROP DATABASE IF EXISTS \"$PREST_PG_DATABASE\";"
+for db in $DATABASES; do
+    echo "\n\n.:: POSTGRES: DROP DATABASE $db"
+    psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -c "DROP DATABASE IF EXISTS \"$db\";"
+done

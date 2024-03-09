@@ -17,9 +17,12 @@ import (
 	"github.com/prest/prest/adapters/postgres/statements"
 	"github.com/prest/prest/adapters/scanner"
 	"github.com/prest/prest/config"
+	pctx "github.com/prest/prest/context"
 	"github.com/stretchr/testify/require"
 	"github.com/structy/log"
 )
+
+var databases = []string {"prest-test", "secondary-db"}
 
 func init() {
 	config.Load()
@@ -379,34 +382,35 @@ func TestQuery(t *testing.T) {
 func TestQueryCtx(t *testing.T) {
 	var sc adapters.Scanner
 
-	ctx := context.Background()
-
-	var testCases = []struct {
-		description string
-		sql         string
-		param       bool
-		jsonMinLen  int
-		err         error
-	}{
-		{"Query execution", "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name ASC", false, 1, nil},
-		{"Query execution 2", `SELECT number FROM "prest-test"."public"."test2" ORDER BY number ASC`, false, 1, nil},
-		{"Query execution with quotes", `SELECT "number" FROM "prest-test"."public"."test2" ORDER BY "number" ASC`, false, 1, nil},
-		{"Query execution with params", "SELECT schema_name FROM information_schema.schemata WHERE schema_name = $1 ORDER BY schema_name ASC", true, 1, nil},
-	}
-
-	for _, tc := range testCases {
-		t.Log(tc.description)
-		if tc.param {
-			sc = config.PrestConf.Adapter.QueryCtx(ctx, tc.sql, "public")
-		} else {
-			sc = config.PrestConf.Adapter.QueryCtx(ctx, tc.sql)
-		}
-		if sc.Err() != tc.err {
-			t.Errorf("expected no errors, but got %s", sc.Err())
+	for _, db := range databases {
+		ctx := context.WithValue(context.Background(), pctx.DBNameKey, db)
+		var testCases = []struct {
+			description string
+			sql         string
+			param       bool
+			jsonMinLen  int
+			err         error
+		}{
+			{"Query execution", "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name ASC", false, 1, nil},
+			{"Query execution 2", fmt.Sprintf(`SELECT number FROM "%s"."public"."test2" ORDER BY number ASC`, db), false, 1, nil},
+			{"Query execution with quotes", fmt.Sprintf(`SELECT "number" FROM "%s"."public"."test2" ORDER BY "number" ASC`, db), false, 1, nil},
+			{"Query execution with params", "SELECT schema_name FROM information_schema.schemata WHERE schema_name = $1 ORDER BY schema_name ASC", true, 1, nil},
 		}
 
-		if len(sc.Bytes()) < tc.jsonMinLen {
-			t.Errorf("expected valid json response, but got %v", string(sc.Bytes()))
+		for _, tc := range testCases {
+			t.Log(fmt.Sprintf("(DB: %s) %s", db, tc.description))
+			if tc.param {
+				sc = config.PrestConf.Adapter.QueryCtx(ctx, tc.sql, "public")
+			} else {
+				sc = config.PrestConf.Adapter.QueryCtx(ctx, tc.sql)
+			}
+			if sc.Err() != tc.err {
+				t.Errorf("expected no errors, but got %s", sc.Err())
+			}
+
+			if len(sc.Bytes()) < tc.jsonMinLen {
+				t.Errorf("expected valid json response, but got %v", string(sc.Bytes()))
+			}
 		}
 	}
 }
@@ -515,26 +519,28 @@ func TestInsert(t *testing.T) {
 }
 
 func TestInsertCtx(t *testing.T) {
-	ctx := context.Background()
-
 	var testCases = []struct {
 		description string
 		sql         string
 		values      []interface{}
 	}{
-		{"Insert data into a table with one field", `INSERT INTO "prest-test"."public"."test4"("name") VALUES($1)`, []interface{}{"prest-test-insert-ctx"}},
-		{"Insert data into a table with more than one field", `INSERT INTO "prest-test"."public"."test5"("name", "celphone") VALUES($1, $2)`, []interface{}{"prest-test-insert-ctx", "88888888"}},
-		{"Insert data into a table with more than one field and with quotes case sensitive", `INSERT INTO "prest-test"."public"."Reply"("name") VALUES($1)`, []interface{}{"prest-test-insert-ctx"}},
+		{"Insert data into a table with one field", `INSERT INTO "%s"."public"."test4"("name") VALUES($1)`, []interface{}{"prest-test-insert-ctx"}},
+		{"Insert data into a table with more than one field", `INSERT INTO "%s"."public"."test5"("name", "celphone") VALUES($1, $2)`, []interface{}{"prest-test-insert-ctx", "88888888"}},
+		{"Insert data into a table with more than one field and with quotes case sensitive", `INSERT INTO "%s"."public"."Reply"("name") VALUES($1)`, []interface{}{"prest-test-insert-ctx"}},
 	}
 
-	for _, tc := range testCases {
-		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.InsertCtx(ctx, tc.sql, tc.values...)
-		if sc.Err() != nil {
-			t.Errorf("expected no errors, but got %s", sc.Err())
-		}
-		if len(sc.Bytes()) < 1 {
-			t.Errorf("expected valid response body, but got %s", string(sc.Bytes()))
+	for _, db := range databases {
+		ctx := context.WithValue(context.Background(), pctx.DBNameKey, db)
+
+		for _, tc := range testCases {
+			t.Log(fmt.Sprintf("(DB: %s) %s", db, tc.description))
+			sc := config.PrestConf.Adapter.InsertCtx(ctx, fmt.Sprintf(tc.sql, db), tc.values...)
+			if sc.Err() != nil {
+				t.Errorf("expected no errors, but got %s", sc.Err())
+			}
+			if len(sc.Bytes()) < 1 {
+				t.Errorf("expected valid response body, but got %s", string(sc.Bytes()))
+			}
 		}
 	}
 }
@@ -1239,14 +1245,18 @@ func TestCacheQueryCount(t *testing.T) {
 }
 
 func TestCacheQueryCountCtx(t *testing.T) {
-	ctx := context.Background()
-	sc := config.PrestConf.Adapter.QueryCountCtx(ctx, `SELECT COUNT(*) FROM "Reply"`)
-	if err := sc.Err(); err != nil {
-		t.Errorf("expected no errors, but got %v", err)
-	}
-	sc = config.PrestConf.Adapter.QueryCountCtx(ctx, `SELECT COUNT(*) FROM "Reply"`)
-	if err := sc.Err(); err != nil {
-		t.Errorf("expected no errors, but got %v", err)
+	for _, db := range databases {
+		ctx := context.WithValue(context.Background(), pctx.DBNameKey, db)
+
+		t.Log(fmt.Sprintf("(DB: %s) Cached query count", db))
+		sc := config.PrestConf.Adapter.QueryCountCtx(ctx, `SELECT COUNT(*) FROM "Reply"`)
+		if err := sc.Err(); err != nil {
+			t.Errorf("expected no errors, but got %v", err)
+		}
+		sc = config.PrestConf.Adapter.QueryCountCtx(ctx, `SELECT COUNT(*) FROM "Reply"`)
+		if err := sc.Err(); err != nil {
+			t.Errorf("expected no errors, but got %v", err)
+		}
 	}
 }
 
@@ -1396,9 +1406,6 @@ func TestBatchInsertValues(t *testing.T) {
 }
 
 func TestBatchInsertValuesCtx(t *testing.T) {
-	ctx := context.Background()
-	config.Load()
-	Load()
 	var testCases = []struct {
 		description string
 		sql         string
@@ -1406,39 +1413,42 @@ func TestBatchInsertValuesCtx(t *testing.T) {
 	}{
 		{
 			"Insert data into a table with one field",
-			`INSERT INTO "prest-test"."public"."test4"("name") VALUES($1),($2)`,
+			`INSERT INTO "%s"."public"."test4"("name") VALUES($1),($2)`,
 			[]interface{}{"1prest-test-batch-insert-ctx", "1batch-prest-test-insert-ctx"},
 		}, {
 			"Insert data into a table with more than one field",
-			`INSERT INTO "prest-test"."public"."test5"("name", "celphone") VALUES($1, $2),($3, $4)`,
+			`INSERT INTO "%s"."public"."test5"("name", "celphone") VALUES($1, $2),($3, $4)`,
 			[]interface{}{"2prest-test-batch-insert", "88888888", "2batch-prest-test-insert", "98888888"},
 		}, {
 			"Insert data into a table with more than one field and with quotes case sensitive",
-			`INSERT INTO "prest-test"."public"."Reply"("name") VALUES($1),($2)`,
+			`INSERT INTO "%s"."public"."Reply"("name") VALUES($1),($2)`,
 			[]interface{}{"3prest-test-batch-insert-ctx", "3batch-prest-test-insert-ctx"},
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.BatchInsertValuesCtx(ctx, tc.sql, tc.records...)
-		if sc.Err() != nil {
-			t.Errorf("expected no errors, but got %s", sc.Err())
-		}
+	for _, db := range databases {
+		ctx := context.WithValue(context.Background(), pctx.DBNameKey, db)
 
-		if len(sc.Bytes()) < 2 {
-			t.Errorf("expected valid response body, but got %s", string(sc.Bytes()))
+		config.Load()
+		Load()
+
+		for _, tc := range testCases {
+			t.Log(fmt.Sprintf("(DB: %s) %s", db, tc.description))
+			sc := config.PrestConf.Adapter.BatchInsertValuesCtx(ctx, fmt.Sprintf(tc.sql, db), tc.records...)
+			if sc.Err() != nil {
+				t.Errorf("expected no errors, but got %s", sc.Err())
+			}
+
+			if len(sc.Bytes()) < 2 {
+				t.Errorf("expected valid response body, but got %s", string(sc.Bytes()))
+			}
 		}
 	}
 }
 
 func TestPostgres_BatchInsertCopyCtx(t *testing.T) {
-	ctx := context.Background()
 
-	config.Load()
-	Load()
 	type args struct {
-		dbname string
 		schema string
 		table  string
 		keys   []string
@@ -1452,7 +1462,6 @@ func TestPostgres_BatchInsertCopyCtx(t *testing.T) {
 		{
 			"batch copy",
 			args{
-				"prest-test",
 				"public",
 				"Reply",
 				[]string{`"name"`},
@@ -1463,7 +1472,6 @@ func TestPostgres_BatchInsertCopyCtx(t *testing.T) {
 		{
 			"batch copy without quotes",
 			args{
-				"prest-test",
 				"public",
 				"Reply",
 				[]string{"name"},
@@ -1474,7 +1482,6 @@ func TestPostgres_BatchInsertCopyCtx(t *testing.T) {
 		{
 			"batch copy with err",
 			args{
-				"prest-test",
 				"public",
 				"Reply",
 				[]string{"na"},
@@ -1483,13 +1490,20 @@ func TestPostgres_BatchInsertCopyCtx(t *testing.T) {
 			true,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotSc := config.PrestConf.Adapter.BatchInsertCopyCtx(ctx, tt.args.dbname, tt.args.schema, tt.args.table, tt.args.keys, tt.args.values...)
-			if (gotSc.Err() != nil) != tt.wantErr {
-				t.Errorf("Postgres.BatchInsertCopy() = %v, want %v", gotSc.Err(), tt.wantErr)
-			}
-		})
+
+	for _, db := range databases {
+		ctx := context.WithValue(context.Background(), pctx.DBNameKey, db)
+
+		config.Load()
+		Load()
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				gotSc := config.PrestConf.Adapter.BatchInsertCopyCtx(ctx, db, tt.args.schema, tt.args.table, tt.args.keys, tt.args.values...)
+				if (gotSc.Err() != nil) != tt.wantErr {
+					t.Errorf("Postgres.BatchInsertCopy() = %v, want %v", gotSc.Err(), tt.wantErr)
+				}
+			})
+		}
 	}
 }
 
@@ -1974,12 +1988,15 @@ func Test_ShowTable(t *testing.T) {
 
 func Test_ShowTableCtx(t *testing.T) {
 	pg := Postgres{}
+	for _, db := range databases {
+		ctx := context.WithValue(context.Background(), pctx.DBNameKey, db)
 
-	sc := pg.ShowTableCtx(context.Background(), "testschema", "testtable")
+		sc := pg.ShowTableCtx(ctx, "testschema", "testtable")
 
-	scMock := newScannerMock(t)
-	if !reflect.DeepEqual(sc, scMock) {
-		t.Errorf("Should return a adpter Scanner with this structure: {[] <nil> true}; but got: %v", sc)
+		scMock := newScannerMock(t)
+		if !reflect.DeepEqual(sc, scMock) {
+			t.Errorf("Should return a adpter Scanner with this structure: {[] <nil> true}; but got: %v", sc)
+		}
 	}
 }
 
