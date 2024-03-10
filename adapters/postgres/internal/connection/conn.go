@@ -13,7 +13,6 @@ import (
 )
 
 var (
-	err          error
 	pool         *Pool
 	currDatabase string
 )
@@ -55,13 +54,15 @@ func GetURI(DBName string) string {
 	return dbURI
 }
 
-// Get get postgres connection
+// Get get Postgres connection adding it to the pool if needed
 func Get() (*sqlx.DB, error) {
 	DB := getDatabaseFromPool(GetDatabase())
+	// Connection is already in the pool
 	if DB != nil {
 		return DB, nil
 	}
 
+	// Connection is not in the pool, add it
 	DB, err := AddDatabaseToPool(GetDatabase())
 
 	return DB, err
@@ -99,7 +100,7 @@ func getDatabaseFromPool(name string) *sqlx.DB {
 	return DB
 }
 
-// AddDatabaseToPool add connection to pool
+// AddDatabaseToPool create and add connection to the pool
 func AddDatabaseToPool(name string) (*sqlx.DB, error) {
 	DB, err := sqlx.Connect("postgres", GetURI(name))
 	if err != nil {
