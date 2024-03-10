@@ -18,6 +18,8 @@ import (
 	"github.com/prest/prest/testutils"
 )
 
+// Should be in sync with databases under test (see `testdata/runtest.sh` and
+// Github `test` workflow)
 var databases = []string{"prest-test", "secondary-db"}
 
 func Init() {
@@ -80,8 +82,13 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 		{"Get tables by databases with noexistent column", "/%s/public?t.taababa=$eq.test", "GET", http.StatusBadRequest},
 		{"Get tables by databases with not configured database", "/random/public?t.taababa=$eq.test", "GET", http.StatusBadRequest},
 	}
+
+	// Re-initialize pREST instance under test, mostly to revert `config` changes below
 	defer Init()
+
 	for _, db := range databases {
+		// Testing against multiple databases needs `SingleDB = false` in the
+		// config
 		config.PrestConf.SingleDB = false
 		router := mux.NewRouter()
 		router.HandleFunc("/{database}/{schema}", setHTTPTimeoutMiddleware(GetTablesByDatabaseAndSchema)).

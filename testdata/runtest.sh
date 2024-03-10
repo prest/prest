@@ -1,5 +1,6 @@
 DATABASES="$PREST_PG_DATABASE secondary-db"
 
+// Create databases for tests
 for db in $DATABASES; do
     echo "\n\n.:: POSTGRES: DROP/CREATE DATABASE $db"
     psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -c "DROP DATABASE IF EXISTS \"$db\";"

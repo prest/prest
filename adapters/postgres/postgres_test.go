@@ -22,6 +22,8 @@ import (
 	"github.com/structy/log"
 )
 
+// Should be in sync with databases under test (see `testdata/runtest.sh` and
+// Github `test` workflow)
 var databases = []string{"prest-test", "secondary-db"}
 
 func init() {

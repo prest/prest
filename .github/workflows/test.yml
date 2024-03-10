@@ -54,7 +54,7 @@ jobs:
           apt-get update
           apt-get install -y postgresql-client
 
-      - name: Setup Database
+      - name: Setup Databases
         env:
           PGPASSWORD: postgres
         run: |
