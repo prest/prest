@@ -3,8 +3,8 @@ package controllers
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -18,7 +18,7 @@ import (
 	"github.com/prest/prest/testutils"
 )
 
-var databases = []string {"prest-test", "secondary-db"}
+var databases = []string{"prest-test", "secondary-db"}
 
 func Init() {
 	config.Load()

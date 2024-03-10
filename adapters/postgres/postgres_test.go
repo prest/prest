@@ -22,7 +22,7 @@ import (
 	"github.com/structy/log"
 )
 
-var databases = []string {"prest-test", "secondary-db"}
+var databases = []string{"prest-test", "secondary-db"}
 
 func init() {
 	config.Load()
