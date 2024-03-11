@@ -1690,12 +1690,17 @@ func (adapter *Postgres) GetDatabase() string {
 	return connection.GetDatabase()
 }
 
-// getDBFromCtx tries to get the db from context if not present it will
-// fallback to the current setted db
+// getDBFromCtx tries to get the DB from context adding it to the pool if not
+// present, unless DB name is unset in the context - it will then fallback to
+// the current DB has been set via `SetDatabase(...)`
 func getDBFromCtx(ctx context.Context) (db *sqlx.DB, err error) {
 	dbName, ok := ctx.Value(pctx.DBNameKey).(string)
 	if ok {
-		return connection.GetFromPool(dbName)
+		DB, err := connection.GetFromPool(dbName)
+		if err == nil {
+			return DB, err
+		}
+		return connection.AddDatabaseToPool(dbName)
 	}
 	return connection.Get()
 }

@@ -1,6 +1,7 @@
 -- CREATE TABLES
 CREATE TABLE test(id serial, name text);
 CREATE TABLE "Reply"(id serial, name text);
+CREATE TABLE "TestCase"(id serial, name text);
 CREATE TABLE test2(name text, number integer);
 CREATE TABLE test3(id serial, name text UNIQUE);
 CREATE TABLE test4(id serial primary key, name text UNIQUE);
@@ -22,6 +23,7 @@ CREATE TABLE prest_users(id serial, username text, password text);
 -- Inserts
 INSERT INTO test (name) VALUES ('prest tester');
 INSERT INTO "Reply" (name) VALUES ('prest tester');
+INSERT INTO "TestCase" (name) VALUES ('prest tester');
 INSERT INTO test (name) VALUES ('tester02');
 INSERT INTO test2 (name, number) VALUES ('tester02', 2);
 INSERT INTO test3 (name) VALUES ('prest');

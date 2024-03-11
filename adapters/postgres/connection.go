@@ -21,8 +21,8 @@ func GetPool() *connection.Pool {
 }
 
 // AddDatabaseToPool add connection to pool
-func AddDatabaseToPool(name string, DB *sqlx.DB) {
-	connection.AddDatabaseToPool(name, DB)
+func AddDatabaseToPool(name string) (*sqlx.DB, error) {
+	return connection.AddDatabaseToPool(name)
 }
 
 // MustGet get postgres connection

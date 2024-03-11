@@ -54,13 +54,15 @@ jobs:
           apt-get update
           apt-get install -y postgresql-client
 
-      - name: Setup Database
+      - name: Setup Databases
         env:
           PGPASSWORD: postgres
         run: |
-          psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -c "DROP DATABASE IF EXISTS \"$PREST_PG_DATABASE\";"
-          psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -c "CREATE DATABASE \"$PREST_PG_DATABASE\";"
-          psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -d $PREST_PG_DATABASE -f ./testdata/schema.sql
+          for db in $PREST_PG_DATABASE secondary-db; do
+            psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -c "DROP DATABASE IF EXISTS \"$db\";"
+            psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -c "CREATE DATABASE \"$db\";"
+            psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -d $db -f ./testdata/schema.sql
+          done
 
       - name: Set up Go
         uses: actions/setup-go@v4

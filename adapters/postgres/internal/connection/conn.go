@@ -13,7 +13,6 @@ import (
 )
 
 var (
-	err          error
 	pool         *Pool
 	currDatabase string
 )
@@ -55,25 +54,18 @@ func GetURI(DBName string) string {
 	return dbURI
 }
 
-// Get get postgres connection
+// Get get Postgres connection adding it to the pool if needed
 func Get() (*sqlx.DB, error) {
-	var DB *sqlx.DB
-
-	DB = getDatabaseFromPool(GetDatabase())
+	DB := getDatabaseFromPool(GetDatabase())
+	// Connection is already in the pool
 	if DB != nil {
 		return DB, nil
 	}
 
-	DB, err = sqlx.Connect("postgres", GetURI(GetDatabase()))
-	if err != nil {
-		return nil, err
-	}
-	DB.SetMaxIdleConns(config.PrestConf.PGMaxIdleConn)
-	DB.SetMaxOpenConns(config.PrestConf.PGMaxOpenConn)
+	// Connection is not in the pool, add it
+	DB, err := AddDatabaseToPool(GetDatabase())
 
-	AddDatabaseToPool(GetDatabase(), DB)
-
-	return DB, nil
+	return DB, err
 }
 
 // GetFromPool tries to get the db name from the db pool
@@ -108,13 +100,21 @@ func getDatabaseFromPool(name string) *sqlx.DB {
 	return DB
 }
 
-// AddDatabaseToPool add connection to pool
-func AddDatabaseToPool(name string, DB *sqlx.DB) {
+// AddDatabaseToPool create and add connection to the pool
+func AddDatabaseToPool(name string) (*sqlx.DB, error) {
+	DB, err := sqlx.Connect("postgres", GetURI(name))
+	if err != nil {
+		return nil, err
+	}
+	DB.SetMaxIdleConns(config.PrestConf.PGMaxIdleConn)
+	DB.SetMaxOpenConns(config.PrestConf.PGMaxOpenConn)
+
 	p := GetPool()
 
 	p.Mtx.Lock()
 	p.DB[GetURI(name)] = DB
 	p.Mtx.Unlock()
+	return DB, nil
 }
 
 // MustGet get postgres connection
