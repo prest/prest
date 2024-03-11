@@ -1,4 +1,4 @@
-FROM registry.hub.docker.com/library/golang:1.18
+FROM registry.hub.docker.com/library/golang:1.20
 WORKDIR /workspace
 RUN apt update && apt install -y postgresql-client
 
