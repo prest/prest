@@ -1,11 +1,15 @@
 package middlewares
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/prest/prest/config"
 	"github.com/prest/prest/controllers/auth"
 	"github.com/stretchr/testify/require"
@@ -87,6 +91,127 @@ func TestJWTClaimsNotOk(t *testing.T) {
 
 	req.Header.Add("authorization", bearer)
 
+	client := http.Client{}
+	respd, err := client.Do(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusUnauthorized, respd.StatusCode)
+}
+
+// todo: Add unit test for other types of keys
+func TestJWKSetRSAOk(t *testing.T) {
+	app = nil
+	MiddlewareStack = nil
+	t.Setenv("PREST_JWT_DEFAULT", "true")
+	t.Setenv("PREST_DEBUG", "false")
+
+	//generate a private key and a JWKS
+	raw, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	key, err := jwk.FromRaw(raw)
+	require.NoError(t, err)
+
+	jwks_private := jwk.NewSet()
+	jwks_private.AddKey(key)
+
+	jwks, err := jwk.PublicSetOf(jwks_private)
+	require.NoError(t, err)
+
+	jwkSetJSON, err := json.Marshal(jwks)
+	require.NoError(t, err)
+
+	t.Setenv("PREST_JWT_JWKS", string(jwkSetJSON))
+
+	config.Load()
+	nd := appTestWithJwt()
+	serverd := httptest.NewServer(nd)
+	defer serverd.Close()
+
+	req, err := http.NewRequest("GET", serverd.URL, nil)
+	require.NoError(t, err)
+
+	//generate token with valid signature
+	getToken := time.Now()
+	expireToken := time.Now().Add(time.Minute * 2)
+
+	sig, err := jose.NewSigner(
+		jose.SigningKey{
+			Algorithm: jose.RS256,
+			Key:       raw},
+		(&jose.SignerOptions{}).WithType("JWT"))
+	require.NoError(t, err)
+
+	cl := auth.Claims{
+		NotBefore: jwt.NewNumericDate(getToken),
+		Expiry:    jwt.NewNumericDate(expireToken),
+	}
+	bearer, err := jwt.Signed(sig).Claims(cl).CompactSerialize()
+	require.NoError(t, err)
+	req.Header.Add("authorization", bearer)
+
+	//validate signature with JWKS
+	client := http.Client{}
+	respd, err := client.Do(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, respd.StatusCode)
+}
+
+func TestJWKSetRSANoKey(t *testing.T) {
+	app = nil
+	MiddlewareStack = nil
+	t.Setenv("PREST_JWT_DEFAULT", "true")
+	t.Setenv("PREST_DEBUG", "false")
+
+	//generate a private key and a JWKS
+	raw, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	key, err := jwk.FromRaw(raw)
+	require.NoError(t, err)
+
+	jwks_private := jwk.NewSet()
+	jwks_private.AddKey(key)
+
+	jwks, err := jwk.PublicSetOf(jwks_private)
+	require.NoError(t, err)
+
+	jwkSetJSON, err := json.Marshal(jwks)
+	require.NoError(t, err)
+
+	t.Setenv("PREST_JWT_JWKS", string(jwkSetJSON))
+
+	//Generate wrong key
+	raw, err = rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	config.Load()
+	nd := appTestWithJwt()
+	serverd := httptest.NewServer(nd)
+	defer serverd.Close()
+
+	req, err := http.NewRequest("GET", serverd.URL, nil)
+	require.NoError(t, err)
+
+	//generate token with valid signature
+	getToken := time.Now()
+	expireToken := time.Now().Add(time.Minute * 2)
+
+	sig, err := jose.NewSigner(
+		jose.SigningKey{
+			Algorithm: jose.RS256,
+			Key:       raw},
+		(&jose.SignerOptions{}).WithType("JWT"))
+	require.NoError(t, err)
+
+	cl := auth.Claims{
+		NotBefore: jwt.NewNumericDate(getToken),
+		Expiry:    jwt.NewNumericDate(expireToken),
+	}
+	bearer, err := jwt.Signed(sig).Claims(cl).CompactSerialize()
+	require.NoError(t, err)
+	req.Header.Add("authorization", bearer)
+
+	//validate signature with JWKS
 	client := http.Client{}
 	respd, err := client.Do(req)
 	require.NoError(t, err)

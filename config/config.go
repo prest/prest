@@ -1,14 +1,20 @@
 package config
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/prest/prest/adapters"
 	"github.com/prest/prest/cache"
+
+	"net/http"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
@@ -82,6 +88,8 @@ type Prest struct {
 	PGCache              bool
 	JWTKey               string
 	JWTAlgo              string
+	JWTWellKnown         string
+	JWTJWKS              string
 	JWTWhiteList         []string
 	JSONAggType          string
 	MigrationsPath       string
@@ -171,6 +179,8 @@ func viperCfg() {
 
 	viper.SetDefault("jwt.default", true)
 	viper.SetDefault("jwt.algo", "HS256")
+	viper.SetDefault("jwt.wellknown", "")
+	viper.SetDefault("jwt.jwks", "")
 	viper.SetDefault("jwt.whitelist", []string{"/auth"})
 
 	viper.SetDefault("json.agg.type", "jsonb_agg")
@@ -271,7 +281,10 @@ func Parse(cfg *Prest) {
 	cfg.SingleDB = viper.GetBool("pg.single")
 	cfg.JWTKey = viper.GetString("jwt.key")
 	cfg.JWTAlgo = viper.GetString("jwt.algo")
+	cfg.JWTWellKnown = viper.GetString("jwt.wellknown")
+	cfg.JWTJWKS = viper.GetString("jwt.jwks")
 	cfg.JWTWhiteList = viper.GetStringSlice("jwt.whitelist")
+	fetchJWKS(cfg)
 
 	cfg.JSONAggType = getJSONAgg()
 
@@ -356,6 +369,50 @@ func parseDatabaseURL(cfg *Prest) {
 	if u.Query().Get("sslmode") != "" {
 		cfg.SSLMode = u.Query().Get("sslmode")
 	}
+}
+
+// fetchJWKS tries to get the JWKS from the URL in the config
+func fetchJWKS(cfg *Prest) {
+	if cfg.JWTWellKnown == "" {
+		log.Debugln("no JWT WellKnown url found, skipping")
+		return
+	}
+	if cfg.JWTJWKS != "" {
+		log.Debugln("JWKS already set, skipping")
+		return
+	}
+
+	// Call provider to obtain .well-known config
+	r, err := http.Get(cfg.JWTWellKnown)
+	if err != nil {
+		log.Errorf("Cannot get .well-known configuration from '%s'. err: %v\n", cfg.JWTWellKnown, err)
+		return
+	}
+	defer r.Body.Close()
+
+	var wellKnown map[string]interface{}
+	err = json.NewDecoder(r.Body).Decode(&wellKnown)
+	if err != nil {
+		log.Errorf("Failed to decode JSON: %v\n", err)
+		return
+	}
+
+	//Retrieve the JWKS from the endpoint
+	JWKSet, err := jwk.Fetch(context.Background(), wellKnown["jwks_uri"].(string))
+	if err != nil {
+		err := fmt.Errorf("failed to parse JWK: %s", err)
+		log.Errorf("Failed to fetch JWK: %v\n", err)
+		return
+	}
+
+	//Convert set to json string
+	jwkSetJSON, err := json.Marshal(JWKSet)
+	if err != nil {
+		log.Errorf("Failed to marshal JWKSet to JSON: %v\n", err)
+		return
+	}
+
+	cfg.JWTJWKS = string(jwkSetJSON)
 }
 
 func portFromEnv(cfg *Prest) {
