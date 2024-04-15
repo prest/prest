@@ -148,12 +148,9 @@ func JwtMiddleware(key string, JWKSet string) negroni.Handler {
 			return
 		}
 		out := auth.Claims{}
-		var rawkey interface{}
+		var rawkey interface{} = []byte(key)
 
-		//Tester l'ensemble des types de clés...
-		if JWKSet == "" {
-			rawkey = []byte(key)
-		} else {
+		if JWKSet != "" {
 			parsedJWKSet, err := jwk.ParseString(JWKSet)
 			if err != nil {
 				err := fmt.Errorf("failed to parse JWKSet JSON string: %v", err)

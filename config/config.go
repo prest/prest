@@ -15,6 +15,7 @@ import (
 	"github.com/prest/prest/cache"
 
 	"net/http"
+	"time"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
@@ -88,7 +89,7 @@ type Prest struct {
 	PGCache              bool
 	JWTKey               string
 	JWTAlgo              string
-	JWTWellKnown         string
+	JWTWellKnownURL      string
 	JWTJWKS              string
 	JWTWhiteList         []string
 	JSONAggType          string
@@ -179,7 +180,7 @@ func viperCfg() {
 
 	viper.SetDefault("jwt.default", true)
 	viper.SetDefault("jwt.algo", "HS256")
-	viper.SetDefault("jwt.wellknown", "")
+	viper.SetDefault("jwt.wellknownurl", "")
 	viper.SetDefault("jwt.jwks", "")
 	viper.SetDefault("jwt.whitelist", []string{"/auth"})
 
@@ -281,7 +282,7 @@ func Parse(cfg *Prest) {
 	cfg.SingleDB = viper.GetBool("pg.single")
 	cfg.JWTKey = viper.GetString("jwt.key")
 	cfg.JWTAlgo = viper.GetString("jwt.algo")
-	cfg.JWTWellKnown = viper.GetString("jwt.wellknown")
+	cfg.JWTWellKnownURL = viper.GetString("jwt.wellknownurl")
 	cfg.JWTJWKS = viper.GetString("jwt.jwks")
 	cfg.JWTWhiteList = viper.GetStringSlice("jwt.whitelist")
 	fetchJWKS(cfg)
@@ -373,7 +374,7 @@ func parseDatabaseURL(cfg *Prest) {
 
 // fetchJWKS tries to get the JWKS from the URL in the config
 func fetchJWKS(cfg *Prest) {
-	if cfg.JWTWellKnown == "" {
+	if cfg.JWTWellKnownURL == "" {
 		log.Debugln("no JWT WellKnown url found, skipping")
 		return
 	}
@@ -383,9 +384,13 @@ func fetchJWKS(cfg *Prest) {
 	}
 
 	// Call provider to obtain .well-known config
-	r, err := http.Get(cfg.JWTWellKnown)
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	r, err := client.Get(cfg.JWTWellKnownURL)
 	if err != nil {
-		log.Errorf("Cannot get .well-known configuration from '%s'. err: %v\n", cfg.JWTWellKnown, err)
+		log.Errorf("Cannot get .well-known configuration from '%s'. err: %v\n", cfg.JWTWellKnownURL, err)
 		return
 	}
 	defer r.Body.Close()
@@ -398,7 +403,13 @@ func fetchJWKS(cfg *Prest) {
 	}
 
 	//Retrieve the JWKS from the endpoint
-	JWKSet, err := jwk.Fetch(context.Background(), wellKnown["jwks_uri"].(string))
+	uri, ok := wellKnown["jwks_uri"].(string)
+	if !ok {
+		log.Errorf("Unable to convert .WellKnown configuration of jwks_uri to a string.")
+		return
+	}
+
+	JWKSet, err := jwk.Fetch(context.Background(), uri)
 	if err != nil {
 		err := fmt.Errorf("failed to parse JWK: %s", err)
 		log.Errorf("Failed to fetch JWK: %v\n", err)
