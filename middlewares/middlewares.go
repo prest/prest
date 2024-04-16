@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/prest/prest/config"
 	pctx "github.com/prest/prest/context"
 	"github.com/prest/prest/controllers/auth"
@@ -122,7 +123,7 @@ func AccessControl() negroni.Handler {
 }
 
 // JwtMiddleware check if actual request have JWT
-func JwtMiddleware(key string, algo string) negroni.Handler {
+func JwtMiddleware(key string, JWKSet string) negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		match, err := MatchURL(r.URL.String())
 		if err != nil {
@@ -147,7 +148,38 @@ func JwtMiddleware(key string, algo string) negroni.Handler {
 			return
 		}
 		out := auth.Claims{}
-		if err := tok.Claims([]byte(key), &out); err != nil {
+		var rawkey interface{} = []byte(key)
+
+		if JWKSet != "" {
+			parsedJWKSet, err := jwk.ParseString(JWKSet)
+			if err != nil {
+				err := fmt.Errorf("failed to parse JWKSet JSON string: %v", err)
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+				return
+			}
+			for it := parsedJWKSet.Keys(context.Background()); it.Next(context.Background()); {
+				pair := it.Pair()
+				key := pair.Value.(jwk.Key)
+
+				if key.KeyID() == tok.Headers[0].KeyID {
+					if err := key.Raw(&rawkey); err != nil {
+						err := fmt.Errorf("failed to create public key: %s", err)
+						http.Error(w, err.Error(), http.StatusUnauthorized)
+						return
+					}
+				}
+			}
+			//Check if rawkey is empty
+			if key, ok := rawkey.(string); ok {
+				if key == "" {
+					err := fmt.Errorf("the token's key was not found in the JWKS")
+					http.Error(w, err.Error(), http.StatusUnauthorized)
+					return
+				}
+			}
+		}
+
+		if err := tok.Claims(rawkey, &out); err != nil {
 			http.Error(w, ErrJWTValidate.Error(), http.StatusUnauthorized)
 			return
 		}
