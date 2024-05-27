@@ -1,0 +1,20 @@
+FROM registry.hub.docker.com/library/golang:1.22.2 as builder
+WORKDIR /workspace
+COPY . .
+ENV GOOS linux
+ENV CGO_ENABLED 1
+RUN go mod vendor && \
+    go build -ldflags "-s -w" -o prestd cmd/prestd/main.go && \
+    apt-get update && apt-get upgrade -y && apt-get install --no-install-recommends -yq netcat-traditional && rm -rf /var/lib/apt/lists/*
+
+# Use runtime image
+# Plugins not supported
+FROM registry.hub.docker.com/library/debian:bookworm
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /bin/nc /bin/nc
+COPY --from=builder /workspace/prestd /bin/prestd
+COPY --from=builder /workspace/etc/entrypoint.sh /app/entrypoint.sh
+COPY --from=builder /workspace/lib /app/lib
+COPY --from=builder /workspace/etc/plugin /app/plugin
+WORKDIR /app
+ENTRYPOINT ["sh", "/app/entrypoint.sh"]
