@@ -4,4 +4,6 @@
 # the beta tag in the github package (docker)
 git checkout . && \
     docker build . -t ghcr.io/prest/prest:beta && \
-    docker push ghcr.io/prest/prest:beta
+    docker push ghcr.io/prest/prest:beta && \
+    docker build . -f Dockerfile.noplugins -t ghcr.io/prest/prest:beta-noplugins && \
+    docker push ghcr.io/prest/prest:beta-noplugins
