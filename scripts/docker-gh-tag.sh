@@ -10,9 +10,9 @@ git checkout . && \
     docker push ghcr.io/prest/prest:v1 && \
     docker push ghcr.io/prest/prest:"$DOCKER_TAG" && \
     # Build the noplugins image
-    docker build . -f Dockerfile.noplugins -t ghcr.io/prest/prest:latest-noplugins && \
-    docker tag ghcr.io/prest/prest:latest ghcr.io/prest/prest:v1-noplugins && \
-    docker tag ghcr.io/prest/prest:latest ghcr.io/prest/prest:"$DOCKER_TAG"-noplugins && \
-    docker push ghcr.io/prest/prest:latest-noplugins && \
-    docker push ghcr.io/prest/prest:v1-noplugins && \
-    docker push ghcr.io/prest/prest:"$DOCKER_TAG"-noplugins
+    docker build . -f Dockerfile.noplugins -t ghcr.io/prest/prest:"latest-noplugins" && \
+    docker tag ghcr.io/prest/prest:latest ghcr.io/prest/prest:"v1-noplugins" && \
+    docker tag ghcr.io/prest/prest:latest ghcr.io/prest/prest:"$DOCKER_TAG-noplugins" && \
+    docker push ghcr.io/prest/prest:"latest-noplugins" && \
+    docker push ghcr.io/prest/prest:"v1-noplugins" && \
+    docker push ghcr.io/prest/prest:"$DOCKER_TAG-noplugins"
