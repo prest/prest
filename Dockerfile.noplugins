@@ -11,6 +11,7 @@ RUN go mod vendor && \
 # Plugins not supported
 FROM registry.hub.docker.com/library/debian:bookworm
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+ENV PREST_BUILD_PLUGINS 0
 COPY --from=builder /bin/nc /bin/nc
 COPY --from=builder /workspace/prestd /bin/prestd
 COPY --from=builder /workspace/etc/entrypoint.sh /app/entrypoint.sh
