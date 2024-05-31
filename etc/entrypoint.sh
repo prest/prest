@@ -30,9 +30,14 @@ do
 done
 
 # prestd/plugin build
-echo "[prestd] Plugin/build: starting..."
-./plugin/go-build.sh
-echo "[prestd] Plugin/build: ending"
+if [ "$PREST_BUILD_PLUGINS" -eq 1 ];
+then
+    echo "[prestd] Plugin/build: starting..."
+    ./plugin/go-build.sh
+    echo "[prestd] Plugin/build: ending"
+else
+    echo "[prestd] Skipping plugin/build"
+fi
 
 sleep 5;
 echo "[prestd] Ready hosting $PREST_PG_HOST to port $PREST_PG_PORT !"

@@ -12,6 +12,7 @@ RUN go mod vendor && \
 FROM registry.hub.docker.com/library/golang:1.22.2
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 ENV CGO_ENABLED 1
+ENV PREST_BUILD_PLUGINS 1
 COPY --from=builder /bin/nc /bin/nc
 COPY --from=builder /workspace/prestd /bin/prestd
 COPY --from=builder /workspace/etc/entrypoint.sh /app/entrypoint.sh
