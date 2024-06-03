@@ -11,8 +11,8 @@ git checkout . && \
     docker push prest/prest:"$DOCKER_TAG" && \
     # Build the noplugins image
     docker build . -f Dockerfile.noplugins -t prest/prest:"latest-noplugins" && \
-    docker tag prest/prest:latest prest/prest:"$DOCKER_TAG-noplugins" && \
-    docker tag prest/prest:latest prest/prest:"v1-noplugins" && \
+    docker tag prest/prest:"latest-noplugins" prest/prest:"$DOCKER_TAG-noplugins" && \
+    docker tag prest/prest:"latest-noplugins" prest/prest:"v1-noplugins" && \
     docker push prest/prest:"latest-noplugins" && \
     docker push prest/prest:"v1-noplugins" && \
     docker push prest/prest:"$DOCKER_TAG-noplugins"
