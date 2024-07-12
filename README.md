@@ -7,7 +7,7 @@
 [![Homebrew](https://img.shields.io/badge/dynamic/json.svg?url=https://formulae.brew.sh/api/formula/prestd.json&query=$.versions.stable&label=homebrew)](https://formulae.brew.sh/formula/prestd)
 [![Discord](https://img.shields.io/badge/discord-prestd-blue?logo=discord)](https://discord.gg/JnRjvu39w8)
 
-_p_**REST** (**P**_ostgreSQL_ **REST**), is a simple production-ready API, that delivers a instant, realtime, and high-performance application on top of your **existing or new Postgres** database.
+_p_**REST** (**P**_ostgreSQL_ **REST**), is a simple production-ready API, that delivers an instant, realtime, and high-performance application on top of your **existing or new Postgres** database.
 
 > PostgreSQL version 9.5 or higher
 
