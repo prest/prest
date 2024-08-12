@@ -182,7 +182,7 @@ func viperCfg() {
 	viper.SetDefault("jwt.algo", "HS256")
 	viper.SetDefault("jwt.wellknownurl", "")
 	viper.SetDefault("jwt.jwks", "")
-	viper.SetDefault("jwt.whitelist", []string{"^/auth"})
+	viper.SetDefault("jwt.whitelist", []string{`^\/auth$`})
 
 	viper.SetDefault("json.agg.type", "jsonb_agg")
 
