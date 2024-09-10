@@ -18,7 +18,7 @@ require (
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.9.0
 	github.com/structy/log v0.0.0-20220126205329-1f766c8d0b3c
-	github.com/tidwall/buntdb v1.3.1
+	github.com/tidwall/buntdb v1.3.2
 	github.com/urfave/negroni/v3 v3.1.1
 	gopkg.in/square/go-jose.v2 v2.6.0
 )
