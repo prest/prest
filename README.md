@@ -1,5 +1,5 @@
 # pRESTd
-
+[![Tests](https://github.com/prest/prest/actions/workflows/test.yml/badge.svg)](https://github.com/prest/prest/actions/workflows/test.yml)
 [![GoDoc](https://godoc.org/github.com/prest/prest?status.png)](https://godoc.org/github.com/prest/prest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/prest/prest)](https://goreportcard.com/report/github.com/prest/prest)
 [![codecov](https://codecov.io/gh/prest/prest/branch/main/graph/badge.svg?token=eVD9urwIEv)](https://codecov.io/gh/prest/prest)
