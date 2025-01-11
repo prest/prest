@@ -28,8 +28,14 @@ const (
 )
 
 // TablesConf informations
+const defaultTablesConfMode = "white"
+
+var defaultUserNames = []string{"*"}
+
 type TablesConf struct {
 	Name        string   `mapstructure:"name"`
+	Mode        string   `mapstructure:"mode"`
+	UserNames   []string `mapstructure:"userNames"`
 	Permissions []string `mapstructure:"permissions"`
 	Fields      []string `mapstructure:"fields"`
 }
@@ -328,6 +334,17 @@ func Parse(cfg *Prest) {
 		log.Errorln("could not unmarshal access tables")
 	}
 	cfg.AccessConf.Tables = tablesconf
+
+	for i := range cfg.AccessConf.Tables {
+		if cfg.AccessConf.Tables[i].Mode == "" {
+			cfg.AccessConf.Tables[i].Mode = defaultTablesConfMode
+		}
+		if len(cfg.AccessConf.Tables[i].UserNames) == 0 {
+			cfg.AccessConf.Tables[i].UserNames = defaultUserNames
+		}
+	}
+
+	// default value
 
 	// plugin middleware list config
 	var pluginMiddlewareConfig []PluginMiddleware

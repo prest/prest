@@ -1036,20 +1036,108 @@ func TestTablePermissions(t *testing.T) {
 		description string
 		table       string
 		permission  string
+		userName    string
 		out         bool
 	}{
-		{"Read", "test_readonly_access", "read", true},
-		{"Try to read without permission", "test_write_and_delete_access", "read", false},
-		{"Write", "test_write_and_delete_access", "write", true},
-		{"Try to write without permission", "test_readonly_access", "write", false},
-		{"Delete", "test_write_and_delete_access", "delete", true},
-		{"Try to delete without permission", "test_readonly_access", "delete", false},
-		{"Try config does not write", "test_permission_does_not_exist", "read", false},
+
+		{"Read", "test_readonly_access", "read", "", true},
+		{"Try to read without permission", "test_write_and_delete_access", "read", "", false},
+		{"Write", "test_write_and_delete_access", "write", "", true},
+		{"Try to write without permission", "test_readonly_access", "write", "", false},
+		{"Delete", "test_write_and_delete_access", "delete", "", true},
+		{"Try to delete without permission", "test_readonly_access", "delete", "", false},
+		{"Try config does not write", "test_permission_does_not_exist", "read", "", false},
+
+		// test user permission
+		{"Try Foo read", "white_foo_can_readonly", "read", "foo", true},
+		{"Try Foo write", "white_foo_can_readonly", "write", "foo", false},
+		{"Try Foo delete", "white_foo_can_readonly", "delete", "foo", false},
+		{"Try Bar read", "white_foo_can_readonly", "read", "bar", false},
+		{"Try Bar write", "white_foo_can_readonly", "write", "bar", false},
+		{"Try Bar delete", "white_foo_can_readonly", "delete", "bar", false},
+
+		{"Try Foo read", "white_foo_can_write_and_delete", "read", "foo", false},
+		{"Try Foo write", "white_foo_can_write_and_delete", "write", "foo", true},
+		{"Try Foo delete", "white_foo_can_write_and_delete", "delete", "foo", true},
+		{"Try Bar read", "white_foo_can_write_and_delete", "read", "bar", false},
+		{"Try Bar write", "white_foo_can_write_and_delete", "write", "bar", false},
+		{"Try Bar delete", "white_foo_can_write_and_delete", "delete", "bar", false},
+
+		{"Try Foo read", "white_all_can_read", "read", "foo", true},
+		{"Try Foo write", "white_all_can_read", "write", "foo", false},
+		{"Try Foo delete", "white_all_can_read", "delete", "foo", false},
+		{"Try Bar read", "white_all_can_read", "read", "bar", true},
+		{"Try Bar write", "white_all_can_read", "write", "bar", false},
+		{"Try Bar delete", "white_all_can_read", "delete", "bar", false},
+
+		{"Try Foo read", "white_all_can_write_and_delete", "read", "foo", false},
+		{"Try Foo write", "white_all_can_write_and_delete", "write", "foo", true},
+		{"Try Foo delete", "white_all_can_write_and_delete", "delete", "foo", true},
+		{"Try Bar read", "white_all_can_write_and_delete", "read", "bar", false},
+		{"Try Bar write", "white_all_can_write_and_delete", "write", "bar", true},
+		{"Try Bar delete", "white_all_can_write_and_delete", "delete", "bar", true},
+
+		{"Try Foo read", "white_noone_can_read", "read", "foo", false},
+		{"Try Foo write", "white_noone_can_read", "write", "foo", false},
+		{"Try Foo delete", "white_noone_can_read", "delete", "foo", false},
+		{"Try Bar read", "white_noone_can_read", "read", "bar", false},
+		{"Try Bar write", "white_noone_can_read", "write", "bar", false},
+		{"Try Bar delete", "white_noone_can_read", "delete", "bar", false},
+
+		{"Try Foo read", "white_noone_can_write_and_delete", "read", "foo", false},
+		{"Try Foo write", "white_noone_can_write_and_delete", "write", "foo", false},
+		{"Try Foo delete", "white_noone_can_write_and_delete", "delete", "foo", false},
+		{"Try Bar read", "white_noone_can_write_and_delete", "read", "bar", false},
+		{"Try Bar write", "white_noone_can_write_and_delete", "write", "bar", false},
+		{"Try Bar delete", "white_noone_can_write_and_delete", "delete", "bar", false},
+
+		{"Try Foo read", "black_foo_can_not_readonly", "read", "foo", false},
+		{"Try Foo write", "black_foo_can_not_readonly", "write", "foo", true},
+		{"Try Foo delete", "black_foo_can_not_readonly", "delete", "foo", true},
+		{"Try Bar read", "black_foo_can_not_readonly", "read", "bar", true},
+		{"Try Bar write", "black_foo_can_not_readonly", "write", "bar", true},
+		{"Try Bar delete", "black_foo_can_not_readonly", "delete", "bar", true},
+
+		{"Try Foo read", "black_foo_can_not_write_and_delete", "read", "foo", true},
+		{"Try Foo write", "black_foo_can_not_write_and_delete", "write", "foo", false},
+		{"Try Foo delete", "black_foo_can_not_write_and_delete", "delete", "foo", false},
+		{"Try Bar read", "black_foo_can_not_write_and_delete", "read", "bar", true},
+		{"Try Bar write", "black_foo_can_not_write_and_delete", "write", "bar", true},
+		{"Try Bar delete", "black_foo_can_not_write_and_delete", "delete", "bar", true},
+
+		{"Try Foo read", "black_all_can_not_read", "read", "foo", false},
+		{"Try Foo write", "black_all_can_not_read", "write", "foo", true},
+		{"Try Foo delete", "black_all_can_not_read", "delete", "foo", true},
+		{"Try Bar read", "black_all_can_not_read", "read", "bar", false},
+		{"Try Bar write", "black_all_can_not_read", "write", "bar", true},
+		{"Try Bar delete", "black_all_can_not_read", "delete", "bar", true},
+
+		{"Try Foo read", "black_all_can_not_write_and_delete", "read", "foo", true},
+		{"Try Foo write", "black_all_can_not_write_and_delete", "write", "foo", false},
+		{"Try Foo delete", "black_all_can_not_write_and_delete", "delete", "foo", false},
+		{"Try Bar read", "black_all_can_not_write_and_delete", "read", "bar", true},
+		{"Try Bar write", "black_all_can_not_write_and_delete", "write", "bar", false},
+		{"Try Bar delete", "black_all_can_not_write_and_delete", "delete", "bar", false},
+
+		{"Try Foo read", "black_noone_can_not_read", "read", "foo", true},
+		{"Try Foo write", "black_noone_can_not_read", "write", "foo", true},
+		{"Try Foo delete", "black_noone_can_not_read", "delete", "foo", true},
+		{"Try Bar read", "black_noone_can_not_read", "read", "bar", true},
+		{"Try Bar write", "black_noone_can_not_read", "write", "bar", true},
+		{"Try Bar delete", "black_noone_can_not_read", "delete", "bar", true},
+
+		{"Try Foo read", "black_noone_can_not_write_and_delete", "read", "foo", true},
+		{"Try Foo write", "black_noone_can_not_write_and_delete", "write", "foo", true},
+		{"Try Foo delete", "black_noone_can_not_write_and_delete", "delete", "foo", true},
+		{"Try Bar read", "black_noone_can_not_write_and_delete", "read", "bar", true},
+		{"Try Bar write", "black_noone_can_not_write_and_delete", "write", "bar", true},
+		{"Try Bar delete", "black_noone_can_not_write_and_delete", "delete", "bar", true},
 	}
+	Load()
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		p := config.PrestConf.Adapter.TablePermissions(tc.table, tc.permission)
+		p := config.PrestConf.Adapter.TablePermissions(tc.table, tc.permission, tc.userName)
 		if p != tc.out {
 			t.Errorf("expected %v, got %v", tc.out, p)
 		}
@@ -1083,7 +1171,7 @@ func TestRestrictFalse(t *testing.T) {
 	}
 
 	t.Log("Restrict disabled")
-	p := config.PrestConf.Adapter.TablePermissions("test_readonly_access", "delete")
+	p := config.PrestConf.Adapter.TablePermissions("test_readonly_access", "delete", "")
 	if !p {
 		t.Errorf("expected %v, got: %v", p, !p)
 	}

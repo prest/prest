@@ -106,18 +106,32 @@ func AccessControl() negroni.Handler {
 			return
 		}
 
+		// Get user info from token
+		ctx := rq.Context()
+		userInfo := ctx.Value(pctx.UserInfoKey)
+		var userName string
+		if userInfo != nil {
+			userName = userInfo.(auth.User).Username
+		}
+
 		permission := permissionByMethod(rq.Method)
 		if permission == "" {
 			next(rw, rq)
 			return
 		}
 
-		if config.PrestConf.Adapter.TablePermissions(mapPath["table"], permission) {
+		if config.PrestConf.Adapter.TablePermissions(mapPath["table"], permission, userName) {
 			next(rw, rq)
 			return
 		}
 
-		err := fmt.Errorf("required authorization to table %s", mapPath["table"])
+		var err error
+		if userName == "" {
+			err = fmt.Errorf("required authorization to table %s", mapPath["table"])
+		} else {
+			err = fmt.Errorf("required authorization to table %s user %s", mapPath["table"], userName)
+		}
+
 		http.Error(rw, err.Error(), http.StatusUnauthorized)
 	})
 }
