@@ -80,3 +80,81 @@ restrict = true  # can access only the tables listed below
     name = "test_group_by_table"
     permissions = ["read"]
     fields = ["id", "name", "age", "salary"]
+
+		# for user
+		# white
+		[[access.tables]]
+		name = "white_foo_can_readonly"
+		mode = "white"
+		userNames = ["foo"]
+		permissions = ["read"]
+
+		[[access.tables]]
+		name = "white_foo_can_write_and_delete"
+		mode = "white"
+		userNames = ["foo"]
+		permissions = ["write", "delete"]
+
+		[[access.tables]]
+		name = "white_all_can_read"
+		mode = "white"
+		userNames = ["*"]
+		permissions = ["read"]
+
+		[[access.tables]]
+		name = "white_all_can_write_and_delete"
+		mode = "white"
+		userNames = ["*"]
+		permissions = ["write", "delete"]
+
+		[[access.tables]]
+		name = "white_noone_can_read"
+		mode = "white"
+		userNames = [""]
+		permissions = ["read"]
+
+		[[access.tables]]
+		name = "white_noone_can_write_and_delete"
+		mode = "white"
+		userNames = [""]
+		permissions = ["write", "delete"]
+
+
+		# black
+		[[access.tables]]
+		name = "black_foo_can_not_readonly"
+		mode = "black"
+		userNames = ["foo"]
+		permissions = ["read"]
+
+		[[access.tables]]
+		name = "black_foo_can_not_write_and_delete"
+		mode = "black"
+		userNames = ["foo"]
+		permissions = ["write", "delete"]
+
+
+		[[access.tables]]
+		name = "black_all_can_not_read"
+		mode = "black"
+		userNames = ["*"]
+		permissions = ["read"]
+
+		[[access.tables]]
+		name = "black_all_can_not_write_and_delete"
+		mode = "black"
+		userNames = ["*"]
+		permissions = ["write", "delete"]
+
+
+		[[access.tables]]
+		name = "black_noone_can_not_read"
+		mode = "black"
+		userNames = [""]
+		permissions = ["read"]
+
+		[[access.tables]]
+		name = "black_noone_can_not_write_and_delete"
+		mode = "black"
+		userNames = [""]
+		permissions = ["write", "delete"]

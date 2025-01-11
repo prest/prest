@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1315,27 +1316,55 @@ func GetQueryOperator(op string) (string, error) {
 }
 
 // TablePermissions get tables permissions based in prest configuration
-func (adapter *Postgres) TablePermissions(table string, op string) (access bool) {
-	access = false
+func (adapter *Postgres) TablePermissions(table string, op string, userName string) (access bool) {
 	restrict := config.PrestConf.AccessConf.Restrict
 	if !restrict {
-		access = true
+		return true
 	}
 
 	// ignore table loop
 	for _, ignoreT := range config.PrestConf.AccessConf.IgnoreTable {
 		if ignoreT == table {
-			access = true
+			return true
 		}
 	}
 
 	tables := config.PrestConf.AccessConf.Tables
 	for _, t := range tables {
 		if t.Name == table {
-			for _, p := range t.Permissions {
-				if p == op {
-					access = true
+			switch t.Mode {
+			case "black":
+				// nobody in black list, all access
+				if len(t.UserNames) == 0 {
+					return true
 				}
+
+				// all in black list, user operator not in permissions, can access
+				if len(t.UserNames) == 1 && t.UserNames[0] == "*" {
+					return !slices.Contains(t.Permissions, op)
+				}
+
+				// user not in black list, can access
+				if !slices.Contains(t.UserNames, userName) {
+					return true
+				}
+				// user in black list but operation not in permissions, can access
+				return !slices.Contains(t.Permissions, op)
+			case "white":
+				// nobody in white list, all can not access
+				if len(t.UserNames) == 0 {
+					return false
+				}
+
+				if len(t.UserNames) == 1 && t.UserNames[0] == "*" {
+					return slices.Contains(t.Permissions, op)
+				}
+
+				// user not in white list, can not access
+				if slices.Contains(t.UserNames, userName) {
+					return slices.Contains(t.Permissions, op)
+				}
+				return false
 			}
 		}
 	}

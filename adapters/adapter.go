@@ -92,7 +92,7 @@ type Adapter interface {
 	GetDatabase() string
 	TableClause() (query string)
 	TableOrderBy(order string) (orderBy string)
-	TablePermissions(table string, op string) bool
+	TablePermissions(table string, op string, userName string) bool
 	TableWhere(requestWhere string) (whereSyntax string)
 
 	Update(SQL string, params ...interface{}) (sc Scanner)
