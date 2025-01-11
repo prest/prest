@@ -1133,7 +1133,6 @@ func TestTablePermissions(t *testing.T) {
 		{"Try Bar write", "black_noone_can_not_write_and_delete", "write", "bar", true},
 		{"Try Bar delete", "black_noone_can_not_write_and_delete", "delete", "bar", true},
 	}
-	Load()
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
@@ -1171,7 +1170,7 @@ func TestRestrictFalse(t *testing.T) {
 	}
 
 	t.Log("Restrict disabled")
-	p := config.PrestConf.Adapter.TablePermissions("test_readonly_access", "delete", "")
+	p := config.PrestConf.Adapter.TablePermissions("test_readonly_access", "delete", "*")
 	if !p {
 		t.Errorf("expected %v, got: %v", p, !p)
 	}
