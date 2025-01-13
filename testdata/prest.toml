@@ -14,147 +14,349 @@ enabled = true
     endpoint = "/prest/public/test"
     time = 5
 
+
+
+
+
+
 [access]
 restrict = true  # can access only the tables listed below
 
-    [[access.tables]]
-    name = "Reply"
-    permissions = ["read", "write", "delete"]
-    fields = ["id", "name"]
+[[access.tables]]
+name = "Reply"
+permissions = ["read", "write", "delete"]
+fields = ["id", "name"]
 
-    [[access.tables]]
-    name = "test"
-    permissions = ["read", "write", "delete"]
-    fields = ["id", "name"]
+[[access.tables]]
+name = "test"
+permissions = ["read", "write", "delete"]
+fields = ["id", "name"]
 
-    [[access.tables]]
-    name = "testarray"
-    permissions = ["read", "write", "delete"]
-    fields = ["id", "data"]
+[[access.tables]]
+name = "testarray"
+permissions = ["read", "write", "delete"]
+fields = ["id", "data"]
 
-    [[access.tables]]
-    name = "test2"
-    permissions = ["read", "write", "delete"]
-    fields = ["id", "name"]
+[[access.tables]]
+name = "test2"
+permissions = ["read", "write", "delete"]
+fields = ["id", "name"]
 
-    [[access.tables]]
-    name = "test3"
-    permissions = ["read", "write", "delete"]
-    fields = ["id", "name"]
+[[access.tables]]
+name = "test3"
+permissions = ["read", "write", "delete"]
+fields = ["id", "name"]
 
-    [[access.tables]]
-    name = "test4"
-    permissions = ["read", "write", "delete"]
-    fields = ["id", "name"]
+[[access.tables]]
+name = "test4"
+permissions = ["read", "write", "delete"]
+fields = ["id", "name"]
 
-    [[access.tables]]
-    name = "test5"
-    permissions = ["read", "write", "delete"]
-    fields = ["*"]
+[[access.tables]]
+name = "test5"
+permissions = ["read", "write", "delete"]
+fields = ["*"]
 
-    [[access.tables]]
-    name = "test_readonly_access"
-    permissions = ["read"]
-    fields = ["id", "name"]
+[[access.tables]]
+name = "test_readonly_access"
+permissions = ["read"]
+fields = ["id", "name"]
 
-    [[access.tables]]
-    name = "test_write_and_delete_access"
-    permissions = ["write", "delete"]
+[[access.tables]]
+name = "test_write_and_delete_access"
+permissions = ["write", "delete"]
 
-    [[access.tables]]
-    name = "test_list_only_id"
-    permissions = ["read"]
-    fields = ["id"]
+[[access.tables]]
+name = "test_list_only_id"
+permissions = ["read"]
+fields = ["id"]
 
-    [[access.tables]]
-    name = "test6"
-    permissions = ["read", "write", "delete"]
-    fields = ["nuveo", "name"]
+[[access.tables]]
+name = "test6"
+permissions = ["read", "write", "delete"]
+fields = ["nuveo", "name"]
 
-    [[access.tables]]
-    name = "view_test"
-    permissions = ["read"]
-    fields = ["player"]
+[[access.tables]]
+name = "view_test"
+permissions = ["read"]
+fields = ["player"]
 
-    [[access.tables]]
-    name = "test_group_by_table"
-    permissions = ["read"]
-    fields = ["id", "name", "age", "salary"]
-
-		# for user
-		# white
-		[[access.tables]]
-		name = "white_foo_can_readonly"
-		mode = "white"
-		userNames = ["foo"]
-		permissions = ["read"]
-
-		[[access.tables]]
-		name = "white_foo_can_write_and_delete"
-		mode = "white"
-		userNames = ["foo"]
-		permissions = ["write", "delete"]
-
-		[[access.tables]]
-		name = "white_all_can_read"
-		mode = "white"
-		userNames = ["*"]
-		permissions = ["read"]
-
-		[[access.tables]]
-		name = "white_all_can_write_and_delete"
-		mode = "white"
-		userNames = ["*"]
-		permissions = ["write", "delete"]
-
-		[[access.tables]]
-		name = "white_noone_can_read"
-		mode = "white"
-		userNames = [""]
-		permissions = ["read"]
-
-		[[access.tables]]
-		name = "white_noone_can_write_and_delete"
-		mode = "white"
-		userNames = [""]
-		permissions = ["write", "delete"]
+[[access.tables]]
+name = "test_group_by_table"
+permissions = ["read"]
+fields = ["id", "name", "age", "salary"]
 
 
-		# black
-		[[access.tables]]
-		name = "black_foo_can_not_readonly"
-		mode = "black"
-		userNames = ["foo"]
-		permissions = ["read"]
+# Access for user
+[[access.tables]]
+name = "read_table"
+permissions = ["read"]
+fields = ["id", "name", "age", "gender"]
 
-		[[access.tables]]
-		name = "black_foo_can_not_write_and_delete"
-		mode = "black"
-		userNames = ["foo"]
-		permissions = ["write", "delete"]
+[[access.tables]]
+name = "write_table"
+permissions = ["write"]
+
+[[access.tables]]
+name = "delete_table"
+permissions = ["delete"]
+
+[[access.tables]]
+name = "read_write_table"
+permissions = ["read","write"]
+
+[[access.tables]]
+name = "read_delete_table"
+permissions = ["read","delete"]
+
+[[access.tables]]
+name = "write_delete_table"
+permissions = ["write", "delete"]
+
+[[access.tables]]
+name = "read_write_delete_table"
+permissions = ["read", "write", "delete"]
+
+[[access.tables]]
+name = "no_user_read_table"
+permissions = ["read"]
+
+[[access.tables]]
+name = "no_user_write_table"
+permissions = ["write"]
+
+[[access.tables]]
+name = "no_user_delete_table"
+permissions = ["delete"]
+
+[[access.tables]]
+name = "no_user_read_write_table"
+permissions = ["read","write"]
+
+[[access.tables]]
+name = "no_user_read_delete_table"
+permissions = ["read","delete"]
+
+[[access.tables]]
+name = "no_user_write_delete_table"
+permissions = ["write", "delete"]
+
+[[access.tables]]
+name = "no_user_read_write_delete_table"
+permissions = ["read", "write", "delete"]
+
+[[access.users]]
+name = "foo_read"
+[[access.users.tables]]
+name = "read_table"
+permissions = [ "read" ]
+
+[[access.users.tables]]
+name = "write_table"
+permissions = [ "read" ]
+
+[[access.users.tables]]
+name = "delete_table"
+permissions = [ "read" ]
+
+[[access.users.tables]]
+name = "read_write_table"
+permissions = [ "read" ]
+
+[[access.users.tables]]
+name = "read_delete_table"
+permissions = [ "read" ]
+
+[[access.users.tables]]
+name = "write_delete_table"
+permissions = [ "read" ]
+
+[[access.users.tables]]
+name = "read_write_delete_table"
+permissions = [ "read" ]
+
+[[access.users]]
+name = "foo_write"
+[[access.users.tables]]
+name = "read_table"
+permissions = [ "write" ]
+
+[[access.users.tables]]
+name = "write_table"
+permissions = [ "write" ]
+
+[[access.users.tables]]
+name = "delete_table"
+permissions = [ "write" ]
+
+[[access.users.tables]]
+name = "read_write_table"
+permissions = [ "write" ]
+
+[[access.users.tables]]
+name = "read_delete_table"
+permissions = [ "write" ]
+
+[[access.users.tables]]
+name = "write_delete_table"
+permissions = [ "write" ]
+
+[[access.users.tables]]
+name = "read_write_delete_table"
+permissions = [ "write" ]
 
 
-		[[access.tables]]
-		name = "black_all_can_not_read"
-		mode = "black"
-		userNames = ["*"]
-		permissions = ["read"]
+[[access.users]]
+name = "foo_delete"
+[[access.users.tables]]
+name = "read_table"
+permissions = [ "delete" ]
 
-		[[access.tables]]
-		name = "black_all_can_not_write_and_delete"
-		mode = "black"
-		userNames = ["*"]
-		permissions = ["write", "delete"]
+[[access.users.tables]]
+name = "write_table"
+permissions = [ "delete" ]
+
+[[access.users.tables]]
+name = "delete_table"
+permissions = [ "delete" ]
+
+[[access.users.tables]]
+name = "read_write_table"
+permissions = [ "delete" ]
+
+[[access.users.tables]]
+name = "read_delete_table"
+permissions = [ "delete" ]
+
+[[access.users.tables]]
+name = "write_delete_table"
+permissions = [ "delete" ]
+
+[[access.users.tables]]
+name = "read_write_delete_table"
+permissions = [ "delete" ]
+
+[[access.users]]
+name = "foo_read_write"
+[[access.users.tables]]
+name = "read_table"
+permissions = [ "read","write" ]
+
+[[access.users.tables]]
+name = "write_table"
+permissions = [ "read","write" ]
+
+[[access.users.tables]]
+name = "delete_table"
+permissions = [ "read","write" ]
+
+[[access.users.tables]]
+name = "read_write_table"
+permissions = [ "read","write" ]
+
+[[access.users.tables]]
+name = "read_delete_table"
+permissions = [ "read","write" ]
+
+[[access.users.tables]]
+name = "write_delete_table"
+permissions = [ "read","write" ]
+
+[[access.users.tables]]
+name = "read_write_delete_table"
+permissions = [ "read","write" ]
 
 
-		[[access.tables]]
-		name = "black_noone_can_not_read"
-		mode = "black"
-		userNames = [""]
-		permissions = ["read"]
 
-		[[access.tables]]
-		name = "black_noone_can_not_write_and_delete"
-		mode = "black"
-		userNames = [""]
-		permissions = ["write", "delete"]
+[[access.users]]
+name = "foo_read_delete"
+[[access.users.tables]]
+name = "read_table"
+permissions = [ "read","delete" ]
+
+[[access.users.tables]]
+name = "write_table"
+permissions = [ "read","delete" ]
+
+[[access.users.tables]]
+name = "delete_table"
+permissions = [ "read","delete" ]
+
+[[access.users.tables]]
+name = "read_write_table"
+permissions = [ "read","delete" ]
+
+[[access.users.tables]]
+name = "read_delete_table"
+permissions = [ "read","delete" ]
+
+[[access.users.tables]]
+name = "write_delete_table"
+permissions = [ "read","delete" ]
+
+[[access.users.tables]]
+name = "read_write_delete_table"
+permissions = [ "read","delete" ]
+
+
+
+[[access.users]]
+name = "foo_write_delete"
+[[access.users.tables]]
+name = "read_table"
+permissions = [ "write","delete" ]
+
+[[access.users.tables]]
+name = "write_table"
+permissions = [ "write","delete" ]
+
+[[access.users.tables]]
+name = "delete_table"
+permissions = [ "write","delete" ]
+
+[[access.users.tables]]
+name = "read_write_table"
+permissions = [ "write","delete" ]
+
+[[access.users.tables]]
+name = "read_delete_table"
+permissions = [ "write","delete" ]
+
+[[access.users.tables]]
+name = "write_delete_table"
+permissions = [ "write","delete" ]
+
+[[access.users.tables]]
+name = "read_write_delete_table"
+permissions = [ "write","delete" ]
+
+
+[[access.users]]
+name = "foo_read_write_delete"
+[[access.users.tables]]
+name = "read_table"
+permissions = [ "read", "write","delete" ]
+
+[[access.users.tables]]
+name = "write_table"
+permissions = [ "read", "write","delete" ]
+
+[[access.users.tables]]
+name = "delete_table"
+permissions = [ "read", "write","delete" ]
+
+[[access.users.tables]]
+name = "read_write_table"
+permissions = [ "read", "write","delete" ]
+
+[[access.users.tables]]
+name = "read_delete_table"
+permissions = [ "read", "write","delete" ]
+
+[[access.users.tables]]
+name = "write_delete_table"
+permissions = [ "read", "write","delete" ]
+
+[[access.users.tables]]
+name = "read_write_delete_table"
+permissions = [ "read", "write","delete" ]
