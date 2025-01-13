@@ -28,16 +28,16 @@ const (
 )
 
 // TablesConf informations
-const defaultTablesConfMode = "white"
-
-var defaultUserNames = []string{"*"}
 
 type TablesConf struct {
 	Name        string   `mapstructure:"name"`
-	Mode        string   `mapstructure:"mode"`
-	UserNames   []string `mapstructure:"userNames"`
 	Permissions []string `mapstructure:"permissions"`
 	Fields      []string `mapstructure:"fields"`
+}
+
+type UsersConf struct {
+	Name   string `mapstructure:"name"`
+	Tables []TablesConf
 }
 
 // AccessConf informations
@@ -45,6 +45,7 @@ type AccessConf struct {
 	Restrict    bool
 	IgnoreTable []string
 	Tables      []TablesConf
+	Users       []UsersConf
 }
 
 // ExposeConf (expose data) information
@@ -335,14 +336,12 @@ func Parse(cfg *Prest) {
 	}
 	cfg.AccessConf.Tables = tablesconf
 
-	for i := range cfg.AccessConf.Tables {
-		if cfg.AccessConf.Tables[i].Mode == "" {
-			cfg.AccessConf.Tables[i].Mode = defaultTablesConfMode
-		}
-		if len(cfg.AccessConf.Tables[i].UserNames) == 0 {
-			cfg.AccessConf.Tables[i].UserNames = defaultUserNames
-		}
+	var usersconf []UsersConf
+	err = viper.UnmarshalKey("access.users", &usersconf)
+	if err != nil {
+		log.Errorln("could not unmarshal access users")
 	}
+	cfg.AccessConf.Users = usersconf
 
 	// default value
 

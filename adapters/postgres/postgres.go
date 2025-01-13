@@ -1330,48 +1330,36 @@ func (adapter *Postgres) TablePermissions(table string, op string, userName stri
 	}
 
 	tables := config.PrestConf.AccessConf.Tables
+	access = false
 	for _, t := range tables {
 		if t.Name == table {
-			switch t.Mode {
-			case "black":
-				// nobody in black list, all access
-				if len(t.UserNames) == 0 {
-					return true
-				}
+			access = slices.Contains(t.Permissions, op)
+			break
+		}
+	}
 
-				// all in black list, user operator not in permissions, can access
-				if len(t.UserNames) == 1 && t.UserNames[0] == "*" {
-					return !slices.Contains(t.Permissions, op)
-				}
+	// If userName is empty, means use table access.
+	if userName == "" {
+		return access
+	}
 
-				// user not in black list, can access
-				if !slices.Contains(t.UserNames, userName) {
-					return true
-				}
-				// user in black list but operation not in permissions, can access
-				return !slices.Contains(t.Permissions, op)
-			case "white":
-				// nobody in white list, all can not access
-				if len(t.UserNames) == 0 {
-					return false
-				}
-
-				if len(t.UserNames) == 1 && t.UserNames[0] == "*" {
+	// currently, access is granted to all users based on the table settings.
+	// if it is later discovered that there are specific permission settings for an individual user,
+	// then the latter settings should be applied.
+	users := config.PrestConf.AccessConf.Users
+	for _, u := range users {
+		if u.Name == userName {
+			for _, t := range u.Tables {
+				if t.Name == table {
 					return slices.Contains(t.Permissions, op)
 				}
-
-				// user not in white list, can not access
-				if slices.Contains(t.UserNames, userName) {
-					return slices.Contains(t.Permissions, op)
-				}
-				return false
 			}
 		}
 	}
-	return
+	return access
 }
 
-func fieldsByPermission(table, op string) (fields []string) {
+func fieldsByPermission(table, op, userName string) (fields []string) {
 	tables := config.PrestConf.AccessConf.Tables
 	for _, t := range tables {
 		if t.Name == table {
@@ -1382,6 +1370,21 @@ func fieldsByPermission(table, op string) (fields []string) {
 			}
 		}
 	}
+
+	// individual user
+	if userName != "" {
+		users := config.PrestConf.AccessConf.Users
+		for _, u := range users {
+			if u.Name == userName {
+				for _, t := range u.Tables {
+					if t.Name == table && slices.Contains(t.Permissions, op) {
+						fields = t.Fields
+					}
+				}
+			}
+		}
+	}
+
 	if len(fields) == 0 {
 		fields = []string{"*"}
 	}
@@ -1408,7 +1411,7 @@ func intersection(set, other []string) (intersection []string) {
 }
 
 // FieldsPermissions get fields permissions based in prest configuration
-func (adapter *Postgres) FieldsPermissions(r *http.Request, table string, op string) (fields []string, err error) {
+func (adapter *Postgres) FieldsPermissions(r *http.Request, table string, op string, userName string) (fields []string, err error) {
 	cols, err := columnsByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("error on parse columns from request: %s", err)
@@ -1423,7 +1426,7 @@ func (adapter *Postgres) FieldsPermissions(r *http.Request, table string, op str
 		fields = []string{"*"}
 		return
 	}
-	allowedFields := fieldsByPermission(table, op)
+	allowedFields := fieldsByPermission(table, op, userName)
 	if len(allowedFields) == 0 {
 		allowedFields = []string{"*"}
 	}
