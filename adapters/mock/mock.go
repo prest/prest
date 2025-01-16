@@ -7,6 +7,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"net/http"
+	"slices"
 	"sync"
 	"testing"
 
@@ -83,7 +84,7 @@ func (m *Mock) perform(query bool) (sc adapters.Scanner) {
 }
 
 // TablePermissions mock
-func (m *Mock) TablePermissions(table string, op string) (ok bool) {
+func (m *Mock) TablePermissions(table string, op string, userName string) (ok bool) {
 	m.t.Helper()
 	restrict := config.PrestConf.AccessConf.Restrict
 	if !restrict {
@@ -91,11 +92,28 @@ func (m *Mock) TablePermissions(table string, op string) (ok bool) {
 	}
 
 	tables := config.PrestConf.AccessConf.Tables
+	access := false
 	for _, t := range tables {
 		if t.Name == table {
-			for _, p := range t.Permissions {
-				if p == op {
-					return true
+			access = slices.Contains(t.Permissions, op)
+			break
+		}
+	}
+
+	// If userName is empty, means use table access.
+	if userName == "" {
+		return access
+	}
+
+	// currently, access is granted to all users based on the table settings.
+	// if it is later discovered that there are specific permission settings for an individual user,
+	// then the latter settings should be applied.
+	users := config.PrestConf.AccessConf.Users
+	for _, u := range users {
+		if u.Name == userName {
+			for _, t := range u.Tables {
+				if t.Name == table {
+					return slices.Contains(t.Permissions, op)
 				}
 			}
 		}
@@ -196,7 +214,7 @@ func (m *Mock) SchemaClause(req *http.Request) (query string, hasCount bool) {
 }
 
 // FieldsPermissions mock
-func (m *Mock) FieldsPermissions(r *http.Request, table string, op string) (fields []string, err error) {
+func (m *Mock) FieldsPermissions(r *http.Request, table string, op string, userName string) (fields []string, err error) {
 	fields = append(fields, "mock")
 	return
 }
