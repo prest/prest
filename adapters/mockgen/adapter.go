@@ -286,18 +286,18 @@ func (mr *MockAdapterMockRecorder) ExecuteScriptsCtx(ctx, method, sql, values in
 }
 
 // FieldsPermissions mocks base method.
-func (m *MockAdapter) FieldsPermissions(r *http.Request, table, op string) ([]string, error) {
+func (m *MockAdapter) FieldsPermissions(r *http.Request, table, op string, userName string) ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FieldsPermissions", r, table, op)
+	ret := m.ctrl.Call(m, "FieldsPermissions", r, table, op, userName)
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FieldsPermissions indicates an expected call of FieldsPermissions.
-func (mr *MockAdapterMockRecorder) FieldsPermissions(r, table, op interface{}) *gomock.Call {
+func (mr *MockAdapterMockRecorder) FieldsPermissions(r, table, op, userName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FieldsPermissions", reflect.TypeOf((*MockAdapter)(nil).FieldsPermissions), r, table, op)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FieldsPermissions", reflect.TypeOf((*MockAdapter)(nil).FieldsPermissions), r, table, op, userName)
 }
 
 // GetDatabase mocks base method.
@@ -815,17 +815,17 @@ func (mr *MockAdapterMockRecorder) TableOrderBy(order interface{}) *gomock.Call 
 }
 
 // TablePermissions mocks base method.
-func (m *MockAdapter) TablePermissions(table, op string) bool {
+func (m *MockAdapter) TablePermissions(table, op, userName string) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TablePermissions", table, op)
+	ret := m.ctrl.Call(m, "TablePermissions", table, op, userName)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // TablePermissions indicates an expected call of TablePermissions.
-func (mr *MockAdapterMockRecorder) TablePermissions(table, op interface{}) *gomock.Call {
+func (mr *MockAdapterMockRecorder) TablePermissions(table, op, userName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TablePermissions", reflect.TypeOf((*MockAdapter)(nil).TablePermissions), table, op)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TablePermissions", reflect.TypeOf((*MockAdapter)(nil).TablePermissions), table, op, userName)
 }
 
 // TableWhere mocks base method.

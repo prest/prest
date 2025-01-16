@@ -129,7 +129,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get selected columns, "*" if empty "_columns"
-	cols, err := config.PrestConf.Adapter.FieldsPermissions(r, table, "read")
+	cols, err := config.PrestConf.Adapter.FieldsPermissions(r, table, "read", "")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

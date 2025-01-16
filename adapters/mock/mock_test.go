@@ -108,7 +108,7 @@ func TestMock_TablePermissions(t *testing.T) {
 				mtx: &sync.RWMutex{},
 				t:   t,
 			}
-			if gotOk := m.TablePermissions(tt.table, tt.op); gotOk != tt.wantOk {
+			if gotOk := m.TablePermissions(tt.table, tt.op, ""); gotOk != tt.wantOk {
 				t.Errorf("Mock.TablePermissions() = %v, want %v", gotOk, tt.wantOk)
 			}
 		})
@@ -522,7 +522,7 @@ func TestMockEmptyMethods(t *testing.T) {
 	}
 
 	// FieldsPermissions
-	fields, err := mock.FieldsPermissions(&http.Request{}, "test", "select")
+	fields, err := mock.FieldsPermissions(&http.Request{}, "test", "select", "")
 	if err != nil {
 		t.Errorf("expected empty return, got: %s", err)
 	}
