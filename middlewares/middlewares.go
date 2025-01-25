@@ -111,7 +111,9 @@ func AccessControl() negroni.Handler {
 		userInfo := ctx.Value(pctx.UserInfoKey)
 		var userName string
 		if userInfo != nil {
-			userName = userInfo.(auth.User).Username
+			if user, ok := userInfo.(auth.User); ok {
+				userName = user.Username
+			}
 		}
 
 		permission := permissionByMethod(rq.Method)

@@ -133,7 +133,9 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	userInfo := r.Context().Value(pctx.UserInfoKey)
 	var userName string
 	if userInfo != nil {
-		userName = userInfo.(auth.User).Username
+		if user, ok := userInfo.(auth.User); ok {
+			userName = user.Username
+		}
 	}
 
 	// get selected columns, "*" if empty "_columns"
