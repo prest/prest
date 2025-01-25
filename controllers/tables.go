@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/prest/prest/controllers/auth"
 	"net/http"
 	"strings"
 	"time"
@@ -128,8 +129,15 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get user info from token
+	userInfo := r.Context().Value(pctx.UserInfoKey)
+	var userName string
+	if userInfo != nil {
+		userName = userInfo.(auth.User).Username
+	}
+
 	// get selected columns, "*" if empty "_columns"
-	cols, err := config.PrestConf.Adapter.FieldsPermissions(r, table, "read", "")
+	cols, err := config.PrestConf.Adapter.FieldsPermissions(r, table, "read", userName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

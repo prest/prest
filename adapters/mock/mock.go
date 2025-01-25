@@ -118,7 +118,7 @@ func (m *Mock) TablePermissions(table string, op string, userName string) (ok bo
 			}
 		}
 	}
-	return false
+	return access
 }
 
 // GetScript mock
