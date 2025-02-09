@@ -117,7 +117,7 @@ func Test_Middleware_DoesntBlock_CustomRoutes(t *testing.T) {
 
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
-	require.Contains(t, string(body), "required authorization to table")
+	require.Contains(t, string(body), "authorization required")
 
 	MiddlewareStack = []negroni.Handler{}
 }

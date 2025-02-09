@@ -1883,7 +1883,6 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 		wantFields []string
 		wantErr    bool
 	}{
-
 		{
 			name: "delete operations always returns *",
 			args: args{
@@ -2007,8 +2006,7 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 			wantFields: []string{`MAX("age")`},
 		},
 
-		// none existed user has no effect
-
+		// unexistant user has no effect
 		{
 			name: "has no error on parse groupby request(none_existed user has no effect)",
 			args: args{
@@ -2140,7 +2138,6 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 			wantErr:    false,
 			wantFields: []string{`MAX("age")`},
 		},
-
 		// for user
 		{
 			name: "allowed fields contains * and user don't pass select(foo overwrite fields)",
@@ -2156,7 +2153,6 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 			wantErr:    false,
 			wantFields: []string{"id"},
 		},
-
 		{
 			name: "allowed fields contains * and user don't pass select(bar overwrite fields *)",
 			args: args{
@@ -2171,7 +2167,6 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 			wantErr:    false,
 			wantFields: []string{"name"},
 		},
-
 		{
 			name: "allowed fields contains * and user ask for only only field(foo contain *)",
 			args: args{
@@ -2186,7 +2181,6 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 			wantErr:    false,
 			wantFields: []string{"name"},
 		},
-
 		{
 			name: "allowed fields contains * and user ask for only only field(bar contain id name)",
 			args: args{
@@ -2201,7 +2195,6 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 			wantErr:    false,
 			wantFields: []string{"name"},
 		},
-
 		{
 			name: "allowed fields contains * and user ask for multiple fields(foo contain *)",
 			args: args{
@@ -2216,7 +2209,6 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 			wantErr:    false,
 			wantFields: []string{"name", "age"},
 		},
-
 		{
 			name: "allowed fields contains * and user ask for multiple fields(bar contain id,name,age)",
 			args: args{
@@ -2231,7 +2223,6 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 			wantErr:    false,
 			wantFields: []string{"name", "age"},
 		},
-
 		{
 			name: "user ask for allowed field(foo)",
 			args: args{
@@ -2245,9 +2236,7 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 			restrict:   true,
 			wantErr:    false,
 			wantFields: []string{"name"},
-		},
-
-		{
+		}, {
 			name: "user ask for allowed field(bar)",
 			args: args{
 				url:         "/table_field_permission?_select=name",
@@ -2260,9 +2249,7 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 			restrict:   true,
 			wantErr:    false,
 			wantFields: []string{"name"},
-		},
-
-		{
+		}, {
 			name: "user ask for not allowed field (foo)",
 			args: args{
 				url:        "/table_field_permission?_select=id",
@@ -2274,9 +2261,7 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 			},
 			restrict: true,
 			wantErr:  false,
-		},
-
-		{
+		}, {
 			name: "user ask for not allowed field (bar)",
 			args: args{
 				url:         "/table_field_permission?_select=id",
@@ -2288,9 +2273,7 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 			},
 			restrict: true,
 			wantErr:  false,
-		},
-
-		{
+		}, {
 			name: "allowed some fields but user ask for nothing(foo)",
 			args: args{
 				url:        "/table_field_permission",
@@ -2303,9 +2286,7 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 			restrict:   true,
 			wantErr:    false,
 			wantFields: []string{"name", "age"},
-		},
-
-		{
+		}, {
 			name: "allowed some fields but user ask for nothing(bar)",
 			args: args{
 				url:         "/table_field_permission",
@@ -2318,9 +2299,7 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 			restrict:   true,
 			wantErr:    false,
 			wantFields: []string{"name", "age"},
-		},
-
-		{
+		}, {
 			name: "functions in select should respect table permissions(foo)",
 			args: args{
 				url:        "/table_field_permission?_groupby=number&_select=max:number",
@@ -2390,31 +2369,30 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 
 		config.PrestConf.AccessConf.Users = append(config.PrestConf.AccessConf.Users,
 			config.UsersConf{
-				Name: "foo", Tables: []config.TablesConf{{
-					Name: "test_field_permission", Permissions: []string{"read", "write", "delete"}, Fields: tt.args.userFields,
+				Name: "foo",
+				Tables: []config.TablesConf{{
+					Name:        "test_field_permission",
+					Permissions: []string{"read", "write", "delete"},
+					Fields:      tt.args.userFields,
 				}},
-			})
-		config.PrestConf.AccessConf.Users = append(config.PrestConf.AccessConf.Users,
+			},
 			config.UsersConf{
-				Name: "bar", Tables: []config.TablesConf{{
-					Name: "test_field_permission", Permissions: []string{"read", "write", "delete"}, Fields: tt.args.user2Fields,
+				Name: "bar",
+				Tables: []config.TablesConf{{
+					Name:        "test_field_permission",
+					Permissions: []string{"read", "write", "delete"},
+					Fields:      tt.args.user2Fields,
 				}},
 			})
 
 		t.Run(tt.name, func(t *testing.T) {
 			adapter := &Postgres{}
 			r, err := http.NewRequest(http.MethodGet, tt.args.url, strings.NewReader(""))
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
+
 			gotFields, err := adapter.FieldsPermissions(r, tt.args.table, tt.args.op, tt.args.userName)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Postgres.FieldsPermissions() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(gotFields, tt.wantFields) {
-				t.Errorf("Postgres.FieldsPermissions() = %v, want %v", gotFields, tt.wantFields)
-			}
+			require.Equal(t, tt.wantErr, err != nil)
+			require.Equal(t, tt.wantFields, gotFields)
 		})
 	}
 }
@@ -2724,5 +2702,117 @@ func TestSliceToJSONList(t *testing.T) {
 		if err != tc.err {
 			t.Errorf("expected %s in %s", err, tc.err)
 		}
+	}
+}
+
+func TestFieldsByPermission(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		table      string
+		op         string
+		userName   string
+		tablesConf []config.TablesConf
+		usersConf  []config.UsersConf
+		wantFields []string
+	}{
+		{
+			name:     "No user, table with permission",
+			table:    "test_table",
+			op:       "read",
+			userName: "",
+			tablesConf: []config.TablesConf{
+				{
+					Name:        "test_table",
+					Permissions: []string{"read"},
+					Fields:      []string{"field1", "field2"},
+				},
+			},
+			wantFields: []string{"field1", "field2"},
+		},
+		{
+			name:     "No user, table without permission",
+			table:    "test_table",
+			op:       "write",
+			userName: "",
+			tablesConf: []config.TablesConf{
+				{
+					Name:        "test_table",
+					Permissions: []string{"read"},
+					Fields:      []string{"field1", "field2"},
+				},
+			},
+			wantFields: []string{"*"},
+		},
+		{
+			name:     "User with table permission",
+			table:    "test_table",
+			op:       "read",
+			userName: "test_user",
+			usersConf: []config.UsersConf{
+				{
+					Name: "test_user",
+					Tables: []config.TablesConf{
+						{
+							Name:        "test_table",
+							Permissions: []string{"read"},
+							Fields:      []string{"field1", "field2"},
+						},
+					},
+				},
+			},
+			wantFields: []string{"field1", "field2"},
+		},
+		{
+			name:     "User without table permission",
+			table:    "test_table",
+			op:       "write",
+			userName: "test_user",
+			usersConf: []config.UsersConf{
+				{
+					Name: "test_user",
+					Tables: []config.TablesConf{
+						{
+							Name:        "test_table",
+							Permissions: []string{"read"},
+							Fields:      []string{"field1", "field2"},
+						},
+					},
+				},
+			},
+			wantFields: []string{"*"},
+		},
+		{
+			name:     "User with no specific table permission",
+			table:    "test_table",
+			op:       "read",
+			userName: "test_user",
+			usersConf: []config.UsersConf{
+				{
+					Name: "test_user",
+					Tables: []config.TablesConf{
+						{
+							Name:        "other_table",
+							Permissions: []string{"read"},
+							Fields:      []string{"field1", "field2"},
+						},
+					},
+				},
+			},
+			wantFields: []string{"*"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config.PrestConf.AccessConf.Tables = tt.tablesConf
+			config.PrestConf.AccessConf.Users = tt.usersConf
+
+			gotFields := fieldsByPermission(tt.table, tt.op, tt.userName)
+			if !reflect.DeepEqual(gotFields, tt.wantFields) {
+				t.Errorf("fieldsByPermission() = %v, want %v", gotFields, tt.wantFields)
+			}
+		})
 	}
 }

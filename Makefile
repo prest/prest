@@ -15,7 +15,7 @@ dc-up:
 		--remove-orphans \
 		--build
 
-PHONY: dc-up
+PHONY: dc-down
 dc-down:
 	$(DOCKER_COMPOSE) down --volumes --remove-orphans --rmi local
 

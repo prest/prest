@@ -1359,35 +1359,48 @@ func (adapter *Postgres) TablePermissions(table string, op string, userName stri
 	return access
 }
 
-func fieldsByPermission(table, op, userName string) (fields []string) {
-	tables := config.PrestConf.AccessConf.Tables
-	for _, t := range tables {
-		if t.Name == table {
-			for _, perm := range t.Permissions {
-				if perm == op {
+// fieldsByPermission returns a list of fields that a user is allowed to access
+// for a given table and operation based on the configuration.
+//
+// Parameters:
+//   - table: The name of the table to check permissions for.
+//   - operation: The type of operation (e.g., "read", "write") to check permissions for.
+//   - userName: The name of the user to check permissions for.
+//
+// Returns:
+//   - fields: A slice of strings representing the fields the user is allowed to access.
+//     If no specific permissions are found, it defaults to returning all fields ("*").
+func fieldsByPermission(table, operation, userName string) (fields []string) {
+	fields = []string{"*"}
+	confTables := config.PrestConf.AccessConf.Tables
+
+	for _, cfgTable := range confTables {
+		if cfgTable.Name == table {
+			for _, perm := range cfgTable.Permissions {
+				if perm == operation {
+					fields = cfgTable.Fields
+				}
+			}
+		}
+	}
+
+	if userName == "" {
+		return
+	}
+
+	// individual user
+	users := config.PrestConf.AccessConf.Users
+	for _, u := range users {
+		if u.Name == userName {
+			for _, t := range u.Tables {
+				if t.Name == table &&
+					slices.Contains(t.Permissions, operation) {
 					fields = t.Fields
 				}
 			}
 		}
 	}
 
-	// individual user
-	if userName != "" {
-		users := config.PrestConf.AccessConf.Users
-		for _, u := range users {
-			if u.Name == userName {
-				for _, t := range u.Tables {
-					if t.Name == table && slices.Contains(t.Permissions, op) {
-						fields = t.Fields
-					}
-				}
-			}
-		}
-	}
-
-	if len(fields) == 0 {
-		fields = []string{"*"}
-	}
 	return
 }
 
@@ -1427,9 +1440,6 @@ func (adapter *Postgres) FieldsPermissions(r *http.Request, table string, op str
 		return
 	}
 	allowedFields := fieldsByPermission(table, op, userName)
-	if len(allowedFields) == 0 {
-		allowedFields = []string{"*"}
-	}
 	if containsAsterisk(allowedFields) {
 		fields = []string{"*"}
 		if len(cols) > 0 {
@@ -1438,7 +1448,7 @@ func (adapter *Postgres) FieldsPermissions(r *http.Request, table string, op str
 		return
 	}
 	fields = intersection(cols, allowedFields)
-	if len(cols) == 0 {
+	if len(cols) == 0 && len(allowedFields) > 0 {
 		fields = allowedFields
 	}
 	return
