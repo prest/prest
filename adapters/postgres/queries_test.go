@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/prest/prest/config"
+	"github.com/prest/prest/v2/config"
 )
 
 func TestMain(m *testing.M) {

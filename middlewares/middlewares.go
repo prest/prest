@@ -10,10 +10,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prest/prest/v2/config"
+	pctx "github.com/prest/prest/v2/context"
+	"github.com/prest/prest/v2/controllers/auth"
+
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/prest/prest/config"
-	pctx "github.com/prest/prest/context"
-	"github.com/prest/prest/controllers/auth"
 	"github.com/urfave/negroni/v3"
 	"gopkg.in/square/go-jose.v2/jwt"
 )

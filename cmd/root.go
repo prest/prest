@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/prest/prest/adapters/postgres"
-	"github.com/prest/prest/config"
-	"github.com/prest/prest/router"
+	"github.com/prest/prest/v2/adapters/postgres"
+	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/router"
+
 	"github.com/spf13/cobra"
 	slog "github.com/structy/log"
 )

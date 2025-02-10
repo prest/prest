@@ -4,19 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
-
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/prest/prest/adapters"
-	"github.com/prest/prest/cache"
-
-	"net/http"
 	"time"
 
+	"github.com/prest/prest/v2/adapters"
+	"github.com/prest/prest/v2/cache"
+
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 	"github.com/structy/log"

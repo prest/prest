@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/prest/prest/config"
+	"github.com/prest/prest/v2/config"
 )
 
 // GetSchemas list all (or filter) schemas

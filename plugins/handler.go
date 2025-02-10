@@ -7,8 +7,9 @@ import (
 	"path/filepath"
 	"plugin"
 
+	"github.com/prest/prest/v2/config"
+
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/config"
 )
 
 var (

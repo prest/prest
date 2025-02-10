@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/prest/prest/cache"
 	"github.com/urfave/negroni/v3"
+
+	"github.com/prest/prest/v2/cache"
 )
 
 // CacheMiddleware simple caching to avoid equal queries to the database

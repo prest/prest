@@ -8,8 +8,8 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"github.com/prest/prest/config"
-	pctx "github.com/prest/prest/context"
+	"github.com/prest/prest/v2/config"
+	pctx "github.com/prest/prest/v2/context"
 )
 
 // ExecuteScriptQuery is a function to execute and return result of script query

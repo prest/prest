@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/prest/prest/config"
-	"github.com/prest/prest/middlewares/statements"
+	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/middlewares/statements"
 )
 
 func Test_getVars(t *testing.T) {

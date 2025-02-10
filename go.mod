@@ -1,4 +1,4 @@
-module github.com/prest/prest
+module github.com/prest/prest/v2
 
 go 1.21
 

@@ -3,11 +3,12 @@ package router
 import (
 	"runtime"
 
+	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/controllers"
+	"github.com/prest/prest/v2/middlewares"
+	"github.com/prest/prest/v2/plugins"
+
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/config"
-	"github.com/prest/prest/controllers"
-	"github.com/prest/prest/middlewares"
-	"github.com/prest/prest/plugins"
 	"github.com/urfave/negroni/v3"
 )
 

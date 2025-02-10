@@ -12,12 +12,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/prest/prest/adapters"
-	"github.com/prest/prest/adapters/postgres/internal/connection"
-	"github.com/prest/prest/adapters/postgres/statements"
-	"github.com/prest/prest/adapters/scanner"
-	"github.com/prest/prest/config"
-	pctx "github.com/prest/prest/context"
+	"github.com/prest/prest/v2/adapters"
+	"github.com/prest/prest/v2/adapters/postgres/internal/connection"
+	"github.com/prest/prest/v2/adapters/postgres/statements"
+	"github.com/prest/prest/v2/adapters/scanner"
+	"github.com/prest/prest/v2/config"
+	pctx "github.com/prest/prest/v2/context"
+
 	"github.com/stretchr/testify/require"
 	"github.com/structy/log"
 )

@@ -8,14 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prest/prest/controllers/auth"
+	"github.com/prest/prest/v2/adapters"
+	"github.com/prest/prest/v2/config"
+	pctx "github.com/prest/prest/v2/context"
+	"github.com/prest/prest/v2/controllers/auth"
 
 	"github.com/gorilla/mux"
 	"github.com/structy/log"
-
-	"github.com/prest/prest/adapters"
-	"github.com/prest/prest/config"
-	pctx "github.com/prest/prest/context"
 )
 
 // GetTables list all (or filter) tables

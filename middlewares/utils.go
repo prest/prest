@@ -9,9 +9,10 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/middlewares/statements"
+
 	"github.com/clbanning/mxj/j2x"
-	"github.com/prest/prest/config"
-	"github.com/prest/prest/middlewares/statements"
 )
 
 func getVars(path string) (paths map[string]string) {

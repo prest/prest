@@ -1,9 +1,10 @@
 package middlewares
 
 import (
-	"github.com/prest/prest/config"
 	"github.com/rs/cors"
 	"github.com/urfave/negroni/v3"
+
+	"github.com/prest/prest/v2/config"
 )
 
 var (
