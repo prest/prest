@@ -43,6 +43,12 @@ func TestContainsStringInSlice(t *testing.T) {
 			value:    "d",
 			expected: false,
 		},
+		{
+			name:     "contains",
+			slice:    []string{"alabama", "b", "c"},
+			value:    "la",
+			expected: false,
+		},
 	}
 
 	for _, tc := range testCases {
