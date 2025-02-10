@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -50,12 +49,6 @@ func DoRequest(t *testing.T, url string, r interface{}, method string, expectedS
 	assert.Equal(t, expectedStatus, resp.StatusCode)
 
 	if len(expectedBody) > 0 {
-		assert.True(t, containsStringInSlice(expectedBody, string(body)),
-			fmt.Sprintf("expected %q, got: %q", expectedBody[0], string(body)))
+		assert.Contains(t, string(body), expectedBody)
 	}
-}
-
-// containsStringInSlice check if there is string in slice
-func containsStringInSlice(s []string, e string) bool {
-	return slices.Contains(s, e)
 }

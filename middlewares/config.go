@@ -38,7 +38,7 @@ func initApp() {
 		if !config.PrestConf.Debug && config.PrestConf.EnableDefaultJWT {
 			MiddlewareStack = append(
 				MiddlewareStack,
-				JwtMiddleware(config.PrestConf.JWTKey, config.PrestConf.JWTJWKS))
+				JwtMiddleware(config.PrestConf.JWTKey, config.PrestConf.JWTJWKS, config.PrestConf.JWTAlgo))
 		}
 		if config.PrestConf.Cache.Enabled {
 			MiddlewareStack = append(MiddlewareStack, CacheMiddleware(&config.PrestConf.Cache))

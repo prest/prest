@@ -49,7 +49,7 @@ func SetTimeoutToContext() negroni.Handler {
 }
 
 // AuthMiddleware handle request token validation
-func AuthMiddleware() negroni.Handler {
+func AuthMiddleware(JWTAlgo string) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		match, err := MatchURL(r.URL.String())
 		if err != nil {
@@ -65,7 +65,7 @@ func AuthMiddleware() negroni.Handler {
 				return
 			}
 
-			tok, err := jwt.ParseSigned(token, []jose.SignatureAlgorithm{jose.HS256})
+			tok, err := jwt.ParseSigned(token, []jose.SignatureAlgorithm{jwtAlgo(JWTAlgo)})
 			if err != nil {
 				http.Error(rw, fmt.Sprintf(jsonErrFormat, ErrJWTParseFail.Error()), http.StatusUnauthorized)
 				return
@@ -137,7 +137,7 @@ func AccessControl() negroni.Handler {
 }
 
 // JwtMiddleware check if actual request have JWT
-func JwtMiddleware(key string, JWKSet string) negroni.Handler {
+func JwtMiddleware(key string, JWKSet, JWTAlgo string) negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		match, err := MatchURL(r.URL.String())
 		if err != nil {
@@ -155,7 +155,7 @@ func JwtMiddleware(key string, JWKSet string) negroni.Handler {
 			http.Error(w, fmt.Sprintf(jsonErrFormat, ErrAuthIsEmpty.Error()), http.StatusUnauthorized)
 			return
 		}
-		tok, err := jwt.ParseSigned(token, []jose.SignatureAlgorithm{jose.HS256})
+		tok, err := jwt.ParseSigned(token, []jose.SignatureAlgorithm{jwtAlgo(JWTAlgo)})
 		if err != nil {
 			http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWTParseFail.Error()), http.StatusUnauthorized)
 			return
@@ -247,4 +247,37 @@ func ExposureMiddleware() negroni.Handler {
 
 		next(rw, rq)
 	})
+}
+
+func jwtAlgo(algo string) jose.SignatureAlgorithm {
+	switch algo {
+	case "EdDSA":
+		return jose.EdDSA
+	case "HS256":
+		return jose.HS256
+	case "HS384":
+		return jose.HS384
+	case "HS512":
+		return jose.HS512
+	case "RS256":
+		return jose.RS256
+	case "RS384":
+		return jose.RS384
+	case "RS512":
+		return jose.RS512
+	case "ES256":
+		return jose.ES256
+	case "ES384":
+		return jose.ES384
+	case "ES512":
+		return jose.ES512
+	case "PS256":
+		return jose.PS256
+	case "PS384":
+		return jose.PS384
+	case "PS512":
+		return jose.PS512
+	default:
+		return jose.HS256
+	}
 }

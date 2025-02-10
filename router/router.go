@@ -46,7 +46,7 @@ func GetRouter() *mux.Router {
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.DeleteFromTable).Methods("DELETE")
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.UpdateTable).Methods("PUT", "PATCH")
 	router.PathPrefix("/").Handler(negroni.New(
-		middlewares.AuthMiddleware(),
+		middlewares.AuthMiddleware(config.PrestConf.JWTAlgo),
 		middlewares.AccessControl(),
 		middlewares.ExposureMiddleware(),
 		middlewares.CacheMiddleware(&config.PrestConf.Cache),
