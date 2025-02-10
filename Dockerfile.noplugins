@@ -1,4 +1,4 @@
-FROM registry.hub.docker.com/library/golang:1.22.2 as builder
+FROM registry.hub.docker.com/library/golang:1.23.6 as builder
 WORKDIR /workspace
 COPY . .
 ENV GOOS linux

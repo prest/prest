@@ -12,10 +12,10 @@ import (
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers/auth"
 
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/square/go-jose.v2"
-	"gopkg.in/square/go-jose.v2/jwt"
 )
 
 func TestJWTClaimsOk(t *testing.T) {

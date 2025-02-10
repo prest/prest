@@ -12,8 +12,8 @@ import (
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers/auth"
 
-	"gopkg.in/square/go-jose.v2"
-	jwt "gopkg.in/square/go-jose.v2/jwt"
+	"github.com/go-jose/go-jose/v4"
+	jwt "github.com/go-jose/go-jose/v4/jwt"
 )
 
 // Response representation
