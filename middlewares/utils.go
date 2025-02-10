@@ -15,6 +15,17 @@ import (
 	"github.com/clbanning/mxj/j2x"
 )
 
+var (
+	ErrXMLBadRequest = `<?xml version="1.0" encoding="utf-8"?>
+<errors xmlns="http://schemas.google.com/g/2005">
+  <error>
+    <reason>internal</reason>
+    <internalReason>%s</internalReason>
+  </error>
+  <code>400</code> 
+</errors>`
+)
+
 func getVars(path string) (paths map[string]string) {
 	pathList := strings.Split(path, "/")
 
@@ -60,7 +71,7 @@ func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, fo
 	case "xml":
 		xmldata, err := j2x.JsonToXml(byt)
 		if err != nil {
-			http.Error(w, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusBadRequest)
+			http.Error(w, fmt.Sprintf(ErrXMLBadRequest, err.Error()), http.StatusBadRequest)
 			return
 		}
 		xmlStr := fmt.Sprintf("<objects>%s</objects>", string(xmldata))
