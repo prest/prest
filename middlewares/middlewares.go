@@ -14,6 +14,7 @@ import (
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
 
+	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/urfave/negroni/v3"
@@ -64,7 +65,7 @@ func AuthMiddleware() negroni.Handler {
 				return
 			}
 
-			tok, err := jwt.ParseSigned(token)
+			tok, err := jwt.ParseSigned(token, []jose.SignatureAlgorithm{jose.HS256})
 			if err != nil {
 				http.Error(rw, fmt.Sprintf(jsonErrFormat, ErrJWTParseFail.Error()), http.StatusUnauthorized)
 				return
@@ -154,7 +155,7 @@ func JwtMiddleware(key string, JWKSet string) negroni.Handler {
 			http.Error(w, fmt.Sprintf(jsonErrFormat, ErrAuthIsEmpty.Error()), http.StatusUnauthorized)
 			return
 		}
-		tok, err := jwt.ParseSigned(token)
+		tok, err := jwt.ParseSigned(token, []jose.SignatureAlgorithm{jose.HS256})
 		if err != nil {
 			http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWTParseFail.Error()), http.StatusUnauthorized)
 			return

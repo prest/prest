@@ -48,7 +48,7 @@ func TestJWTClaimsOk(t *testing.T) {
 		NotBefore: jwt.NewNumericDate(getToken),
 		Expiry:    jwt.NewNumericDate(expireToken),
 	}
-	bearer, err := jwt.Signed(sig).Claims(cl).CompactSerialize()
+	bearer, err := jwt.Signed(sig).Claims(cl).Serialize()
 	require.NoError(t, err)
 	req.Header.Add("authorization", bearer)
 
@@ -87,7 +87,7 @@ func TestJWTClaimsNotOk(t *testing.T) {
 		NotBefore: jwt.NewNumericDate(getToken),
 		Expiry:    jwt.NewNumericDate(expireToken),
 	}
-	bearer, err := jwt.Signed(sig).Claims(cl).CompactSerialize()
+	bearer, err := jwt.Signed(sig).Claims(cl).Serialize()
 	require.NoError(t, err)
 
 	req.Header.Add("authorization", bearer)
@@ -146,7 +146,7 @@ func TestJWKSetRSAOk(t *testing.T) {
 		NotBefore: jwt.NewNumericDate(getToken),
 		Expiry:    jwt.NewNumericDate(expireToken),
 	}
-	bearer, err := jwt.Signed(sig).Claims(cl).CompactSerialize()
+	bearer, err := jwt.Signed(sig).Claims(cl).Serialize()
 	require.NoError(t, err)
 	req.Header.Add("authorization", bearer)
 
@@ -208,7 +208,7 @@ func TestJWKSetRSANoKey(t *testing.T) {
 		NotBefore: jwt.NewNumericDate(getToken),
 		Expiry:    jwt.NewNumericDate(expireToken),
 	}
-	bearer, err := jwt.Signed(sig).Claims(cl).CompactSerialize()
+	bearer, err := jwt.Signed(sig).Claims(cl).Serialize()
 	require.NoError(t, err)
 	req.Header.Add("authorization", bearer)
 

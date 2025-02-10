@@ -60,7 +60,7 @@ func Token(u auth.User) (t string, err error) {
 		NotBefore: jwt.NewNumericDate(getToken),
 		Expiry:    jwt.NewNumericDate(expireToken),
 	}
-	return jwt.Signed(sig).Claims(cl).CompactSerialize()
+	return jwt.Signed(sig).Claims(cl).Serialize()
 }
 
 // Auth controller
