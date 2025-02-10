@@ -14,10 +14,10 @@ import (
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
 
-	"github.com/go-jose/go-jose/v4"
-	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/urfave/negroni/v3"
+	jose "gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2/jwt"
 )
 
 var (
@@ -49,7 +49,7 @@ func SetTimeoutToContext() negroni.Handler {
 }
 
 // AuthMiddleware handle request token validation
-func AuthMiddleware(JWTAlgo string) negroni.Handler {
+func AuthMiddleware(_ string) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		match, err := MatchURL(r.URL.String())
 		if err != nil {
@@ -65,7 +65,7 @@ func AuthMiddleware(JWTAlgo string) negroni.Handler {
 				return
 			}
 
-			tok, err := jwt.ParseSigned(token, []jose.SignatureAlgorithm{jwtAlgo(JWTAlgo)})
+			tok, err := jwt.ParseSigned(token)
 			if err != nil {
 				http.Error(rw, fmt.Sprintf(jsonErrFormat, ErrJWTParseFail.Error()), http.StatusUnauthorized)
 				return
@@ -137,7 +137,7 @@ func AccessControl() negroni.Handler {
 }
 
 // JwtMiddleware check if actual request have JWT
-func JwtMiddleware(key string, JWKSet, JWTAlgo string) negroni.Handler {
+func JwtMiddleware(key string, JWKSet, _ string) negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		match, err := MatchURL(r.URL.String())
 		if err != nil {
@@ -155,7 +155,7 @@ func JwtMiddleware(key string, JWKSet, JWTAlgo string) negroni.Handler {
 			http.Error(w, fmt.Sprintf(jsonErrFormat, ErrAuthIsEmpty.Error()), http.StatusUnauthorized)
 			return
 		}
-		tok, err := jwt.ParseSigned(token, []jose.SignatureAlgorithm{jwtAlgo(JWTAlgo)})
+		tok, err := jwt.ParseSigned(token)
 		if err != nil {
 			http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWTParseFail.Error()), http.StatusUnauthorized)
 			return
@@ -249,6 +249,7 @@ func ExposureMiddleware() negroni.Handler {
 	})
 }
 
+// nolint
 func jwtAlgo(algo string) jose.SignatureAlgorithm {
 	switch algo {
 	case "EdDSA":

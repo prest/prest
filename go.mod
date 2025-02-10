@@ -2,10 +2,12 @@ module github.com/prest/prest/v2
 
 go 1.23
 
+// todo: upgrade go-jose 
+// github.com/go-jose/go-jose/v4 v4.0.4
+
 require (
 	github.com/avelino/slugify v0.0.0-20180501145920-855f152bd774
 	github.com/clbanning/mxj v1.8.4
-	github.com/go-jose/go-jose/v4 v4.0.4
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/gosidekick/migration/v3 v3.0.0
@@ -21,6 +23,7 @@ require (
 	github.com/structy/log v0.0.0-20220126205329-1f766c8d0b3c
 	github.com/tidwall/buntdb v1.3.2
 	github.com/urfave/negroni/v3 v3.1.1
+	gopkg.in/square/go-jose.v2 v2.6.0
 )
 
 require (

@@ -12,8 +12,8 @@ import (
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers/auth"
 
-	"github.com/go-jose/go-jose/v4"
-	jwt "github.com/go-jose/go-jose/v4/jwt"
+	jose "gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2/jwt"
 )
 
 // Response representation
@@ -60,7 +60,7 @@ func Token(u auth.User) (t string, err error) {
 		NotBefore: jwt.NewNumericDate(getToken),
 		Expiry:    jwt.NewNumericDate(expireToken),
 	}
-	return jwt.Signed(sig).Claims(cl).Serialize()
+	return jwt.Signed(sig).Claims(cl).CompactSerialize()
 }
 
 // Auth controller

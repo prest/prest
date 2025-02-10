@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"github.com/go-jose/go-jose/v4/jwt"
+	"gopkg.in/square/go-jose.v2/jwt"
 )
 
 // User logged in user representation
