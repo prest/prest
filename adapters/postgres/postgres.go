@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1315,47 +1316,91 @@ func GetQueryOperator(op string) (string, error) {
 }
 
 // TablePermissions get tables permissions based in prest configuration
-func (adapter *Postgres) TablePermissions(table string, op string) (access bool) {
-	access = false
+func (adapter *Postgres) TablePermissions(table string, op string, userName string) (access bool) {
 	restrict := config.PrestConf.AccessConf.Restrict
 	if !restrict {
-		access = true
+		return true
 	}
 
 	// ignore table loop
 	for _, ignoreT := range config.PrestConf.AccessConf.IgnoreTable {
 		if ignoreT == table {
-			access = true
+			return true
 		}
 	}
 
 	tables := config.PrestConf.AccessConf.Tables
+	access = false
 	for _, t := range tables {
 		if t.Name == table {
-			for _, p := range t.Permissions {
-				if p == op {
-					access = true
+			access = slices.Contains(t.Permissions, op)
+			break
+		}
+	}
+
+	// If userName is empty, means use table access.
+	if userName == "" {
+		return access
+	}
+
+	// currently, access is granted to all users based on the table settings.
+	// if it is later discovered that there are specific permission settings for an individual user,
+	// then the latter settings should be applied.
+	users := config.PrestConf.AccessConf.Users
+	for _, u := range users {
+		if u.Name == userName {
+			for _, t := range u.Tables {
+				if t.Name == table {
+					return slices.Contains(t.Permissions, op)
 				}
 			}
 		}
 	}
-	return
+	return access
 }
 
-func fieldsByPermission(table, op string) (fields []string) {
-	tables := config.PrestConf.AccessConf.Tables
-	for _, t := range tables {
-		if t.Name == table {
-			for _, perm := range t.Permissions {
-				if perm == op {
+// fieldsByPermission returns a list of fields that a user is allowed to access
+// for a given table and operation based on the configuration.
+//
+// Parameters:
+//   - table: The name of the table to check permissions for.
+//   - operation: The type of operation (e.g., "read", "write") to check permissions for.
+//   - userName: The name of the user to check permissions for.
+//
+// Returns:
+//   - fields: A slice of strings representing the fields the user is allowed to access.
+//     If no specific permissions are found, it defaults to returning all fields ("*").
+func fieldsByPermission(table, operation, userName string) (fields []string) {
+	fields = []string{"*"}
+	confTables := config.PrestConf.AccessConf.Tables
+
+	for _, cfgTable := range confTables {
+		if cfgTable.Name == table {
+			for _, perm := range cfgTable.Permissions {
+				if perm == operation {
+					fields = cfgTable.Fields
+				}
+			}
+		}
+	}
+
+	if userName == "" {
+		return
+	}
+
+	// individual user
+	users := config.PrestConf.AccessConf.Users
+	for _, u := range users {
+		if u.Name == userName {
+			for _, t := range u.Tables {
+				if t.Name == table &&
+					slices.Contains(t.Permissions, operation) {
 					fields = t.Fields
 				}
 			}
 		}
 	}
-	if len(fields) == 0 {
-		fields = []string{"*"}
-	}
+
 	return
 }
 
@@ -1379,7 +1424,7 @@ func intersection(set, other []string) (intersection []string) {
 }
 
 // FieldsPermissions get fields permissions based in prest configuration
-func (adapter *Postgres) FieldsPermissions(r *http.Request, table string, op string) (fields []string, err error) {
+func (adapter *Postgres) FieldsPermissions(r *http.Request, table string, op string, userName string) (fields []string, err error) {
 	cols, err := columnsByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("error on parse columns from request: %s", err)
@@ -1394,10 +1439,7 @@ func (adapter *Postgres) FieldsPermissions(r *http.Request, table string, op str
 		fields = []string{"*"}
 		return
 	}
-	allowedFields := fieldsByPermission(table, op)
-	if len(allowedFields) == 0 {
-		allowedFields = []string{"*"}
-	}
+	allowedFields := fieldsByPermission(table, op, userName)
 	if containsAsterisk(allowedFields) {
 		fields = []string{"*"}
 		if len(cols) > 0 {
@@ -1406,7 +1448,7 @@ func (adapter *Postgres) FieldsPermissions(r *http.Request, table string, op str
 		return
 	}
 	fields = intersection(cols, allowedFields)
-	if len(cols) == 0 {
+	if len(cols) == 0 && len(allowedFields) > 0 {
 		fields = allowedFields
 	}
 	return

@@ -58,7 +58,7 @@ type Adapter interface {
 	ExecuteScripts(method, sql string, values []interface{}) (sc Scanner)
 	ExecuteScriptsCtx(ctx context.Context, method, sql string, values []interface{}) (sc Scanner)
 
-	FieldsPermissions(r *http.Request, table string, op string) (fields []string, err error)
+	FieldsPermissions(r *http.Request, table string, op string, userName string) (fields []string, err error)
 	GetScript(verb, folder, scriptName string) (script string, err error)
 	GroupByClause(r *http.Request) (groupBySQL string)
 
@@ -92,7 +92,7 @@ type Adapter interface {
 	GetDatabase() string
 	TableClause() (query string)
 	TableOrderBy(order string) (orderBy string)
-	TablePermissions(table string, op string) bool
+	TablePermissions(table string, op string, userName string) bool
 	TableWhere(requestWhere string) (whereSyntax string)
 
 	Update(SQL string, params ...interface{}) (sc Scanner)

@@ -1036,25 +1036,323 @@ func TestTablePermissions(t *testing.T) {
 		description string
 		table       string
 		permission  string
+		userName    string
 		out         bool
 	}{
-		{"Read", "test_readonly_access", "read", true},
-		{"Try to read without permission", "test_write_and_delete_access", "read", false},
-		{"Write", "test_write_and_delete_access", "write", true},
-		{"Try to write without permission", "test_readonly_access", "write", false},
-		{"Delete", "test_write_and_delete_access", "delete", true},
-		{"Try to delete without permission", "test_readonly_access", "delete", false},
-		{"Try config does not write", "test_permission_does_not_exist", "read", false},
+
+		{"Read", "test_readonly_access", "read", "", true},
+		{"Try to read without permission", "test_write_and_delete_access", "read", "", false},
+		{"Write", "test_write_and_delete_access", "write", "", true},
+		{"Try to write without permission", "test_readonly_access", "write", "", false},
+		{"Delete", "test_write_and_delete_access", "delete", "", true},
+		{"Try to delete without permission", "test_readonly_access", "delete", "", false},
+		{"Try config does not write", "test_permission_does_not_exist", "read", "", false},
+
+		// user with permission
+		{"try foo_read read read_table", "read_table", "read", "foo_read", true},
+		{"try foo_read read write_table", "write_table", "read", "foo_read", true},
+		{"try foo_read read delete_table", "delete_table", "read", "foo_read", true},
+		{"try foo_read read read_write_table", "read_write_table", "read", "foo_read", true},
+		{"try foo_read read read_delete_table", "read_delete_table", "read", "foo_read", true},
+		{"try foo_read read write_delete_table", "write_delete_table", "read", "foo_read", true},
+		{"try foo_read read read_write_delete_table", "read_write_delete_table", "read", "foo_read", true},
+		{"try foo_read read no_user_read_table", "no_user_read_table", "read", "foo_read", true},
+		{"try foo_read read no_user_write_table without permission", "no_user_write_table", "read", "foo_read", false},
+		{"try foo_read read no_user_delete_table without permission", "no_user_delete_table", "read", "foo_read", false},
+		{"try foo_read read no_user_read_write_table", "no_user_read_write_table", "read", "foo_read", true},
+		{"try foo_read read no_user_read_delete_table", "no_user_read_delete_table", "read", "foo_read", true},
+		{"try foo_read read no_user_write_delete_table without permission", "no_user_write_delete_table", "read", "foo_read", false},
+		{"try foo_read read no_user_read_write_delete_table", "no_user_read_write_delete_table", "read", "foo_read", true},
+		{"try foo_read write read_table without permission", "read_table", "write", "foo_read", false},
+		{"try foo_read write write_table without permission", "write_table", "write", "foo_read", false},
+		{"try foo_read write delete_table without permission", "delete_table", "write", "foo_read", false},
+		{"try foo_read write read_write_table without permission", "read_write_table", "write", "foo_read", false},
+		{"try foo_read write read_delete_table without permission", "read_delete_table", "write", "foo_read", false},
+		{"try foo_read write write_delete_table without permission", "write_delete_table", "write", "foo_read", false},
+		{"try foo_read write read_write_delete_table without permission", "read_write_delete_table", "write", "foo_read", false},
+		{"try foo_read write no_user_read_table without permission", "no_user_read_table", "write", "foo_read", false},
+		{"try foo_read write no_user_write_table", "no_user_write_table", "write", "foo_read", true},
+		{"try foo_read write no_user_delete_table without permission", "no_user_delete_table", "write", "foo_read", false},
+		{"try foo_read write no_user_read_write_table", "no_user_read_write_table", "write", "foo_read", true},
+		{"try foo_read write no_user_read_delete_table without permission", "no_user_read_delete_table", "write", "foo_read", false},
+		{"try foo_read write no_user_write_delete_table", "no_user_write_delete_table", "write", "foo_read", true},
+		{"try foo_read write no_user_read_write_delete_table", "no_user_read_write_delete_table", "write", "foo_read", true},
+		{"try foo_read delete read_table without permission", "read_table", "delete", "foo_read", false},
+		{"try foo_read delete write_table without permission", "write_table", "delete", "foo_read", false},
+		{"try foo_read delete delete_table without permission", "delete_table", "delete", "foo_read", false},
+		{"try foo_read delete read_write_table without permission", "read_write_table", "delete", "foo_read", false},
+		{"try foo_read delete read_delete_table without permission", "read_delete_table", "delete", "foo_read", false},
+		{"try foo_read delete write_delete_table without permission", "write_delete_table", "delete", "foo_read", false},
+		{"try foo_read delete read_write_delete_table without permission", "read_write_delete_table", "delete", "foo_read", false},
+		{"try foo_read delete no_user_read_table without permission", "no_user_read_table", "delete", "foo_read", false},
+		{"try foo_read delete no_user_write_table without permission", "no_user_write_table", "delete", "foo_read", false},
+		{"try foo_read delete no_user_delete_table", "no_user_delete_table", "delete", "foo_read", true},
+		{"try foo_read delete no_user_read_write_table without permission", "no_user_read_write_table", "delete", "foo_read", false},
+		{"try foo_read delete no_user_read_delete_table", "no_user_read_delete_table", "delete", "foo_read", true},
+		{"try foo_read delete no_user_write_delete_table", "no_user_write_delete_table", "delete", "foo_read", true},
+		{"try foo_read delete no_user_read_write_delete_table", "no_user_read_write_delete_table", "delete", "foo_read", true},
+		{"try foo_write read read_table without permission", "read_table", "read", "foo_write", false},
+		{"try foo_write read write_table without permission", "write_table", "read", "foo_write", false},
+		{"try foo_write read delete_table without permission", "delete_table", "read", "foo_write", false},
+		{"try foo_write read read_write_table without permission", "read_write_table", "read", "foo_write", false},
+		{"try foo_write read read_delete_table without permission", "read_delete_table", "read", "foo_write", false},
+		{"try foo_write read write_delete_table without permission", "write_delete_table", "read", "foo_write", false},
+		{"try foo_write read read_write_delete_table without permission", "read_write_delete_table", "read", "foo_write", false},
+		{"try foo_write read no_user_read_table", "no_user_read_table", "read", "foo_write", true},
+		{"try foo_write read no_user_write_table without permission", "no_user_write_table", "read", "foo_write", false},
+		{"try foo_write read no_user_delete_table without permission", "no_user_delete_table", "read", "foo_write", false},
+		{"try foo_write read no_user_read_write_table", "no_user_read_write_table", "read", "foo_write", true},
+		{"try foo_write read no_user_read_delete_table", "no_user_read_delete_table", "read", "foo_write", true},
+		{"try foo_write read no_user_write_delete_table without permission", "no_user_write_delete_table", "read", "foo_write", false},
+		{"try foo_write read no_user_read_write_delete_table", "no_user_read_write_delete_table", "read", "foo_write", true},
+		{"try foo_write write read_table", "read_table", "write", "foo_write", true},
+		{"try foo_write write write_table", "write_table", "write", "foo_write", true},
+		{"try foo_write write delete_table", "delete_table", "write", "foo_write", true},
+		{"try foo_write write read_write_table", "read_write_table", "write", "foo_write", true},
+		{"try foo_write write read_delete_table", "read_delete_table", "write", "foo_write", true},
+		{"try foo_write write write_delete_table", "write_delete_table", "write", "foo_write", true},
+		{"try foo_write write read_write_delete_table", "read_write_delete_table", "write", "foo_write", true},
+		{"try foo_write write no_user_read_table without permission", "no_user_read_table", "write", "foo_write", false},
+		{"try foo_write write no_user_write_table", "no_user_write_table", "write", "foo_write", true},
+		{"try foo_write write no_user_delete_table without permission", "no_user_delete_table", "write", "foo_write", false},
+		{"try foo_write write no_user_read_write_table", "no_user_read_write_table", "write", "foo_write", true},
+		{"try foo_write write no_user_read_delete_table without permission", "no_user_read_delete_table", "write", "foo_write", false},
+		{"try foo_write write no_user_write_delete_table", "no_user_write_delete_table", "write", "foo_write", true},
+		{"try foo_write write no_user_read_write_delete_table", "no_user_read_write_delete_table", "write", "foo_write", true},
+		{"try foo_write delete read_table without permission", "read_table", "delete", "foo_write", false},
+		{"try foo_write delete write_table without permission", "write_table", "delete", "foo_write", false},
+		{"try foo_write delete delete_table without permission", "delete_table", "delete", "foo_write", false},
+		{"try foo_write delete read_write_table without permission", "read_write_table", "delete", "foo_write", false},
+		{"try foo_write delete read_delete_table without permission", "read_delete_table", "delete", "foo_write", false},
+		{"try foo_write delete write_delete_table without permission", "write_delete_table", "delete", "foo_write", false},
+		{"try foo_write delete read_write_delete_table without permission", "read_write_delete_table", "delete", "foo_write", false},
+		{"try foo_write delete no_user_read_table without permission", "no_user_read_table", "delete", "foo_write", false},
+		{"try foo_write delete no_user_write_table without permission", "no_user_write_table", "delete", "foo_write", false},
+		{"try foo_write delete no_user_delete_table", "no_user_delete_table", "delete", "foo_write", true},
+		{"try foo_write delete no_user_read_write_table without permission", "no_user_read_write_table", "delete", "foo_write", false},
+		{"try foo_write delete no_user_read_delete_table", "no_user_read_delete_table", "delete", "foo_write", true},
+		{"try foo_write delete no_user_write_delete_table", "no_user_write_delete_table", "delete", "foo_write", true},
+		{"try foo_write delete no_user_read_write_delete_table", "no_user_read_write_delete_table", "delete", "foo_write", true},
+		{"try foo_delete read read_table without permission", "read_table", "read", "foo_delete", false},
+		{"try foo_delete read write_table without permission", "write_table", "read", "foo_delete", false},
+		{"try foo_delete read delete_table without permission", "delete_table", "read", "foo_delete", false},
+		{"try foo_delete read read_write_table without permission", "read_write_table", "read", "foo_delete", false},
+		{"try foo_delete read read_delete_table without permission", "read_delete_table", "read", "foo_delete", false},
+		{"try foo_delete read write_delete_table without permission", "write_delete_table", "read", "foo_delete", false},
+		{"try foo_delete read read_write_delete_table without permission", "read_write_delete_table", "read", "foo_delete", false},
+		{"try foo_delete read no_user_read_table", "no_user_read_table", "read", "foo_delete", true},
+		{"try foo_delete read no_user_write_table without permission", "no_user_write_table", "read", "foo_delete", false},
+		{"try foo_delete read no_user_delete_table without permission", "no_user_delete_table", "read", "foo_delete", false},
+		{"try foo_delete read no_user_read_write_table", "no_user_read_write_table", "read", "foo_delete", true},
+		{"try foo_delete read no_user_read_delete_table", "no_user_read_delete_table", "read", "foo_delete", true},
+		{"try foo_delete read no_user_write_delete_table without permission", "no_user_write_delete_table", "read", "foo_delete", false},
+		{"try foo_delete read no_user_read_write_delete_table", "no_user_read_write_delete_table", "read", "foo_delete", true},
+		{"try foo_delete write read_table without permission", "read_table", "write", "foo_delete", false},
+		{"try foo_delete write write_table without permission", "write_table", "write", "foo_delete", false},
+		{"try foo_delete write delete_table without permission", "delete_table", "write", "foo_delete", false},
+		{"try foo_delete write read_write_table without permission", "read_write_table", "write", "foo_delete", false},
+		{"try foo_delete write read_delete_table without permission", "read_delete_table", "write", "foo_delete", false},
+		{"try foo_delete write write_delete_table without permission", "write_delete_table", "write", "foo_delete", false},
+		{"try foo_delete write read_write_delete_table without permission", "read_write_delete_table", "write", "foo_delete", false},
+		{"try foo_delete write no_user_read_table without permission", "no_user_read_table", "write", "foo_delete", false},
+		{"try foo_delete write no_user_write_table", "no_user_write_table", "write", "foo_delete", true},
+		{"try foo_delete write no_user_delete_table without permission", "no_user_delete_table", "write", "foo_delete", false},
+		{"try foo_delete write no_user_read_write_table", "no_user_read_write_table", "write", "foo_delete", true},
+		{"try foo_delete write no_user_read_delete_table without permission", "no_user_read_delete_table", "write", "foo_delete", false},
+		{"try foo_delete write no_user_write_delete_table", "no_user_write_delete_table", "write", "foo_delete", true},
+		{"try foo_delete write no_user_read_write_delete_table", "no_user_read_write_delete_table", "write", "foo_delete", true},
+		{"try foo_delete delete read_table", "read_table", "delete", "foo_delete", true},
+		{"try foo_delete delete write_table", "write_table", "delete", "foo_delete", true},
+		{"try foo_delete delete delete_table", "delete_table", "delete", "foo_delete", true},
+		{"try foo_delete delete read_write_table", "read_write_table", "delete", "foo_delete", true},
+		{"try foo_delete delete read_delete_table", "read_delete_table", "delete", "foo_delete", true},
+		{"try foo_delete delete write_delete_table", "write_delete_table", "delete", "foo_delete", true},
+		{"try foo_delete delete read_write_delete_table", "read_write_delete_table", "delete", "foo_delete", true},
+		{"try foo_delete delete no_user_read_table without permission", "no_user_read_table", "delete", "foo_delete", false},
+		{"try foo_delete delete no_user_write_table without permission", "no_user_write_table", "delete", "foo_delete", false},
+		{"try foo_delete delete no_user_delete_table", "no_user_delete_table", "delete", "foo_delete", true},
+		{"try foo_delete delete no_user_read_write_table without permission", "no_user_read_write_table", "delete", "foo_delete", false},
+		{"try foo_delete delete no_user_read_delete_table", "no_user_read_delete_table", "delete", "foo_delete", true},
+		{"try foo_delete delete no_user_write_delete_table", "no_user_write_delete_table", "delete", "foo_delete", true},
+		{"try foo_delete delete no_user_read_write_delete_table", "no_user_read_write_delete_table", "delete", "foo_delete", true},
+		{"try foo_read_write read read_table", "read_table", "read", "foo_read_write", true},
+		{"try foo_read_write read write_table", "write_table", "read", "foo_read_write", true},
+		{"try foo_read_write read delete_table", "delete_table", "read", "foo_read_write", true},
+		{"try foo_read_write read read_write_table", "read_write_table", "read", "foo_read_write", true},
+		{"try foo_read_write read read_delete_table", "read_delete_table", "read", "foo_read_write", true},
+		{"try foo_read_write read write_delete_table", "write_delete_table", "read", "foo_read_write", true},
+		{"try foo_read_write read read_write_delete_table", "read_write_delete_table", "read", "foo_read_write", true},
+		{"try foo_read_write read no_user_read_table", "no_user_read_table", "read", "foo_read_write", true},
+		{"try foo_read_write read no_user_write_table without permission", "no_user_write_table", "read", "foo_read_write", false},
+		{"try foo_read_write read no_user_delete_table without permission", "no_user_delete_table", "read", "foo_read_write", false},
+		{"try foo_read_write read no_user_read_write_table", "no_user_read_write_table", "read", "foo_read_write", true},
+		{"try foo_read_write read no_user_read_delete_table", "no_user_read_delete_table", "read", "foo_read_write", true},
+		{"try foo_read_write read no_user_write_delete_table without permission", "no_user_write_delete_table", "read", "foo_read_write", false},
+		{"try foo_read_write read no_user_read_write_delete_table", "no_user_read_write_delete_table", "read", "foo_read_write", true},
+		{"try foo_read_write write read_table", "read_table", "write", "foo_read_write", true},
+		{"try foo_read_write write write_table", "write_table", "write", "foo_read_write", true},
+		{"try foo_read_write write delete_table", "delete_table", "write", "foo_read_write", true},
+		{"try foo_read_write write read_write_table", "read_write_table", "write", "foo_read_write", true},
+		{"try foo_read_write write read_delete_table", "read_delete_table", "write", "foo_read_write", true},
+		{"try foo_read_write write write_delete_table", "write_delete_table", "write", "foo_read_write", true},
+		{"try foo_read_write write read_write_delete_table", "read_write_delete_table", "write", "foo_read_write", true},
+		{"try foo_read_write write no_user_read_table without permission", "no_user_read_table", "write", "foo_read_write", false},
+		{"try foo_read_write write no_user_write_table", "no_user_write_table", "write", "foo_read_write", true},
+		{"try foo_read_write write no_user_delete_table without permission", "no_user_delete_table", "write", "foo_read_write", false},
+		{"try foo_read_write write no_user_read_write_table", "no_user_read_write_table", "write", "foo_read_write", true},
+		{"try foo_read_write write no_user_read_delete_table without permission", "no_user_read_delete_table", "write", "foo_read_write", false},
+		{"try foo_read_write write no_user_write_delete_table", "no_user_write_delete_table", "write", "foo_read_write", true},
+		{"try foo_read_write write no_user_read_write_delete_table", "no_user_read_write_delete_table", "write", "foo_read_write", true},
+		{"try foo_read_write delete read_table without permission", "read_table", "delete", "foo_read_write", false},
+		{"try foo_read_write delete write_table without permission", "write_table", "delete", "foo_read_write", false},
+		{"try foo_read_write delete delete_table without permission", "delete_table", "delete", "foo_read_write", false},
+		{"try foo_read_write delete read_write_table without permission", "read_write_table", "delete", "foo_read_write", false},
+		{"try foo_read_write delete read_delete_table without permission", "read_delete_table", "delete", "foo_read_write", false},
+		{"try foo_read_write delete write_delete_table without permission", "write_delete_table", "delete", "foo_read_write", false},
+		{"try foo_read_write delete read_write_delete_table without permission", "read_write_delete_table", "delete", "foo_read_write", false},
+		{"try foo_read_write delete no_user_read_table without permission", "no_user_read_table", "delete", "foo_read_write", false},
+		{"try foo_read_write delete no_user_write_table without permission", "no_user_write_table", "delete", "foo_read_write", false},
+		{"try foo_read_write delete no_user_delete_table", "no_user_delete_table", "delete", "foo_read_write", true},
+		{"try foo_read_write delete no_user_read_write_table without permission", "no_user_read_write_table", "delete", "foo_read_write", false},
+		{"try foo_read_write delete no_user_read_delete_table", "no_user_read_delete_table", "delete", "foo_read_write", true},
+		{"try foo_read_write delete no_user_write_delete_table", "no_user_write_delete_table", "delete", "foo_read_write", true},
+		{"try foo_read_write delete no_user_read_write_delete_table", "no_user_read_write_delete_table", "delete", "foo_read_write", true},
+		{"try foo_read_delete read read_table", "read_table", "read", "foo_read_delete", true},
+		{"try foo_read_delete read write_table", "write_table", "read", "foo_read_delete", true},
+		{"try foo_read_delete read delete_table", "delete_table", "read", "foo_read_delete", true},
+		{"try foo_read_delete read read_write_table", "read_write_table", "read", "foo_read_delete", true},
+		{"try foo_read_delete read read_delete_table", "read_delete_table", "read", "foo_read_delete", true},
+		{"try foo_read_delete read write_delete_table", "write_delete_table", "read", "foo_read_delete", true},
+		{"try foo_read_delete read read_write_delete_table", "read_write_delete_table", "read", "foo_read_delete", true},
+		{"try foo_read_delete read no_user_read_table", "no_user_read_table", "read", "foo_read_delete", true},
+		{"try foo_read_delete read no_user_write_table without permission", "no_user_write_table", "read", "foo_read_delete", false},
+		{"try foo_read_delete read no_user_delete_table without permission", "no_user_delete_table", "read", "foo_read_delete", false},
+		{"try foo_read_delete read no_user_read_write_table", "no_user_read_write_table", "read", "foo_read_delete", true},
+		{"try foo_read_delete read no_user_read_delete_table", "no_user_read_delete_table", "read", "foo_read_delete", true},
+		{"try foo_read_delete read no_user_write_delete_table without permission", "no_user_write_delete_table", "read", "foo_read_delete", false},
+		{"try foo_read_delete read no_user_read_write_delete_table", "no_user_read_write_delete_table", "read", "foo_read_delete", true},
+		{"try foo_read_delete write read_table without permission", "read_table", "write", "foo_read_delete", false},
+		{"try foo_read_delete write write_table without permission", "write_table", "write", "foo_read_delete", false},
+		{"try foo_read_delete write delete_table without permission", "delete_table", "write", "foo_read_delete", false},
+		{"try foo_read_delete write read_write_table without permission", "read_write_table", "write", "foo_read_delete", false},
+		{"try foo_read_delete write read_delete_table without permission", "read_delete_table", "write", "foo_read_delete", false},
+		{"try foo_read_delete write write_delete_table without permission", "write_delete_table", "write", "foo_read_delete", false},
+		{"try foo_read_delete write read_write_delete_table without permission", "read_write_delete_table", "write", "foo_read_delete", false},
+		{"try foo_read_delete write no_user_read_table without permission", "no_user_read_table", "write", "foo_read_delete", false},
+		{"try foo_read_delete write no_user_write_table", "no_user_write_table", "write", "foo_read_delete", true},
+		{"try foo_read_delete write no_user_delete_table without permission", "no_user_delete_table", "write", "foo_read_delete", false},
+		{"try foo_read_delete write no_user_read_write_table", "no_user_read_write_table", "write", "foo_read_delete", true},
+		{"try foo_read_delete write no_user_read_delete_table without permission", "no_user_read_delete_table", "write", "foo_read_delete", false},
+		{"try foo_read_delete write no_user_write_delete_table", "no_user_write_delete_table", "write", "foo_read_delete", true},
+		{"try foo_read_delete write no_user_read_write_delete_table", "no_user_read_write_delete_table", "write", "foo_read_delete", true},
+		{"try foo_read_delete delete read_table", "read_table", "delete", "foo_read_delete", true},
+		{"try foo_read_delete delete write_table", "write_table", "delete", "foo_read_delete", true},
+		{"try foo_read_delete delete delete_table", "delete_table", "delete", "foo_read_delete", true},
+		{"try foo_read_delete delete read_write_table", "read_write_table", "delete", "foo_read_delete", true},
+		{"try foo_read_delete delete read_delete_table", "read_delete_table", "delete", "foo_read_delete", true},
+		{"try foo_read_delete delete write_delete_table", "write_delete_table", "delete", "foo_read_delete", true},
+		{"try foo_read_delete delete read_write_delete_table", "read_write_delete_table", "delete", "foo_read_delete", true},
+		{"try foo_read_delete delete no_user_read_table without permission", "no_user_read_table", "delete", "foo_read_delete", false},
+		{"try foo_read_delete delete no_user_write_table without permission", "no_user_write_table", "delete", "foo_read_delete", false},
+		{"try foo_read_delete delete no_user_delete_table", "no_user_delete_table", "delete", "foo_read_delete", true},
+		{"try foo_read_delete delete no_user_read_write_table without permission", "no_user_read_write_table", "delete", "foo_read_delete", false},
+		{"try foo_read_delete delete no_user_read_delete_table", "no_user_read_delete_table", "delete", "foo_read_delete", true},
+		{"try foo_read_delete delete no_user_write_delete_table", "no_user_write_delete_table", "delete", "foo_read_delete", true},
+		{"try foo_read_delete delete no_user_read_write_delete_table", "no_user_read_write_delete_table", "delete", "foo_read_delete", true},
+		{"try foo_write_delete read read_table without permission", "read_table", "read", "foo_write_delete", false},
+		{"try foo_write_delete read write_table without permission", "write_table", "read", "foo_write_delete", false},
+		{"try foo_write_delete read delete_table without permission", "delete_table", "read", "foo_write_delete", false},
+		{"try foo_write_delete read read_write_table without permission", "read_write_table", "read", "foo_write_delete", false},
+		{"try foo_write_delete read read_delete_table without permission", "read_delete_table", "read", "foo_write_delete", false},
+		{"try foo_write_delete read write_delete_table without permission", "write_delete_table", "read", "foo_write_delete", false},
+		{"try foo_write_delete read read_write_delete_table without permission", "read_write_delete_table", "read", "foo_write_delete", false},
+		{"try foo_write_delete read no_user_read_table", "no_user_read_table", "read", "foo_write_delete", true},
+		{"try foo_write_delete read no_user_write_table without permission", "no_user_write_table", "read", "foo_write_delete", false},
+		{"try foo_write_delete read no_user_delete_table without permission", "no_user_delete_table", "read", "foo_write_delete", false},
+		{"try foo_write_delete read no_user_read_write_table", "no_user_read_write_table", "read", "foo_write_delete", true},
+		{"try foo_write_delete read no_user_read_delete_table", "no_user_read_delete_table", "read", "foo_write_delete", true},
+		{"try foo_write_delete read no_user_write_delete_table without permission", "no_user_write_delete_table", "read", "foo_write_delete", false},
+		{"try foo_write_delete read no_user_read_write_delete_table", "no_user_read_write_delete_table", "read", "foo_write_delete", true},
+		{"try foo_write_delete write read_table", "read_table", "write", "foo_write_delete", true},
+		{"try foo_write_delete write write_table", "write_table", "write", "foo_write_delete", true},
+		{"try foo_write_delete write delete_table", "delete_table", "write", "foo_write_delete", true},
+		{"try foo_write_delete write read_write_table", "read_write_table", "write", "foo_write_delete", true},
+		{"try foo_write_delete write read_delete_table", "read_delete_table", "write", "foo_write_delete", true},
+		{"try foo_write_delete write write_delete_table", "write_delete_table", "write", "foo_write_delete", true},
+		{"try foo_write_delete write read_write_delete_table", "read_write_delete_table", "write", "foo_write_delete", true},
+		{"try foo_write_delete write no_user_read_table without permission", "no_user_read_table", "write", "foo_write_delete", false},
+		{"try foo_write_delete write no_user_write_table", "no_user_write_table", "write", "foo_write_delete", true},
+		{"try foo_write_delete write no_user_delete_table without permission", "no_user_delete_table", "write", "foo_write_delete", false},
+		{"try foo_write_delete write no_user_read_write_table", "no_user_read_write_table", "write", "foo_write_delete", true},
+		{"try foo_write_delete write no_user_read_delete_table without permission", "no_user_read_delete_table", "write", "foo_write_delete", false},
+		{"try foo_write_delete write no_user_write_delete_table", "no_user_write_delete_table", "write", "foo_write_delete", true},
+		{"try foo_write_delete write no_user_read_write_delete_table", "no_user_read_write_delete_table", "write", "foo_write_delete", true},
+		{"try foo_write_delete delete read_table", "read_table", "delete", "foo_write_delete", true},
+		{"try foo_write_delete delete write_table", "write_table", "delete", "foo_write_delete", true},
+		{"try foo_write_delete delete delete_table", "delete_table", "delete", "foo_write_delete", true},
+		{"try foo_write_delete delete read_write_table", "read_write_table", "delete", "foo_write_delete", true},
+		{"try foo_write_delete delete read_delete_table", "read_delete_table", "delete", "foo_write_delete", true},
+		{"try foo_write_delete delete write_delete_table", "write_delete_table", "delete", "foo_write_delete", true},
+		{"try foo_write_delete delete read_write_delete_table", "read_write_delete_table", "delete", "foo_write_delete", true},
+		{"try foo_write_delete delete no_user_read_table without permission", "no_user_read_table", "delete", "foo_write_delete", false},
+		{"try foo_write_delete delete no_user_write_table without permission", "no_user_write_table", "delete", "foo_write_delete", false},
+		{"try foo_write_delete delete no_user_delete_table", "no_user_delete_table", "delete", "foo_write_delete", true},
+		{"try foo_write_delete delete no_user_read_write_table without permission", "no_user_read_write_table", "delete", "foo_write_delete", false},
+		{"try foo_write_delete delete no_user_read_delete_table", "no_user_read_delete_table", "delete", "foo_write_delete", true},
+		{"try foo_write_delete delete no_user_write_delete_table", "no_user_write_delete_table", "delete", "foo_write_delete", true},
+		{"try foo_write_delete delete no_user_read_write_delete_table", "no_user_read_write_delete_table", "delete", "foo_write_delete", true},
+		{"try foo_read_write_delete read read_table", "read_table", "read", "foo_read_write_delete", true},
+		{"try foo_read_write_delete read write_table", "write_table", "read", "foo_read_write_delete", true},
+		{"try foo_read_write_delete read delete_table", "delete_table", "read", "foo_read_write_delete", true},
+		{"try foo_read_write_delete read read_write_table", "read_write_table", "read", "foo_read_write_delete", true},
+		{"try foo_read_write_delete read read_delete_table", "read_delete_table", "read", "foo_read_write_delete", true},
+		{"try foo_read_write_delete read write_delete_table", "write_delete_table", "read", "foo_read_write_delete", true},
+		{"try foo_read_write_delete read read_write_delete_table", "read_write_delete_table", "read", "foo_read_write_delete", true},
+		{"try foo_read_write_delete read no_user_read_table", "no_user_read_table", "read", "foo_read_write_delete", true},
+		{"try foo_read_write_delete read no_user_write_table without permission", "no_user_write_table", "read", "foo_read_write_delete", false},
+		{"try foo_read_write_delete read no_user_delete_table without permission", "no_user_delete_table", "read", "foo_read_write_delete", false},
+		{"try foo_read_write_delete read no_user_read_write_table", "no_user_read_write_table", "read", "foo_read_write_delete", true},
+		{"try foo_read_write_delete read no_user_read_delete_table", "no_user_read_delete_table", "read", "foo_read_write_delete", true},
+		{"try foo_read_write_delete read no_user_write_delete_table without permission", "no_user_write_delete_table", "read", "foo_read_write_delete", false},
+		{"try foo_read_write_delete read no_user_read_write_delete_table", "no_user_read_write_delete_table", "read", "foo_read_write_delete", true},
+		{"try foo_read_write_delete write read_table", "read_table", "write", "foo_read_write_delete", true},
+		{"try foo_read_write_delete write write_table", "write_table", "write", "foo_read_write_delete", true},
+		{"try foo_read_write_delete write delete_table", "delete_table", "write", "foo_read_write_delete", true},
+		{"try foo_read_write_delete write read_write_table", "read_write_table", "write", "foo_read_write_delete", true},
+		{"try foo_read_write_delete write read_delete_table", "read_delete_table", "write", "foo_read_write_delete", true},
+		{"try foo_read_write_delete write write_delete_table", "write_delete_table", "write", "foo_read_write_delete", true},
+		{"try foo_read_write_delete write read_write_delete_table", "read_write_delete_table", "write", "foo_read_write_delete", true},
+		{"try foo_read_write_delete write no_user_read_table without permission", "no_user_read_table", "write", "foo_read_write_delete", false},
+		{"try foo_read_write_delete write no_user_write_table", "no_user_write_table", "write", "foo_read_write_delete", true},
+		{"try foo_read_write_delete write no_user_delete_table without permission", "no_user_delete_table", "write", "foo_read_write_delete", false},
+		{"try foo_read_write_delete write no_user_read_write_table", "no_user_read_write_table", "write", "foo_read_write_delete", true},
+		{"try foo_read_write_delete write no_user_read_delete_table without permission", "no_user_read_delete_table", "write", "foo_read_write_delete", false},
+		{"try foo_read_write_delete write no_user_write_delete_table", "no_user_write_delete_table", "write", "foo_read_write_delete", true},
+		{"try foo_read_write_delete write no_user_read_write_delete_table", "no_user_read_write_delete_table", "write", "foo_read_write_delete", true},
+		{"try foo_read_write_delete delete read_table", "read_table", "delete", "foo_read_write_delete", true},
+		{"try foo_read_write_delete delete write_table", "write_table", "delete", "foo_read_write_delete", true},
+		{"try foo_read_write_delete delete delete_table", "delete_table", "delete", "foo_read_write_delete", true},
+		{"try foo_read_write_delete delete read_write_table", "read_write_table", "delete", "foo_read_write_delete", true},
+		{"try foo_read_write_delete delete read_delete_table", "read_delete_table", "delete", "foo_read_write_delete", true},
+		{"try foo_read_write_delete delete write_delete_table", "write_delete_table", "delete", "foo_read_write_delete", true},
+		{"try foo_read_write_delete delete read_write_delete_table", "read_write_delete_table", "delete", "foo_read_write_delete", true},
+		{"try foo_read_write_delete delete no_user_read_table without permission", "no_user_read_table", "delete", "foo_read_write_delete", false},
+		{"try foo_read_write_delete delete no_user_write_table without permission", "no_user_write_table", "delete", "foo_read_write_delete", false},
+		{"try foo_read_write_delete delete no_user_delete_table", "no_user_delete_table", "delete", "foo_read_write_delete", true},
+		{"try foo_read_write_delete delete no_user_read_write_table without permission", "no_user_read_write_table", "delete", "foo_read_write_delete", false},
+		{"try foo_read_write_delete delete no_user_read_delete_table", "no_user_read_delete_table", "delete", "foo_read_write_delete", true},
+		{"try foo_read_write_delete delete no_user_write_delete_table", "no_user_write_delete_table", "delete", "foo_read_write_delete", true},
+		{"try foo_read_write_delete delete no_user_read_write_delete_table", "no_user_read_write_delete_table", "delete", "foo_read_write_delete", true},
 	}
 
+	Load()
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		p := config.PrestConf.Adapter.TablePermissions(tc.table, tc.permission)
+		p := config.PrestConf.Adapter.TablePermissions(tc.table, tc.permission, tc.userName)
 		if p != tc.out {
 			t.Errorf("expected %v, got %v", tc.out, p)
 		}
 	}
-
 }
 
 func TestSupportHyphenInTable(t *testing.T) {
@@ -1074,7 +1372,7 @@ func TestRestrictFalse(t *testing.T) {
 		t.Errorf("expected no errors on NewRequest, but got: %v", err)
 	}
 
-	fields, err := config.PrestConf.Adapter.FieldsPermissions(r, "test_list_only_id", "read")
+	fields, err := config.PrestConf.Adapter.FieldsPermissions(r, "test_list_only_id", "read", "")
 	if err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
@@ -1083,7 +1381,7 @@ func TestRestrictFalse(t *testing.T) {
 	}
 
 	t.Log("Restrict disabled")
-	p := config.PrestConf.Adapter.TablePermissions("test_readonly_access", "delete")
+	p := config.PrestConf.Adapter.TablePermissions("test_readonly_access", "delete", "")
 	if !p {
 		t.Errorf("expected %v, got: %v", p, !p)
 	}
@@ -1570,10 +1868,13 @@ func TestPostgres_BatchInsertCopy(t *testing.T) {
 
 func TestPostgres_FieldsPermissions(t *testing.T) {
 	type args struct {
-		url    string
-		table  string
-		op     string
-		fields []string
+		url         string
+		table       string
+		op          string
+		fields      []string
+		userName    string
+		userFields  []string
+		user2Fields []string
 	}
 	tests := []struct {
 		name       string
@@ -1704,6 +2005,357 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 			wantErr:    false,
 			wantFields: []string{`MAX("age")`},
 		},
+
+		// unexistant user has no effect
+		{
+			name: "has no error on parse groupby request(none_existed user has no effect)",
+			args: args{
+				url:        "/table_field_permission?_select=fail:fail&_groupby=fail",
+				userName:   "none_existed",
+				userFields: []string{"id"},
+			},
+			restrict: true,
+			wantErr:  true,
+		},
+		{
+			name: "error with no allowed fields(none_existed user has no effect)",
+			args: args{
+				url:        "/table_field_permission",
+				userName:   "none_existed",
+				userFields: []string{"id"},
+			},
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{"*"},
+		},
+		{
+			name: "allowed fields contains * and user don't pass select(none_existed user has no effect)",
+			args: args{
+				url:        "/table_field_permission",
+				table:      "test_field_permission",
+				op:         "write",
+				userName:   "none_existed",
+				userFields: []string{"id"},
+				fields:     []string{"*"},
+			},
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{"*"},
+		},
+		{
+			name: "allowed fields contains * and user ask for only only field(none_existed user has no effect)",
+			args: args{
+				url:        "/table_field_permission?_select=name",
+				table:      "test_field_permission",
+				op:         "write",
+				userName:   "none_existed",
+				userFields: []string{"id"},
+				fields:     []string{"*"},
+			},
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{"name"},
+		},
+		{
+			name: "allowed fields contains * and user ask for multiple fields(none_existed user has no effect)",
+			args: args{
+				url:        "/table_field_permission?_select=name,age",
+				table:      "test_field_permission",
+				op:         "write",
+				userName:   "none_existed",
+				userFields: []string{"id"},
+				fields:     []string{"*"},
+			},
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{"name", "age"},
+		},
+		{
+			name: "user ask for allowed field(none_existed user has no effect)",
+			args: args{
+				url:        "/table_field_permission?_select=name",
+				table:      "test_field_permission",
+				op:         "write",
+				userName:   "none_existed",
+				userFields: []string{"id"},
+				fields:     []string{"name", "age"},
+			},
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{"name"},
+		},
+		{
+			name: "user ask for not allowed field(none_existed user has no effect)",
+			args: args{
+				url:        "/table_field_permission?_select=id",
+				table:      "test_field_permission",
+				op:         "write",
+				userName:   "none_existed",
+				userFields: []string{"id"},
+				fields:     []string{"name", "age"},
+			},
+			restrict: true,
+			wantErr:  false,
+		},
+		{
+			name: "allowed some fields but user ask for nothing(none_existed user has no effect)",
+			args: args{
+				url:        "/table_field_permission",
+				table:      "test_field_permission",
+				op:         "write",
+				userName:   "none_existed",
+				userFields: []string{"id"},
+				fields:     []string{"name", "age"},
+			},
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{"name", "age"},
+		},
+		{
+			name: "functions in select should respect table permissions(none_existed user has no effect)",
+			args: args{
+				url:        "/table_field_permission?_groupby=number&_select=max:number",
+				table:      "test_field_permission",
+				op:         "write",
+				userName:   "none_existed",
+				userFields: []string{"id"},
+				fields:     []string{"name", "age"},
+			},
+			restrict: true,
+			wantErr:  false,
+		},
+		{
+			name: "select with function and allowed field returns field(none_existed user has no effect)",
+			args: args{
+				url:        "/table_field_permission?_groupby=age&_select=max:age",
+				table:      "test_field_permission",
+				op:         "write",
+				userName:   "none_existed",
+				userFields: []string{"id"},
+				fields:     []string{"name", "age"},
+			},
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{`MAX("age")`},
+		},
+		// for user
+		{
+			name: "allowed fields contains * and user don't pass select(foo overwrite fields)",
+			args: args{
+				url:        "/table_field_permission",
+				table:      "test_field_permission",
+				op:         "write",
+				userName:   "foo",
+				userFields: []string{"id"},
+				fields:     []string{"*"},
+			},
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{"id"},
+		},
+		{
+			name: "allowed fields contains * and user don't pass select(bar overwrite fields *)",
+			args: args{
+				url:         "/table_field_permission",
+				table:       "test_field_permission",
+				op:          "write",
+				userName:    "bar",
+				user2Fields: []string{"name"},
+				fields:      []string{"*"},
+			},
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{"name"},
+		},
+		{
+			name: "allowed fields contains * and user ask for only only field(foo contain *)",
+			args: args{
+				url:        "/table_field_permission?_select=name",
+				table:      "test_field_permission",
+				op:         "write",
+				userName:   "foo",
+				userFields: []string{"*"},
+				fields:     []string{"*"},
+			},
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{"name"},
+		},
+		{
+			name: "allowed fields contains * and user ask for only only field(bar contain id name)",
+			args: args{
+				url:         "/table_field_permission?_select=name",
+				table:       "test_field_permission",
+				op:          "write",
+				userName:    "bar",
+				user2Fields: []string{"id", "name"},
+				fields:      []string{"*"},
+			},
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{"name"},
+		},
+		{
+			name: "allowed fields contains * and user ask for multiple fields(foo contain *)",
+			args: args{
+				url:        "/table_field_permission?_select=name,age",
+				table:      "test_field_permission",
+				op:         "write",
+				userName:   "foo",
+				userFields: []string{"*"},
+				fields:     []string{"*"},
+			},
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{"name", "age"},
+		},
+		{
+			name: "allowed fields contains * and user ask for multiple fields(bar contain id,name,age)",
+			args: args{
+				url:         "/table_field_permission?_select=name,age",
+				table:       "test_field_permission",
+				op:          "write",
+				userName:    "bar",
+				user2Fields: []string{"id", "name", "age"},
+				fields:      []string{"*"},
+			},
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{"name", "age"},
+		},
+		{
+			name: "user ask for allowed field(foo)",
+			args: args{
+				url:        "/table_field_permission?_select=name",
+				table:      "test_field_permission",
+				op:         "write",
+				userName:   "foo",
+				userFields: []string{"name", "age"},
+				fields:     []string{"name", "age"},
+			},
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{"name"},
+		}, {
+			name: "user ask for allowed field(bar)",
+			args: args{
+				url:         "/table_field_permission?_select=name",
+				table:       "test_field_permission",
+				op:          "write",
+				userName:    "bar",
+				user2Fields: []string{"name", "age"},
+				fields:      []string{"name", "age"},
+			},
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{"name"},
+		}, {
+			name: "user ask for not allowed field (foo)",
+			args: args{
+				url:        "/table_field_permission?_select=id",
+				table:      "test_field_permission",
+				op:         "write",
+				userName:   "foo",
+				userFields: []string{"name", "age"},
+				fields:     []string{"name", "age"},
+			},
+			restrict: true,
+			wantErr:  false,
+		}, {
+			name: "user ask for not allowed field (bar)",
+			args: args{
+				url:         "/table_field_permission?_select=id",
+				table:       "test_field_permission",
+				op:          "write",
+				userName:    "bar",
+				user2Fields: []string{"name", "age"},
+				fields:      []string{"name", "age"},
+			},
+			restrict: true,
+			wantErr:  false,
+		}, {
+			name: "allowed some fields but user ask for nothing(foo)",
+			args: args{
+				url:        "/table_field_permission",
+				table:      "test_field_permission",
+				op:         "write",
+				userName:   "foo",
+				userFields: []string{"name", "age"},
+				fields:     []string{"name", "age"},
+			},
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{"name", "age"},
+		}, {
+			name: "allowed some fields but user ask for nothing(bar)",
+			args: args{
+				url:         "/table_field_permission",
+				table:       "test_field_permission",
+				op:          "write",
+				userName:    "bar",
+				user2Fields: []string{"name", "age"},
+				fields:      []string{"name", "age"},
+			},
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{"name", "age"},
+		}, {
+			name: "functions in select should respect table permissions(foo)",
+			args: args{
+				url:        "/table_field_permission?_groupby=number&_select=max:number",
+				table:      "test_field_permission",
+				op:         "write",
+				userName:   "foo",
+				userFields: []string{"name", "age"},
+				fields:     []string{"name", "age"},
+			},
+			restrict: true,
+			wantErr:  false,
+		},
+
+		{
+			name: "functions in select should respect table permissions(bar)",
+			args: args{
+				url:         "/table_field_permission?_groupby=number&_select=max:number",
+				table:       "test_field_permission",
+				op:          "write",
+				userName:    "bar",
+				user2Fields: []string{"name", "age"},
+				fields:      []string{"name", "age"},
+			},
+			restrict: true,
+			wantErr:  false,
+		},
+
+		{
+			name: "select with function and allowed field returns field(foo)",
+			args: args{
+				url:        "/table_field_permission?_groupby=age&_select=max:age",
+				table:      "test_field_permission",
+				op:         "write",
+				userName:   "foo",
+				userFields: []string{"name", "age"},
+				fields:     []string{"name", "age"},
+			},
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{`MAX("age")`},
+		},
+
+		{
+			name: "select with function and allowed field returns field(bar)",
+			args: args{
+				url:         "/table_field_permission?_groupby=age&_select=max:age",
+				table:       "test_field_permission",
+				op:          "write",
+				userName:    "bar",
+				user2Fields: []string{"name", "age"},
+				fields:      []string{"name", "age"},
+			},
+			restrict:   true,
+			wantErr:    false,
+			wantFields: []string{`MAX("age")`},
+		},
 	}
 	for _, tt := range tests {
 		config.PrestConf.AccessConf.Restrict = tt.restrict
@@ -1714,20 +2366,33 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 				Permissions: []string{"read", "write", "delete"},
 				Fields:      tt.args.fields,
 			})
+
+		config.PrestConf.AccessConf.Users = append(config.PrestConf.AccessConf.Users,
+			config.UsersConf{
+				Name: "foo",
+				Tables: []config.TablesConf{{
+					Name:        "test_field_permission",
+					Permissions: []string{"read", "write", "delete"},
+					Fields:      tt.args.userFields,
+				}},
+			},
+			config.UsersConf{
+				Name: "bar",
+				Tables: []config.TablesConf{{
+					Name:        "test_field_permission",
+					Permissions: []string{"read", "write", "delete"},
+					Fields:      tt.args.user2Fields,
+				}},
+			})
+
 		t.Run(tt.name, func(t *testing.T) {
 			adapter := &Postgres{}
 			r, err := http.NewRequest(http.MethodGet, tt.args.url, strings.NewReader(""))
-			if err != nil {
-				t.Fatal(err)
-			}
-			gotFields, err := adapter.FieldsPermissions(r, tt.args.table, tt.args.op)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Postgres.FieldsPermissions() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(gotFields, tt.wantFields) {
-				t.Errorf("Postgres.FieldsPermissions() = %v, want %v", gotFields, tt.wantFields)
-			}
+			require.NoError(t, err)
+
+			gotFields, err := adapter.FieldsPermissions(r, tt.args.table, tt.args.op, tt.args.userName)
+			require.Equal(t, tt.wantErr, err != nil)
+			require.Equal(t, tt.wantFields, gotFields)
 		})
 	}
 }
@@ -2037,5 +2702,117 @@ func TestSliceToJSONList(t *testing.T) {
 		if err != tc.err {
 			t.Errorf("expected %s in %s", err, tc.err)
 		}
+	}
+}
+
+func TestFieldsByPermission(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		table      string
+		op         string
+		userName   string
+		tablesConf []config.TablesConf
+		usersConf  []config.UsersConf
+		wantFields []string
+	}{
+		{
+			name:     "No user, table with permission",
+			table:    "test_table",
+			op:       "read",
+			userName: "",
+			tablesConf: []config.TablesConf{
+				{
+					Name:        "test_table",
+					Permissions: []string{"read"},
+					Fields:      []string{"field1", "field2"},
+				},
+			},
+			wantFields: []string{"field1", "field2"},
+		},
+		{
+			name:     "No user, table without permission",
+			table:    "test_table",
+			op:       "write",
+			userName: "",
+			tablesConf: []config.TablesConf{
+				{
+					Name:        "test_table",
+					Permissions: []string{"read"},
+					Fields:      []string{"field1", "field2"},
+				},
+			},
+			wantFields: []string{"*"},
+		},
+		{
+			name:     "User with table permission",
+			table:    "test_table",
+			op:       "read",
+			userName: "test_user",
+			usersConf: []config.UsersConf{
+				{
+					Name: "test_user",
+					Tables: []config.TablesConf{
+						{
+							Name:        "test_table",
+							Permissions: []string{"read"},
+							Fields:      []string{"field1", "field2"},
+						},
+					},
+				},
+			},
+			wantFields: []string{"field1", "field2"},
+		},
+		{
+			name:     "User without table permission",
+			table:    "test_table",
+			op:       "write",
+			userName: "test_user",
+			usersConf: []config.UsersConf{
+				{
+					Name: "test_user",
+					Tables: []config.TablesConf{
+						{
+							Name:        "test_table",
+							Permissions: []string{"read"},
+							Fields:      []string{"field1", "field2"},
+						},
+					},
+				},
+			},
+			wantFields: []string{"*"},
+		},
+		{
+			name:     "User with no specific table permission",
+			table:    "test_table",
+			op:       "read",
+			userName: "test_user",
+			usersConf: []config.UsersConf{
+				{
+					Name: "test_user",
+					Tables: []config.TablesConf{
+						{
+							Name:        "other_table",
+							Permissions: []string{"read"},
+							Fields:      []string{"field1", "field2"},
+						},
+					},
+				},
+			},
+			wantFields: []string{"*"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config.PrestConf.AccessConf.Tables = tt.tablesConf
+			config.PrestConf.AccessConf.Users = tt.usersConf
+
+			gotFields := fieldsByPermission(tt.table, tt.op, tt.userName)
+			if !reflect.DeepEqual(gotFields, tt.wantFields) {
+				t.Errorf("fieldsByPermission() = %v, want %v", gotFields, tt.wantFields)
+			}
+		})
 	}
 }

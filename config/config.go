@@ -28,10 +28,16 @@ const (
 )
 
 // TablesConf informations
+
 type TablesConf struct {
 	Name        string   `mapstructure:"name"`
 	Permissions []string `mapstructure:"permissions"`
 	Fields      []string `mapstructure:"fields"`
+}
+
+type UsersConf struct {
+	Name   string `mapstructure:"name"`
+	Tables []TablesConf
 }
 
 // AccessConf informations
@@ -39,6 +45,7 @@ type AccessConf struct {
 	Restrict    bool
 	IgnoreTable []string
 	Tables      []TablesConf
+	Users       []UsersConf
 }
 
 // ExposeConf (expose data) information
@@ -328,6 +335,15 @@ func Parse(cfg *Prest) {
 		log.Errorln("could not unmarshal access tables")
 	}
 	cfg.AccessConf.Tables = tablesconf
+
+	var usersconf []UsersConf
+	err = viper.UnmarshalKey("access.users", &usersconf)
+	if err != nil {
+		log.Errorln("could not unmarshal access users")
+	}
+	cfg.AccessConf.Users = usersconf
+
+	// default value
 
 	// plugin middleware list config
 	var pluginMiddlewareConfig []PluginMiddleware

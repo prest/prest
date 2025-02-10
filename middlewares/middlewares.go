@@ -19,8 +19,11 @@ import (
 )
 
 var (
+	jsonErrFormat   = `{"error": "%s"}`
 	ErrJWTParseFail = errors.New("failed JWT token parser")
 	ErrJWTValidate  = errors.New("failed JWT claims validated")
+	ErrAuthRequired = errors.New("authorization required")
+	ErrAuthIsEmpty  = errors.New("authorization token is empty")
 )
 
 // HandlerSet add content type header
@@ -48,7 +51,7 @@ func AuthMiddleware() negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		match, err := MatchURL(r.URL.String())
 		if err != nil {
-			http.Error(rw, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
+			http.Error(rw, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusInternalServerError)
 			return
 		}
 		if config.PrestConf.AuthEnabled && !match {
@@ -56,22 +59,22 @@ func AuthMiddleware() negroni.Handler {
 			token := strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1)
 			if token == "" {
 				err := fmt.Errorf("authorization token is empty")
-				http.Error(rw, err.Error(), http.StatusUnauthorized)
+				http.Error(rw, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusUnauthorized)
 				return
 			}
 
 			tok, err := jwt.ParseSigned(token)
 			if err != nil {
-				http.Error(rw, ErrJWTParseFail.Error(), http.StatusUnauthorized)
+				http.Error(rw, fmt.Sprintf(jsonErrFormat, ErrJWTParseFail.Error()), http.StatusUnauthorized)
 				return
 			}
 			claims := auth.Claims{}
 			if err := tok.Claims([]byte(config.PrestConf.JWTKey), &claims); err != nil {
-				http.Error(rw, err.Error(), http.StatusUnauthorized)
+				http.Error(rw, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusUnauthorized)
 				return
 			}
 			if err := Validate(claims); err != nil {
-				http.Error(rw, err.Error(), http.StatusUnauthorized)
+				http.Error(rw, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusUnauthorized)
 				return
 			}
 
@@ -106,19 +109,28 @@ func AccessControl() negroni.Handler {
 			return
 		}
 
+		// Get user info from token
+		ctx := rq.Context()
+		userInfo := ctx.Value(pctx.UserInfoKey)
+		var userName string
+		if userInfo != nil {
+			if user, ok := userInfo.(auth.User); ok {
+				userName = user.Username
+			}
+		}
+
 		permission := permissionByMethod(rq.Method)
 		if permission == "" {
 			next(rw, rq)
 			return
 		}
 
-		if config.PrestConf.Adapter.TablePermissions(mapPath["table"], permission) {
+		if config.PrestConf.Adapter.TablePermissions(mapPath["table"], permission, userName) {
 			next(rw, rq)
 			return
 		}
 
-		err := fmt.Errorf("required authorization to table %s", mapPath["table"])
-		http.Error(rw, err.Error(), http.StatusUnauthorized)
+		http.Error(rw, fmt.Sprintf(jsonErrFormat, ErrAuthRequired.Error()), http.StatusUnauthorized)
 	})
 }
 
@@ -127,7 +139,7 @@ func JwtMiddleware(key string, JWKSet string) negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		match, err := MatchURL(r.URL.String())
 		if err != nil {
-			http.Error(w, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusInternalServerError)
 			return
 		}
 		if match {
@@ -138,8 +150,7 @@ func JwtMiddleware(key string, JWKSet string) negroni.Handler {
 		// extract authorization token
 		token := strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1)
 		if token == "" {
-			err := fmt.Errorf("authorization token is empty")
-			http.Error(w, err.Error(), http.StatusUnauthorized)
+			http.Error(w, fmt.Sprintf(jsonErrFormat, ErrAuthIsEmpty.Error()), http.StatusUnauthorized)
 			return
 		}
 		tok, err := jwt.ParseSigned(token)
@@ -154,7 +165,7 @@ func JwtMiddleware(key string, JWKSet string) negroni.Handler {
 			parsedJWKSet, err := jwk.ParseString(JWKSet)
 			if err != nil {
 				err := fmt.Errorf("failed to parse JWKSet JSON string: %v", err)
-				http.Error(w, err.Error(), http.StatusUnauthorized)
+				http.Error(w, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusUnauthorized)
 				return
 			}
 			for it := parsedJWKSet.Keys(context.Background()); it.Next(context.Background()); {
@@ -164,7 +175,7 @@ func JwtMiddleware(key string, JWKSet string) negroni.Handler {
 				if key.KeyID() == tok.Headers[0].KeyID {
 					if err := key.Raw(&rawkey); err != nil {
 						err := fmt.Errorf("failed to create public key: %s", err)
-						http.Error(w, err.Error(), http.StatusUnauthorized)
+						http.Error(w, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusUnauthorized)
 						return
 					}
 				}
@@ -173,18 +184,18 @@ func JwtMiddleware(key string, JWKSet string) negroni.Handler {
 			if key, ok := rawkey.(string); ok {
 				if key == "" {
 					err := fmt.Errorf("the token's key was not found in the JWKS")
-					http.Error(w, err.Error(), http.StatusUnauthorized)
+					http.Error(w, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusUnauthorized)
 					return
 				}
 			}
 		}
 
 		if err := tok.Claims(rawkey, &out); err != nil {
-			http.Error(w, ErrJWTValidate.Error(), http.StatusUnauthorized)
+			http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWTValidate.Error()), http.StatusUnauthorized)
 			return
 		}
 		if err := Validate(out); err != nil {
-			http.Error(w, err.Error(), http.StatusUnauthorized)
+			http.Error(w, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusUnauthorized)
 			return
 		}
 		next(w, r)
@@ -218,17 +229,17 @@ func ExposureMiddleware() negroni.Handler {
 		exposeConf := config.PrestConf.ExposeConf
 
 		if strings.HasPrefix(url, "/databases") && !exposeConf.DatabaseListing {
-			http.Error(rw, "unauthorized listing", http.StatusUnauthorized)
+			http.Error(rw, fmt.Sprintf(jsonErrFormat, "unauthorized listing"), http.StatusUnauthorized)
 			return
 		}
 
 		if strings.HasPrefix(url, "/tables") && !exposeConf.TableListing {
-			http.Error(rw, "unauthorized listing", http.StatusUnauthorized)
+			http.Error(rw, fmt.Sprintf(jsonErrFormat, "unauthorized listing"), http.StatusUnauthorized)
 			return
 		}
 
 		if strings.HasPrefix(url, "/schemas") && !exposeConf.SchemaListing {
-			http.Error(rw, "unauthorized listing", http.StatusUnauthorized)
+			http.Error(rw, fmt.Sprintf(jsonErrFormat, "unauthorized listing"), http.StatusUnauthorized)
 			return
 		}
 
