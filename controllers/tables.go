@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/prest/prest/controllers/auth"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/prest/prest/controllers/auth"
 
 	"github.com/gorilla/mux"
 	"github.com/structy/log"
@@ -22,7 +23,7 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 	requestWhere, values, err := config.PrestConf.Adapter.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	requestWhere = config.PrestConf.Adapter.TableWhere(requestWhere)
@@ -30,7 +31,7 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 	order, err := config.PrestConf.Adapter.OrderByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform OrderByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	order = config.PrestConf.Adapter.TableOrderBy(order)
@@ -39,7 +40,7 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 
 	distinct, err := config.PrestConf.Adapter.DistinctClause(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if distinct != "" {
@@ -50,7 +51,7 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 
 	sc := config.PrestConf.Adapter.Query(sqlTables, values...)
 	if sc.Err() != nil {
-		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
+		jsonError(w, sc.Err().Error(), http.StatusBadRequest)
 		return
 	}
 	w.Write(sc.Bytes())
@@ -64,14 +65,14 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	requestWhere, values, err := config.PrestConf.Adapter.WhereByRequest(r, 3)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	requestWhere = config.PrestConf.Adapter.SchemaTablesWhere(requestWhere)
@@ -81,7 +82,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	order, err := config.PrestConf.Adapter.OrderByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform OrderByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	order = config.PrestConf.Adapter.SchemaTablesOrderBy(order)
@@ -89,7 +90,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	page, err := config.PrestConf.Adapter.PaginateIfPossible(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform PaginateIfPossible: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -109,7 +110,7 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 	// send ctx to query the proper DB
 	sc := config.PrestConf.Adapter.QueryCtx(ctx, sqlSchemaTables, valuesAux...)
 	if sc.Err() != nil {
-		http.Error(w, sc.Err().Error(), http.StatusBadRequest)
+		jsonError(w, sc.Err().Error(), http.StatusBadRequest)
 		return
 	}
 	w.Write(sc.Bytes())
@@ -125,7 +126,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -141,19 +142,19 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	// get selected columns, "*" if empty "_columns"
 	cols, err := config.PrestConf.Adapter.FieldsPermissions(r, table, "read", userName)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if len(cols) == 0 {
 		err := errors.New("you don't have permission for this action, please check the permitted fields for this table")
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	selectStr, err := config.PrestConf.Adapter.SelectFields(cols)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	query := config.PrestConf.Adapter.SelectSQL(selectStr, database, schema, table)
@@ -162,7 +163,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	distinct, err := config.PrestConf.Adapter.DistinctClause(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform Distinct: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if distinct != "" {
@@ -173,7 +174,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	countQuery, err := config.PrestConf.Adapter.CountByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform CountByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	// _count_first: query string
@@ -191,7 +192,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	joinValues, err := config.PrestConf.Adapter.JoinByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform JoinByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -203,7 +204,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	requestWhere, values, err := config.PrestConf.Adapter.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	sqlSelect := query
@@ -224,7 +225,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	order, err := config.PrestConf.Adapter.OrderByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform OrderByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if order != "" {
@@ -235,7 +236,7 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	page, err := config.PrestConf.Adapter.PaginateIfPossible(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform PaginateIfPossible: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	sqlSelect = fmt.Sprint(sqlSelect, " ", page)
@@ -255,10 +256,10 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	if err = sc.Err(); err != nil {
 		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
 			log.Println(err.Error())
-			http.Error(w, err.Error(), http.StatusNotFound)
+			jsonError(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -276,14 +277,14 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	names, placeholders, values, err := config.PrestConf.Adapter.ParseInsertRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform InsertInTables: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -300,10 +301,10 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	if err = sc.Err(); err != nil {
 		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
 			log.Println(err.Error())
-			http.Error(w, err.Error(), http.StatusNotFound)
+			jsonError(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -319,14 +320,14 @@ func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	names, placeholders, values, err := config.PrestConf.Adapter.ParseBatchInsertRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform BatchInsertInTables: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -348,10 +349,10 @@ func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 	if err = sc.Err(); err != nil {
 		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
 			log.Println(sc.Err().Error())
-			http.Error(w, err.Error(), http.StatusNotFound)
+			jsonError(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -367,14 +368,14 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	where, values, err := config.PrestConf.Adapter.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -386,7 +387,7 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	returningSyntax, err := config.PrestConf.Adapter.ReturningByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform ReturningByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -407,10 +408,10 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	if err = sc.Err(); err != nil {
 		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
 			log.Println(sc.Err().Error())
-			http.Error(w, err.Error(), http.StatusNotFound)
+			jsonError(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	w.Write(sc.Bytes())
@@ -425,14 +426,14 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	setSyntax, values, err := config.PrestConf.Adapter.SetByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform UPDATE: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	sql := config.PrestConf.Adapter.UpdateSQL(database, schema, table, setSyntax)
@@ -442,7 +443,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	where, whereValues, err := config.PrestConf.Adapter.WhereByRequest(r, pid)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -457,7 +458,7 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	returningSyntax, err := config.PrestConf.Adapter.ReturningByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform ReturningByRequest: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -476,10 +477,10 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	sc := config.PrestConf.Adapter.UpdateCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
 		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			jsonError(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	w.Write(sc.Bytes())
@@ -494,7 +495,7 @@ func ShowTable(w http.ResponseWriter, r *http.Request) {
 
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -508,7 +509,7 @@ func ShowTable(w http.ResponseWriter, r *http.Request) {
 	sc := config.PrestConf.Adapter.ShowTableCtx(ctx, schema, table)
 	if sc.Err() != nil {
 		errorMessage := fmt.Sprintf("error to execute query, schema error %s", sc.Err())
-		http.Error(w, errorMessage, http.StatusBadRequest)
+		jsonError(w, errorMessage, http.StatusBadRequest)
 		return
 	}
 	w.Write(sc.Bytes())

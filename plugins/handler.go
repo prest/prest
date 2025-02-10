@@ -11,6 +11,10 @@ import (
 	"github.com/prest/prest/config"
 )
 
+var (
+	jsonErrFormat = `{"error": "%s"}`
+)
+
 // LoadedPlugin structure for controlling the loaded plugin
 type LoadedPlugin struct {
 	Loaded bool
@@ -96,7 +100,7 @@ func HandlerPlugin(w http.ResponseWriter, r *http.Request) {
 	ret, err := loadFunc(fileName, funcName, r)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusNotFound)
 		return
 	}
 	// Cache arrow if enabled

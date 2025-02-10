@@ -59,7 +59,7 @@ func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, fo
 	case "xml":
 		xmldata, err := j2x.JsonToXml(byt)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusBadRequest)
 			return
 		}
 		xmlStr := fmt.Sprintf("<objects>%s</objects>", string(xmldata))

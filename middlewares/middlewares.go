@@ -155,7 +155,7 @@ func JwtMiddleware(key string, JWKSet string) negroni.Handler {
 		}
 		tok, err := jwt.ParseSigned(token)
 		if err != nil {
-			http.Error(w, ErrJWTParseFail.Error(), http.StatusUnauthorized)
+			http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWTParseFail.Error()), http.StatusUnauthorized)
 			return
 		}
 		out := auth.Claims{}
@@ -174,7 +174,7 @@ func JwtMiddleware(key string, JWKSet string) negroni.Handler {
 
 				if key.KeyID() == tok.Headers[0].KeyID {
 					if err := key.Raw(&rawkey); err != nil {
-						err := fmt.Errorf("failed to create public key: %s", err)
+						err := fmt.Errorf("failed to create public key: %s", err.Error())
 						http.Error(w, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusUnauthorized)
 						return
 					}

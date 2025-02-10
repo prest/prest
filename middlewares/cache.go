@@ -15,7 +15,7 @@ func CacheMiddleware(cfg *cache.Config) negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		match, err := MatchURL(r.URL.String())
 		if err != nil {
-			http.Error(w, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusInternalServerError)
 			return
 		}
 		// team will not be used when downloading information, second result ignored

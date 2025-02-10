@@ -18,7 +18,7 @@ func TestExecuteScriptQuery(t *testing.T) {
 	r.HandleFunc("/testing/script-get/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp, err := ExecuteScriptQuery(r, "fulltable", "get_all")
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			jsonError(w, err.Error(), http.StatusBadRequest)
 		}
 		w.Write(resp)
 	}))
@@ -26,7 +26,7 @@ func TestExecuteScriptQuery(t *testing.T) {
 	r.HandleFunc("/testing/script-post/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp, err := ExecuteScriptQuery(r, "fulltable", "write_all")
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			jsonError(w, err.Error(), http.StatusBadRequest)
 		}
 		w.Write(resp)
 	}))

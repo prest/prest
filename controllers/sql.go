@@ -60,7 +60,7 @@ func ExecuteFromScripts(w http.ResponseWriter, r *http.Request) {
 
 	result, err := ExecuteScriptQuery(r.WithContext(ctx), queriesPath, script)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
