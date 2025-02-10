@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,10 +46,15 @@ func DoRequest(t *testing.T, url string, r interface{}, method string, expectedS
 		return
 	}
 
-	fmt.Printf("test: %s body: %s\n", t.Name(), string(body))
+	bodyStr := string(body)
+	fmt.Printf("test: %s body: %s\n", t.Name(), bodyStr)
 	assert.Equal(t, expectedStatus, resp.StatusCode)
 
 	if len(expectedBody) > 0 {
-		assert.Contains(t, string(body), expectedBody)
+		for _, expected := range expectedBody {
+			assert.True(t,
+				strings.Contains(bodyStr, expected),
+				fmt.Sprintf("expected %s not found in body %s", expected, bodyStr))
+		}
 	}
 }

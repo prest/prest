@@ -104,7 +104,6 @@ func TestRenderWithXML(t *testing.T) {
 	for _, tc := range testCases {
 		t.Log(tc.description)
 		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body)
-
 	}
 }
 
