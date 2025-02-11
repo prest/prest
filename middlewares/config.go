@@ -1,9 +1,10 @@
 package middlewares
 
 import (
-	"github.com/prest/prest/config"
 	"github.com/rs/cors"
 	"github.com/urfave/negroni/v3"
+
+	"github.com/prest/prest/v2/config"
 )
 
 var (
@@ -37,7 +38,7 @@ func initApp() {
 		if !config.PrestConf.Debug && config.PrestConf.EnableDefaultJWT {
 			MiddlewareStack = append(
 				MiddlewareStack,
-				JwtMiddleware(config.PrestConf.JWTKey, config.PrestConf.JWTJWKS))
+				JwtMiddleware(config.PrestConf.JWTKey, config.PrestConf.JWTJWKS, config.PrestConf.JWTAlgo))
 		}
 		if config.PrestConf.Cache.Enabled {
 			MiddlewareStack = append(MiddlewareStack, CacheMiddleware(&config.PrestConf.Cache))

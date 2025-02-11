@@ -8,7 +8,8 @@ import (
 	"plugin"
 	"runtime"
 
-	"github.com/prest/prest/config"
+	"github.com/prest/prest/v2/config"
+
 	"github.com/urfave/negroni/v3"
 )
 

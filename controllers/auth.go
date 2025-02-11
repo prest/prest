@@ -9,10 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prest/prest/config"
-	"github.com/prest/prest/controllers/auth"
-	"gopkg.in/square/go-jose.v2"
-	jwt "gopkg.in/square/go-jose.v2/jwt"
+	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/controllers/auth"
+
+	jose "gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2/jwt"
 )
 
 // Response representation
@@ -62,8 +63,6 @@ func Token(u auth.User) (t string, err error) {
 	return jwt.Signed(sig).Claims(cl).CompactSerialize()
 }
 
-const unf = "user not found"
-
 // Auth controller
 func Auth(w http.ResponseWriter, r *http.Request) {
 	login := Login{}
@@ -80,19 +79,19 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 		var ok bool
 		login.Username, login.Password, ok = r.BasicAuth()
 		if !ok {
-			http.Error(w, unf, http.StatusBadRequest)
+			jsonError(w, unf, http.StatusBadRequest)
 			return
 		}
 	}
 
 	loggedUser, err := basicPasswordCheck(strings.ToLower(login.Username), login.Password)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		jsonError(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 	token, err := Token(loggedUser)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	resp := Response{
@@ -101,7 +100,7 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 	}
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -124,7 +123,7 @@ func basicPasswordCheck(user, password string) (obj auth.User, err error) {
 		return
 	}
 	if n != 1 {
-		err = fmt.Errorf(unf)
+		err = ErrUserNotFound
 	}
 
 	return

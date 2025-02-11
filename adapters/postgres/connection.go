@@ -1,8 +1,9 @@
 package postgres
 
 import (
+	"github.com/prest/prest/v2/adapters/postgres/internal/connection"
+
 	"github.com/jmoiron/sqlx"
-	"github.com/prest/prest/adapters/postgres/internal/connection"
 )
 
 // GetURI postgres connection URI

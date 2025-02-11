@@ -3,7 +3,7 @@ pREST - Serves a RESTful API from any SQL database
 
 Install
 
-	go install github.com/prest/prest
+	go install github.com/prest/prest/v2
 
 Run
 

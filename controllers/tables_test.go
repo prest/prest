@@ -11,11 +11,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/prest/prest/v2/adapters/postgres"
+	"github.com/prest/prest/v2/config"
+	pctx "github.com/prest/prest/v2/context"
+	"github.com/prest/prest/v2/testutils"
+
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/adapters/postgres"
-	"github.com/prest/prest/config"
-	pctx "github.com/prest/prest/context"
-	"github.com/prest/prest/testutils"
 )
 
 // Should be in sync with databases under test (see `testdata/runtest.sh` and

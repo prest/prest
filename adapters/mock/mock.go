@@ -11,9 +11,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/prest/prest/adapters"
-	"github.com/prest/prest/adapters/scanner"
-	"github.com/prest/prest/config"
+	"github.com/prest/prest/v2/adapters"
+	"github.com/prest/prest/v2/adapters/scanner"
+	"github.com/prest/prest/v2/config"
 )
 
 // Item mock

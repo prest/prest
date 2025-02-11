@@ -11,7 +11,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	adapters "github.com/prest/prest/adapters"
+	adapters "github.com/prest/prest/v2/adapters"
 )
 
 // MockAdapter is a mock of Adapter interface.

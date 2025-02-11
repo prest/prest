@@ -17,18 +17,18 @@ import (
 	"sync"
 	"unicode"
 
-	"github.com/lib/pq"
-	"github.com/pkg/errors"
+	"github.com/prest/prest/v2/adapters"
+	"github.com/prest/prest/v2/adapters/postgres/formatters"
+	"github.com/prest/prest/v2/adapters/postgres/internal/connection"
+	"github.com/prest/prest/v2/adapters/postgres/statements"
+	"github.com/prest/prest/v2/adapters/scanner"
+	"github.com/prest/prest/v2/config"
+	pctx "github.com/prest/prest/v2/context"
+	"github.com/prest/prest/v2/template"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/prest/prest/adapters"
-	"github.com/prest/prest/adapters/postgres/formatters"
-	"github.com/prest/prest/adapters/postgres/internal/connection"
-	"github.com/prest/prest/adapters/postgres/statements"
-	"github.com/prest/prest/adapters/scanner"
-	"github.com/prest/prest/config"
-	pctx "github.com/prest/prest/context"
-	"github.com/prest/prest/template"
+	"github.com/lib/pq"
+	"github.com/pkg/errors"
 	"github.com/structy/log"
 )
 

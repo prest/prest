@@ -3,11 +3,12 @@ package router
 import (
 	"runtime"
 
+	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/controllers"
+	"github.com/prest/prest/v2/middlewares"
+	"github.com/prest/prest/v2/plugins"
+
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/config"
-	"github.com/prest/prest/controllers"
-	"github.com/prest/prest/middlewares"
-	"github.com/prest/prest/plugins"
 	"github.com/urfave/negroni/v3"
 )
 
@@ -45,7 +46,7 @@ func GetRouter() *mux.Router {
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.DeleteFromTable).Methods("DELETE")
 	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.UpdateTable).Methods("PUT", "PATCH")
 	router.PathPrefix("/").Handler(negroni.New(
-		middlewares.AuthMiddleware(),
+		middlewares.AuthMiddleware(config.PrestConf.JWTAlgo),
 		middlewares.AccessControl(),
 		middlewares.ExposureMiddleware(),
 		middlewares.CacheMiddleware(&config.PrestConf.Cache),

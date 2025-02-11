@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/prest/prest/adapters/postgres"
-	pctx "github.com/prest/prest/context"
+	"github.com/prest/prest/v2/adapters/postgres"
+	pctx "github.com/prest/prest/v2/context"
+
 	"github.com/structy/log"
 )
 

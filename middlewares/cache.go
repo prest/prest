@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/prest/prest/cache"
 	"github.com/urfave/negroni/v3"
+
+	"github.com/prest/prest/v2/cache"
 )
 
 // CacheMiddleware simple caching to avoid equal queries to the database
@@ -15,7 +16,7 @@ func CacheMiddleware(cfg *cache.Config) negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		match, err := MatchURL(r.URL.String())
 		if err != nil {
-			http.Error(w, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusInternalServerError)
 			return
 		}
 		// team will not be used when downloading information, second result ignored

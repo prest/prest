@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/adapters/postgres"
-	"github.com/prest/prest/config"
-	"github.com/prest/prest/middlewares"
-	"github.com/prest/prest/testutils"
+	"github.com/prest/prest/v2/adapters/postgres"
+	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/middlewares"
+	"github.com/prest/prest/v2/testutils"
 )
 
 func TestExecuteScriptQuery(t *testing.T) {
@@ -18,7 +18,7 @@ func TestExecuteScriptQuery(t *testing.T) {
 	r.HandleFunc("/testing/script-get/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp, err := ExecuteScriptQuery(r, "fulltable", "get_all")
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			jsonError(w, err.Error(), http.StatusBadRequest)
 		}
 		w.Write(resp)
 	}))
@@ -26,7 +26,7 @@ func TestExecuteScriptQuery(t *testing.T) {
 	r.HandleFunc("/testing/script-post/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp, err := ExecuteScriptQuery(r, "fulltable", "write_all")
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			jsonError(w, err.Error(), http.StatusBadRequest)
 		}
 		w.Write(resp)
 	}))
@@ -104,7 +104,6 @@ func TestRenderWithXML(t *testing.T) {
 	for _, tc := range testCases {
 		t.Log(tc.description)
 		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body)
-
 	}
 }
 
@@ -125,6 +124,6 @@ func TestSilentErrorsOnQuery(t *testing.T) {
 		"GET",
 		http.StatusBadRequest,
 		"SilentError",
-		"could not execute sql, check your prest logs\n",
+		"could not execute sql, check your prest logs",
 	)
 }

@@ -10,11 +10,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prest/prest/v2/config"
+	pctx "github.com/prest/prest/v2/context"
+	"github.com/prest/prest/v2/controllers/auth"
+
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/prest/prest/config"
-	pctx "github.com/prest/prest/context"
-	"github.com/prest/prest/controllers/auth"
 	"github.com/urfave/negroni/v3"
+	jose "gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
@@ -47,7 +49,7 @@ func SetTimeoutToContext() negroni.Handler {
 }
 
 // AuthMiddleware handle request token validation
-func AuthMiddleware() negroni.Handler {
+func AuthMiddleware(_ string) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		match, err := MatchURL(r.URL.String())
 		if err != nil {
@@ -135,7 +137,7 @@ func AccessControl() negroni.Handler {
 }
 
 // JwtMiddleware check if actual request have JWT
-func JwtMiddleware(key string, JWKSet string) negroni.Handler {
+func JwtMiddleware(key string, JWKSet, _ string) negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		match, err := MatchURL(r.URL.String())
 		if err != nil {
@@ -155,7 +157,7 @@ func JwtMiddleware(key string, JWKSet string) negroni.Handler {
 		}
 		tok, err := jwt.ParseSigned(token)
 		if err != nil {
-			http.Error(w, ErrJWTParseFail.Error(), http.StatusUnauthorized)
+			http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWTParseFail.Error()), http.StatusUnauthorized)
 			return
 		}
 		out := auth.Claims{}
@@ -174,7 +176,7 @@ func JwtMiddleware(key string, JWKSet string) negroni.Handler {
 
 				if key.KeyID() == tok.Headers[0].KeyID {
 					if err := key.Raw(&rawkey); err != nil {
-						err := fmt.Errorf("failed to create public key: %s", err)
+						err := fmt.Errorf("failed to create public key: %s", err.Error())
 						http.Error(w, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusUnauthorized)
 						return
 					}
@@ -245,4 +247,38 @@ func ExposureMiddleware() negroni.Handler {
 
 		next(rw, rq)
 	})
+}
+
+// nolint
+func jwtAlgo(algo string) jose.SignatureAlgorithm {
+	switch algo {
+	case "EdDSA":
+		return jose.EdDSA
+	case "HS256":
+		return jose.HS256
+	case "HS384":
+		return jose.HS384
+	case "HS512":
+		return jose.HS512
+	case "RS256":
+		return jose.RS256
+	case "RS384":
+		return jose.RS384
+	case "RS512":
+		return jose.RS512
+	case "ES256":
+		return jose.ES256
+	case "ES384":
+		return jose.ES384
+	case "ES512":
+		return jose.ES512
+	case "PS256":
+		return jose.PS256
+	case "PS384":
+		return jose.PS384
+	case "PS512":
+		return jose.PS512
+	default:
+		return jose.HS256
+	}
 }

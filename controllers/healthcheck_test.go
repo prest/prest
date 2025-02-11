@@ -7,8 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/prest/prest/v2/testutils"
+
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/testutils"
 	"github.com/stretchr/testify/require"
 )
 
