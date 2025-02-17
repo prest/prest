@@ -62,7 +62,6 @@ type PluginMiddleware struct {
 
 // Prest basic config
 type Prest struct {
-	Version              int
 	AuthEnabled          bool
 	AuthSchema           string
 	AuthTable            string
@@ -85,10 +84,6 @@ type Prest struct {
 	PGSSLKey             string
 	PGSSLRootCert        string
 	ContextPath          string
-	SSLMode              string
-	SSLCert              string
-	SSLKey               string
-	SSLRootCert          string
 	PGMaxIdleConn        int
 	PGMaxOpenConn        int
 	PGConnTimeout        int
@@ -239,7 +234,7 @@ func Parse(cfg *Prest) {
 			log.Warningf(
 				"file '%s' not found, falling back to default settings\n",
 				configFile)
-			cfg.SSLMode = "disable"
+			cfg.PGSSLMode = "disable"
 		}
 		log.Warningf("read env config error: %v\n", err)
 	}
@@ -266,16 +261,6 @@ func Parse(cfg *Prest) {
 	cfg.PGSSLCert = viper.GetString("pg.ssl.cert")
 	cfg.PGSSLRootCert = viper.GetString("pg.ssl.rootcert")
 
-	cfg.Version = viper.GetInt("version")
-	// only use value if file is present
-	if cfg.SSLMode == "" {
-		cfg.SSLMode = viper.GetString("ssl.mode")
-	}
-	cfg.SSLCert = viper.GetString("ssl.cert")
-	cfg.SSLKey = viper.GetString("ssl.key")
-	cfg.SSLRootCert = viper.GetString("ssl.rootcert")
-
-	parseSSLData(cfg)
 	if os.Getenv("DATABASE_URL") != "" {
 		// cloud factor support: https://devcenter.heroku.com/changelog-items/438
 		cfg.PGURL = os.Getenv("DATABASE_URL")
@@ -383,7 +368,7 @@ func parseDatabaseURL(cfg *Prest) {
 	}
 	cfg.PGDatabase = strings.Replace(u.Path, "/", "", -1)
 	if u.Query().Get("sslmode") != "" {
-		cfg.SSLMode = u.Query().Get("sslmode")
+		cfg.PGSSLMode = u.Query().Get("sslmode")
 	}
 }
 
@@ -453,37 +438,6 @@ func portFromEnv(cfg *Prest) {
 		return
 	}
 	cfg.HTTPPort = HTTPPort
-}
-
-// parseSSLData favors the config according to the version used
-// v1 uses PG from old config
-// v2 uses PG from new config (env/toml)
-//
-// todo: deprecate v1
-func parseSSLData(cfg *Prest) {
-	if cfg.Version <= 1 {
-		parseSSLV1Data(cfg)
-		return
-	}
-	log.Warningln(`
-You are using v2 of prestd configs, please note that v1 postgres SSL environment variables are ignored and you have to set them correctly.
-
-When using v2 the following environment variables will be ignored: PREST_SSL_MODE, PREST_SSL_CERT, PREST_SSL_KEY, PREST_SSL_ROOTCERT
-
-View more at https://docs.prestd.com/get-started/configuring-prest`)
-}
-
-func parseSSLV1Data(cfg *Prest) {
-	log.Warningln(`
-You are using v1 of prestd configs, please migrate to v2.
-
-v1 will be deprecated by Dec 31st 2023.
-
-View more at https://docs.prestd.com/get-started/configuring-prest`)
-	cfg.PGSSLMode = cfg.SSLMode
-	cfg.PGSSLKey = cfg.SSLKey
-	cfg.PGSSLCert = cfg.SSLCert
-	cfg.PGSSLRootCert = cfg.SSLRootCert
 }
 
 // getJSONAgg identifies which json aggregation function will be used,

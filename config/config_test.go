@@ -36,9 +36,8 @@ func TestParse(t *testing.T) {
 		require.Equal(t, "postgres", cfg.PGPass)
 		require.Equal(t, true, cfg.PGCache)
 		require.Equal(t, true, cfg.SingleDB)
-		require.Equal(t, "disable", cfg.SSLMode)
+		require.Equal(t, "disable", cfg.PGSSLMode)
 		require.Equal(t, false, cfg.Debug)
-		require.Equal(t, 1, cfg.Version)
 		require.Equal(t, true, cfg.AccessConf.Restrict)
 	})
 
@@ -183,7 +182,7 @@ func TestDatabaseURL(t *testing.T) {
 		require.Equal(t, 1234, cfg.PGPort)
 		require.Equal(t, "user", cfg.PGUser)
 		require.Equal(t, "pass", cfg.PGPass)
-		require.Equal(t, "disable", cfg.SSLMode)
+		require.Equal(t, "disable", cfg.PGSSLMode)
 	})
 
 	t.Run("DATABASE_URL", func(t *testing.T) {
@@ -194,7 +193,7 @@ func TestDatabaseURL(t *testing.T) {
 		require.Equal(t, 5432, cfg.PGPort)
 		require.Equal(t, "cloud", cfg.PGUser)
 		require.Equal(t, "cloudPass", cfg.PGPass)
-		require.Equal(t, "disable", cfg.SSLMode)
+		require.Equal(t, "disable", cfg.PGSSLMode)
 	})
 }
 
@@ -233,7 +232,7 @@ func Test_parseDatabaseURL(t *testing.T) {
 	require.Equal(t, 5432, c.PGPort)
 	require.Equal(t, "user", c.PGUser)
 	require.Equal(t, "pass", c.PGPass)
-	require.Equal(t, "require", c.SSLMode)
+	require.Equal(t, "require", c.PGSSLMode)
 
 	// errors
 	// todo: make this default on any problem
