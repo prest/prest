@@ -138,6 +138,12 @@ func Load() {
 			log.Errorf("Queries directory %s was not created, err: %v\n", PrestConf.QueriesPath, err)
 		}
 	}
+
+	// ignore cache if disabled
+	if !PrestConf.Cache.Enabled {
+		return
+	}
+
 	if _, err := os.Stat(PrestConf.Cache.StoragePath); os.IsNotExist(err) {
 		if err = os.MkdirAll(PrestConf.Cache.StoragePath, 0700); err != nil {
 			log.Errorf("Cache directory %s was not created, falling back to default './', err: %v\n", PrestConf.Cache.StoragePath, err)
