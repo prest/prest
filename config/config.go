@@ -269,9 +269,6 @@ func Parse(cfg *Prest) {
 	cfg.EnableDefaultJWT = viper.GetBool("jwt.default")
 	cfg.ContextPath = viper.GetString("context")
 
-	cfg.HTTPSMode = viper.GetBool("https.mode")
-	cfg.HTTPSCert = viper.GetString("https.cert")
-	cfg.HTTPSKey = viper.GetString("https.key")
 	cfg.PluginPath = viper.GetString("pluginpath")
 
 	loadCacheConfig(cfg)
@@ -477,4 +474,8 @@ func parseHTTPConfig(cfg *Prest) {
 	cfg.HTTPHost = viper.GetString("http.host")
 	cfg.HTTPPort = viper.GetInt("http.port")
 	cfg.HTTPTimeout = viper.GetInt("http.timeout")
+
+	cfg.HTTPSMode = viper.GetBool("https.mode")
+	cfg.HTTPSCert = viper.GetString("https.cert")
+	cfg.HTTPSKey = viper.GetString("https.key")
 }
