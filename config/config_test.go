@@ -201,6 +201,8 @@ func TestHTTPPort(t *testing.T) {
 	viperCfg()
 
 	t.Run("set PORT", func(t *testing.T) {
+		os.Unsetenv("PORT")
+
 		t.Setenv("PORT", "8080")
 		cfg := &Prest{}
 		Parse(cfg)
@@ -208,6 +210,9 @@ func TestHTTPPort(t *testing.T) {
 	})
 
 	t.Run("set PREST_HTTP_PORT", func(t *testing.T) {
+		os.Unsetenv("PORT")
+		os.Unsetenv("PREST_HTTP_PORT")
+
 		t.Setenv("PREST_HTTP_PORT", "3030")
 		viperCfg()
 		cfg := &Prest{}
@@ -216,6 +221,9 @@ func TestHTTPPort(t *testing.T) {
 	})
 
 	t.Run("set PORT and PREST_HTTP_PORT", func(t *testing.T) {
+		os.Unsetenv("PORT")
+		os.Unsetenv("PREST_HTTP_PORT")
+
 		t.Setenv("PORT", "8080")
 		t.Setenv("PREST_HTTP_PORT", "3000")
 		viperCfg()
@@ -232,7 +240,7 @@ func Test_parseDatabaseURL(t *testing.T) {
 	assert.Equal(t, 5432, c.PGPort)
 	assert.Equal(t, "user", c.PGUser)
 	assert.Equal(t, "pass", c.PGPass)
-	assert.Equal(t, "assert", c.PGSSLMode)
+	assert.Equal(t, "require", c.PGSSLMode)
 
 	// errors
 	// todo: make this default on any problem
@@ -321,5 +329,12 @@ func Test_ExposeDataConfig(t *testing.T) {
 
 	for i, v := range cfg.AuthMetadata {
 		assert.Equal(t, metadata[i], v)
+	}
+}
+
+func unsetEnv(t *testing.T) {
+	t.Helper()
+	for _, env := range []string{"PREST_CONF", "PREST_PG_URL", "DATABASE_URL", "PORT", "PREST_HTTP_PORT", "PREST_JSON_AGG_TYPE"} {
+		os.Unsetenv(env)
 	}
 }

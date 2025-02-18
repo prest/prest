@@ -154,6 +154,8 @@ func viperCfg() {
 	viper.SetConfigName(file)
 	viper.SetConfigType("toml")
 
+	viper.SetDefault("access.restrict", false)
+
 	viper.SetDefault("auth.enabled", false)
 	viper.SetDefault("auth.username", "username")
 	viper.SetDefault("auth.password", "password")
@@ -235,14 +237,14 @@ func Parse(cfg *Prest) {
 			log.Warningf(
 				"file '%s' not found, falling back to default settings\n",
 				configFile)
-			cfg.PGSSLMode = "prefer"
+			cfg.PGSSLMode = "disable"
 		}
 		log.Warningf("read env config error: %v\n", err)
 	}
 
 	parseAuthConfig(cfg)
-	portFromEnv(cfg)
 	parseHTTPConfig(cfg)
+	portFromEnv(cfg)
 	parseDBConfig(cfg)
 
 	cfg.JWTKey = viper.GetString("jwt.key")
