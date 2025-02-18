@@ -14,11 +14,6 @@ enabled = true
     endpoint = "/prest/public/test"
     time = 5
 
-
-
-
-
-
 [access]
 restrict = true  # can access only the tables listed below
 

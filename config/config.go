@@ -176,8 +176,9 @@ func viperCfg() {
 	viper.SetDefault("pg.conntimeout", 10)
 	viper.SetDefault("pg.single", true)
 	viper.SetDefault("pg.cache", true)
-	viper.SetDefault("pg.ssl.mode", "require")
-	viper.SetDefault("ssl.mode", "require")
+	// todo: replace this with prefer, will need to replace lib/pq
+	// https://github.com/jackc/pgx/blob/47d631e34be7128997a0aa89b75885cc4ad4c82e/pgconn/config.go#L218
+	viper.SetDefault("pg.ssl.mode", "disable")
 
 	viper.SetDefault("jwt.default", true)
 	viper.SetDefault("jwt.algo", "HS256")
@@ -234,7 +235,7 @@ func Parse(cfg *Prest) {
 			log.Warningf(
 				"file '%s' not found, falling back to default settings\n",
 				configFile)
-			cfg.PGSSLMode = "disable"
+			cfg.PGSSLMode = "prefer"
 		}
 		log.Warningf("read env config error: %v\n", err)
 	}
