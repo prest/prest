@@ -154,8 +154,6 @@ func viperCfg() {
 	viper.SetConfigName(file)
 	viper.SetConfigType("toml")
 
-	viper.SetDefault("access.restrict", false)
-
 	viper.SetDefault("auth.enabled", false)
 	viper.SetDefault("auth.username", "username")
 	viper.SetDefault("auth.password", "password")
