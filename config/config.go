@@ -239,39 +239,12 @@ func Parse(cfg *Prest) {
 		}
 		log.Warningf("read env config error: %v\n", err)
 	}
-	cfg.AuthEnabled = viper.GetBool("auth.enabled")
-	cfg.AuthSchema = viper.GetString("auth.schema")
-	cfg.AuthTable = viper.GetString("auth.table")
-	cfg.AuthUsername = viper.GetString("auth.username")
-	cfg.AuthPassword = viper.GetString("auth.password")
-	cfg.AuthEncrypt = viper.GetString("auth.encrypt")
-	cfg.AuthMetadata = viper.GetStringSlice("auth.metadata")
-	cfg.AuthType = viper.GetString("auth.type")
-	cfg.HTTPHost = viper.GetString("http.host")
-	cfg.HTTPPort = viper.GetInt("http.port")
-	portFromEnv(cfg)
-	cfg.HTTPTimeout = viper.GetInt("http.timeout")
-	cfg.PGURL = viper.GetString("pg.url")
-	cfg.PGHost = viper.GetString("pg.host")
-	cfg.PGPort = viper.GetInt("pg.port")
-	cfg.PGUser = viper.GetString("pg.user")
-	cfg.PGPass = viper.GetString("pg.pass")
-	cfg.PGDatabase = viper.GetString("pg.database")
-	cfg.PGSSLMode = viper.GetString("pg.ssl.mode")
-	cfg.PGSSLKey = viper.GetString("pg.ssl.key")
-	cfg.PGSSLCert = viper.GetString("pg.ssl.cert")
-	cfg.PGSSLRootCert = viper.GetString("pg.ssl.rootcert")
 
-	if os.Getenv("DATABASE_URL") != "" {
-		// cloud factor support: https://devcenter.heroku.com/changelog-items/438
-		cfg.PGURL = os.Getenv("DATABASE_URL")
-	}
-	parseDatabaseURL(cfg)
-	cfg.PGMaxIdleConn = viper.GetInt("pg.maxidleconn")
-	cfg.PGMaxOpenConn = viper.GetInt("pg.maxopenconn")
-	cfg.PGConnTimeout = viper.GetInt("pg.conntimeout")
-	cfg.PGCache = viper.GetBool("pg.cache")
-	cfg.SingleDB = viper.GetBool("pg.single")
+	parseAuthConfig(cfg)
+	portFromEnv(cfg)
+	parseHTTPConfig(cfg)
+	parseDBConfig(cfg)
+
 	cfg.JWTKey = viper.GetString("jwt.key")
 	cfg.JWTAlgo = viper.GetString("jwt.algo")
 	cfg.JWTWellKnownURL = viper.GetString("jwt.wellknownurl")
@@ -282,36 +255,31 @@ func Parse(cfg *Prest) {
 	cfg.JSONAggType = getJSONAgg()
 
 	cfg.MigrationsPath = viper.GetString("migrations")
+
 	cfg.AccessConf.Restrict = viper.GetBool("access.restrict")
 	cfg.AccessConf.IgnoreTable = viper.GetStringSlice("access.ignore_table")
 	cfg.QueriesPath = viper.GetString("queries.location")
+
 	cfg.CORSAllowOrigin = viper.GetStringSlice("cors.alloworigin")
 	cfg.CORSAllowHeaders = viper.GetStringSlice("cors.allowheaders")
 	cfg.CORSAllowMethods = viper.GetStringSlice("cors.allowmethods")
 	cfg.CORSAllowCredentials = viper.GetBool("cors.allowcredentials")
+
 	cfg.Debug = viper.GetBool("debug")
 	cfg.EnableDefaultJWT = viper.GetBool("jwt.default")
 	cfg.ContextPath = viper.GetString("context")
+
 	cfg.HTTPSMode = viper.GetBool("https.mode")
 	cfg.HTTPSCert = viper.GetString("https.cert")
 	cfg.HTTPSKey = viper.GetString("https.key")
 	cfg.PluginPath = viper.GetString("pluginpath")
-	cfg.Cache.Enabled = viper.GetBool("cache.enabled")
-	cfg.Cache.Time = viper.GetInt("cache.time")
-	cfg.Cache.StoragePath = viper.GetString("cache.storagepath")
-	cfg.Cache.SufixFile = viper.GetString("cache.sufixfile")
+
+	loadCacheConfig(cfg)
+
 	cfg.ExposeConf.Enabled = viper.GetBool("expose.enabled")
 	cfg.ExposeConf.TableListing = viper.GetBool("expose.tables")
 	cfg.ExposeConf.SchemaListing = viper.GetBool("expose.schemas")
 	cfg.ExposeConf.DatabaseListing = viper.GetBool("expose.databases")
-
-	// cache endpoints config
-	var cacheendpoints = []cache.Endpoint{}
-	err = viper.UnmarshalKey("cache.endpoints", &cacheendpoints)
-	if err != nil {
-		log.Errorln("could not unmarshal cache endpoints")
-	}
-	cfg.Cache.Endpoints = cacheendpoints
 
 	// table access config
 	var tablesconf []TablesConf
@@ -327,8 +295,6 @@ func Parse(cfg *Prest) {
 		log.Errorln("could not unmarshal access users")
 	}
 	cfg.AccessConf.Users = usersconf
-
-	// default value
 
 	// plugin middleware list config
 	var pluginMiddlewareConfig []PluginMiddleware
@@ -454,4 +420,61 @@ func getJSONAgg() (config string) {
 		log.Warningln("JSON Agg type can only be 'json_agg' or 'jsonb_agg', using the later as default.")
 	}
 	return jsonAggDefault
+}
+
+func parseDBConfig(cfg *Prest) {
+	cfg.PGURL = viper.GetString("pg.url")
+	cfg.PGHost = viper.GetString("pg.host")
+	cfg.PGPort = viper.GetInt("pg.port")
+	cfg.PGUser = viper.GetString("pg.user")
+	cfg.PGPass = viper.GetString("pg.pass")
+	cfg.PGDatabase = viper.GetString("pg.database")
+	cfg.PGSSLMode = viper.GetString("pg.ssl.mode")
+	cfg.PGSSLKey = viper.GetString("pg.ssl.key")
+	cfg.PGSSLCert = viper.GetString("pg.ssl.cert")
+	cfg.PGSSLRootCert = viper.GetString("pg.ssl.rootcert")
+
+	if os.Getenv("DATABASE_URL") != "" {
+		// cloud factor support: https://devcenter.heroku.com/changelog-items/438
+		cfg.PGURL = os.Getenv("DATABASE_URL")
+	}
+	parseDatabaseURL(cfg)
+
+	cfg.PGMaxIdleConn = viper.GetInt("pg.maxidleconn")
+	cfg.PGMaxOpenConn = viper.GetInt("pg.maxopenconn")
+	cfg.PGConnTimeout = viper.GetInt("pg.conntimeout")
+	cfg.PGCache = viper.GetBool("pg.cache")
+	cfg.SingleDB = viper.GetBool("pg.single")
+}
+
+func loadCacheConfig(cfg *Prest) {
+	cfg.Cache.Enabled = viper.GetBool("cache.enabled")
+	cfg.Cache.Time = viper.GetInt("cache.time")
+	cfg.Cache.StoragePath = viper.GetString("cache.storagepath")
+	cfg.Cache.SufixFile = viper.GetString("cache.sufixfile")
+
+	// cache endpoints config
+	var cacheendpoints = []cache.Endpoint{}
+	err := viper.UnmarshalKey("cache.endpoints", &cacheendpoints)
+	if err != nil {
+		log.Errorln("could not unmarshal cache endpoints")
+	}
+	cfg.Cache.Endpoints = cacheendpoints
+}
+
+func parseAuthConfig(cfg *Prest) {
+	cfg.AuthEnabled = viper.GetBool("auth.enabled")
+	cfg.AuthSchema = viper.GetString("auth.schema")
+	cfg.AuthTable = viper.GetString("auth.table")
+	cfg.AuthUsername = viper.GetString("auth.username")
+	cfg.AuthPassword = viper.GetString("auth.password")
+	cfg.AuthEncrypt = viper.GetString("auth.encrypt")
+	cfg.AuthMetadata = viper.GetStringSlice("auth.metadata")
+	cfg.AuthType = viper.GetString("auth.type")
+}
+
+func parseHTTPConfig(cfg *Prest) {
+	cfg.HTTPHost = viper.GetString("http.host")
+	cfg.HTTPPort = viper.GetInt("http.port")
+	cfg.HTTPTimeout = viper.GetInt("http.timeout")
 }
