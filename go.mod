@@ -1,8 +1,9 @@
 module github.com/prest/prest/v2
 
 go 1.23
+toolchain go1.24.1
 
-// todo: upgrade go-jose 
+// todo: upgrade go-jose
 // github.com/go-jose/go-jose/v4 v4.0.4
 
 require (
@@ -58,7 +59,7 @@ require (
 	github.com/tidwall/rtred v0.1.2 // indirect
 	github.com/tidwall/tinyqueue v0.1.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.33.0 // indirect
+	golang.org/x/crypto v0.35.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
