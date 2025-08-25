@@ -1,6 +1,7 @@
 module github.com/prest/prest/v2
 
-go 1.23
+go 1.23.0
+
 toolchain go1.24.1
 
 // todo: upgrade go-jose
@@ -20,7 +21,7 @@ require (
 	github.com/rs/cors v1.11.1
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.0
 	github.com/structy/log v0.0.0-20220126205329-1f766c8d0b3c
 	github.com/tidwall/buntdb v1.3.2
 	github.com/urfave/negroni/v3 v3.1.1
