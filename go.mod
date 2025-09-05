@@ -19,7 +19,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/cors v1.11.1
-	github.com/spf13/cobra v1.8.1
+	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.11.1
 	github.com/structy/log v0.0.0-20220126205329-1f766c8d0b3c
@@ -50,7 +50,7 @@ require (
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tidwall/btree v1.7.0 // indirect
 	github.com/tidwall/gjson v1.17.0 // indirect
