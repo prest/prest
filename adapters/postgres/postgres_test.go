@@ -272,8 +272,8 @@ func TestReturningByRequest(t *testing.T) {
 	}{
 		{"Returning by request with nothing", "/prest-test/public/test_group_by_table", []string{""}, nil},
 		{"Returning by request with _returning=*", "/prest-test/public/test_group_by_table?_returning=*", []string{"RETURNING *"}, nil},
-		{"Returning by request with _returning=field", "/prest-test/public/test_group_by_table?_returning=age", []string{"RETURNING age"}, nil},
-		{"Returning by request with multiple _returning=field", "/prest-test/public/test_group_by_table?_returning=age&_returning=salary", []string{"RETURNING age, salary"}, nil},
+		{"Returning by request with _returning=field", "/prest-test/public/test_group_by_table?_returning=age", []string{"RETURNING \"age\""}, nil},
+		{"Returning by request with multiple _returning=field", "/prest-test/public/test_group_by_table?_returning=age&_returning=salary", []string{"RETURNING \"age\", \"salary\""}, nil},
 	}
 	for _, tc := range testCases {
 		t.Log(tc.description)
@@ -309,6 +309,7 @@ func TestGroupByClause(t *testing.T) {
 		// having tests
 		{"Group by clause with having clause", "/prest-test/public/test5?_groupby=celphone->>having:sum:salary:$gt:500", `GROUP BY "celphone" HAVING SUM("salary") > 500`, false},
 		{"Group by clause with having clause", "/prest-test/public/test5?_groupby=c.celphone->>having:sum:salary:$gt:500", `GROUP BY "c"."celphone" HAVING SUM("salary") > 500`, false},
+		{"Group by clause with having clause string value with quotes", "/prest-test/public/test5?_groupby=celphone->>having:sum:name:$eq:O'Brian", `GROUP BY "celphone" HAVING SUM("name") = 'O''Brian'`, false},
 
 		// having errors, but continue with group by
 		{"Group by clause with wrong having clause (insufficient params)", "/prest-test/public/test5?_groupby=celphone->>having:sum:salary", `GROUP BY "celphone"`, false},
@@ -755,6 +756,7 @@ func TestJoinByRequest(t *testing.T) {
 		{"Join missing param", "/prest-test/public/test?_join=inner:test2:test2.name:$eq", []string{}, true},
 		{"Join invalid operator", "/prest-test/public/test?_join=inner:test2:test2.name:notexist:test.name", []string{}, true},
 		{"Join invalid fields", "/prest-test/public/test?_join=inner:0test2:test2.name:notexist:test.name", []string{}, true},
+		{"Join invalid type", "/prest-test/public/test?_join=weird:test2:test2.name:$eq:test.name", []string{}, true},
 	}
 
 	for _, tc := range testCases {
@@ -801,7 +803,7 @@ func TestJoinByRequest(t *testing.T) {
 	joinStr := strings.Join(join, " ")
 
 	if !strings.Contains(joinStr, ` INNER JOIN "test2" ON "test2"."name" = "test"."name"`) {
-		t.Errorf(`expected %s in INNER JOIN "test2" ON "test2"."name" = "test"."name", but no was!`, joinStr)
+		t.Errorf(`expected %s in INNER JOIN "test2" ON "test2"."name" = "test"."name"`, joinStr)
 	}
 
 	where, values, err := config.PrestConf.Adapter.WhereByRequest(r, 1)

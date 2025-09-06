@@ -65,6 +65,7 @@ func (adapter *Postgres) ParseScript(scriptPath string, templateData map[string]
 	}
 
 	sqlQuery = buff.String()
+	values = funcs.Args
 	return
 }
 

@@ -310,12 +310,23 @@ func (adapter *Postgres) ReturningByRequest(r *http.Request) (returningSyntax st
 	// https://docs.prestd.com/api-reference/parameters
 	queries := r.URL.Query()["_returning"]
 	if len(queries) > 0 {
-		for i, q := range queries {
-			if i > 0 && i < len(queries) {
-				returningSyntax += ", "
+		cols := make([]string, 0, len(queries))
+		for _, q := range queries {
+			if q == "*" {
+				cols = append(cols, "*")
+				continue
 			}
-			returningSyntax += q
+			if chkInvalidIdentifier(q) {
+				err = errors.Wrap(ErrInvalidIdentifier, "Returning")
+				return
+			}
+			parts := strings.Split(q, ".")
+			for i := range parts {
+				parts[i] = `"` + parts[i] + `"`
+			}
+			cols = append(cols, strings.Join(parts, "."))
 		}
+		returningSyntax = strings.Join(cols, ", ")
 	}
 	return
 }
@@ -533,6 +544,14 @@ func (adapter *Postgres) JoinByRequest(r *http.Request) (values []string, err er
 		return
 	}
 
+	// whitelist join types
+	jt := strings.ToUpper(joinArgs[0])
+	allowed := map[string]bool{"INNER": true, "LEFT": true, "RIGHT": true, "FULL": true, "CROSS": true}
+	if !allowed[jt] {
+		err = ErrInvalidJoinClause
+		return
+	}
+
 	if chkInvalidIdentifier(joinArgs[1], joinArgs[2], joinArgs[4]) {
 		err = ErrInvalidIdentifier
 		return
@@ -556,7 +575,7 @@ func (adapter *Postgres) JoinByRequest(r *http.Request) (values []string, err er
 		err = errJoin
 		return
 	}
-	joinQuery := fmt.Sprintf(` %s JOIN "%s" ON "%s"."%s" %s "%s"."%s" `, strings.ToUpper(joinArgs[0]), joinArgs[1], spl[0], spl[1], op, splj[0], splj[1])
+	joinQuery := fmt.Sprintf(` %s JOIN "%s" ON "%s"."%s" %s "%s"."%s" `, jt, joinArgs[1], spl[0], spl[1], op, splj[0], splj[1])
 	values = append(values, joinQuery)
 	return
 }
@@ -1555,7 +1574,15 @@ func (adapter *Postgres) GroupByClause(r *http.Request) (groupBySQL string) {
 			return
 		}
 
-		havingQuery := fmt.Sprintf(statements.Having, groupFunc, operator, params[4])
+		// sanitize having value: numeric stays raw, string gets single-quoted and escaped
+		val := params[4]
+		if _, errNum := strconv.ParseFloat(val, 64); errNum == nil {
+			havingQuery := fmt.Sprintf(statements.Having, groupFunc, operator, val)
+			groupBySQL = fmt.Sprintf("%s %s", fmt.Sprintf(statements.GroupBy, groupFieldQuery[0]), havingQuery)
+			return
+		}
+		safe := strings.ReplaceAll(val, "'", "''")
+		havingQuery := fmt.Sprintf(statements.Having, groupFunc, operator, fmt.Sprintf("'%s'", safe))
 		groupBySQL = fmt.Sprintf("%s %s", fmt.Sprintf(statements.GroupBy, groupFieldQuery[0]), havingQuery)
 		return
 	}
