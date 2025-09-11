@@ -77,6 +77,12 @@ func GetTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// validate safe segments for path params
+	if !ident.IsSafeSegment(database) || !ident.IsSafeSegment(schema) {
+		jsonError(w, "invalid identifier in path", http.StatusBadRequest)
+		return
+	}
+
 	requestWhere, values, err := config.PrestConf.Adapter.WhereByRequest(r, 3)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
@@ -138,8 +144,8 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// validate path identifiers early
-	if !ident.IsValid(database) || !ident.IsValid(schema) || !ident.IsValid(table) {
+	// validate path identifiers early using safe segments policy
+	if !ident.IsSafeSegment(database) || !ident.IsSafeSegment(schema) || !ident.IsSafeSegment(table) {
 		jsonError(w, "invalid identifier in path", http.StatusBadRequest)
 		return
 	}

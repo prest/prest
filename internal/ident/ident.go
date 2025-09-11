@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 var re = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$`)
@@ -11,6 +12,21 @@ var re = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$
 // IsValid reports whether s is a valid SQL identifier or dotted identifier path.
 func IsValid(s string) bool {
 	return re.MatchString(s)
+}
+
+// IsSafeSegment reports whether s is a safe, single identifier segment for path params
+// like database, schema, or table. It allows letters, digits, underscore and hyphen,
+// with length up to 63, and disallows dots and quotes.
+func IsSafeSegment(s string) bool {
+	if s == "" || len(s) > 63 {
+		return false
+	}
+	for _, r := range s {
+		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' || r == '-') {
+			return false
+		}
+	}
+	return true
 }
 
 // Quote validates and returns a safely quoted identifier path like "a"."b".

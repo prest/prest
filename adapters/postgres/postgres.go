@@ -231,13 +231,15 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 					switch keyInfo[1] {
 					case "jsonb":
 						jsonField := strings.Split(keyInfo[0], "->>")
-						if chkInvalidIdentifier(jsonField[0], jsonField[1]) {
+						if len(jsonField) != 2 || !ident.IsValid(jsonField[0]) {
 							err = errors.Wrapf(ErrInvalidIdentifier, "%v", jsonField)
 							return
 						}
 						fields := strings.Split(jsonField[0], ".")
 						jsonField[0] = fmt.Sprintf(`"%s"`, strings.Join(fields, `"."`))
-						whereKey = append(whereKey, fmt.Sprintf(`%s->>'%s' %s $%d`, jsonField[0], jsonField[1], op, pid))
+						// escape single quotes in json attribute key
+						safeAttr := strings.ReplaceAll(jsonField[1], "'", "''")
+						whereKey = append(whereKey, fmt.Sprintf(`%s->>'%s' %s $%d`, jsonField[0], safeAttr, op, pid))
 						values = append(values, value)
 					case "tsquery":
 						tsQueryField := strings.Split(keyInfo[0], "$")
@@ -247,7 +249,7 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 						}
 						whereKey = append(whereKey, tsQuery)
 					default:
-						if chkInvalidIdentifier(keyInfo[0]) {
+						if !ident.IsValid(keyInfo[0]) {
 							err = errors.Wrapf(ErrInvalidIdentifier, "%s", keyInfo[0])
 							return
 						}
@@ -256,7 +258,7 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 					continue
 				}
 
-				if chkInvalidIdentifier(key) {
+				if !ident.IsValid(key) {
 					err = errors.Wrapf(ErrInvalidIdentifier, "%s", key)
 					return
 				}
@@ -317,15 +319,12 @@ func (adapter *Postgres) ReturningByRequest(r *http.Request) (returningSyntax st
 				cols = append(cols, "*")
 				continue
 			}
-			if chkInvalidIdentifier(q) {
+			if !ident.IsValid(q) {
 				err = errors.Wrap(ErrInvalidIdentifier, "Returning")
 				return
 			}
-			parts := strings.Split(q, ".")
-			for i := range parts {
-				parts[i] = `"` + parts[i] + `"`
-			}
-			cols = append(cols, strings.Join(parts, "."))
+			quoted, _ := ident.Quote(q)
+			cols = append(cols, quoted)
 		}
 		returningSyntax = strings.Join(cols, ", ")
 	}
@@ -370,7 +369,7 @@ func (adapter *Postgres) SetByRequest(r *http.Request, initialPlaceholderID int)
 	}
 	fields := make([]string, 0)
 	for key, value := range body {
-		if chkInvalidIdentifier(key) {
+		if !ident.IsValid(key) {
 			err = errors.Wrap(ErrInvalidIdentifier, "Set")
 			return
 		}
@@ -485,7 +484,7 @@ func (adapter *Postgres) ParseInsertRequest(r *http.Request) (colsName string, c
 
 	fields := make([]string, 0)
 	for key, value := range body {
-		if chkInvalidIdentifier(key) {
+		if !ident.IsValid(key) {
 			err = errors.Wrap(ErrInvalidIdentifier, "Insert")
 			return
 		}
@@ -553,7 +552,7 @@ func (adapter *Postgres) JoinByRequest(r *http.Request) (values []string, err er
 		return
 	}
 
-	if chkInvalidIdentifier(joinArgs[1], joinArgs[2], joinArgs[4]) {
+	if !ident.IsValid(joinArgs[1]) || !ident.IsValid(joinArgs[2]) || !ident.IsValid(joinArgs[4]) {
 		err = ErrInvalidIdentifier
 		return
 	}
@@ -597,19 +596,18 @@ func (adapter *Postgres) SelectFields(fields []string) (sql string, err error) {
 			continue
 		}
 
-		if field != "*" && chkInvalidIdentifier(field) {
+		if field != "*" && !ident.IsValid(field) {
 			err = errors.Wrapf(ErrInvalidIdentifier, "%s", field)
 			return
 		}
 		if field != `*` {
-			f := strings.Split(field, ".")
-
 			isFunction, _ := regexp.MatchString(groupRegex.String(), field)
 			if isFunction {
-				aux = append(aux, strings.Join(f, `.`))
+				aux = append(aux, field)
 				continue
 			}
-			aux = append(aux, fmt.Sprintf(`"%s"`, strings.Join(f, `"."`)))
+			q, _ := ident.Quote(field)
+			aux = append(aux, q)
 			continue
 		}
 		aux = append(aux, `*`)
@@ -627,22 +625,23 @@ func (adapter *Postgres) OrderByRequest(r *http.Request) (values string, err err
 		values = " ORDER BY "
 		orderingArr := strings.Split(reqOrder, ",")
 
-		for i, field := range orderingArr {
-			if chkInvalidIdentifier(field) {
+		for i, fld := range orderingArr {
+			desc := false
+			field := fld
+			if strings.HasPrefix(field, "-") {
+				desc = true
+				field = field[1:]
+			}
+			if !ident.IsValid(field) {
 				err = ErrInvalidIdentifier
 				values = ""
 				return
 			}
-			f := strings.Split(field, ".")
-			field = fmt.Sprintf(`"%s"`, strings.Join(f, `"."`))
-			if strings.HasPrefix(field, `"-`) {
-				field = strings.Replace(field, `"-`, `"`, 1)
-				field = fmt.Sprintf(`%s DESC`, field)
+			q, _ := ident.Quote(field)
+			if desc {
+				q = fmt.Sprintf("%s DESC", q)
 			}
-
-			values = fmt.Sprintf("%s %s", values, field)
-
-			// if have next order, append a comma
+			values = fmt.Sprintf("%s %s", values, q)
 			if i < len(orderingArr)-1 {
 				values = fmt.Sprintf("%s ,", values)
 			}
@@ -664,13 +663,13 @@ func (adapter *Postgres) CountByRequest(req *http.Request) (countQuery string, e
 	}
 	fields := strings.Split(countFields, ",")
 	for i, field := range fields {
-		if field != "*" && chkInvalidIdentifier(field) {
+		if field != "*" && !ident.IsValid(field) {
 			err = ErrInvalidIdentifier
 			return
 		}
 		if field != `*` {
-			f := strings.Split(field, ".")
-			fields[i] = fmt.Sprintf(`"%s"`, strings.Join(f, `"."`))
+			q, _ := ident.Quote(field)
+			fields[i] = q
 		}
 	}
 	countQuery = fmt.Sprintf("SELECT COUNT(%s)%s FROM", strings.Join(fields, ","), selectFields)
