@@ -3,10 +3,11 @@ package template
 import (
 	"fmt"
 	"net/url"
-	"regexp"
 	"strconv"
 	"strings"
 	"text/template"
+
+	"github.com/prest/prest/v2/internal/ident"
 )
 
 // FuncRegistry registry func for templates
@@ -26,9 +27,9 @@ func (fr *FuncRegistry) RegistryAllFuncs() (funcs template.FuncMap) {
 		"split":          fr.split,
 		"limitOffset":    fr.limitOffset,
 		// secure SQL helpers
-		"sqlVal":         fr.sqlVal,
-		"sqlList":        fr.sqlList,
-		"ident":          fr.ident,
+		"sqlVal":  fr.sqlVal,
+		"sqlList": fr.sqlList,
+		"ident":   fr.ident,
 	}
 	return
 }
@@ -115,17 +116,8 @@ func (fr *FuncRegistry) sqlList(key string) string {
 	return fmt.Sprintf("($%d)", fr.next)
 }
 
-var identRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$`)
-
 // ident validates and safely quotes an identifier (optionally dotted path)
 func (fr *FuncRegistry) ident(key string) (string, error) {
 	s, _ := fr.TemplateData[key].(string)
-	if !identRe.MatchString(s) {
-		return "", fmt.Errorf("invalid identifier: %s", s)
-	}
-	parts := strings.Split(s, ".")
-	for i := range parts {
-		parts[i] = `"` + parts[i] + `"`
-	}
-	return strings.Join(parts, "."), nil
+	return ident.Quote(s)
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/prest/prest/v2/config"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
+	"github.com/prest/prest/v2/internal/ident"
 
 	"github.com/gorilla/mux"
 	"github.com/structy/log"
@@ -39,6 +40,7 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 
 	distinct, err := config.PrestConf.Adapter.DistinctClause(r)
 	if err != nil {
+		err = fmt.Errorf("could not perform Distinct: %v", err)
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -46,7 +48,14 @@ func GetTables(w http.ResponseWriter, r *http.Request) {
 		sqlTables = strings.Replace(sqlTables, "SELECT", distinct, 1)
 	}
 
-	sqlTables = fmt.Sprint(sqlTables, requestWhere, order)
+	page, err := config.PrestConf.Adapter.PaginateIfPossible(r)
+	if err != nil {
+		err = fmt.Errorf("could not perform PaginateIfPossible: %v", err)
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	sqlTables = strings.Join([]string{sqlTables, requestWhere, order, page}, " ")
 
 	sc := config.PrestConf.Adapter.Query(sqlTables, values...)
 	if sc.Err() != nil {
@@ -126,6 +135,12 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
 		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// validate path identifiers early
+	if !ident.IsValid(database) || !ident.IsValid(schema) || !ident.IsValid(table) {
+		jsonError(w, "invalid identifier in path", http.StatusBadRequest)
 		return
 	}
 
@@ -253,17 +268,16 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	}
 	sc := runQuery(ctx, sqlSelect, values...)
 	if err = sc.Err(); err != nil {
-		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
-			log.Println(err.Error())
-			jsonError(w, err.Error(), http.StatusNotFound)
-			return
-		}
+		log.Errorln(err)
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Cache arrow if enabled
-	config.PrestConf.Cache.BuntSet(r.URL.String(), string(sc.Bytes()))
+	if r.Method == "GET" {
+		// Cache arrow if enabled
+		config.PrestConf.Cache.BuntSet(r.URL.String(), string(sc.Bytes()))
+	}
+	//nolint
 	w.Write(sc.Bytes())
 }
 

@@ -24,6 +24,7 @@ import (
 	"github.com/prest/prest/v2/adapters/scanner"
 	"github.com/prest/prest/v2/config"
 	pctx "github.com/prest/prest/v2/context"
+	"github.com/prest/prest/v2/internal/ident"
 	"github.com/prest/prest/v2/template"
 
 	"github.com/jmoiron/sqlx"
@@ -962,10 +963,8 @@ func (adapter *Postgres) BatchInsertValues(SQL string, values ...interface{}) (s
 	}
 	for rows.Next() {
 		if err = rows.Err(); err != nil {
-			if err != nil {
-				log.Errorln(err)
-				return &scanner.PrestScanner{Error: err}
-			}
+			log.Errorln(err)
+			return &scanner.PrestScanner{Error: err}
 		}
 		var data []byte
 		err = rows.Scan(&data)
@@ -1007,10 +1006,8 @@ func (adapter *Postgres) BatchInsertValuesCtx(ctx context.Context, SQL string, v
 	}
 	for rows.Next() {
 		if err = rows.Err(); err != nil {
-			if err != nil {
-				log.Errorln(err)
-				return &scanner.PrestScanner{Error: err}
-			}
+			log.Errorln(err)
+			return &scanner.PrestScanner{Error: err}
 		}
 		var data []byte
 		err = rows.Scan(&data)
@@ -1553,8 +1550,11 @@ func (adapter *Postgres) GroupByClause(r *http.Request) (groupBySQL string) {
 
 		fields := strings.Split(groupFieldQuery[0], ",")
 		for i, field := range fields {
-			f := strings.Split(field, ".")
-			fields[i] = fmt.Sprintf(`"%s"`, strings.Join(f, `"."`))
+			if !ident.IsValid(field) {
+				return ""
+			}
+			q, _ := ident.Quote(field)
+			fields[i] = q
 		}
 		groupFieldQuery[0] = strings.Join(fields, ",")
 		if len(params) != 5 {
@@ -1588,8 +1588,11 @@ func (adapter *Postgres) GroupByClause(r *http.Request) (groupBySQL string) {
 	}
 	fields := strings.Split(groupQuery, ",")
 	for i, field := range fields {
-		f := strings.Split(field, ".")
-		fields[i] = fmt.Sprintf(`"%s"`, strings.Join(f, `"."`))
+		if !ident.IsValid(field) {
+			return ""
+		}
+		q, _ := ident.Quote(field)
+		fields[i] = q
 	}
 	groupQuery = strings.Join(fields, ",")
 	groupBySQL = fmt.Sprintf(statements.GroupBy, groupQuery)
@@ -1605,11 +1608,20 @@ func NormalizeGroupFunction(paramValue string) (groupFuncSQL string, err error) 
 		// values[1] it's a field in table
 		v := values[1]
 		if v != "*" {
-			values[1] = fmt.Sprintf(`"%s"`, v)
+			if !ident.IsValid(v) {
+				return "", ErrInvalidIdentifier
+			}
+			q, _ := ident.Quote(v)
+			values[1] = q
 		}
 		groupFuncSQL = fmt.Sprintf(`%s(%s)`, groupFunc, values[1])
 		if len(values) == 3 {
-			groupFuncSQL = fmt.Sprintf(`%s AS "%s"`, groupFuncSQL, values[2])
+			alias := values[2]
+			// alias must be a simple identifier (no dot)
+			if !ident.IsValid(alias) || strings.Contains(alias, ".") {
+				return "", ErrInvalidIdentifier
+			}
+			groupFuncSQL = fmt.Sprintf(`%s AS "%s"`, groupFuncSQL, alias)
 		}
 		return
 	default:
