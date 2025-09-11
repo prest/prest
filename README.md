@@ -1,4 +1,5 @@
 # pRESTd
+
 [![Tests](https://github.com/prest/prest/actions/workflows/test.yml/badge.svg)](https://github.com/prest/prest/actions/workflows/test.yml)
 [![GoDoc](https://godoc.org/github.com/prest/prest?status.png)](https://godoc.org/github.com/prest/prest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/prest/prest)](https://goreportcard.com/report/github.com/prest/prest)
@@ -45,4 +46,21 @@ Deploy to Heroku and instantly get a realtime RESTFul API backed by Heroku Postg
 
 ## Documentation
 
-Visit https://docs.prestd.com/
+Visit <https://docs.prestd.com/>
+
+## Testing
+
+Run the test suite inside Docker (no local Postgres required):
+
+```bash
+make test
+```
+
+Or directly with Docker Compose:
+
+```bash
+docker compose -f docker-compose-test.yml up --abort-on-container-exit --exit-code-from tests
+docker compose -f docker-compose-test.yml down -v --remove-orphans
+```
+
+The `tests` service runs `./testdata/runtest.sh`, provisioning databases and executing Go tests [[memory:8772187]].

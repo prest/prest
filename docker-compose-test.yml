@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  tests:
+    image: golang:1.23-bookworm
+    working_dir: /workspace
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - PREST_CONF=/workspace/testdata/prest.toml
+      - PREST_MIGRATIONS=/workspace/testdata/migrations
+      - PREST_QUERIES_LOCATION=/workspace/testdata/queries
+      - PREST_PG_HOST=postgres
+      - PREST_PG_PORT=5432
+      - PREST_PG_USER=postgres
+      - PREST_PG_PASS=postgres
+      - PREST_PG_DATABASE=prest-test
+      - PGPASSWORD=postgres
+      - GOTOOLCHAIN=auto
+      - GOPROXY=https://proxy.golang.org,direct
+      - BE_CRASHER=1
+    volumes:
+      - ./:/workspace
+    command: >-
+      bash -lc "apt-get update && apt-get install -y --no-install-recommends postgresql-client git ca-certificates && bash -x ./testdata/runtest.sh"

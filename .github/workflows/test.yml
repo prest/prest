@@ -4,86 +4,29 @@ run-name: test code
 on:
   push:
     branches:
-      - 'main'
+      - "main"
     tags:
-      - 'v*'
+      - "v*"
   pull_request:
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    environment: build
-    container: golang:latest
-    defaults:
-      run:
-        shell: bash
-        working-directory: /__w/prest/prest
-    env:
-      PREST_PG_HOST: postgres
-      PREST_PG_DATABASE: prest-test
-      PREST_PG_USER: postgres
-      PREST_PG_PASS: postgres
-      PREST_PG_PORT: 5432
-      PREST_SSL_MODE: disable
-      PREST_CONF: /__w/prest/prest/testdata/prest.toml
-      PREST_MIGRATIONS: /__w/prest/prest/testdata/migrations
-      PREST_QUERIES_LOCATION: /__w/prest/prest/testdata/queries
-      BE_CRASHER: 1
-      DOCKER_CLI_EXPERIMENTAL: "enabled"
-    services:
-      postgres:
-        image: postgres:latest
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: prest-test
-          POSTGRES_PORT: 5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Install PostgreSQL client
-        run: |
-          apt-get update
-          apt-get install -y postgresql-client
+      - name: Run tests via docker compose
+        run: docker compose -f docker-compose-test.yml up --abort-on-container-exit --exit-code-from tests
 
-      - name: Setup Databases
-        env:
-          PGPASSWORD: postgres
-        run: |
-          for db in $PREST_PG_DATABASE secondary-db; do
-            psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -c "DROP DATABASE IF EXISTS \"$db\";"
-            psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -c "CREATE DATABASE \"$db\";"
-            psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -d $db -f ./testdata/schema.sql
-          done
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: ^1.23
-      - run: go version
-
-      - name: Cache Go modules
-        uses: actions/cache@v3
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
-      - name: pREST Test
-        run: |
-          env go run ./cmd/prestd/main.go migrate up
-          env go test -v -race -covermode=atomic -coverprofile=./coverage.out ./...
+      - name: Tear down
+        if: always()
+        run: docker compose -f docker-compose-test.yml down -v --remove-orphans
 
       - name: Upload code coverage
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v4
         with:
-          file: ./coverage.out
+          files: ./coverage.out

@@ -1,12 +1,13 @@
 DOCKER_COMPOSE?=docker-compose -f docker-compose.yml
 
-PHONY: build_test_image 
+PHONY: build_test_image
 build_test_image:
 	$(DOCKER_COMPOSE) run --rm postgres -d
 
 PHONY: test
 test:
-	$(DOCKER_COMPOSE) -f testdata/docker-compose.yml up --abort-on-container-exit --remove-orphans
+	docker compose -f docker-compose-test.yml up --abort-on-container-exit --exit-code-from tests
+	docker compose -f docker-compose-test.yml down -v --remove-orphans
 
 PHONY: dc-up
 dc-up:
