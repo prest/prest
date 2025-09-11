@@ -34,7 +34,12 @@ func (adapter *Postgres) GetScript(verb, folder, scriptName string) (script stri
 		return
 	}
 
-	script = filepath.Join(config.PrestConf.QueriesPath, folder, fmt.Sprint(scriptName, sufix))
+	base := config.PrestConf.QueriesPath
+	if env := os.Getenv("PREST_QUERIES_LOCATION"); env != "" {
+		base = env
+	}
+
+	script = filepath.Join(base, folder, fmt.Sprint(scriptName, sufix))
 
 	if _, err = os.Stat(script); os.IsNotExist(err) {
 		err = fmt.Errorf("could not load %s", script)

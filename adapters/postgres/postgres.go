@@ -211,7 +211,9 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 	pid := initialPlaceholderID
 	for key, val := range r.URL.Query() {
 		if !strings.HasPrefix(key, "_") {
-			for k, v := range val {
+			// keep the original key untouched to avoid invalid identifier errors
+			rawKey := key
+			for _, v := range val {
 				if v != "" {
 					op = removeOperatorRegex.FindString(v)
 					op = strings.Replace(op, ".", "", -1)
@@ -225,13 +227,13 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 					}
 				}
 
-				keyInfo := strings.Split(key, ":")
+				keyInfo := strings.Split(rawKey, ":")
 
 				if len(keyInfo) > 1 {
 					switch keyInfo[1] {
 					case "jsonb":
 						jsonField := strings.Split(keyInfo[0], "->>")
-						if len(jsonField) != 2 || !ident.IsValid(jsonField[0]) {
+						if len(jsonField) != 2 || !ident.IsValid(jsonField[0]) || !ident.IsValid(jsonField[1]) {
 							err = errors.Wrapf(ErrInvalidIdentifier, "%v", jsonField)
 							return
 						}
@@ -258,15 +260,14 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 					continue
 				}
 
-				if !ident.IsValid(key) {
-					err = errors.Wrapf(ErrInvalidIdentifier, "%s", key)
+				if !ident.IsValid(rawKey) {
+					err = errors.Wrapf(ErrInvalidIdentifier, "%s", rawKey)
 					return
 				}
 
-				if k == 0 {
-					fields := strings.Split(key, ".")
-					key = fmt.Sprintf(`"%s"`, strings.Join(fields, `"."`))
-				}
+				// always quote the field for SQL usage without mutating the original key
+				fields := strings.Split(rawKey, ".")
+				quotedKey := fmt.Sprintf(`"%s"`, strings.Join(fields, `"."`))
 
 				switch op {
 				case "IN", "NOT IN":
@@ -277,15 +278,15 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 						keyParams[i] = fmt.Sprintf(`$%d`, pid+i)
 					}
 					pid += len(v)
-					whereKey = append(whereKey, fmt.Sprintf(`%s %s (%s)`, key, op, strings.Join(keyParams, ",")))
+					whereKey = append(whereKey, fmt.Sprintf(`%s %s (%s)`, quotedKey, op, strings.Join(keyParams, ",")))
 				case "ANY", "SOME", "ALL":
-					whereKey = append(whereKey, fmt.Sprintf(`%s = %s ($%d)`, key, op, pid))
+					whereKey = append(whereKey, fmt.Sprintf(`%s = %s ($%d)`, quotedKey, op, pid))
 					whereValues = append(whereValues, formatters.FormatArray(strings.Split(value, ",")))
 					pid++
 				case "IS NULL", "IS NOT NULL", "IS TRUE", "IS NOT TRUE", "IS FALSE", "IS NOT FALSE":
-					whereKey = append(whereKey, fmt.Sprintf(`%s %s`, key, op))
+					whereKey = append(whereKey, fmt.Sprintf(`%s %s`, quotedKey, op))
 				default: // "=", "!=", ">", ">=", "<", "<="
-					whereKey = append(whereKey, fmt.Sprintf(`%s %s $%d`, key, op, pid))
+					whereKey = append(whereKey, fmt.Sprintf(`%s %s $%d`, quotedKey, op, pid))
 					whereValues = append(whereValues, value)
 					pid++
 				}
@@ -596,15 +597,16 @@ func (adapter *Postgres) SelectFields(fields []string) (sql string, err error) {
 			continue
 		}
 
-		if field != "*" && !ident.IsValid(field) {
-			err = errors.Wrapf(ErrInvalidIdentifier, "%s", field)
-			return
-		}
 		if field != `*` {
+			// Allow function-like expressions already quoted, e.g., SUM("salary")
 			isFunction, _ := regexp.MatchString(groupRegex.String(), field)
 			if isFunction {
 				aux = append(aux, field)
 				continue
+			}
+			if !ident.IsValid(field) {
+				err = errors.Wrapf(ErrInvalidIdentifier, "%s", field)
+				return
 			}
 			q, _ := ident.Quote(field)
 			aux = append(aux, q)
