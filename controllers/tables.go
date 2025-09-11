@@ -275,6 +275,10 @@ func SelectFromTables(w http.ResponseWriter, r *http.Request) {
 	sc := runQuery(ctx, sqlSelect, values...)
 	if err = sc.Err(); err != nil {
 		log.Errorln(err)
+		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
+			jsonError(w, err.Error(), http.StatusNotFound)
+			return
+		}
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -297,6 +301,12 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
 		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// validate safe segments for path params
+	if !ident.IsSafeSegment(database) || !ident.IsSafeSegment(schema) || !ident.IsSafeSegment(table) {
+		jsonError(w, "invalid identifier in path", http.StatusBadRequest)
 		return
 	}
 
@@ -340,6 +350,12 @@ func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
 		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// validate safe segments for path params
+	if !ident.IsSafeSegment(database) || !ident.IsSafeSegment(schema) || !ident.IsSafeSegment(table) {
+		jsonError(w, "invalid identifier in path", http.StatusBadRequest)
 		return
 	}
 
@@ -388,6 +404,12 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
 		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// validate safe segments for path params
+	if !ident.IsSafeSegment(database) || !ident.IsSafeSegment(schema) || !ident.IsSafeSegment(table) {
+		jsonError(w, "invalid identifier in path", http.StatusBadRequest)
 		return
 	}
 
@@ -446,6 +468,12 @@ func UpdateTable(w http.ResponseWriter, r *http.Request) {
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
 		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// validate safe segments for path params
+	if !ident.IsSafeSegment(database) || !ident.IsSafeSegment(schema) || !ident.IsSafeSegment(table) {
+		jsonError(w, "invalid identifier in path", http.StatusBadRequest)
 		return
 	}
 
@@ -515,6 +543,12 @@ func ShowTable(w http.ResponseWriter, r *http.Request) {
 	if config.PrestConf.SingleDB && (config.PrestConf.Adapter.GetDatabase() != database) {
 		err := fmt.Errorf("database not registered: %v", database)
 		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// validate safe segments for path params
+	if !ident.IsSafeSegment(database) || !ident.IsSafeSegment(schema) || !ident.IsSafeSegment(table) {
+		jsonError(w, "invalid identifier in path", http.StatusBadRequest)
 		return
 	}
 
