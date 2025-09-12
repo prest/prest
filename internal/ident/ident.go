@@ -11,11 +11,20 @@ var re = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$
 
 // IsValid reports whether s is a valid SQL identifier or dotted identifier path.
 func IsValid(s string) bool {
-	return re.MatchString(s)
+	if !re.MatchString(s) {
+		return false
+	}
+	for _, part := range strings.Split(s, ".") {
+		if len(part) == 0 || len(part) > 63 {
+			return false
+		}
+	}
+	return true
 }
 
 // IsSafeSegment reports whether s is a safe, single identifier segment for path params
 // like database, schema, or table. It allows letters, digits, underscore and hyphen,
+// PostgreSQL identifiers don't support. These must be quoted when used in SQL.
 // with length up to 63, and disallows dots and quotes.
 func IsSafeSegment(s string) bool {
 	if s == "" || len(s) > 63 {
@@ -36,7 +45,7 @@ func Quote(s string) (string, error) {
 	}
 	parts := strings.Split(s, ".")
 	for i := range parts {
-		parts[i] = `"` + parts[i] + `"`
+		parts[i] = `"` + strings.ReplaceAll(parts[i], `"`, `""`) + `"`
 	}
 	return strings.Join(parts, "."), nil
 }
