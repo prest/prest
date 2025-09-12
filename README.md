@@ -63,4 +63,4 @@ docker compose -f docker-compose-test.yml up --abort-on-container-exit --exit-co
 docker compose -f docker-compose-test.yml down -v --remove-orphans
 ```
 
-The `tests` service runs `./testdata/runtest.sh`, provisioning databases and executing Go tests [[memory:8772187]].
+The `tests` service runs `./testdata/runtest.sh`, provisioning databases and executing Go tests.
