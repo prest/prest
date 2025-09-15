@@ -245,9 +245,19 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 						values = append(values, value)
 					case "tsquery":
 						tsQueryField := strings.Split(keyInfo[0], "$")
-						tsQuery := fmt.Sprintf(`%s @@ to_tsquery('%s')`, tsQueryField[0], value)
+						if !ident.IsValid(tsQueryField[0]) {
+							err = errors.Wrapf(ErrInvalidIdentifier, "%s", tsQueryField[0])
+							return
+						}
+						safeVal := strings.ReplaceAll(value, "'", "''")
+						tsQuery := fmt.Sprintf(`%s @@ to_tsquery('%s')`, tsQueryField[0], safeVal)
 						if len(tsQueryField) == 2 {
-							tsQuery = fmt.Sprintf(`%s @@ to_tsquery('%s', '%s')`, tsQueryField[0], tsQueryField[1], value)
+							if !ident.IsValid(tsQueryField[1]) {
+								err = errors.Wrapf(ErrInvalidIdentifier, "%s", tsQueryField[1])
+								return
+							}
+							safeCfg := strings.ReplaceAll(tsQueryField[1], "'", "''")
+							tsQuery = fmt.Sprintf(`%s @@ to_tsquery('%s', '%s')`, tsQueryField[0], safeCfg, safeVal)
 						}
 						whereKey = append(whereKey, tsQuery)
 					default:
