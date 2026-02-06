@@ -19,8 +19,9 @@ import (
 	"github.com/prest/prest/v2/config"
 	pctx "github.com/prest/prest/v2/context"
 
+	"log/slog"
+
 	"github.com/stretchr/testify/require"
-	"github.com/structy/log"
 )
 
 // Should be in sync with databases under test (see `testdata/runtest.sh` and
@@ -54,7 +55,7 @@ func TestLoad(t *testing.T) {
 	if !ok || e.Success() {
 		t.Fatalf("Process ran with err %v, want exit status 255", err)
 	}
-	log.Printf("%s\n %v\n", string(output), e.Error())
+	slog.Info("TestLoad output", "output", string(output), "err", e.Error())
 	if !cmd.ProcessState.Success() {
 		os.Exit(0)
 	}

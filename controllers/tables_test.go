@@ -6,9 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/prest/prest/v2/adapters/postgres"
@@ -27,10 +28,12 @@ func Init() {
 	config.Load()
 	postgres.Load()
 	if config.PrestConf.PGDatabase != "prest-test" {
-		log.Fatal("expected db: 'prest-test' got ", config.PrestConf.PGDatabase)
+		slog.Error("expected db: 'prest-test'", "got", config.PrestConf.PGDatabase)
+		os.Exit(1)
 	}
 	if config.PrestConf.Adapter.GetDatabase() != "prest-test" {
-		log.Fatal("expected Adapter db: 'prest-test' got ", config.PrestConf.Adapter.GetDatabase())
+		slog.Error("expected Adapter db: 'prest-test'", "got", config.PrestConf.Adapter.GetDatabase())
+		os.Exit(1)
 	}
 }
 

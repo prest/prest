@@ -14,11 +14,13 @@ import (
 
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/cache"
+	"github.com/structy/log"
+
+	"log/slog"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
-	"github.com/structy/log"
 )
 
 const (
@@ -112,6 +114,7 @@ type Prest struct {
 	Cache                cache.Config
 	PluginPath           string
 	PluginMiddlewareList []PluginMiddleware
+	Logger               *slog.Logger
 }
 
 const defaultCacheDir = "./"
@@ -130,7 +133,7 @@ func Load() {
 	Parse(PrestConf)
 	if _, err := os.Stat(PrestConf.QueriesPath); os.IsNotExist(err) {
 		if err = os.MkdirAll(PrestConf.QueriesPath, 0700); err != nil {
-			log.Errorf("Queries directory %s was not created, err: %v\n", PrestConf.QueriesPath, err)
+			slog.Error("Queries directory was not created", "path", PrestConf.QueriesPath, "err", err)
 		}
 	}
 
@@ -141,10 +144,23 @@ func Load() {
 
 	if _, err := os.Stat(PrestConf.Cache.StoragePath); os.IsNotExist(err) {
 		if err = os.MkdirAll(PrestConf.Cache.StoragePath, 0700); err != nil {
-			log.Errorf("Cache directory %s was not created, falling back to default './', err: %v\n", PrestConf.Cache.StoragePath, err)
+			slog.Error("Cache directory was not created, falling back to default './'", "path", PrestConf.Cache.StoragePath, "err", err)
 			PrestConf.Cache.StoragePath = defaultCacheDir
 		}
 	}
+
+	opts := &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}
+	if logLevel := os.Getenv("PREST_LOG_LEVEL"); logLevel != "" {
+		var l slog.Level
+		if err := l.UnmarshalText([]byte(logLevel)); err == nil {
+			opts.Level = l
+		}
+	}
+	PrestdHandler := slog.NewJSONHandler(os.Stdout, opts)
+	PrestConf.Logger = slog.New(PrestdHandler)
+	slog.SetDefault(PrestConf.Logger)
 }
 
 func viperCfg() {
@@ -220,7 +236,8 @@ func viperCfg() {
 
 	hDir, err := homedir.Dir()
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("could not find homedir", "err", err)
+		os.Exit(1)
 	}
 	viper.SetDefault("queries.location", filepath.Join(hDir, "queries"))
 }
@@ -238,12 +255,10 @@ func Parse(cfg *Prest) {
 	err := viper.ReadInConfig()
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			log.Warningf(
-				"file '%s' not found, falling back to default settings\n",
-				configFile)
+			slog.Warn("file not found, falling back to default settings", "file", configFile)
 			cfg.PGSSLMode = "disable"
 		}
-		log.Warningf("read env config error: %v\n", err)
+		slog.Warn("read env config error", "err", err)
 	}
 
 	parseAuthConfig(cfg)
@@ -288,14 +303,14 @@ func Parse(cfg *Prest) {
 	var tablesconf []TablesConf
 	err = viper.UnmarshalKey("access.tables", &tablesconf)
 	if err != nil {
-		log.Errorln("could not unmarshal access tables")
+		slog.Error("could not unmarshal access tables", "err", err)
 	}
 	cfg.AccessConf.Tables = tablesconf
 
 	var usersconf []UsersConf
 	err = viper.UnmarshalKey("access.users", &usersconf)
 	if err != nil {
-		log.Errorln("could not unmarshal access users")
+		slog.Error("could not unmarshal access users", "err", err)
 	}
 	cfg.AccessConf.Users = usersconf
 
@@ -303,7 +318,7 @@ func Parse(cfg *Prest) {
 	var pluginMiddlewareConfig []PluginMiddleware
 	err = viper.UnmarshalKey("pluginmiddlewarelist", &pluginMiddlewareConfig)
 	if err != nil {
-		log.Errorln("could not unmarshal access plugin middleware list")
+		slog.Error("could not unmarshal access plugin middleware list", "err", err)
 	}
 	cfg.PluginMiddlewareList = pluginMiddlewareConfig
 }
@@ -311,22 +326,20 @@ func Parse(cfg *Prest) {
 // parseDatabaseURL tries to get from URL the DB configs
 func parseDatabaseURL(cfg *Prest) {
 	if cfg.PGURL == "" {
-		log.Debugln("no db url found, skipping")
+		slog.Debug("no db url found, skipping")
 		return
 	}
 	// Parser PG URL, get database connection via string URL
 	u, err := url.Parse(cfg.PGURL)
 	if err != nil {
-		log.Errorf("cannot parse db url, err: %v\n", err)
+		slog.Error("cannot parse db url", "err", err)
 		return
 	}
 	cfg.PGHost = u.Hostname()
 	if u.Port() != "" {
 		pgPort, err := strconv.Atoi(u.Port())
 		if err != nil {
-			log.Errorf(
-				"cannot parse db url port '%v', falling back to default values\n",
-				u.Port())
+			slog.Error("cannot parse db url port, falling back to default values", "port", u.Port(), "err", err)
 			return
 		}
 		cfg.PGPort = pgPort
@@ -345,11 +358,11 @@ func parseDatabaseURL(cfg *Prest) {
 // fetchJWKS tries to get the JWKS from the URL in the config
 func fetchJWKS(cfg *Prest) {
 	if cfg.JWTWellKnownURL == "" {
-		log.Debugln("no JWT WellKnown url found, skipping")
+		slog.Debug("no JWT WellKnown url found, skipping")
 		return
 	}
 	if cfg.JWTJWKS != "" {
-		log.Debugln("JWKS already set, skipping")
+		slog.Debug("JWKS already set, skipping")
 		return
 	}
 
@@ -360,7 +373,7 @@ func fetchJWKS(cfg *Prest) {
 
 	r, err := client.Get(cfg.JWTWellKnownURL)
 	if err != nil {
-		log.Errorf("Cannot get .well-known configuration from '%s'. err: %v\n", cfg.JWTWellKnownURL, err)
+		slog.Error("Cannot get .well-known configuration", "url", cfg.JWTWellKnownURL, "err", err)
 		return
 	}
 	defer r.Body.Close()
@@ -368,14 +381,14 @@ func fetchJWKS(cfg *Prest) {
 	var wellKnown map[string]interface{}
 	err = json.NewDecoder(r.Body).Decode(&wellKnown)
 	if err != nil {
-		log.Errorf("Failed to decode JSON: %v\n", err)
+		slog.Error("Failed to decode JSON", "err", err)
 		return
 	}
 
 	//Retrieve the JWKS from the endpoint
 	uri, ok := wellKnown["jwks_uri"].(string)
 	if !ok {
-		log.Errorf("Unable to convert .WellKnown configuration of jwks_uri to a string.")
+		slog.Error("Unable to convert .WellKnown configuration of jwks_uri to a string")
 		return
 	}
 
@@ -389,7 +402,7 @@ func fetchJWKS(cfg *Prest) {
 	//Convert set to json string
 	jwkSetJSON, err := json.Marshal(JWKSet)
 	if err != nil {
-		log.Errorf("Failed to marshal JWKSet to JSON: %v\n", err)
+		slog.Error("Failed to marshal JWKSet to JSON", "err", err)
 		return
 	}
 
@@ -398,13 +411,13 @@ func fetchJWKS(cfg *Prest) {
 
 func portFromEnv(cfg *Prest) {
 	if os.Getenv("PORT") == "" {
-		log.Debugln("could not find PORT in env")
+		slog.Debug("could not find PORT in env")
 		return
 	}
 	// cloud factor support: https://help.heroku.com/PPBPA231/how-do-i-use-the-port-environment-variable-in-container-based-apps
 	HTTPPort, err := strconv.Atoi(os.Getenv("PORT"))
 	if err != nil {
-		log.Debugln("could not find PORT in env")
+		slog.Debug("could not find PORT in env")
 		return
 	}
 	cfg.HTTPPort = HTTPPort
@@ -420,7 +433,7 @@ func getJSONAgg() (config string) {
 		return jsonAgg
 	}
 	if config != jsonAggDefault {
-		log.Warningln("JSON Agg type can only be 'json_agg' or 'jsonb_agg', using the later as default.")
+		slog.Warn("JSON Agg type can only be 'json_agg' or 'jsonb_agg', using the later as default")
 	}
 	return jsonAggDefault
 }
@@ -460,7 +473,7 @@ func loadCacheConfig(cfg *Prest) {
 	var cacheendpoints = []cache.Endpoint{}
 	err := viper.UnmarshalKey("cache.endpoints", &cacheendpoints)
 	if err != nil {
-		log.Errorln("could not unmarshal cache endpoints")
+		slog.Error("could not unmarshal cache endpoints", "err", err)
 	}
 	cfg.Cache.Endpoints = cacheendpoints
 }

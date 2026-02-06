@@ -16,7 +16,7 @@ services:
       - /var/lib/postgresql/data
 
   tests:
-    image: golang:1.23-bookworm
+    image: golang:1.25-bookworm
     working_dir: /workspace
     depends_on:
       postgres:

@@ -2,13 +2,14 @@ package plugins
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"path/filepath"
 	"plugin"
 	"runtime"
 
 	"github.com/prest/prest/v2/config"
+
+	"log/slog"
 
 	"github.com/urfave/negroni/v3"
 )
@@ -38,13 +39,13 @@ func loadMiddlewareFunc(fileName, funcName string) (handlerFunc negroni.HandlerF
 	// the name Handler as a suffix to identify what will be called in the http
 	f, err := p.Lookup(fmt.Sprintf("%sMiddlewareLoad", funcName))
 	if err != nil {
-		log.Printf("unable to load middleware plugin function: %s", funcName)
+		slog.Error("unable to load middleware plugin function: %s", "funcName", funcName)
 		return
 	}
 	// Exec (call) function name, return `negroni.HandlerFunc`
 	handlerFunc, ok := f.(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc))
 	if !ok {
-		log.Printf("it not a negroni middleware function: %s", funcName)
+		slog.Error("it not a negroni middleware function: %s", "funcName", funcName)
 		return
 	}
 	return
@@ -64,7 +65,7 @@ func MiddlewarePlugin() negroni.Handler {
 		for _, plugin := range pluginMiddlewareList {
 			fn, err := loadMiddlewareFunc(plugin.File, plugin.Func)
 			if err != nil {
-				log.Println(err)
+				slog.Error("unable to load middleware plugin function: %s", "funcName", plugin.Func)
 				continue
 			}
 			if fn == nil {

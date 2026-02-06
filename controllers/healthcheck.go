@@ -8,7 +8,7 @@ import (
 	"github.com/prest/prest/v2/adapters/postgres"
 	pctx "github.com/prest/prest/v2/context"
 
-	"github.com/structy/log"
+	"log/slog"
 )
 
 type CheckList []func(context.Context) error
@@ -34,7 +34,7 @@ func WrappedHealthCheck(checks CheckList) http.HandlerFunc {
 		defer cancel()
 		for _, check := range checks {
 			if err := check(ctx); err != nil {
-				log.Errorf("could not check DB connection: %v\n", err)
+				slog.Error("could not check DB connection", "err", err)
 				w.WriteHeader(http.StatusServiceUnavailable)
 				return
 			}

@@ -6,6 +6,8 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"log/slog"
+	"maps"
 	"net/http"
 	"slices"
 	"sync"
@@ -56,7 +58,12 @@ func (m *Mock) Open(dsn string) (c driver.Conn, err error) {
 	m.conns["prest"] = &mockConn{}
 	c, ok := m.conns[dsn]
 	if !ok {
-		return c, fmt.Errorf("expected a connection to be available, but it is not")
+		slog.Debug(
+			"mock connection not found",
+			"dsn", dsn,
+			"available_dsns", maps.Keys(m.conns),
+		)
+		return c, fmt.Errorf("expected a connection to be available, but it is not: conn=%v, available_dsns=%v", c, maps.Keys(m.conns))
 	}
 	return
 }

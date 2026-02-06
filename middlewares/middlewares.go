@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -21,11 +22,14 @@ import (
 )
 
 var (
-	jsonErrFormat   = `{"error": "%s"}`
-	ErrJWTParseFail = errors.New("failed JWT token parser")
-	ErrJWTValidate  = errors.New("failed JWT claims validated")
-	ErrAuthRequired = errors.New("authorization required")
-	ErrAuthIsEmpty  = errors.New("authorization token is empty")
+	jsonErrFormat        = `{"error": "%s"}`
+	ErrJWTParseFail      = errors.New("failed JWT token parser")
+	ErrJWTValidate       = errors.New("failed JWT claims validated")
+	ErrAuthRequired      = errors.New("authorization required")
+	ErrAuthIsEmpty       = errors.New("authorization token is empty")
+	ErrJWKSetParse       = errors.New("failed to parse JWKSet JSON string")
+	ErrJWKSetCreate      = errors.New("failed to create public key")
+	ErrJWKSetKeyNotFound = errors.New("the token's key was not found in the JWKS")
 )
 
 // HandlerSet add content type header
@@ -60,8 +64,8 @@ func AuthMiddleware(_ string) negroni.Handler {
 			// extract authorization token
 			token := strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1)
 			if token == "" {
-				err := fmt.Errorf("authorization token is empty")
-				http.Error(rw, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusUnauthorized)
+				slog.Error("authorization token is empty")
+				http.Error(rw, fmt.Sprintf(jsonErrFormat, ErrAuthIsEmpty.Error()), http.StatusUnauthorized)
 				return
 			}
 
@@ -166,8 +170,8 @@ func JwtMiddleware(key string, JWKSet, _ string) negroni.Handler {
 		if JWKSet != "" {
 			parsedJWKSet, err := jwk.ParseString(JWKSet)
 			if err != nil {
-				err := fmt.Errorf("failed to parse JWKSet JSON string: %v", err)
-				http.Error(w, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusUnauthorized)
+				slog.Error("failed to parse JWKSet JSON string", "err", err)
+				http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWKSetParse.Error()), http.StatusUnauthorized)
 				return
 			}
 			for it := parsedJWKSet.Keys(context.Background()); it.Next(context.Background()); {
@@ -176,8 +180,8 @@ func JwtMiddleware(key string, JWKSet, _ string) negroni.Handler {
 
 				if key.KeyID() == tok.Headers[0].KeyID {
 					if err := key.Raw(&rawkey); err != nil {
-						err := fmt.Errorf("failed to create public key: %s", err.Error())
-						http.Error(w, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusUnauthorized)
+						slog.Error("failed to create public key", "err", err)
+						http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWKSetCreate.Error()), http.StatusUnauthorized)
 						return
 					}
 				}
@@ -185,8 +189,8 @@ func JwtMiddleware(key string, JWKSet, _ string) negroni.Handler {
 			//Check if rawkey is empty
 			if key, ok := rawkey.(string); ok {
 				if key == "" {
-					err := fmt.Errorf("the token's key was not found in the JWKS")
-					http.Error(w, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusUnauthorized)
+					slog.Error("the token's key was not found in the JWKS")
+					http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWKSetKeyNotFound.Error()), http.StatusUnauthorized)
 					return
 				}
 			}

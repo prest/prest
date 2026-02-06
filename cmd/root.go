@@ -1,17 +1,17 @@
 package cmd
 
 import (
-	"fmt"
-	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/prest/prest/v2/adapters/postgres"
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/router"
 
+	"log/slog"
+
 	"github.com/spf13/cobra"
-	slog "github.com/structy/log"
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -21,7 +21,7 @@ var RootCmd = &cobra.Command{
 	Long:  `prestd (PostgreSQL REST), simplify and accelerate development, ⚡ instant, realtime, high-performance on any Postgres application, existing or new`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if config.PrestConf.Adapter == nil {
-			slog.Warningln("adapter is not set. Using the default (postgres)")
+			slog.Warn("adapter is not set. Using the default (postgres)")
 			postgres.Load()
 		}
 		startServer()
@@ -45,7 +45,7 @@ func Execute() {
 	migrateCmd.PersistentFlags().StringVar(&path, "path", config.PrestConf.MigrationsPath, "Migrations directory")
 
 	if err := RootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		slog.Error("executing root command", "err", err)
 		os.Exit(1)
 	}
 }
@@ -53,20 +53,25 @@ func Execute() {
 // startServer starts the server
 func startServer() {
 	http.Handle(config.PrestConf.ContextPath, router.Routes())
-	l := log.New(os.Stdout, "[prestd] ", 0)
 
 	if !config.PrestConf.AccessConf.Restrict {
-		slog.Warningln("You are running prestd in public mode.")
+		slog.Warn("You are running prestd in public mode.")
 	}
 
 	if config.PrestConf.Debug {
-		slog.DebugMode = config.PrestConf.Debug
-		slog.Warningln("You are running prestd in debug mode.")
+		slog.Warn("You are running prestd in debug mode.")
 	}
-	addr := fmt.Sprintf("%s:%d", config.PrestConf.HTTPHost, config.PrestConf.HTTPPort)
-	l.Printf("listening on %s and serving on %s", addr, config.PrestConf.ContextPath)
+	address := config.PrestConf.HTTPHost + ":" + strconv.Itoa(config.PrestConf.HTTPPort)
+	slog.Info("listening and serving", slog.String("addr", address), slog.String("context", config.PrestConf.ContextPath))
+
 	if config.PrestConf.HTTPSMode {
-		l.Fatal(http.ListenAndServeTLS(addr, config.PrestConf.HTTPSCert, config.PrestConf.HTTPSKey, nil))
+		if err := http.ListenAndServeTLS(address, config.PrestConf.HTTPSCert, config.PrestConf.HTTPSKey, nil); err != nil {
+			slog.Error("HTTPS server failed", "err", err)
+			os.Exit(1)
+		}
 	}
-	l.Fatal(http.ListenAndServe(addr, nil))
+	if err := http.ListenAndServe(address, nil); err != nil {
+		slog.Error("HTTP server failed", "err", err)
+		os.Exit(1)
+	}
 }

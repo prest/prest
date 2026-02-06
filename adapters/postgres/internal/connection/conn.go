@@ -3,6 +3,7 @@ package connection
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/prest/prest/v2/config"
@@ -124,7 +125,8 @@ func MustGet() *sqlx.DB {
 
 	DB, err = Get()
 	if err != nil {
-		panic(fmt.Sprintf("Unable to connect to database: %v\n", err))
+		slog.Error("Unable to connect to database", "error", err)
+		panic(err)
 	}
 	return DB
 }

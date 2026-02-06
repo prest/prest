@@ -2,7 +2,7 @@ package plugins
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 	"plugin"
@@ -81,13 +81,13 @@ func loadFunc(fileName, funcName string, r *http.Request) (ret PluginFuncReturn,
 		ret.ReturnJson = retJson
 		ret.StatusCode = code
 
-		log.Printf("ret plugin(status %d): %s\n", code, ret.ReturnJson)
+		slog.Info("ret plugin(status %d): %s\n", "code", code, "ret.ReturnJson", ret.ReturnJson)
 	} else {
 		retJson := function()
 		ret.ReturnJson = retJson
 		ret.StatusCode = -1
 
-		log.Println("ret plugin:", ret.ReturnJson)
+		slog.Info("ret plugin:", "ret.ReturnJson", ret.ReturnJson)
 	}
 
 	return
@@ -100,7 +100,7 @@ func HandlerPlugin(w http.ResponseWriter, r *http.Request) {
 	funcName := vars["func"]
 	ret, err := loadFunc(fileName, funcName, r)
 	if err != nil {
-		log.Println(err)
+		slog.Error(err.Error())
 		http.Error(w, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusNotFound)
 		return
 	}

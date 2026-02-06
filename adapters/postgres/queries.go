@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	gotemplate "text/template"
@@ -15,7 +16,7 @@ import (
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/template"
 
-	"github.com/structy/log"
+	"log/slog"
 )
 
 // GetScript get SQL template file
@@ -42,7 +43,8 @@ func (adapter *Postgres) GetScript(verb, folder, scriptName string) (script stri
 	script = filepath.Join(base, folder, fmt.Sprint(scriptName, sufix))
 
 	if _, err = os.Stat(script); os.IsNotExist(err) {
-		err = fmt.Errorf("could not load %s", script)
+		slog.Error("could not load script", "script", script)
+		err = fmt.Errorf("could not load script: %w", err)
 		return
 	}
 
@@ -58,7 +60,8 @@ func (adapter *Postgres) ParseScript(scriptPath string, templateData map[string]
 
 	tpl, err = tpl.ParseFiles(scriptPath)
 	if err != nil {
-		err = fmt.Errorf("could not parse file %s: %v", scriptPath, err)
+		slog.Error("could not parse file", "scriptPath", scriptPath, "err", err)
+		err = fmt.Errorf("could not parse file: %w", err)
 		return
 	}
 
@@ -78,14 +81,14 @@ func (adapter *Postgres) ParseScript(scriptPath string, templateData map[string]
 func WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
 	db, err := connection.Get()
 	if err != nil {
-		log.Println(err)
-		sc = &scanner.PrestScanner{Error: err}
+		slog.Error("connection get error", "err", err)
+		sc = &scanner.PrestScanner{Error: fmt.Errorf("connection get error: %w", err)}
 		return
 	}
 	stmt, err := Prepare(db, sql)
 	if err != nil {
-		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
-		sc = &scanner.PrestScanner{Error: err}
+		slog.Info("could not prepare sql", "sql", sql, "err", err)
+		sc = &scanner.PrestScanner{Error: fmt.Errorf("could not prepare sql: %w", err)}
 		return
 	}
 
@@ -124,14 +127,14 @@ func WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
 func WriteSQLCtx(ctx context.Context, sql string, values []interface{}) (sc adapters.Scanner) {
 	db, err := getDBFromCtx(ctx)
 	if err != nil {
-		log.Println(err)
-		sc = &scanner.PrestScanner{Error: err}
+		slog.Warn("connection get error", "err", err)
+		sc = &scanner.PrestScanner{Error: fmt.Errorf("connection get error: %w", err)}
 		return
 	}
 	stmt, err := Prepare(db, sql)
 	if err != nil {
-		log.Printf("could not prepare sql: %s\n Error: %v\n", sql, err)
-		sc = &scanner.PrestScanner{Error: err}
+		slog.Info("could not prepare sql", "sql", sql, "err", err)
+		sc = &scanner.PrestScanner{Error: fmt.Errorf("could not prepare sql: %w", err)}
 		return
 	}
 

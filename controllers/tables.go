@@ -13,9 +13,9 @@ import (
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
 	"github.com/prest/prest/v2/internal/ident"
+	"github.com/structy/log"
 
 	"github.com/gorilla/mux"
-	"github.com/structy/log"
 )
 
 // GetTables list all (or filter) tables
@@ -329,10 +329,11 @@ func InsertInTables(w http.ResponseWriter, r *http.Request) {
 	sc := config.PrestConf.Adapter.InsertCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
 		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
-			log.Println(err.Error())
+			err = fmt.Errorf("relation does not exist: %v", err)
 			jsonError(w, err.Error(), http.StatusNotFound)
 			return
 		}
+		err = fmt.Errorf("could not perform InsertInTables: %v", err)
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -383,10 +384,11 @@ func BatchInsertInTables(w http.ResponseWriter, r *http.Request) {
 	}
 	if err = sc.Err(); err != nil {
 		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
-			log.Println(sc.Err().Error())
+			err = fmt.Errorf("relation does not exist: %v", err)
 			jsonError(w, err.Error(), http.StatusNotFound)
 			return
 		}
+		err = fmt.Errorf("could not perform BatchInsertInTables: %v", err)
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -410,6 +412,13 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	// validate safe segments for path params
 	if !ident.IsSafeSegment(database) || !ident.IsSafeSegment(schema) || !ident.IsSafeSegment(table) {
 		jsonError(w, "invalid identifier in path", http.StatusBadRequest)
+		return
+	}
+
+	// validate safe segments for path params
+	if !ident.IsSafeSegment(database) || !ident.IsSafeSegment(schema) || !ident.IsSafeSegment(table) {
+		err := fmt.Errorf("invalid identifier in path")
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -448,10 +457,11 @@ func DeleteFromTable(w http.ResponseWriter, r *http.Request) {
 	sc := config.PrestConf.Adapter.DeleteCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
 		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
-			log.Println(sc.Err().Error())
+			err = fmt.Errorf("relation does not exist: %v", err)
 			jsonError(w, err.Error(), http.StatusNotFound)
 			return
 		}
+		err = fmt.Errorf("could not perform DeleteFromTable: %v", err)
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}

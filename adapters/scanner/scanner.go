@@ -4,9 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"reflect"
-
-	"github.com/structy/log"
 )
 
 var (
@@ -43,7 +42,7 @@ type PrestScanner struct {
 // Scan put prest response into a struct or map
 func (p *PrestScanner) Scan(i interface{}) (l int, err error) {
 	var ref reflect.Value
-	log.Debugln("database return:", p.Buff.String())
+	slog.Debug("database return", "buff", p.Buff.String())
 	if ref, err = validateType(i); err != nil {
 		return
 	}
