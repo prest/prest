@@ -46,13 +46,11 @@ release:
   github:
     owner: prest
     name: prest
-
-dockers:
+    
+  dockers:
   - image_templates:
-    - "prest/prest:latest"
     - "prest/prest:{{ .Tag }}"
     - "prest/prest:v{{ .Major }}"
-    - "ghcr.io/prest/prest:latest"
     - "ghcr.io/prest/prest:{{ .Tag }}"
     - "ghcr.io/prest/prest:v{{ .Major }}"
     dockerfile: Dockerfile
@@ -66,10 +64,8 @@ dockers:
     - "--label=org.opencontainers.image.version={{.Version}}"
 
   - image_templates:
-    - "prest/prest:latest-noplugins"
     - "prest/prest:{{ .Tag }}-noplugins"
     - "prest/prest:v{{ .Major }}-noplugins"
-    - "ghcr.io/prest/prest:latest-noplugins"
     - "ghcr.io/prest/prest:{{ .Tag }}-noplugins"
     - "ghcr.io/prest/prest:v{{ .Major }}-noplugins"
     dockerfile: Dockerfile.noplugins
