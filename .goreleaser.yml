@@ -46,34 +46,34 @@ release:
   github:
     owner: prest
     name: prest
-    
-  dockers:
-  - image_templates:
-    - "prest/prest:{{ .Tag }}"
-    - "prest/prest:v{{ .Major }}"
-    - "ghcr.io/prest/prest:{{ .Tag }}"
-    - "ghcr.io/prest/prest:v{{ .Major }}"
-    dockerfile: Dockerfile
-    build_flag_templates:
-    - "--build-arg=VERSION={{.Version}}"
-    - "--build-arg=COMMIT={{.Commit}}"
-    - "--build-arg=DATE={{.Date}}"
-    - "--label=org.opencontainers.image.created={{.Date}}"
-    - "--label=org.opencontainers.image.name={{.ProjectName}}"
-    - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-    - "--label=org.opencontainers.image.version={{.Version}}"
 
-  - image_templates:
-    - "prest/prest:{{ .Tag }}-noplugins"
-    - "prest/prest:v{{ .Major }}-noplugins"
-    - "ghcr.io/prest/prest:{{ .Tag }}-noplugins"
-    - "ghcr.io/prest/prest:v{{ .Major }}-noplugins"
-    dockerfile: Dockerfile.noplugins
-    build_flag_templates:
-    - "--build-arg=VERSION={{.Version}}"
-    - "--build-arg=COMMIT={{.Commit}}"
-    - "--build-arg=DATE={{.Date}}"
-    - "--label=org.opencontainers.image.created={{.Date}}"
-    - "--label=org.opencontainers.image.name={{.ProjectName}}"
-    - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-    - "--label=org.opencontainers.image.version={{.Version}}"
+dockers:
+- image_templates:
+  - "prest/prest:{{ .Tag }}"
+  - "prest/prest:v{{ .Major }}"
+  - "ghcr.io/prest/prest:{{ .Tag }}"
+  - "ghcr.io/prest/prest:v{{ .Major }}"
+  dockerfile: Dockerfile
+  build_flag_templates:
+  - "--build-arg=VERSION={{.Version}}"
+  - "--build-arg=COMMIT={{.Commit}}"
+  - "--build-arg=DATE={{.Date}}"
+  - "--label=org.opencontainers.image.created={{.Date}}"
+  - "--label=org.opencontainers.image.name={{.ProjectName}}"
+  - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+  - "--label=org.opencontainers.image.version={{.Version}}"
+
+- image_templates:
+  - "prest/prest:{{ .Tag }}-noplugins"
+  - "prest/prest:v{{ .Major }}-noplugins"
+  - "ghcr.io/prest/prest:{{ .Tag }}-noplugins"
+  - "ghcr.io/prest/prest:v{{ .Major }}-noplugins"
+  dockerfile: Dockerfile.noplugins
+  build_flag_templates:
+  - "--build-arg=VERSION={{.Version}}"
+  - "--build-arg=COMMIT={{.Commit}}"
+  - "--build-arg=DATE={{.Date}}"
+  - "--label=org.opencontainers.image.created={{.Date}}"
+  - "--label=org.opencontainers.image.name={{.ProjectName}}"
+  - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+  - "--label=org.opencontainers.image.version={{.Version}}"
