@@ -164,8 +164,8 @@ func PrepareTx(tx *sql.Tx, SQL string) (stmt *sql.Stmt, err error) {
 }
 
 // chkInvalidIdentifier return true if identifier is invalid
-func chkInvalidIdentifier(identifer ...string) bool {
-	for _, ival := range identifer {
+func chkInvalidIdentifier(identifier ...string) bool {
+	for _, ival := range identifier {
 		if ival == "" || unicode.IsDigit([]rune(ival)[0]) {
 			return true
 		}
