@@ -354,7 +354,8 @@ func (adapter *Postgres) whereKeyAndValue(rawKey, v string, pid *int) (key strin
 				err = errors.Wrapf(ErrInvalidIdentifier, "%s", keyInfo[0])
 				return
 			}
-			*pid++
+			err = errors.Errorf("unknown type suffix: %s", keyInfo[1])
+			return
 		}
 		return
 	}
