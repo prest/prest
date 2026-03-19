@@ -208,8 +208,8 @@ func chkInvalidIdentifier(identifier ...string) bool {
 // WhereByRequest create interface for queries + where
 func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID int) (whereSyntax string, values []interface{}, err error) {
 	whereKey := []string{}
-	whereValues := []string{}
-	var value, op string
+	whereValues := []interface{}{}
+	orClauses := []string{}
 
 	pid := initialPlaceholderID
 	for key, val := range r.URL.Query() {
@@ -217,94 +217,58 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 			// keep the original key untouched to avoid invalid identifier errors
 			rawKey := key
 			for _, v := range val {
-				if v != "" {
-					op = removeOperatorRegex.FindString(v)
-					op = strings.Replace(op, ".", "", -1)
-					if op == "" {
-						op = "$eq"
+				var k string
+				var vls []interface{}
+				k, vls, err = adapter.whereKeyAndValue(rawKey, v, &pid)
+				if err != nil {
+					return
+				}
+				if k != "" {
+					whereKey = append(whereKey, k)
+					whereValues = append(whereValues, vls...)
+				}
+			}
+		} else if key == "_or" {
+			for _, v := range val {
+				v = strings.TrimSpace(v)
+				if v == "" {
+					continue
+				}
+				// support both "||" and " OR " as separators without splitting operator values
+				v = strings.ReplaceAll(v, " OR ", "||")
+				v = strings.ReplaceAll(v, " or ", "||")
+				parts := strings.Split(v, "||")
+				for _, part := range parts {
+					part = strings.TrimSpace(part)
+					if part == "" {
+						continue
 					}
-					value = removeOperatorRegex.ReplaceAllString(v, "")
-					op, err = GetQueryOperator(op)
+					// part is expected to be field=condition
+					// we look for the first "="
+					pos := strings.Index(part, "=")
+					if pos <= 0 {
+						continue
+					}
+					field := part[:pos]
+					condition := part[pos+1:]
+
+					var k string
+					var vls []interface{}
+					k, vls, err = adapter.whereKeyAndValue(field, condition, &pid)
 					if err != nil {
 						return
 					}
-				}
-
-				keyInfo := strings.Split(rawKey, ":")
-
-				if len(keyInfo) > 1 {
-					switch keyInfo[1] {
-					case "jsonb":
-						jsonField := strings.Split(keyInfo[0], "->>")
-						if len(jsonField) != 2 || !ident.IsValid(jsonField[0]) || !ident.IsValid(jsonField[1]) {
-							err = errors.Wrapf(ErrInvalidIdentifier, "%v", jsonField)
-							return
-						}
-						fields := strings.Split(jsonField[0], ".")
-						jsonField[0] = fmt.Sprintf(`"%s"`, strings.Join(fields, `"."`))
-						// escape single quotes in json attribute key
-						safeAttr := strings.ReplaceAll(jsonField[1], "'", "''")
-						whereKey = append(whereKey, fmt.Sprintf(`%s->>'%s' %s $%d`, jsonField[0], safeAttr, op, pid))
-						values = append(values, value)
-					case "tsquery":
-						tsQueryField := strings.Split(keyInfo[0], "$")
-						if !ident.IsValid(tsQueryField[0]) {
-							err = errors.Wrapf(ErrInvalidIdentifier, "%s", tsQueryField[0])
-							return
-						}
-						safeVal := strings.ReplaceAll(value, "'", "''")
-						tsQuery := fmt.Sprintf(`%s @@ to_tsquery('%s')`, tsQueryField[0], safeVal)
-						if len(tsQueryField) == 2 {
-							if !ident.IsValid(tsQueryField[1]) {
-								err = errors.Wrapf(ErrInvalidIdentifier, "%s", tsQueryField[1])
-								return
-							}
-							safeCfg := strings.ReplaceAll(tsQueryField[1], "'", "''")
-							tsQuery = fmt.Sprintf(`%s @@ to_tsquery('%s', '%s')`, tsQueryField[0], safeCfg, safeVal)
-						}
-						whereKey = append(whereKey, tsQuery)
-					default:
-						if !ident.IsValid(keyInfo[0]) {
-							err = errors.Wrapf(ErrInvalidIdentifier, "%s", keyInfo[0])
-							return
-						}
+					if k != "" {
+						orClauses = append(orClauses, k)
+						whereValues = append(whereValues, vls...)
 					}
-					pid++
-					continue
-				}
-
-				if !ident.IsValid(rawKey) {
-					err = errors.Wrapf(ErrInvalidIdentifier, "%s", rawKey)
-					return
-				}
-
-				// always quote the field for SQL usage without mutating the original key
-				fields := strings.Split(rawKey, ".")
-				quotedKey := fmt.Sprintf(`"%s"`, strings.Join(fields, `"."`))
-
-				switch op {
-				case "IN", "NOT IN":
-					v := strings.Split(value, ",")
-					keyParams := make([]string, len(v))
-					for i := 0; i < len(v); i++ {
-						whereValues = append(whereValues, v[i])
-						keyParams[i] = fmt.Sprintf(`$%d`, pid+i)
-					}
-					pid += len(v)
-					whereKey = append(whereKey, fmt.Sprintf(`%s %s (%s)`, quotedKey, op, strings.Join(keyParams, ",")))
-				case "ANY", "SOME", "ALL":
-					whereKey = append(whereKey, fmt.Sprintf(`%s = %s ($%d)`, quotedKey, op, pid))
-					whereValues = append(whereValues, formatters.FormatArray(strings.Split(value, ",")))
-					pid++
-				case "IS NULL", "IS NOT NULL", "IS TRUE", "IS NOT TRUE", "IS FALSE", "IS NOT FALSE":
-					whereKey = append(whereKey, fmt.Sprintf(`%s %s`, quotedKey, op))
-				default: // "=", "!=", ">", ">=", "<", "<="
-					whereKey = append(whereKey, fmt.Sprintf(`%s %s $%d`, quotedKey, op, pid))
-					whereValues = append(whereValues, value)
-					pid++
 				}
 			}
 		}
+	}
+
+	if len(orClauses) > 0 {
+		whereKey = append(whereKey, fmt.Sprintf("(%s)", strings.Join(orClauses, " OR ")))
 	}
 
 	for i := 0; i < len(whereKey); i++ {
@@ -315,8 +279,97 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 		}
 	}
 
-	for i := 0; i < len(whereValues); i++ {
-		values = append(values, whereValues[i])
+	values = append(values, whereValues...)
+	return
+}
+
+func (adapter *Postgres) whereKeyAndValue(rawKey, v string, pid *int) (key string, values []interface{}, err error) {
+	var value, op string
+	if v != "" {
+		op = removeOperatorRegex.FindString(v)
+		op = strings.Replace(op, ".", "", -1)
+		if op == "" {
+			op = "$eq"
+		}
+		value = removeOperatorRegex.ReplaceAllString(v, "")
+		op, err = GetQueryOperator(op)
+		if err != nil {
+			return
+		}
+	}
+
+	keyInfo := strings.Split(rawKey, ":")
+
+	if len(keyInfo) > 1 {
+		switch keyInfo[1] {
+		case "jsonb":
+			jsonField := strings.Split(keyInfo[0], "->>")
+			if len(jsonField) != 2 || !ident.IsValid(jsonField[0]) || !ident.IsValid(jsonField[1]) {
+				err = errors.Wrapf(ErrInvalidIdentifier, "%v", jsonField)
+				return
+			}
+			fields := strings.Split(jsonField[0], ".")
+			jsonField[0] = fmt.Sprintf(`"%s"`, strings.Join(fields, `"."`))
+			// escape single quotes in json attribute key
+			safeAttr := strings.ReplaceAll(jsonField[1], "'", "''")
+			key = fmt.Sprintf(`%s->>'%s' %s $%d`, jsonField[0], safeAttr, op, *pid)
+			values = append(values, value)
+		case "tsquery":
+			tsQueryField := strings.Split(keyInfo[0], "$")
+			if !ident.IsValid(tsQueryField[0]) {
+				err = errors.Wrapf(ErrInvalidIdentifier, "%s", tsQueryField[0])
+				return
+			}
+			safeVal := strings.ReplaceAll(value, "'", "''")
+			tsQuery := fmt.Sprintf(`%s @@ to_tsquery('%s')`, tsQueryField[0], safeVal)
+			if len(tsQueryField) == 2 {
+				if !ident.IsValid(tsQueryField[1]) {
+					err = errors.Wrapf(ErrInvalidIdentifier, "%s", tsQueryField[1])
+					return
+				}
+				safeCfg := strings.ReplaceAll(tsQueryField[1], "'", "''")
+				tsQuery = fmt.Sprintf(`%s @@ to_tsquery('%s', '%s')`, tsQueryField[0], safeCfg, safeVal)
+			}
+			key = tsQuery
+		default:
+			if !ident.IsValid(keyInfo[0]) {
+				err = errors.Wrapf(ErrInvalidIdentifier, "%s", keyInfo[0])
+				return
+			}
+		}
+		*pid++
+		return
+	}
+
+	if !ident.IsValid(rawKey) {
+		err = errors.Wrapf(ErrInvalidIdentifier, "%s", rawKey)
+		return
+	}
+
+	// always quote the field for SQL usage without mutating the original key
+	fields := strings.Split(rawKey, ".")
+	quotedKey := fmt.Sprintf(`"%s"`, strings.Join(fields, `"."`))
+
+	switch op {
+	case "IN", "NOT IN":
+		v := strings.Split(value, ",")
+		keyParams := make([]string, len(v))
+		for i := 0; i < len(v); i++ {
+			values = append(values, v[i])
+			keyParams[i] = fmt.Sprintf(`$%d`, *pid+i)
+		}
+		*pid += len(v)
+		key = fmt.Sprintf(`%s %s (%s)`, quotedKey, op, strings.Join(keyParams, ","))
+	case "ANY", "SOME", "ALL":
+		key = fmt.Sprintf(`%s = %s ($%d)`, quotedKey, op, *pid)
+		values = append(values, formatters.FormatArray(strings.Split(value, ",")))
+		*pid++
+	case "IS NULL", "IS NOT NULL", "IS TRUE", "IS NOT TRUE", "IS FALSE", "IS NOT FALSE":
+		key = fmt.Sprintf(`%s %s`, quotedKey, op)
+	default: // "=", "!=", ">", ">=", "<", "<="
+		key = fmt.Sprintf(`%s %s $%d`, quotedKey, op, *pid)
+		values = append(values, value)
+		*pid++
 	}
 	return
 }

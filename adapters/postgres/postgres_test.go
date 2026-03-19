@@ -178,27 +178,35 @@ func TestWhereByRequest(t *testing.T) {
 	config.Load()
 	Load()
 	var testCases = []struct {
-		description    string
-		url            string
-		expectedSQL    []string
-		expectedValues []string
-		err            error
+		description     string
+		url             string
+		expectedSQL     []string
+		expectedValues  []string
+		expectNoWhere   bool
+		expectNoValues  bool
+		err             error
 	}{
-		{"Where by request without paginate", "/databases?dbname=$eq.prest&test=$eq.cool", []string{`"dbname" = $`, `"test" = $`, " AND "}, []string{"prest", "cool"}, nil},
-		{"Where by request with alias", "/databases?dbname=$eq.prest&c.test=$eq.cool", []string{`"dbname" = $`, `"c".`, `"test" = $`, " AND "}, []string{"prest", "cool"}, nil},
-		{"Where by request with spaced values", "/prest-test/public/test5?name=$eq.prest tester", []string{`"name" = $`}, []string{"prest tester"}, nil},
-		{"Where by request with jsonb field", "/prest-test/public/test_jsonb_bug?name=$eq.goku&data->>description:jsonb=$eq.testing", []string{`"name" = $`, `"data"->>'description' = $`, " AND "}, []string{"goku", "testing"}, nil},
-		{"Where by request with dot values", "/prest-test/public/test5?name=$eq.prest.txt tester", []string{`"name" = $`}, []string{"prest.txt tester"}, nil},
-		{"Where by request with like", "/prest-test/public/test5?name=$like.%25val%25&phonenumber=123456", []string{`"name" LIKE $`, `"phonenumber" = $`, " AND "}, []string{"%val%", "123456"}, nil},
-		{"Where by request with ilike", "/prest-test/public/test5?name=$ilike.%25vAl%25&phonenumber=123456", []string{`"name" ILIKE $`, `"phonenumber" = $`, " AND "}, []string{"%vAl%", "123456"}, nil},
-		{"Where by request with not like", "/prest-test/public/test5?name=$nlike.%25val%25&phonenumber=123456", []string{`"name" NOT LIKE $`, `"phonenumber" = $`, " AND "}, []string{"%val%", "123456"}, nil},
-		{"Where by request with not ilike", "/prest-test/public/test5?name=$nilike.%25vAl%25&phonenumber=123456", []string{`"name" NOT ILIKE $`, `"phonenumber" = $`, " AND "}, []string{"%vAl%", "123456"}, nil},
-		{"Where by request with multiple colunm values", "/prest-test/public/table?created_at='$gte.1997-11-03'&created_at='$lte.1997-12-05'", []string{`"created_at" >= $`, ` AND `, `"created_at" <= $`}, []string{`'1997-11-03'`, `'1997-12-05'`}, nil},
-		{"Where by request with tsquery", "/prest-test/public/test5?name:tsquery=prest", []string{`name @@ to_tsquery('prest')`}, []string{`'prest'`}, nil},
-		{"Where by request with ltree left acendent", "/prest-test/public/test5?path='$ltreelanc.Top.*'", []string{`"path" @> $`}, []string{`'Top.*'`}, nil},
-		{"Where by request with ltree right descendent", "/prest-test/public/test5?path='$ltreerdesc.Top.*'", []string{`"path" <@ $`}, []string{`'Top.*'`}, nil},
-		{"Where by request with ltree match lquery", "/prest-test/public/test5?path='$ltreematch.Top.*'", []string{`"path" ~ $`}, []string{`'Top.*'`}, nil},
-		{"Where by request with ltree match ltxtquery", "/prest-test/public/test5?path='$ltreematchtxt.Top*'", []string{`"path" @ $`}, []string{`'Top*'`}, nil},
+		{"Where by request without paginate", "/databases?dbname=$eq.prest&test=$eq.cool", []string{`"dbname" = $`, `"test" = $`, " AND "}, []string{"prest", "cool"}, false, false, nil},
+		{"Where by request with alias", "/databases?dbname=$eq.prest&c.test=$eq.cool", []string{`"dbname" = $`, `"c".`, `"test" = $`, " AND "}, []string{"prest", "cool"}, false, false, nil},
+		{"Where by request with spaced values", "/prest-test/public/test5?name=$eq.prest tester", []string{`"name" = $`}, []string{"prest tester"}, false, false, nil},
+		{"Where by request with jsonb field", "/prest-test/public/test_jsonb_bug?name=$eq.goku&data->>description:jsonb=$eq.testing", []string{`"name" = $`, `"data"->>'description' = $`, " AND "}, []string{"goku", "testing"}, false, false, nil},
+		{"Where by request with dot values", "/prest-test/public/test5?name=$eq.prest.txt tester", []string{`"name" = $`}, []string{"prest.txt tester"}, false, false, nil},
+		{"Where by request with like", "/prest-test/public/test5?name=$like.%25val%25&phonenumber=123456", []string{`"name" LIKE $`, `"phonenumber" = $`, " AND "}, []string{"%val%", "123456"}, false, false, nil},
+		{"Where by request with ilike", "/prest-test/public/test5?name=$ilike.%25vAl%25&phonenumber=123456", []string{`"name" ILIKE $`, `"phonenumber" = $`, " AND "}, []string{"%vAl%", "123456"}, false, false, nil},
+		{"Where by request with not like", "/prest-test/public/test5?name=$nlike.%25val%25&phonenumber=123456", []string{`"name" NOT LIKE $`, `"phonenumber" = $`, " AND "}, []string{"%val%", "123456"}, false, false, nil},
+		{"Where by request with not ilike", "/prest-test/public/test5?name=$nilike.%25vAl%25&phonenumber=123456", []string{`"name" NOT ILIKE $`, `"phonenumber" = $`, " AND "}, []string{"%vAl%", "123456"}, false, false, nil},
+		{"Where by request with multiple colunm values", "/prest-test/public/table?created_at='$gte.1997-11-03'&created_at='$lte.1997-12-05'", []string{`"created_at" >= $`, ` AND `, `"created_at" <= $`}, []string{`'1997-11-03'`, `'1997-12-05'`}, false, false, nil},
+		{"Where by request with tsquery", "/prest-test/public/test5?name:tsquery=prest", []string{`name @@ to_tsquery('prest')`}, []string{`'prest'`}, false, false, nil},
+		{"Where by request with ltree left acendent", "/prest-test/public/test5?path='$ltreelanc.Top.*'", []string{`"path" @> $`}, []string{`'Top.*'`}, false, false, nil},
+		{"Where by request with ltree right descendent", "/prest-test/public/test5?path='$ltreerdesc.Top.*'", []string{`"path" <@ $`}, []string{`'Top.*'`}, false, false, nil},
+		{"Where by request with ltree match lquery", "/prest-test/public/test5?path='$ltreematch.Top.*'", []string{`"path" ~ $`}, []string{`'Top.*'`}, false, false, nil},
+		{"Where by request with ltree match ltxtquery", "/prest-test/public/test5?path='$ltreematchtxt.Top*'", []string{`"path" @ $`}, []string{`'Top*'`}, false, false, nil},
+		{"Where by request with _or", "/prest-test/public/test5?_or=name=$eq.prest||phoneNumber=$eq.123", []string{`("name" = $`, ` OR "phoneNumber" = $`, `)`}, []string{"prest", "123"}, false, false, nil},
+		{"Where by request with _or and AND", "/prest-test/public/test5?_or=name=$eq.prest||phoneNumber=$eq.123&age=$gt.18", []string{`("name" = $`, ` OR "phoneNumber" = $`, `)`, `"age" > $`, ` AND `}, []string{"prest", "123", "18"}, false, false, nil},
+		{"Where by request with _or with OR separator", "/prest-test/public/test5?_or=name=$ilike.%25val%25%20OR%20phoneNumber=$eq.123", []string{`("name" ILIKE $`, ` OR "phoneNumber" = $`, `)`}, []string{"%val%", "123"}, false, false, nil},
+		{"Where by request with _or using $in", "/prest-test/public/test5?_or=name=$in.foo,bar||phoneNumber=$eq.123", []string{`("name" IN (`, ` OR "phoneNumber" = $`, `)`}, []string{"foo", "bar", "123"}, false, false, nil},
+		{"Where by request with empty _or", "/prest-test/public/test5?_or=", nil, nil, true, true, nil},
+		{"Where by request with malformed _or", "/prest-test/public/test5?_or=namevalue", nil, nil, true, true, nil},
 	}
 
 	for _, tc := range testCases {
@@ -215,18 +223,30 @@ func TestWhereByRequest(t *testing.T) {
 			t.Errorf("expected no errors in where by request, got %v", err)
 		}
 
-		for _, sql := range tc.expectedSQL {
-			if !strings.Contains(where, sql) {
-				t.Errorf("expected %s in %s, but not was!", sql, where)
+		if tc.expectNoWhere {
+			if where != "" {
+				t.Errorf("expected empty `where`, got %v", where)
+			}
+		} else {
+			for _, sql := range tc.expectedSQL {
+				if !strings.Contains(where, sql) {
+					t.Errorf("expected %s in %s, but not was!", sql, where)
+				}
 			}
 		}
 
 		expectedValuesSTR := strings.Join(tc.expectedValues, " ")
 		t.Log("expectedValuesSTR:", expectedValuesSTR)
-		for _, value := range values {
-			t.Log("in values:", values)
-			if !strings.Contains(expectedValuesSTR, value.(string)) {
-				t.Errorf("expected %s in %s", value, expectedValuesSTR)
+		if tc.expectNoValues {
+			if len(values) != 0 {
+				t.Errorf("expected empty `values`, got %v", values)
+			}
+		} else {
+			for _, value := range values {
+				t.Log("in values:", values)
+				if !strings.Contains(expectedValuesSTR, value.(string)) {
+					t.Errorf("expected %s in %s", value, expectedValuesSTR)
+				}
 			}
 		}
 	}
