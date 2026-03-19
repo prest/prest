@@ -234,9 +234,7 @@ func (adapter *Postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 				if v == "" {
 					continue
 				}
-				// support both "||" and " OR " as separators without splitting operator values
-				v = strings.ReplaceAll(v, " OR ", "||")
-				v = strings.ReplaceAll(v, " or ", "||")
+				// split only on explicit "||" separator to avoid mutating operator values
 				parts := strings.Split(v, "||")
 				for _, part := range parts {
 					part = strings.TrimSpace(part)
@@ -312,8 +310,28 @@ func (adapter *Postgres) whereKeyAndValue(rawKey, v string, pid *int) (key strin
 			jsonField[0] = fmt.Sprintf(`"%s"`, strings.Join(fields, `"."`))
 			// escape single quotes in json attribute key
 			safeAttr := strings.ReplaceAll(jsonField[1], "'", "''")
-			key = fmt.Sprintf(`%s->>'%s' %s $%d`, jsonField[0], safeAttr, op, *pid)
-			values = append(values, value)
+			jsonLeft := fmt.Sprintf(`%s->>'%s'`, jsonField[0], safeAttr)
+			switch op {
+			case "IN", "NOT IN":
+				v := strings.Split(value, ",")
+				keyParams := make([]string, len(v))
+				for i := 0; i < len(v); i++ {
+					values = append(values, v[i])
+					keyParams[i] = fmt.Sprintf(`$%d`, *pid+i)
+				}
+				*pid += len(v)
+				key = fmt.Sprintf(`%s %s (%s)`, jsonLeft, op, strings.Join(keyParams, ","))
+			case "ANY", "SOME", "ALL":
+				key = fmt.Sprintf(`%s = %s ($%d)`, jsonLeft, op, *pid)
+				values = append(values, formatters.FormatArray(strings.Split(value, ",")))
+				*pid++
+			case "IS NULL", "IS NOT NULL", "IS TRUE", "IS NOT TRUE", "IS FALSE", "IS NOT FALSE":
+				key = fmt.Sprintf(`%s %s`, jsonLeft, op)
+			default: // "=", "!=", ">", ">=", "<", "<="
+				key = fmt.Sprintf(`%s %s $%d`, jsonLeft, op, *pid)
+				values = append(values, value)
+				*pid++
+			}
 		case "tsquery":
 			tsQueryField := strings.Split(keyInfo[0], "$")
 			if !ident.IsValid(tsQueryField[0]) {
@@ -336,8 +354,8 @@ func (adapter *Postgres) whereKeyAndValue(rawKey, v string, pid *int) (key strin
 				err = errors.Wrapf(ErrInvalidIdentifier, "%s", keyInfo[0])
 				return
 			}
+			*pid++
 		}
-		*pid++
 		return
 	}
 

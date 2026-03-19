@@ -196,14 +196,14 @@ func TestWhereByRequest(t *testing.T) {
 		{"Where by request with not like", "/prest-test/public/test5?name=$nlike.%25val%25&phonenumber=123456", []string{`"name" NOT LIKE $`, `"phonenumber" = $`, " AND "}, []string{"%val%", "123456"}, false, false, nil},
 		{"Where by request with not ilike", "/prest-test/public/test5?name=$nilike.%25vAl%25&phonenumber=123456", []string{`"name" NOT ILIKE $`, `"phonenumber" = $`, " AND "}, []string{"%vAl%", "123456"}, false, false, nil},
 		{"Where by request with multiple colunm values", "/prest-test/public/table?created_at='$gte.1997-11-03'&created_at='$lte.1997-12-05'", []string{`"created_at" >= $`, ` AND `, `"created_at" <= $`}, []string{`'1997-11-03'`, `'1997-12-05'`}, false, false, nil},
-		{"Where by request with tsquery", "/prest-test/public/test5?name:tsquery=prest", []string{`name @@ to_tsquery('prest')`}, []string{`'prest'`}, false, false, nil},
+		{"Where by request with tsquery", "/prest-test/public/test5?name:tsquery=prest", []string{`name @@ to_tsquery('prest')`}, nil, false, true, nil},
 		{"Where by request with ltree left acendent", "/prest-test/public/test5?path='$ltreelanc.Top.*'", []string{`"path" @> $`}, []string{`'Top.*'`}, false, false, nil},
 		{"Where by request with ltree right descendent", "/prest-test/public/test5?path='$ltreerdesc.Top.*'", []string{`"path" <@ $`}, []string{`'Top.*'`}, false, false, nil},
 		{"Where by request with ltree match lquery", "/prest-test/public/test5?path='$ltreematch.Top.*'", []string{`"path" ~ $`}, []string{`'Top.*'`}, false, false, nil},
 		{"Where by request with ltree match ltxtquery", "/prest-test/public/test5?path='$ltreematchtxt.Top*'", []string{`"path" @ $`}, []string{`'Top*'`}, false, false, nil},
 		{"Where by request with _or", "/prest-test/public/test5?_or=name=$eq.prest||phoneNumber=$eq.123", []string{`("name" = $`, ` OR "phoneNumber" = $`, `)`}, []string{"prest", "123"}, false, false, nil},
 		{"Where by request with _or and AND", "/prest-test/public/test5?_or=name=$eq.prest||phoneNumber=$eq.123&age=$gt.18", []string{`("name" = $`, ` OR "phoneNumber" = $`, `)`, `"age" > $`, ` AND `}, []string{"prest", "123", "18"}, false, false, nil},
-		{"Where by request with _or with OR separator", "/prest-test/public/test5?_or=name=$ilike.%25val%25%20OR%20phoneNumber=$eq.123", []string{`("name" ILIKE $`, ` OR "phoneNumber" = $`, `)`}, []string{"%val%", "123"}, false, false, nil},
+		{"Where by request with _or using explicit separator", "/prest-test/public/test5?_or=name=$ilike.%25val%25||phoneNumber=$eq.123", []string{`("name" ILIKE $`, ` OR "phoneNumber" = $`, `)`}, []string{"%val%", "123"}, false, false, nil},
 		{"Where by request with _or using $in", "/prest-test/public/test5?_or=name=$in.foo,bar||phoneNumber=$eq.123", []string{`("name" IN (`, ` OR "phoneNumber" = $`, `)`}, []string{"foo", "bar", "123"}, false, false, nil},
 		{"Where by request with empty _or", "/prest-test/public/test5?_or=", nil, nil, true, true, nil},
 		{"Where by request with malformed _or", "/prest-test/public/test5?_or=namevalue", nil, nil, true, true, nil},
@@ -242,6 +242,9 @@ func TestWhereByRequest(t *testing.T) {
 				t.Errorf("expected empty `values`, got %v", values)
 			}
 		} else {
+			if len(values) != len(tc.expectedValues) {
+				t.Errorf("expected %d values, got %d: %v", len(tc.expectedValues), len(values), values)
+			}
 			for _, value := range values {
 				t.Log("in values:", values)
 				if !strings.Contains(expectedValuesSTR, value.(string)) {
