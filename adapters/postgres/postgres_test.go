@@ -178,13 +178,13 @@ func TestWhereByRequest(t *testing.T) {
 	config.Load()
 	Load()
 	var testCases = []struct {
-		description     string
-		url             string
-		expectedSQL     []string
-		expectedValues  []string
-		expectNoWhere   bool
-		expectNoValues  bool
-		err             error
+		description    string
+		url            string
+		expectedSQL    []string
+		expectedValues []string
+		expectNoWhere  bool
+		expectNoValues bool
+		err            error
 	}{
 		{"Where by request without paginate", "/databases?dbname=$eq.prest&test=$eq.cool", []string{`"dbname" = $`, `"test" = $`, " AND "}, []string{"prest", "cool"}, false, false, nil},
 		{"Where by request with alias", "/databases?dbname=$eq.prest&c.test=$eq.cool", []string{`"dbname" = $`, `"c".`, `"test" = $`, " AND "}, []string{"prest", "cool"}, false, false, nil},
@@ -203,9 +203,11 @@ func TestWhereByRequest(t *testing.T) {
 		{"Where by request with ltree match ltxtquery", "/prest-test/public/test5?path='$ltreematchtxt.Top*'", []string{`"path" @ $`}, []string{`'Top*'`}, false, false, nil},
 		{"Where by request with _or", "/prest-test/public/test5?_or=name=$eq.prest||phoneNumber=$eq.123", []string{`("name" = $`, ` OR "phoneNumber" = $`, `)`}, []string{"prest", "123"}, false, false, nil},
 		{"Where by request with _or and AND", "/prest-test/public/test5?_or=name=$eq.prest||phoneNumber=$eq.123&age=$gt.18", []string{`("name" = $`, ` OR "phoneNumber" = $`, `)`, `"age" > $`, ` AND `}, []string{"prest", "123", "18"}, false, false, nil},
-		{"Where by request with _or using explicit separator", "/prest-test/public/test5?_or=name=$ilike.%25val%25||phoneNumber=$eq.123", []string{`("name" ILIKE $`, ` OR "phoneNumber" = $`, `)`}, []string{"%val%", "123"}, false, false, nil},
+		{"Where by request with _or using explicit OR separator", "/prest-test/public/test5?_or=name=$ilike.%25val%25 OR phoneNumber=$eq.123", []string{`("name" ILIKE $`, ` OR "phoneNumber" = $`, `)`}, []string{"%val%", "123"}, false, false, nil},
+		{"Where by request with _or preserving quoted OR value", `/prest-test/public/test5?_or=title=$eq."foo OR bar" OR phoneNumber=$eq.123`, []string{`("title" = $`, ` OR "phoneNumber" = $`, `)`}, []string{`"foo OR bar"`, "123"}, false, false, nil},
 		{"Where by request with _or using $in", "/prest-test/public/test5?_or=name=$in.foo,bar||phoneNumber=$eq.123", []string{`("name" IN (`, ` OR "phoneNumber" = $`, `)`}, []string{"foo", "bar", "123"}, false, false, nil},
 		{"Where by request with empty _or", "/prest-test/public/test5?_or=", nil, nil, true, true, nil},
+		{"Where by request with empty _or rhs", "/prest-test/public/test5?_or=name=", nil, nil, true, true, ErrInvalidOperator},
 		{"Where by request with malformed _or", "/prest-test/public/test5?_or=namevalue", nil, nil, true, true, nil},
 	}
 
@@ -219,8 +221,8 @@ func TestWhereByRequest(t *testing.T) {
 		where, values, err := config.PrestConf.Adapter.WhereByRequest(req, 1)
 		t.Log("where:", where)
 		t.Log("values:", values)
-		if err != nil {
-			t.Errorf("expected no errors in where by request, got %v", err)
+		if err != tc.err {
+			t.Errorf("expected errors %v in where by request, got %v", tc.err, err)
 		}
 
 		if tc.expectNoWhere {
