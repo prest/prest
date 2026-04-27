@@ -30,6 +30,10 @@ var (
 	ErrJWKSetParse       = errors.New("failed to parse JWKSet JSON string")
 	ErrJWKSetCreate      = errors.New("failed to create public key")
 	ErrJWKSetKeyNotFound = errors.New("the token's key was not found in the JWKS")
+	// ErrJWTEmptyKey is returned when the middleware would otherwise validate a
+	// bearer token using an empty HMAC key — that path lets clients forge
+	// tokens against `[]byte("")`. We fail closed instead. See GHSA-fj7v-859r-2fm4.
+	ErrJWTEmptyKey = errors.New("JWT verification key is empty; refusing to validate token")
 )
 
 // HandlerSet add content type header
@@ -166,6 +170,11 @@ func JwtMiddleware(key string, JWKSet, _ string) negroni.Handler {
 		}
 		out := auth.Claims{}
 		var rawkey interface{} = []byte(key)
+		// jwksMatched tracks whether a JWKS lookup actually populated rawkey
+		// with a real key. We need this because the loop below silently leaves
+		// rawkey as []byte("") when no kid matches — and HS256 happily
+		// validates against an empty HMAC key, which would be an auth bypass.
+		jwksMatched := false
 
 		if JWKSet != "" {
 			parsedJWKSet, err := jwk.ParseString(JWKSet)
@@ -184,15 +193,26 @@ func JwtMiddleware(key string, JWKSet, _ string) negroni.Handler {
 						http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWKSetCreate.Error()), http.StatusUnauthorized)
 						return
 					}
+					jwksMatched = true
 				}
 			}
-			//Check if rawkey is empty
-			if key, ok := rawkey.(string); ok {
-				if key == "" {
-					slog.Error("the token's key was not found in the JWKS")
-					http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWKSetKeyNotFound.Error()), http.StatusUnauthorized)
-					return
-				}
+			if !jwksMatched {
+				slog.Error("the token's key was not found in the JWKS")
+				http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWKSetKeyNotFound.Error()), http.StatusUnauthorized)
+				return
+			}
+		}
+
+		// Defense-in-depth: if no JWKS resolved and the configured HMAC key is
+		// empty, refuse the request instead of letting jose validate against
+		// []byte(""). config.validateJWTConfig should already prevent this on
+		// startup, but we keep the guard so a misconfigured runtime can't
+		// silently degrade to "any token accepted". GHSA-fj7v-859r-2fm4.
+		if !jwksMatched {
+			if b, ok := rawkey.([]byte); ok && len(b) == 0 {
+				slog.Error("JWT verification key is empty; refusing to validate token")
+				http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWTEmptyKey.Error()), http.StatusUnauthorized)
+				return
 			}
 		}
 

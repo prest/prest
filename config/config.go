@@ -355,6 +355,35 @@ func parseDatabaseURL(cfg *Prest) {
 	}
 }
 
+// ErrJWTDefaultEnabledNoKey is returned when the default JWT middleware is
+// enabled but no verification material (HMAC key, JWKS or .well-known URL) was
+// provided. This guards against accidentally serving requests with an empty
+// HMAC key, which would let any client forge bearer tokens. See GHSA-fj7v-859r-2fm4.
+var ErrJWTDefaultEnabledNoKey = fmt.Errorf(
+	"jwt.default is enabled but no verification material was provided " +
+		"(set jwt.key, jwt.jwks or jwt.wellknownurl, or disable jwt.default)")
+
+// ValidateJWTConfig fails fast when the default JWT middleware will be
+// installed without any verification material. The middleware bypass also
+// triggers when Debug is true (see middlewares/config.go), so we mirror that
+// rule here to avoid blocking debug-mode startups.
+//
+// Call this from binary entrypoints after Load(); tests that exercise Load()
+// without setting JWT material rely on the middleware-level guard
+// (middlewares.JwtMiddleware) to fail closed at request time.
+func ValidateJWTConfig(cfg *Prest) error {
+	if !cfg.EnableDefaultJWT {
+		return nil
+	}
+	if cfg.Debug {
+		return nil
+	}
+	if cfg.JWTKey != "" || cfg.JWTJWKS != "" || cfg.JWTWellKnownURL != "" {
+		return nil
+	}
+	return ErrJWTDefaultEnabledNoKey
+}
+
 // fetchJWKS tries to get the JWKS from the URL in the config
 func fetchJWKS(cfg *Prest) {
 	if cfg.JWTWellKnownURL == "" {
