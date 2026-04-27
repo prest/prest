@@ -225,6 +225,10 @@ func TestJWKSetRSANoKey(t *testing.T) {
 // `tok.Claims([]byte(""), &out)` which jose's HMAC implementation accepts,
 // granting access to any caller able to forge `HMAC-SHA256("", header.payload)`.
 func TestJWTEmptyKeyRejectsForgedToken(t *testing.T) {
+	// MatchURL reads config.PrestConf.JWTWhiteList; initialize an empty
+	// config so the middleware can run in isolation without depending on
+	// env-driven config.Load() side effects.
+	config.PrestConf = &config.Prest{}
 	mw := JwtMiddleware("", "", "HS256")
 
 	// Forge a token signed with the empty secret. NotBefore/Expiry are valid,
@@ -259,6 +263,11 @@ func TestJWTEmptyKeyRejectsForgedToken(t *testing.T) {
 // silently fell through to verifying with []byte(""), which is the same
 // auth-bypass shape as GHSA-fj7v-859r-2fm4.
 func TestJWTJWKSWithoutMatchingKidRejected(t *testing.T) {
+	// MatchURL reads config.PrestConf.JWTWhiteList; initialize an empty
+	// config so the middleware can run in isolation without depending on
+	// env-driven config.Load() side effects.
+	config.PrestConf = &config.Prest{}
+
 	// Minimal JWKS containing one RSA key with kid="other".
 	raw, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)

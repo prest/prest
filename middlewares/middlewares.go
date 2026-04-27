@@ -78,6 +78,16 @@ func AuthMiddleware(_ string) negroni.Handler {
 				http.Error(rw, fmt.Sprintf(jsonErrFormat, ErrJWTParseFail.Error()), http.StatusUnauthorized)
 				return
 			}
+			// Defense-in-depth: refuse to verify with an empty HMAC key.
+			// config.ValidateJWTConfig should already prevent this on
+			// startup, but we keep the guard so a misconfigured runtime
+			// can't silently degrade to "any token accepted".
+			// GHSA-fj7v-859r-2fm4.
+			if config.PrestConf.JWTKey == "" {
+				slog.Error("JWT verification key is empty; refusing to validate token")
+				http.Error(rw, fmt.Sprintf(jsonErrFormat, ErrJWTEmptyKey.Error()), http.StatusUnauthorized)
+				return
+			}
 			claims := auth.Claims{}
 			if err := tok.Claims([]byte(config.PrestConf.JWTKey), &claims); err != nil {
 				http.Error(rw, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusUnauthorized)
