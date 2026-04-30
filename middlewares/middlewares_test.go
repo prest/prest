@@ -219,6 +219,95 @@ func TestJWKSetRSANoKey(t *testing.T) {
 	require.Equal(t, http.StatusUnauthorized, respd.StatusCode)
 }
 
+// Regression coverage for GHSA-fj7v-859r-2fm4: an HS256 token signed with the
+// empty HMAC key must be rejected when JwtMiddleware is configured without
+// verification material. Before the fix the middleware called
+// `tok.Claims([]byte(""), &out)` which jose's HMAC implementation accepts,
+// granting access to any caller able to forge `HMAC-SHA256("", header.payload)`.
+func TestJWTEmptyKeyRejectsForgedToken(t *testing.T) {
+	// MatchURL reads config.PrestConf.JWTWhiteList; initialize an empty
+	// config so the middleware can run in isolation without depending on
+	// env-driven config.Load() side effects.
+	config.PrestConf = &config.Prest{}
+	mw := JwtMiddleware("", "", "HS256")
+
+	// Forge a token signed with the empty secret. NotBefore/Expiry are valid,
+	// so the only thing that should reject this request is the empty-key guard.
+	sig, err := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.HS256, Key: []byte("")},
+		(&jose.SignerOptions{}).WithType("JWT"))
+	require.NoError(t, err)
+
+	cl := auth.Claims{
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-time.Minute)),
+		Expiry:    jwt.NewNumericDate(time.Now().Add(time.Minute)),
+	}
+	forged, err := jwt.Signed(sig).Claims(cl).CompactSerialize()
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
+	req.Header.Set("Authorization", "Bearer "+forged)
+	rec := httptest.NewRecorder()
+
+	mw.ServeHTTP(rec, req, func(http.ResponseWriter, *http.Request) {
+		t.Fatal("next handler should not be called when the verification key is empty")
+	})
+
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	require.Contains(t, rec.Body.String(), ErrJWTEmptyKey.Error())
+}
+
+// When a JWKS is provided but does not contain the kid from the bearer token,
+// the middleware must fail closed. Before the fix the code only flagged this
+// case when the rawkey happened to be a string — for the default []byte path it
+// silently fell through to verifying with []byte(""), which is the same
+// auth-bypass shape as GHSA-fj7v-859r-2fm4.
+func TestJWTJWKSWithoutMatchingKidRejected(t *testing.T) {
+	// MatchURL reads config.PrestConf.JWTWhiteList; initialize an empty
+	// config so the middleware can run in isolation without depending on
+	// env-driven config.Load() side effects.
+	config.PrestConf = &config.Prest{}
+
+	// Minimal JWKS containing one RSA key with kid="other".
+	raw, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	key, err := jwk.FromRaw(raw)
+	require.NoError(t, err)
+	require.NoError(t, key.Set(jwk.KeyIDKey, "other"))
+
+	set := jwk.NewSet()
+	set.AddKey(key)
+	pub, err := jwk.PublicSetOf(set)
+	require.NoError(t, err)
+	jwksJSON, err := json.Marshal(pub)
+	require.NoError(t, err)
+
+	mw := JwtMiddleware("", string(jwksJSON), "HS256")
+
+	// Forge a token whose kid does not match anything in the JWKS.
+	sig, err := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.HS256, Key: []byte("")},
+		(&jose.SignerOptions{}).WithType("JWT").WithHeader("kid", "missing"))
+	require.NoError(t, err)
+	cl := auth.Claims{
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-time.Minute)),
+		Expiry:    jwt.NewNumericDate(time.Now().Add(time.Minute)),
+	}
+	forged, err := jwt.Signed(sig).Claims(cl).CompactSerialize()
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
+	req.Header.Set("Authorization", "Bearer "+forged)
+	rec := httptest.NewRecorder()
+
+	mw.ServeHTTP(rec, req, func(http.ResponseWriter, *http.Request) {
+		t.Fatal("next handler should not be called when the kid is not in the JWKS")
+	})
+
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	require.Contains(t, rec.Body.String(), ErrJWKSetKeyNotFound.Error())
+}
+
 func TestValidate(t *testing.T) {
 	type args struct {
 		c auth.Claims

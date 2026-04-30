@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -353,6 +354,52 @@ func parseDatabaseURL(cfg *Prest) {
 	if u.Query().Get("sslmode") != "" {
 		cfg.PGSSLMode = u.Query().Get("sslmode")
 	}
+}
+
+// ErrJWTDefaultEnabledNoKey is returned when the default JWT middleware is
+// enabled but no verification material (HMAC key, JWKS or .well-known URL) was
+// provided. This guards against accidentally serving requests with an empty
+// HMAC key, which would let any client forge bearer tokens. See GHSA-fj7v-859r-2fm4.
+var ErrJWTDefaultEnabledNoKey = errors.New(
+	"jwt.default is enabled but no verification material was provided " +
+		"(set jwt.key, jwt.jwks or jwt.wellknownurl, or disable jwt.default)")
+
+// ErrAuthEnabledNoJWTKey is returned when basic auth is enabled but jwt.key
+// is empty. AuthMiddleware uses the same []byte(JWTKey) to verify HS256
+// tokens, so an empty key opens the same auth-bypass as the default JWT
+// middleware. See GHSA-fj7v-859r-2fm4.
+var ErrAuthEnabledNoJWTKey = errors.New(
+	"auth.enabled is true but jwt.key is empty (required to verify HS256 tokens)")
+
+// ValidateJWTConfig fails fast when either of the JWT-validating middlewares
+// would be installed without any verification material:
+//
+//   - The default JWT middleware (jwt.default = true) requires jwt.key, a
+//     JWKS, or a .well-known URL.
+//   - AuthMiddleware (auth.enabled = true) verifies HS256 tokens with
+//     jwt.key, so an empty key is unsafe.
+//
+// The default JWT path also bypasses when Debug is true, so we mirror that
+// rule here to avoid blocking debug-mode startups.
+//
+// Call this from binary entrypoints before serving requests; tests that
+// exercise Load() without setting JWT material rely on the middleware-level
+// guards (middlewares.JwtMiddleware, middlewares.AuthMiddleware) to fail
+// closed at request time.
+func ValidateJWTConfig(cfg *Prest) error {
+	if cfg.AuthEnabled && cfg.JWTKey == "" {
+		return ErrAuthEnabledNoJWTKey
+	}
+	if !cfg.EnableDefaultJWT {
+		return nil
+	}
+	if cfg.Debug {
+		return nil
+	}
+	if cfg.JWTKey != "" || cfg.JWTJWKS != "" || cfg.JWTWellKnownURL != "" {
+		return nil
+	}
+	return ErrJWTDefaultEnabledNoKey
 }
 
 // fetchJWKS tries to get the JWKS from the URL in the config

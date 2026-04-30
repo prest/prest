@@ -153,6 +153,60 @@ func TestParse(t *testing.T) {
 	})
 }
 
+// Regression coverage for GHSA-fj7v-859r-2fm4: when default JWT enforcement is
+// enabled but no verification material is configured, the default HMAC key is
+// the empty string and any forged HS256 token would validate. Startup callers
+// (binary entrypoints) must use ValidateJWTConfig to fail closed.
+func TestValidateJWTConfig(t *testing.T) {
+	cases := []struct {
+		name    string
+		cfg     *Prest
+		wantErr error
+	}{
+		{
+			name:    "default JWT on, no key, no JWKS, no well-known → reject",
+			cfg:     &Prest{EnableDefaultJWT: true},
+			wantErr: ErrJWTDefaultEnabledNoKey,
+		},
+		{
+			name:    "default JWT on, HMAC key set → ok",
+			cfg:     &Prest{EnableDefaultJWT: true, JWTKey: "s3cr3t"},
+			wantErr: nil,
+		},
+		{
+			name:    "default JWT on, JWKS set → ok",
+			cfg:     &Prest{EnableDefaultJWT: true, JWTJWKS: `{"keys":[]}`},
+			wantErr: nil,
+		},
+		{
+			name:    "default JWT on, well-known URL set → ok",
+			cfg:     &Prest{EnableDefaultJWT: true, JWTWellKnownURL: "http://example.test/.well-known"},
+			wantErr: nil,
+		},
+		{
+			name:    "default JWT off → ok regardless of empty key",
+			cfg:     &Prest{EnableDefaultJWT: false},
+			wantErr: nil,
+		},
+		{
+			name:    "debug bypass mirrors middleware/config.go → ok",
+			cfg:     &Prest{EnableDefaultJWT: true, Debug: true},
+			wantErr: nil,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateJWTConfig(tc.cfg)
+			if tc.wantErr == nil {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorIs(t, err, tc.wantErr)
+		})
+	}
+}
+
 func Test_getPrestConfFile(t *testing.T) {
 	testCases := []struct {
 		name      string

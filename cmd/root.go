@@ -52,6 +52,16 @@ func Execute() {
 
 // startServer starts the server
 func startServer() {
+	// Fail fast when JWT enforcement is enabled but no verification material
+	// was provided — otherwise the middleware would validate bearer tokens
+	// against an empty HMAC key. Subcommands like `migrate` don't reach here,
+	// so they keep working without JWT material configured.
+	// See GHSA-fj7v-859r-2fm4.
+	if err := config.ValidateJWTConfig(config.PrestConf); err != nil {
+		slog.Error("invalid JWT configuration", "err", err)
+		os.Exit(1)
+	}
+
 	http.Handle(config.PrestConf.ContextPath, router.Routes())
 
 	if !config.PrestConf.AccessConf.Restrict {
