@@ -17,7 +17,9 @@ var authUpCmd = &cobra.Command{
 	Long:  "Create basic table to use on auth endpoint",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if config.PrestConf.Adapter == nil {
-			postgres.Load()
+			if err := postgres.Load(); err != nil {
+				return fmt.Errorf("failed to load postgres adapter: %w", err)
+			}
 		}
 		db, err := postgres.Get()
 		if err != nil {
@@ -39,7 +41,9 @@ var authDownCmd = &cobra.Command{
 	Long:  "Drop basic table used on auth endpoint",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if config.PrestConf.Adapter == nil {
-			postgres.Load()
+			if err := postgres.Load(); err != nil {
+				return fmt.Errorf("failed to load postgres adapter: %w", err)
+			}
 		}
 
 		db, err := postgres.Get()

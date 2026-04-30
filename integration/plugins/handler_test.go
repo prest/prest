@@ -10,6 +10,7 @@ import (
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/plugins"
 	"github.com/prest/prest/v2/testutils"
+	"github.com/stretchr/testify/require"
 )
 
 func initPluginRoutes() *mux.Router {
@@ -19,6 +20,12 @@ func initPluginRoutes() *mux.Router {
 }
 
 func TestPlugins(t *testing.T) {
+	config.Load()
+	require.NoError(t, postgres.Load())
+	// running the tests at this point the working folder will be the plugins
+	// package folder, so to return a directory `../`
+	config.PrestConf.PluginPath = "../lib"
+	server := httptest.NewServer(initAuthRoutes())
 	helpers.LoadTestConfig(t)
 	config.PrestConf.PluginPath = helpers.PluginLibDir()
 	server := httptest.NewServer(initPluginRoutes())

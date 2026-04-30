@@ -14,9 +14,29 @@ import (
 	"github.com/prest/prest/v2/controllers"
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/testutils"
+
+	"github.com/gorilla/mux"
 )
 
+// Should be in sync with databases under test (see `testdata/runtest.sh` and
+// Github `test` workflow)
+var databases = []string{"prest-test", "secondary-db"}
 
+func Init() {
+	config.Load()
+	if err := postgres.Load(); err != nil {
+		slog.Error("failed to load postgres adapter", "err", err)
+		os.Exit(1)
+	}
+	if config.PrestConf.PGDatabase != "prest-test" {
+		slog.Error("expected db: 'prest-test'", "got", config.PrestConf.PGDatabase)
+		os.Exit(1)
+	}
+	if config.PrestConf.Adapter.GetDatabase() != "prest-test" {
+		slog.Error("expected Adapter db: 'prest-test'", "got", config.PrestConf.Adapter.GetDatabase())
+		os.Exit(1)
+	}
+}
 
 func TestGetTables(t *testing.T) {
 	var testCases = []struct {

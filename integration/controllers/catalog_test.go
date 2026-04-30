@@ -43,6 +43,11 @@ func TestGetDatabases(t *testing.T) {
 }
 
 func TestGetSchemas(t *testing.T) {
+	config.Load()
+	if err := postgres.Load(); err != nil {
+		t.Fatalf("failed to load postgres adapter: %v", err)
+	}
+
 	var testCases = []struct {
 		description string
 		url         string

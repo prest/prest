@@ -12,6 +12,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func init() {
+	// load configuration at the beginning of the tests
+	config.Load()
+	if err := postgres.Load(); err != nil {
+		panic(err)
+	}
+}
+
 func TestRoutes(t *testing.T) {
 	helpers.LoadTestConfig(t)
 	r := router.Routes()

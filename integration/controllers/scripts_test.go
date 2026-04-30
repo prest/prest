@@ -79,6 +79,10 @@ func TestRenderWithXML(t *testing.T) {
 	}
 	t.Setenv("PREST_DEBUG", "true")
 	h := helpers.NewIntegrationHandlers(t)
+	config.Load()
+	if err := postgres.Load(); err != nil {
+		t.Fatalf("failed to load postgres adapter: %v", err)
+	}
 	n := middlewares.GetApp()
 	r := mux.NewRouter()
 	r.HandleFunc("/schemas", h.Catalog.ListSchemas).Methods("GET")
@@ -95,6 +99,10 @@ func TestRenderWithXML(t *testing.T) {
 func TestSilentErrorsOnQuery(t *testing.T) {
 	t.Setenv("PREST_DEBUG", "false")
 	h := helpers.NewIntegrationHandlers(t)
+	config.Load()
+	if err := postgres.Load(); err != nil {
+		t.Fatalf("failed to load postgres adapter: %v", err)
+	}
 	router := mux.NewRouter()
 	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", helpers.WithHTTPTimeout(h.Script.Execute))
 	server := httptest.NewServer(router)

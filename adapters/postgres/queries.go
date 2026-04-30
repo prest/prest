@@ -85,7 +85,7 @@ func WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
 		sc = &scanner.PrestScanner{Error: fmt.Errorf("connection get error: %w", err)}
 		return
 	}
-	stmt, err := Prepare(db, sql)
+	stmt, err := PrepareWithDB(db, connection.GetDatabase(), sql)
 	if err != nil {
 		slog.Info("could not prepare sql", "sql", sql, "err", err)
 		sc = &scanner.PrestScanner{Error: fmt.Errorf("could not prepare sql: %w", err)}
@@ -131,7 +131,7 @@ func WriteSQLCtx(ctx context.Context, sql string, values []interface{}) (sc adap
 		sc = &scanner.PrestScanner{Error: fmt.Errorf("connection get error: %w", err)}
 		return
 	}
-	stmt, err := Prepare(db, sql)
+	stmt, err := PrepareWithDB(db, dbNameFromCtx(ctx), sql)
 	if err != nil {
 		slog.Info("could not prepare sql", "sql", sql, "err", err)
 		sc = &scanner.PrestScanner{Error: fmt.Errorf("could not prepare sql: %w", err)}

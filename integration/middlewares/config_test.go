@@ -21,7 +21,9 @@ import (
 func TestMain(m *testing.M) {
 	helpers.EnsureTestConfigEnv()
 	config.Load()
-	postgres.Load()
+	if err := postgres.Load(); err != nil {
+		panic(err)
+	}
 	os.Exit(m.Run())
 }
 
@@ -80,7 +82,7 @@ func Test_Middleware_DoesntBlock_CustomRoutes(t *testing.T) {
 	t.Setenv("PREST_DEBUG", "true")
 	helpers.EnsureTestConfigEnv()
 	config.Load()
-	postgres.Load()
+	require.NoError(t, postgres.Load())
 	middlewares.ResetForTest()
 	t.Cleanup(middlewares.ResetForTest)
 	r := mux.NewRouter()

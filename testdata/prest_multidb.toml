@@ -1,0 +1,90 @@
+# pREST Multi-Database Configuration Example
+# This configuration file demonstrates how to configure multiple databases
+# for multi-tenancy support
+
+[http]
+host = "0.0.0.0"
+port = 3000
+timeout = 60
+
+[auth]
+enabled = false
+table = "prest_users"
+username = "username"
+password = "password"
+
+[pg]
+# Default settings for databases (can be overridden per database)
+host = "127.0.0.1"
+port = 5432
+user = "postgres"
+pass = "postgres"
+ssl.mode = "disable"
+maxidleconn = 0
+maxopenconn = 10
+conntimeout = 10
+cache = true
+single = true
+
+# Multi-Database Configuration
+# Each database has its own configuration section
+[databases.primary]
+name = "primary"
+host = "primary-db.example.com"
+port = 5432
+user = "primary_user"
+pass = "primary_password"
+database = "primary_db"
+sslmode = "require"
+maxidleconn = 5
+maxopenconn = 20
+conntimeout = 10
+cache = true
+single = true
+
+[databases.analytics]
+name = "analytics"
+host = "analytics-db.example.com"
+port = 5433
+user = "analytics_user"
+pass = "analytics_password"
+database = "analytics_db"
+sslmode = "require"
+maxidleconn = 2
+maxopenconn = 10
+cache = false
+single = true
+
+[databases.reporting]
+name = "reporting"
+host = "reporting-db.example.com"
+port = 5434
+user = "reporting_user"
+pass = "reporting_password"
+database = "reporting_db"
+sslmode = "disable"
+maxidleconn = 1
+maxopenconn = 5
+
+[access]
+restrict = true
+
+[[access.tables]]
+name = "users"
+permissions = ["read", "write", "delete"]
+fields = ["*"]
+
+[[access.tables]]
+name = "orders"
+permissions = ["read", "write"]
+fields = ["*"]
+
+[cache]
+enabled = true
+time = 10
+storagepath = "./"
+sufixfile = ".cache.prestd.db"
+
+[[cache.endpoints]]
+endpoint = "/primary/public/users"
+time = 5

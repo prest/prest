@@ -22,7 +22,10 @@ var RootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if config.PrestConf.Adapter == nil {
 			slog.Warn("adapter is not set. Using the default (postgres)")
-			postgres.Load()
+			if err := postgres.Load(); err != nil {
+				slog.Error("failed to load postgres adapter", "err", err)
+				os.Exit(1)
+			}
 		}
 		startServer()
 	},

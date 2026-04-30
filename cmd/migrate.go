@@ -39,7 +39,9 @@ func checkTable(cmd *cobra.Command, args []string) error {
 	}
 	cmd.SilenceUsage = true
 	if config.PrestConf.Adapter == nil {
-		postgres.Load()
+		if err := postgres.Load(); err != nil {
+			return fmt.Errorf("failed to load postgres adapter: %w", err)
+		}
 	}
 	sc := config.PrestConf.Adapter.ShowTable("public", "schema_migrations")
 	if err := sc.Err(); err != nil {

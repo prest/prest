@@ -46,6 +46,27 @@ func md5Hex(s string) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(s)))
 }
 
+func initAuthRoutes() *mux.Router {
+	r := mux.NewRouter()
+	// if auth is enabled
+	if config.PrestConf.AuthEnabled {
+		r.HandleFunc("/auth", Auth).Methods("POST")
+	}
+	return r
+}
+
+func Test_basicPasswordCheck(t *testing.T) {
+	config.Load()
+	if err := postgres.Load(); err != nil {
+		t.Fatalf("failed to load postgres adapter: %v", err)
+	}
+
+	_, err := basicPasswordCheck("test@postgres.rest", "123456")
+	if err != nil {
+		t.Errorf("expected authenticated user, got: %s", err)
+	}
+}
+
 func Test_getSelectQuery(t *testing.T) {
 	expected := "SELECT * FROM public.prest_users WHERE username=$1 AND password=$2 LIMIT 1"
 	query := testAuthHandler().selectQuery()
@@ -399,4 +420,30 @@ func TestToken(t *testing.T) {
 	var claims auth.Claims
 	require.NoError(t, parsed.Claims([]byte("legacy-key"), &claims))
 	require.Equal(t, user.Username, claims.UserInfo.Username)
+}
+
+func TestAuthEnable(t *testing.T) {
+	config.Load()
+	if err := postgres.Load(); err != nil {
+		t.Fatalf("failed to load postgres adapter: %v", err)
+	}
+	config.PrestConf.AuthEnabled = true
+
+	server := httptest.NewServer(initAuthRoutes())
+	defer server.Close()
+
+	var testCases = []struct {
+		description string
+		url         string
+		method      string
+		status      int
+	}{
+		{"/auth request GET method", "/auth", "GET", http.StatusMethodNotAllowed},
+		{"/auth request POST method", "/auth", "POST", http.StatusUnauthorized},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "AuthEnable")
+	}
 }

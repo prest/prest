@@ -116,6 +116,10 @@ type Prest struct {
 	PluginPath           string
 	PluginMiddlewareList []PluginMiddleware
 	Logger               *slog.Logger
+	// MultiDBManager manages multiple database configurations for multi-tenancy
+	MultiDBManager *MultiDBManager
+	// EnableMultiDB enables multi-database mode
+	EnableMultiDB bool
 }
 
 const defaultCacheDir = "./"
@@ -125,6 +129,8 @@ var (
 	PrestConf      *Prest
 	configFile     string
 	defaultCfgFile = "./prest.toml"
+	// MultiDB holds the multi-database manager instance
+	MultiDB *MultiDBManager
 )
 
 // Load configuration
@@ -132,6 +138,10 @@ func Load() {
 	viperCfg()
 	PrestConf = &Prest{}
 	Parse(PrestConf)
+
+	// Initialize multi-database manager
+	initMultiDB()
+
 	if _, err := os.Stat(PrestConf.QueriesPath); os.IsNotExist(err) {
 		if err = os.MkdirAll(PrestConf.QueriesPath, 0700); err != nil {
 			slog.Error("Queries directory was not created", "path", PrestConf.QueriesPath, "err", err)
@@ -162,6 +172,41 @@ func Load() {
 	PrestdHandler := slog.NewJSONHandler(os.Stdout, opts)
 	PrestConf.Logger = slog.New(PrestdHandler)
 	slog.SetDefault(PrestConf.Logger)
+}
+
+// initMultiDB initializes the multi-database manager
+func initMultiDB() {
+	MultiDB = NewMultiDBManager()
+	if err := MultiDB.LoadFromConfig(); err != nil {
+		slog.Warn("failed to load multi-database configuration", "err", err)
+		return
+	}
+
+	if len(MultiDB.Databases) > 0 {
+		PrestConf.EnableMultiDB = MultiDB.HasMultipleDatabases()
+		PrestConf.MultiDBManager = MultiDB
+
+		// If multi-database is enabled, set default DB from manager
+		if PrestConf.EnableMultiDB {
+			if defaultDB, exists := MultiDB.GetDefaultDatabase(); exists {
+				PrestConf.PGHost = defaultDB.Host
+				PrestConf.PGPort = defaultDB.Port
+				PrestConf.PGUser = defaultDB.User
+				PrestConf.PGPass = defaultDB.Password
+				PrestConf.PGDatabase = defaultDB.Database
+				PrestConf.PGSSLMode = defaultDB.SSLMode
+				PrestConf.PGSSLCert = defaultDB.SSLCert
+				PrestConf.PGSSLKey = defaultDB.SSLKey
+				PrestConf.PGSSLRootCert = defaultDB.SSLRootCert
+				PrestConf.PGMaxIdleConn = defaultDB.MaxIdleConn
+				PrestConf.PGMaxOpenConn = defaultDB.MaxOpenConn
+				PrestConf.PGConnTimeout = defaultDB.ConnTimeout
+				PrestConf.SingleDB = defaultDB.GetSingle()
+				PrestConf.PGCache = defaultDB.GetCache()
+				slog.Info("multi-database mode enabled", "databases", len(MultiDB.Databases), "default", defaultDB.Name)
+			}
+		}
+	}
 }
 
 func viperCfg() {

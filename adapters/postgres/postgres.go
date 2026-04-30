@@ -9,7 +9,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
 	"reflect"
 	"regexp"
 	"slices"
@@ -58,15 +57,28 @@ type Stmt struct {
 	PrepareMap map[string]*sql.Stmt
 }
 
+func stmtCacheKey(dbName, SQL string) string {
+	if config.PrestConf.EnableMultiDB {
+		return dbName + ":" + SQL
+	}
+	return SQL
+}
+
 // Prepare statement.
 // SQL passed here is assembled by the adapter from HTTP requests: identifiers and
 // operators are validated (ident.IsValid, GetQueryOperator) and filter values use
 // $n placeholders. pREST is a PostgREST-style query surface by design.
 func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt, err error) {
+	return s.PrepareWithDB(db, tx, connection.GetDatabase(), SQL)
+}
+
+// PrepareWithDB prepares a statement with an explicit database name for cache partitioning
+func (s *Stmt) PrepareWithDB(db *sqlx.DB, tx *sql.Tx, dbName, SQL string) (statement *sql.Stmt, err error) {
 	if config.PrestConf.PGCache && (tx == nil) {
+		key := stmtCacheKey(dbName, SQL)
 		var exists bool
 		s.Mtx.Lock()
-		statement, exists = s.PrepareMap[SQL]
+		statement, exists = s.PrepareMap[key]
 		s.Mtx.Unlock()
 		if exists {
 			return
@@ -83,35 +95,76 @@ func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt
 		return
 	}
 	if config.PrestConf.PGCache && (tx == nil) {
+		key := stmtCacheKey(dbName, SQL)
 		s.Mtx.Lock()
-		s.PrepareMap[SQL] = statement
+		s.PrepareMap[key] = statement
 		s.Mtx.Unlock()
 	}
 	return
 }
 
-// Load postgres
-func Load() {
-	if config.PrestConf == nil {
-		slog.Error("config not loaded")
-		os.Exit(1)
+// Load postgres adapter, validating all database connections before
+// setting the adapter on the global config.
+func Load() error {
+	if config.PrestConf.EnableMultiDB && config.PrestConf.MultiDBManager != nil {
+		if err := loadMultiDB(); err != nil {
+			return err
+		}
+	} else {
+		if err := loadSingleDB(); err != nil {
+			return err
+		}
 	}
 	config.PrestConf.Adapter = &Postgres{}
+	return nil
+}
 
+// loadMultiDB initialises the multi-database pool, eagerly validates the
+// default database in the legacy pool (so non-context methods don't fall
+// back lazily), and verifies connectivity to every configured database.
+func loadMultiDB() error {
+	if err := connection.InitMultiPool(config.PrestConf.MultiDBManager); err != nil {
+		return fmt.Errorf("initialize multi-database pool: %w", err)
+	}
+
+	dbDefault, err := connection.AddDatabaseToPool(config.PrestConf.PGDatabase)
+	if err != nil {
+		return fmt.Errorf("add default database %q to pool: %w", config.PrestConf.PGDatabase, err)
+	}
+	connection.SetDatabase(config.PrestConf.PGDatabase)
+
+	if err := dbDefault.Ping(); err != nil {
+		return fmt.Errorf("ping default database %q: %w", config.PrestConf.PGDatabase, err)
+	}
+	ClearStmt()
+
+	for name := range config.PrestConf.MultiDBManager.Databases {
+		db, err := connection.GetFromMultiPool(name)
+		if err != nil {
+			return fmt.Errorf("get connection for database %q: %w", name, err)
+		}
+		if err := db.Ping(); err != nil {
+			return fmt.Errorf("ping database %q: %w", name, err)
+		}
+		slog.Info("database connection established", "database", name)
+	}
+	return nil
+}
+
+// loadSingleDB initialises the legacy single-database connection and
+// verifies connectivity.
+func loadSingleDB() error {
 	if connection.GetDatabase() == "" {
 		connection.SetDatabase(config.PrestConf.PGDatabase)
 	}
-
 	db, err := connection.Get()
 	if err != nil {
-		slog.Error("connection get error", "err", err)
-		os.Exit(1)
+		return fmt.Errorf("get database connection: %w", err)
 	}
-	err = db.Ping()
-	if err != nil {
-		slog.Error("db ping error", "err", err)
-		os.Exit(1)
+	if err := db.Ping(); err != nil {
+		return fmt.Errorf("ping database: %w", err)
 	}
+	return nil
 }
 
 func init() {
@@ -163,6 +216,11 @@ func (adapter *Postgres) GetTransactionCtx(ctx context.Context) (tx *sql.Tx, err
 // Prepare statement func
 func Prepare(db *sqlx.DB, SQL string) (stmt *sql.Stmt, err error) {
 	return GetStmt().Prepare(db, nil, SQL)
+}
+
+// PrepareWithDB prepares a statement with explicit database name for cache partitioning
+func PrepareWithDB(db *sqlx.DB, dbName, SQL string) (stmt *sql.Stmt, err error) {
+	return GetStmt().PrepareWithDB(db, nil, dbName, SQL)
 }
 
 // PrepareTx statement func
@@ -567,7 +625,11 @@ func (adapter *Postgres) SetByRequest(r *http.Request, initialPlaceholderID int)
 	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return
 	}
-	defer r.Body.Close()
+	defer func() {
+		if closeErr := r.Body.Close(); closeErr != nil {
+			slog.Error("error closing request body", "err", closeErr)
+		}
+	}()
 
 	if len(body) == 0 {
 		err = ErrBodyEmpty
@@ -887,15 +949,15 @@ func (adapter *Postgres) CountByRequest(req *http.Request) (countQuery string, e
 //
 // allows setting timeout
 func (adapter *Postgres) QueryCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
-	// use the db_name that was set on request to avoid runtime collisions
 	db, err := getDBFromCtx(ctx)
 	if err != nil {
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
 	}
+	dbName := dbNameFromCtx(ctx)
 	SQL = fmt.Sprintf("SELECT %s(s) FROM (%s) s", config.PrestConf.JSONAggType, SQL)
 	slog.Debug("generated SQL", "sql", SQL, "parameters", params)
-	p, err := Prepare(db, SQL)
+	p, err := PrepareWithDB(db, dbName, SQL)
 	if err != nil {
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
@@ -972,8 +1034,9 @@ func (adapter *Postgres) QueryCountCtx(ctx context.Context, SQL string, params .
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
 	}
+	dbName := dbNameFromCtx(ctx)
 	slog.Debug("generated SQL", "sql", SQL, "parameters", params)
-	p, err := Prepare(db, SQL)
+	p, err := PrepareWithDB(db, dbName, SQL)
 	if err != nil {
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
@@ -1156,7 +1219,7 @@ func (adapter *Postgres) BatchInsertValues(SQL string, values ...interface{}) (s
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
 	}
-	stmt, err := adapter.fullInsert(db, nil, SQL)
+	stmt, err := adapter.fullInsert(db, nil, connection.GetDatabase(), SQL)
 	if err != nil {
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
@@ -1199,7 +1262,7 @@ func (adapter *Postgres) BatchInsertValuesCtx(ctx context.Context, SQL string, v
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
 	}
-	stmt, err := adapter.fullInsert(db, nil, SQL)
+	stmt, err := adapter.fullInsert(db, nil, dbNameFromCtx(ctx), SQL)
 	if err != nil {
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
@@ -1235,7 +1298,7 @@ func (adapter *Postgres) BatchInsertValuesCtx(ctx context.Context, SQL string, v
 	}
 }
 
-func (adapter *Postgres) fullInsert(db *sqlx.DB, tx *sql.Tx, SQL string) (stmt *sql.Stmt, err error) {
+func (adapter *Postgres) fullInsert(db *sqlx.DB, tx *sql.Tx, dbName, SQL string) (stmt *sql.Stmt, err error) {
 	tableName := insertTableNameQuotesRegex.FindStringSubmatch(SQL)
 	if len(tableName) < 2 {
 		tableName = insertTableNameRegex.FindStringSubmatch(SQL)
@@ -1248,7 +1311,7 @@ func (adapter *Postgres) fullInsert(db *sqlx.DB, tx *sql.Tx, SQL string) (stmt *
 	if tx != nil {
 		stmt, err = PrepareTx(tx, SQL)
 	} else {
-		stmt, err = Prepare(db, SQL)
+		stmt, err = PrepareWithDB(db, dbName, SQL)
 	}
 	return
 }
@@ -1260,7 +1323,7 @@ func (adapter *Postgres) Insert(SQL string, params ...interface{}) (sc adapters.
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
 	}
-	return adapter.insert(db, nil, SQL, params...)
+	return adapter.insert(db, nil, connection.GetDatabase(), SQL, params...)
 }
 
 // InsertCtx execute insert sql into a table
@@ -1270,16 +1333,16 @@ func (adapter *Postgres) InsertCtx(ctx context.Context, SQL string, params ...in
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
 	}
-	return adapter.insert(db, nil, SQL, params...)
+	return adapter.insert(db, nil, dbNameFromCtx(ctx), SQL, params...)
 }
 
 // InsertWithTransaction execute insert sql into a table
 func (adapter *Postgres) InsertWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
-	return adapter.insert(nil, tx, SQL, params...)
+	return adapter.insert(nil, tx, "", SQL, params...)
 }
 
-func (adapter *Postgres) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
-	stmt, err := adapter.fullInsert(db, tx, SQL)
+func (adapter *Postgres) insert(db *sqlx.DB, tx *sql.Tx, dbName, SQL string, params ...interface{}) (sc adapters.Scanner) {
+	stmt, err := adapter.fullInsert(db, tx, dbName, SQL)
 	if err != nil {
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
@@ -1300,7 +1363,7 @@ func (adapter *Postgres) Delete(SQL string, params ...interface{}) (sc adapters.
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
 	}
-	return adapter.delete(db, nil, SQL, params...)
+	return adapter.delete(db, nil, connection.GetDatabase(), SQL, params...)
 }
 
 // Delete execute delete sql into a table
@@ -1310,22 +1373,22 @@ func (adapter *Postgres) DeleteCtx(ctx context.Context, SQL string, params ...in
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
 	}
-	return adapter.delete(db, nil, SQL, params...)
+	return adapter.delete(db, nil, dbNameFromCtx(ctx), SQL, params...)
 }
 
 // DeleteWithTransaction execute delete sql into a table
 func (adapter *Postgres) DeleteWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
-	return adapter.delete(nil, tx, SQL, params...)
+	return adapter.delete(nil, tx, "", SQL, params...)
 }
 
-func (adapter *Postgres) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (adapter *Postgres) delete(db *sqlx.DB, tx *sql.Tx, dbName, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	slog.Debug("generated SQL", "sql", SQL, "parameters", params)
 	var stmt *sql.Stmt
 	var err error
 	if tx != nil {
 		stmt, err = PrepareTx(tx, SQL)
 	} else {
-		stmt, err = Prepare(db, SQL)
+		stmt, err = PrepareWithDB(db, dbName, SQL)
 	}
 	if err != nil {
 		slog.Error("could not prepare sql", "sql", SQL, "err", err)
@@ -1343,7 +1406,7 @@ func (adapter *Postgres) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 			}
 			if err := rows.Scan(columnPointers...); err != nil {
 				slog.Error("row scan error", "err", err)
-				os.Exit(1)
+				return &scanner.PrestScanner{Error: err}
 			}
 			m := make(map[string]interface{})
 			for i, colName := range cols {
@@ -1392,7 +1455,7 @@ func (adapter *Postgres) Update(SQL string, params ...interface{}) (sc adapters.
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
 	}
-	return adapter.update(db, nil, SQL, params...)
+	return adapter.update(db, nil, connection.GetDatabase(), SQL, params...)
 }
 
 // Update execute update sql into a table
@@ -1402,21 +1465,21 @@ func (adapter *Postgres) UpdateCtx(ctx context.Context, SQL string, params ...in
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
 	}
-	return adapter.update(db, nil, SQL, params...)
+	return adapter.update(db, nil, dbNameFromCtx(ctx), SQL, params...)
 }
 
 // UpdateWithTransaction execute update sql into a table
 func (adapter *Postgres) UpdateWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
-	return adapter.update(nil, tx, SQL, params...)
+	return adapter.update(nil, tx, "", SQL, params...)
 }
 
-func (adapter *Postgres) update(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (adapter *Postgres) update(db *sqlx.DB, tx *sql.Tx, dbName, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	var stmt *sql.Stmt
 	var err error
 	if tx != nil {
 		stmt, err = PrepareTx(tx, SQL)
 	} else {
-		stmt, err = Prepare(db, SQL)
+		stmt, err = PrepareWithDB(db, dbName, SQL)
 	}
 	if err != nil {
 		slog.Error("could not prepare sql", "sql", SQL, "err", err)
@@ -1435,7 +1498,7 @@ func (adapter *Postgres) update(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 			}
 			if err := rows.Scan(columnPointers...); err != nil {
 				slog.Error("row scan error", "err", err)
-				os.Exit(1)
+				return &scanner.PrestScanner{Error: err}
 			}
 			m := make(map[string]interface{})
 			for i, colName := range cols {
@@ -1989,12 +2052,26 @@ func (adapter *Postgres) GetDatabase() string {
 // the current DB has been set via `SetDatabase(...)`
 func getDBFromCtx(ctx context.Context) (db *sqlx.DB, err error) {
 	dbName, ok := ctx.Value(pctx.DBNameKey).(string)
-	if ok {
+	if ok && dbName != "" {
+		if config.PrestConf.EnableMultiDB {
+			return connection.GetFromMultiPool(dbName)
+		}
 		DB, err := connection.GetFromPool(dbName)
 		if err == nil {
 			return DB, err
 		}
 		return connection.AddDatabaseToPool(dbName)
 	}
+	if config.PrestConf.EnableMultiDB {
+		return connection.GetMulti(ctx)
+	}
 	return connection.Get()
+}
+
+func dbNameFromCtx(ctx context.Context) string {
+	name, ok := ctx.Value(pctx.DBNameKey).(string)
+	if ok && name != "" {
+		return name
+	}
+	return connection.GetDatabase()
 }
