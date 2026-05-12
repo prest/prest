@@ -65,6 +65,10 @@ docker compose -f docker-compose-test.yml down -v --remove-orphans
 
 The `tests` service runs `./testdata/runtest.sh`, provisioning databases and executing Go tests.
 
+For tests that do not need a real PostgreSQL connection, use the
+[`adapters/mock`](adapters/mock/README.md) package to queue scanner responses
+and exercise adapter-backed code paths in memory.
+
 ## Example: Docker Build
 
 You can build the Docker image locally for development (this compiles the code from source):
@@ -82,4 +86,3 @@ docker build \
   --build-arg DATE=2026-02-11 \
   -t prest/prest:latest .
 ```
-
