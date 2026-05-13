@@ -48,6 +48,9 @@ Deploy to Heroku and instantly get a realtime RESTFul API backed by Heroku Postg
 
 Visit <https://docs.prestd.com/>
 
+Testing-related adapter notes:
+- [Mock adapter usage](./adapters/mock/README.md)
+
 ## Testing
 
 Run the test suite inside Docker (no local Postgres required):
