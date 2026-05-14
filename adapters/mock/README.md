@@ -21,7 +21,7 @@ import (
 )
 
 func TestWithMockAdapter(t *testing.T) {
-	adapter := mockadapter.New()
+	adapter := mockadapter.New(t)
 	if adapter == nil {
 		t.Fatal("expected mock adapter")
 	}
