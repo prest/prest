@@ -65,6 +65,42 @@ docker compose -f docker-compose-test.yml down -v --remove-orphans
 
 The `tests` service runs `./testdata/runtest.sh`, provisioning databases and executing Go tests.
 
+### Mock adapter for tests
+
+Controller and middleware tests can use the mock adapter instead of a live
+Postgres connection. Create it with `mock.New(t)`, assign it to
+`config.PrestConf.Adapter`, then enqueue one response for each adapter operation
+the code under test will execute:
+
+```go
+package mypackage_test
+
+import (
+	"testing"
+
+	"github.com/prest/prest/v2/adapters/mock"
+	"github.com/prest/prest/v2/config"
+)
+
+func TestWithMockAdapter(t *testing.T) {
+	config.Load()
+
+	adapter := mock.New(t)
+	config.PrestConf.Adapter = adapter
+
+	adapter.AddItem([]byte(`[{"id":1,"name":"Ada"}]`), nil, false)
+
+	// Run code that calls config.PrestConf.Adapter.Query, Insert, Update,
+	// Delete, or another mock-backed adapter operation.
+}
+```
+
+Queued items are consumed in first-in, first-out order. `AddItem` accepts the
+JSON response body, an optional error, and an `isCount` flag used by clause
+helpers such as `DatabaseClause` and `SchemaClause`. If the code under test calls
+an adapter operation without a queued item, the mock fails the test, which helps
+catch missing expectations.
+
 ## Example: Docker Build
 
 You can build the Docker image locally for development (this compiles the code from source):
@@ -82,4 +118,3 @@ docker build \
   --build-arg DATE=2026-02-11 \
   -t prest/prest:latest .
 ```
-
