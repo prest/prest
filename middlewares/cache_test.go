@@ -69,3 +69,44 @@ func TestCacheMiddleware_MatchURLError(t *testing.T) {
 	require.False(t, called)
 	require.Equal(t, http.StatusInternalServerError, rec.Code)
 }
+
+func TestCacheMiddleware_CacheLookup(t *testing.T) {
+	withPrestConf(t, &config.Prest{})
+
+	const path = "/prest/public/test"
+	newCfg := func(t *testing.T) *cache.Config {
+		t.Helper()
+		return &cache.Config{
+			Enabled:     true,
+			Time:        5,
+			StoragePath: t.TempDir(),
+			Endpoints: []cache.Endpoint{
+				{Enabled: true, Endpoint: path, Time: 5},
+			},
+		}
+	}
+
+	t.Run("hit", func(t *testing.T) {
+		cfg := newCfg(t)
+		cfg.BuntSet(path, `[{"cached":true}]`)
+
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec, called := serveMiddleware(CacheMiddleware(cfg), req)
+
+		require.False(t, called)
+		require.Equal(t, http.StatusOK, rec.Code)
+		require.Equal(t, "prestd", rec.Header().Get("Cache-Server"))
+		require.JSONEq(t, `[{"cached":true}]`, rec.Body.String())
+	})
+
+	t.Run("miss", func(t *testing.T) {
+		cfg := newCfg(t)
+
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec, called := serveMiddleware(CacheMiddleware(cfg), req)
+
+		require.True(t, called)
+		require.Equal(t, http.StatusOK, rec.Code)
+		require.Empty(t, rec.Header().Get("Cache-Server"))
+	})
+}

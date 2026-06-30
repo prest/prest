@@ -50,7 +50,7 @@ func TestCatalogHandler_ListDatabases_Success(t *testing.T) {
 	builder.EXPECT().DistinctClause(gomock.Any()).Return("", nil)
 	builder.EXPECT().OrderByRequest(gomock.Any()).Return("", nil)
 	builder.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
-	executor.EXPECT().Query(gomock.Any(), gomock.Any()).Return(scanner)
+	executor.EXPECT().Query(gomock.Any()).Return(scanner)
 	scanner.EXPECT().Err().Return(nil)
 	scanner.EXPECT().Bytes().Return([]byte(`[{"datname":"prest-test"}]`))
 
@@ -85,7 +85,7 @@ func TestCatalogHandler_ListDatabases_QueryError(t *testing.T) {
 	builder.EXPECT().DistinctClause(gomock.Any()).Return("", nil)
 	builder.EXPECT().OrderByRequest(gomock.Any()).Return("", nil)
 	builder.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
-	executor.EXPECT().Query(gomock.Any(), gomock.Any()).Return(scanner)
+	executor.EXPECT().Query(gomock.Any()).Return(scanner)
 	scanner.EXPECT().Err().Return(errors.New("query failed")).Times(2)
 
 	h := NewCatalogHandler(Deps{Catalog: catalog, Builder: builder, Executor: executor})
@@ -139,7 +139,7 @@ func TestCatalogHandler_ListTables_Success(t *testing.T) {
 	catalog.EXPECT().TableClause().Return("SELECT tablename FROM pg_tables")
 	builder.EXPECT().DistinctClause(gomock.Any()).Return("", nil)
 	builder.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
-	executor.EXPECT().Query(gomock.Any(), gomock.Any()).Return(scanner)
+	executor.EXPECT().Query(gomock.Any()).Return(scanner)
 	scanner.EXPECT().Err().Return(nil)
 	scanner.EXPECT().Bytes().Return([]byte(`[{"tablename":"users"}]`))
 

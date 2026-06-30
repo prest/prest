@@ -113,7 +113,7 @@ func TestCRUDHandler_Select_Success(t *testing.T) {
 	scanner.EXPECT().Bytes().Return([]byte(`[{"name":"prest"}]`))
 
 	executor := mockgen.NewMockQueryExecutor(ctrl)
-	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
+	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)
 
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
 	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
@@ -161,7 +161,7 @@ func TestCRUDHandler_Select_WithCache(t *testing.T) {
 	scanner.EXPECT().Bytes().Return([]byte(`[{"name":"cached"}]`)).Times(2)
 
 	executor := mockgen.NewMockQueryExecutor(ctrl)
-	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
+	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)
 
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
 	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
@@ -207,7 +207,7 @@ func TestCRUDHandler_Select_RelationNotFound(t *testing.T) {
 	scanner.EXPECT().Err().Return(errors.New(`pq: relation "public.missing" does not exist`))
 
 	executor := mockgen.NewMockQueryExecutor(ctrl)
-	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
+	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)
 
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
 	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
@@ -247,7 +247,7 @@ func TestCRUDHandler_Select_WithUserContext(t *testing.T) {
 	scanner.EXPECT().Bytes().Return([]byte(`[]`))
 
 	executor := mockgen.NewMockQueryExecutor(ctrl)
-	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
+	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)
 
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
 	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
@@ -324,6 +324,30 @@ func TestCRUDHandler_Insert_RelationNotFound(t *testing.T) {
 
 	require.Equal(t, http.StatusNotFound, rec.Code)
 	require.Contains(t, rec.Body.String(), "relation does not exist")
+}
+
+func TestCRUDHandler_Insert_InvalidPath(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	db := mockgen.NewMockDatabaseRegistry(ctrl)
+	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+
+	h := NewCRUDHandler(Deps{
+		DB:       db,
+		Builder:  mockgen.NewMockRequestQueryBuilder(ctrl),
+		SQL:      mockgen.NewMockSQLBuilder(ctrl),
+		Executor: mockgen.NewMockQueryExecutor(ctrl),
+	})
+
+	req := crudRequest(http.MethodPost, "/prest-test/bad@schema/test", map[string]string{
+		"database": "prest-test", "schema": "bad@schema", "table": "test",
+	})
+	rec := httptest.NewRecorder()
+	h.Insert(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Contains(t, rec.Body.String(), "invalid identifier")
 }
 
 func TestCRUDHandler_BatchInsert_Values(t *testing.T) {
@@ -415,6 +439,30 @@ func TestCRUDHandler_Delete_Success(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 }
 
+func TestCRUDHandler_Delete_InvalidPath(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	db := mockgen.NewMockDatabaseRegistry(ctrl)
+	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+
+	h := NewCRUDHandler(Deps{
+		DB:       db,
+		Builder:  mockgen.NewMockRequestQueryBuilder(ctrl),
+		SQL:      mockgen.NewMockSQLBuilder(ctrl),
+		Executor: mockgen.NewMockQueryExecutor(ctrl),
+	})
+
+	req := crudRequest(http.MethodDelete, "/prest-test/public/bad;table", map[string]string{
+		"database": "prest-test", "schema": "public", "table": "bad;table",
+	})
+	rec := httptest.NewRecorder()
+	h.Delete(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Contains(t, rec.Body.String(), "invalid identifier")
+}
+
 func TestCRUDHandler_Update_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -476,6 +524,30 @@ func TestCRUDHandler_Update_RelationNotFound(t *testing.T) {
 	h.Update(rec, req)
 
 	require.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestCRUDHandler_Update_InvalidPath(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	db := mockgen.NewMockDatabaseRegistry(ctrl)
+	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+
+	h := NewCRUDHandler(Deps{
+		DB:       db,
+		Builder:  mockgen.NewMockRequestQueryBuilder(ctrl),
+		SQL:      mockgen.NewMockSQLBuilder(ctrl),
+		Executor: mockgen.NewMockQueryExecutor(ctrl),
+	})
+
+	req := crudRequest(http.MethodPatch, "/prest-test/bad@schema/test", map[string]string{
+		"database": "prest-test", "schema": "bad@schema", "table": "test",
+	})
+	rec := httptest.NewRecorder()
+	h.Update(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Contains(t, rec.Body.String(), "invalid identifier")
 }
 
 func withUser(ctx context.Context, user auth.User) context.Context {
