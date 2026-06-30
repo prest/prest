@@ -47,12 +47,14 @@ func TestParse(t *testing.T) {
 
 	t.Run("PREST_CONF", func(t *testing.T) {
 		t.Setenv("PREST_CONF", "../testdata/prest.toml")
-		t.Setenv("PREST_PG_DATABASE", "prest-test")
+		unsetEnvForTest(t, "PREST_PG_DATABASE")
 		viperCfg()
 		cfg := &Prest{}
 		Parse(cfg)
 		require.Equal(t, 3000, cfg.HTTPPort)
-		require.Equal(t, "prest-test", cfg.PGDatabase)
+		require.True(t, cfg.AccessConf.Restrict)
+		require.True(t, cfg.Cache.Enabled)
+		require.Greater(t, len(cfg.AccessConf.Tables), 2)
 	})
 
 	t.Run("PREST_HTTP_PORT and unset PREST_JWT_DEFAULT", func(t *testing.T) {
@@ -362,7 +364,7 @@ func Test_Auth(t *testing.T) {
 	require.Equal(t, "prest_users", cfg.AuthTable)
 	require.Equal(t, "username", cfg.AuthUsername)
 	require.Equal(t, "password", cfg.AuthPassword)
-	require.Equal(t, "MD5", cfg.AuthEncrypt)
+	require.Equal(t, "bcrypt", cfg.AuthEncrypt)
 
 	metadata := []string{"first_name", "last_name", "last_login"}
 	require.Equal(t, len(metadata), len(cfg.AuthMetadata))

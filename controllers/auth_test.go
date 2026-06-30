@@ -15,6 +15,7 @@ import (
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers/auth"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 	jose "gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 )
@@ -54,10 +55,10 @@ func Test_getSelectQuery(t *testing.T) {
 	}
 }
 
-func Test_encrypt(t *testing.T) {
+func Test_legacyDigest(t *testing.T) {
 	h := testAuthHandler()
 	pwd := "123456"
-	enc, err := h.encrypt(pwd)
+	enc, err := h.legacyDigest(pwd)
 	require.NoError(t, err)
 
 	md5Enc := fmt.Sprintf("%x", md5.Sum([]byte(pwd)))
@@ -66,7 +67,7 @@ func Test_encrypt(t *testing.T) {
 	}
 
 	h.cfg.Encrypt = "SHA1"
-	enc, err = h.encrypt(pwd)
+	enc, err = h.legacyDigest(pwd)
 	require.NoError(t, err)
 
 	sha1Enc := fmt.Sprintf("%x", sha1.Sum([]byte(pwd)))
@@ -75,11 +76,17 @@ func Test_encrypt(t *testing.T) {
 	}
 }
 
-func Test_encrypt_unknownAlgorithm(t *testing.T) {
+func Test_legacyDigest_unknownAlgorithm(t *testing.T) {
 	h := testAuthHandler()
 	h.cfg.Encrypt = "PLAINTEXT"
-	_, err := h.encrypt("secret")
+	_, err := h.legacyDigest("secret")
 	require.ErrorIs(t, err, ErrUnknownEncryptAlgorithm)
+}
+
+func TestHashPassword(t *testing.T) {
+	hash, err := HashPassword("secret")
+	require.NoError(t, err)
+	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(hash), []byte("secret")))
 }
 
 func TestAuthHandler_Login_BodySuccess(t *testing.T) {
@@ -233,6 +240,74 @@ func TestAuthHandler_token(t *testing.T) {
 	sig, err := jose.ParseSigned(token)
 	require.NoError(t, err)
 	require.Equal(t, "HS256", string(sig.Signatures[0].Header.Algorithm))
+}
+
+func Test_getSelectQueryByUsername(t *testing.T) {
+	expected := "SELECT * FROM public.prest_users WHERE username=$1 LIMIT 1"
+	query := testAuthHandler()
+	query.cfg.Encrypt = "bcrypt"
+	require.Equal(t, expected, query.selectQueryByUsername())
+}
+
+func TestAuthHandler_basicPasswordCheck_bcrypt(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	hash, err := HashPassword("pw")
+	require.NoError(t, err)
+
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	sc := mockgen.NewMockScanner(ctrl)
+	cfg := testAuthConfig()
+	cfg.Encrypt = "bcrypt"
+	h := NewAuthHandler(executor, cfg)
+
+	executor.EXPECT().
+		Query(h.selectQueryByUsername(), "carol").
+		Return(sc)
+	sc.EXPECT().Err().Return(nil)
+	sc.EXPECT().Scan(gomock.Any()).DoAndReturn(func(dest interface{}) (int, error) {
+		row := dest.(*loginRow)
+		*row = loginRow{ID: 3, Username: "carol", Password: hash}
+		return 1, nil
+	})
+
+	user, err := h.basicPasswordCheck("carol", "pw")
+	require.NoError(t, err)
+	require.Equal(t, "carol", user.Username)
+}
+
+func TestAuthHandler_basicPasswordCheck_bcryptWrongPassword(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	hash, err := HashPassword("pw")
+	require.NoError(t, err)
+
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	sc := mockgen.NewMockScanner(ctrl)
+	cfg := testAuthConfig()
+	cfg.Encrypt = "bcrypt"
+	h := NewAuthHandler(executor, cfg)
+
+	executor.EXPECT().
+		Query(h.selectQueryByUsername(), "carol").
+		Return(sc)
+	sc.EXPECT().Err().Return(nil)
+	sc.EXPECT().Scan(gomock.Any()).DoAndReturn(func(dest interface{}) (int, error) {
+		row := dest.(*loginRow)
+		*row = loginRow{ID: 3, Username: "carol", Password: hash}
+		return 1, nil
+	})
+
+	_, err = h.basicPasswordCheck("carol", "wrong")
+	require.ErrorIs(t, err, ErrUserNotFound)
+}
+
+func TestAuthHandler_basicPasswordCheck_unknownAlgorithm(t *testing.T) {
+	h := NewAuthHandler(nil, AuthConfig{Encrypt: "PLAINTEXT"})
+	_, err := h.basicPasswordCheck("carol", "pw")
+	require.ErrorIs(t, err, ErrUnknownEncryptAlgorithm)
 }
 
 func TestAuthHandler_basicPasswordCheck(t *testing.T) {

@@ -40,6 +40,7 @@ func TestGetApp(t *testing.T) {
 
 func TestGetAppWithReorderedMiddleware(t *testing.T) {
 	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
 	middlewares.MiddlewareStack = []negroni.Handler{
 		negroni.Handler(negroni.HandlerFunc(customMiddleware)),
 	}
@@ -59,12 +60,11 @@ func TestGetAppWithReorderedMiddleware(t *testing.T) {
 	require.Contains(t, string(body), "Calling custom middleware")
 	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-
-	middlewares.ResetForTest()
 }
 
 func TestGetAppWithoutReorderedMiddleware(t *testing.T) {
 	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {})
 	n := middlewares.GetApp()
@@ -74,8 +74,6 @@ func TestGetAppWithoutReorderedMiddleware(t *testing.T) {
 	resp, err := http.Get(server.URL)
 	require.NoError(t, err)
 	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
-
-	middlewares.ResetForTest()
 }
 
 func Test_Middleware_DoesntBlock_CustomRoutes(t *testing.T) {
@@ -84,6 +82,7 @@ func Test_Middleware_DoesntBlock_CustomRoutes(t *testing.T) {
 	config.Load()
 	postgres.Load()
 	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
 	h := controllers.NewHandlersFromConfig(config.PrestConf)
@@ -122,8 +121,6 @@ func Test_Middleware_DoesntBlock_CustomRoutes(t *testing.T) {
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
 	require.Contains(t, string(body), "authorization required")
-
-	middlewares.ResetForTest()
 }
 
 func customMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -150,6 +147,7 @@ func TestDebug(t *testing.T) {
 
 func TestEnableDefaultJWT(t *testing.T) {
 	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
 	t.Setenv("PREST_JWT_DEFAULT", "false")
 	t.Setenv("PREST_DEBUG", "false")
 	config.Load()
@@ -163,7 +161,7 @@ func TestEnableDefaultJWT(t *testing.T) {
 
 func TestJWTIsRequired(t *testing.T) {
 	middlewares.ResetForTest()
-	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
 	config.Load()
@@ -178,6 +176,7 @@ func TestJWTIsRequired(t *testing.T) {
 
 func TestJWTSignatureOk(t *testing.T) {
 	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
 	middlewares.MiddlewareStack = nil
 	bearer := "Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImpvaG4uZG9lQHNvbWV3aGVyZS5jb20iLCJpYXQiOjE1MTc1NjM2MTYsImlzcyI6InByaXZhdGUiLCJqdGkiOiJjZWZhNzRmZS04OTRjLWZmNjMtZDgxNi00NjIwYjhjZDkyZWUiLCJvcmciOiJwcml2YXRlIiwic3ViIjoiam9obi5kb2UifQ.zLWkEd4hP4XdCD_DlRy6mgPeKwEl1dcdtx5A_jHSfmc87EsrGgNSdi8eBTzCgSU0jgV6ssTgQwzY6x4egze2xA"
 	t.Setenv("PREST_JWT_DEFAULT", "true")
@@ -202,6 +201,7 @@ func TestJWTSignatureOk(t *testing.T) {
 
 func TestJWTSignatureKo(t *testing.T) {
 	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
 	bearer := "Bearer: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImpvaG4uZG9lQHNvbWV3aGVyZS5jb20iLCJleHAiOjE1MjUzMzk2MTYsImlhdCI6MTUxNzU2MzYxNiwiaXNzIjoicHJpdmF0ZSIsImp0aSI6ImNlZmE3NGZlLTg5NGMtZmY2My1kODE2LTQ2MjBiOGNkOTJlZSIsIm9yZyI6InByaXZhdGUiLCJzdWIiOiJqb2huLmRvZSJ9.zGP1Xths2bK2r9FN0Gv1SzyoisO0dhRwvqrPvunGxUyU5TbkfdnTcQRJNYZzJfGILeQ9r3tbuakWm-NIoDlbbA"
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
@@ -253,11 +253,11 @@ func appTestWithJwt() *negroni.Negroni {
 
 func Test_CORS_Middleware(t *testing.T) {
 	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
 	t.Setenv("PREST_DEBUG", "true")
 	t.Setenv("PREST_CORS_ALLOWORIGIN", "*")
 	t.Setenv("PREST_CONF", helpers.TestConfigPath())
 	config.Load()
-	middlewares.ResetForTest()
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
 	n := middlewares.GetApp()
@@ -285,11 +285,10 @@ func Test_CORS_Middleware(t *testing.T) {
 func TestExposeTablesMiddleware(t *testing.T) {
 	helpers.LoadTestConfig(t)
 	middlewares.ResetForTest()
-	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
 	t.Setenv("PREST_DEBUG", "true")
 	t.Setenv("PREST_CONF", helpers.TestExposeConfigPath())
 	config.Load()
-	middlewares.ResetForTest()
 	h := controllers.NewHandlersFromConfig(config.PrestConf)
 	r := mux.NewRouter()
 	r.HandleFunc("/tables", h.Catalog.ListTables).Methods("GET")

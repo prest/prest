@@ -12,6 +12,7 @@ import (
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers/auth"
+	"golang.org/x/crypto/bcrypt"
 
 	jose "gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
@@ -114,11 +115,22 @@ func (h *AuthHandler) token(u auth.User) (t string, err error) {
 }
 
 func (h *AuthHandler) basicPasswordCheck(user, password string) (obj auth.User, err error) {
-	encrypted, err := h.encrypt(password)
+	switch strings.ToUpper(h.cfg.Encrypt) {
+	case "MD5", "SHA1":
+		return h.basicPasswordCheckLegacy(user, password)
+	case "BCRYPT":
+		return h.basicPasswordCheckBcrypt(user, password)
+	default:
+		return obj, ErrUnknownEncryptAlgorithm
+	}
+}
+
+func (h *AuthHandler) basicPasswordCheckLegacy(user, password string) (obj auth.User, err error) {
+	digest, err := h.legacyDigest(password)
 	if err != nil {
 		return
 	}
-	sc := h.executor.Query(h.selectQuery(), user, encrypted)
+	sc := h.executor.Query(h.selectQuery(), user, digest)
 	if sc.Err() != nil {
 		err = sc.Err()
 		return
@@ -130,8 +142,53 @@ func (h *AuthHandler) basicPasswordCheck(user, password string) (obj auth.User, 
 	if n != 1 {
 		err = ErrUserNotFound
 	}
-
 	return
+}
+
+func (h *AuthHandler) basicPasswordCheckBcrypt(user, password string) (obj auth.User, err error) {
+	sc := h.executor.Query(h.selectQueryByUsername(), user)
+	if sc.Err() != nil {
+		err = sc.Err()
+		return
+	}
+	var row loginRow
+	n, err := sc.Scan(&row)
+	if err != nil {
+		return
+	}
+	if n != 1 {
+		err = ErrUserNotFound
+		return
+	}
+	if bcrypt.CompareHashAndPassword([]byte(row.Password), []byte(password)) != nil {
+		err = ErrUserNotFound
+		return
+	}
+	return row.user(), nil
+}
+
+type loginRow struct {
+	ID       int
+	Name     string
+	Username string
+	Metadata interface{}
+	Password string
+}
+
+func (r loginRow) user() auth.User {
+	return auth.User{
+		ID:       r.ID,
+		Name:     r.Name,
+		Username: r.Username,
+		Metadata: r.Metadata,
+	}
+}
+
+func (h *AuthHandler) selectQueryByUsername() string {
+	return fmt.Sprintf(
+		`SELECT * FROM %s.%s WHERE %s=$1 LIMIT 1`,
+		h.cfg.Schema, h.cfg.Table,
+		h.cfg.Username)
 }
 
 func (h *AuthHandler) selectQuery() (query string) {
@@ -141,15 +198,28 @@ func (h *AuthHandler) selectQuery() (query string) {
 		h.cfg.Username, h.cfg.Password)
 }
 
-func (h *AuthHandler) encrypt(password string) (string, error) {
-	switch h.cfg.Encrypt {
+func (h *AuthHandler) legacyDigest(password string) (string, error) {
+	switch strings.ToUpper(h.cfg.Encrypt) {
 	case "MD5":
+		// Legacy verification only: compares against pre-hashed values stored in the DB.
+		// codeql[go/weak-sensitive-data-hashing]
 		return fmt.Sprintf("%x", md5.Sum([]byte(password))), nil
 	case "SHA1":
+		// Legacy verification only: compares against pre-hashed values stored in the DB.
+		// codeql[go/weak-sensitive-data-hashing]
 		return fmt.Sprintf("%x", sha1.Sum([]byte(password))), nil
 	default:
 		return "", ErrUnknownEncryptAlgorithm
 	}
+}
+
+// HashPassword returns a bcrypt hash for storing in the auth password column.
+func HashPassword(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hash), nil
 }
 
 // Token creates a JWT for the given user using global config (legacy helper for tests).
