@@ -50,6 +50,7 @@ These instructions guide AI-generated changes in this repository.
 - Never add `postgres.Load()` outside `integration/`.
 - Reuse existing test patterns (`testify`, `adapters/mockgen/`, `handlerstest.NewTestHandlers`, `testutils/` for HTTP helpers).
 - Maintain ≥80% coverage on new code paths (unit + integration combined).
+- When creating test files always use the file name that has the function/method for testing and name it <source_file>_test.go
 
 Common commands:
 
