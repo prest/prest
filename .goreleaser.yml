@@ -1,3 +1,5 @@
+version: 2
+
 builds:
   - binary: prestd
     main: ./cmd/prestd/main.go
@@ -56,6 +58,12 @@ dockers:
   - "ghcr.io/prest/prest:{{ .Tag }}"
   - "ghcr.io/prest/prest:v{{ .Major }}"
   dockerfile: Dockerfile
+  goos: linux
+  goarch: amd64
+  extra_files:
+    - etc/entrypoint.sh
+    - lib
+    - etc/plugin
   build_flag_templates:
   - "--build-arg=VERSION={{.Version}}"
   - "--build-arg=COMMIT={{.Commit}}"
@@ -71,6 +79,12 @@ dockers:
   - "ghcr.io/prest/prest:{{ .Tag }}-noplugins"
   - "ghcr.io/prest/prest:v{{ .Major }}-noplugins"
   dockerfile: Dockerfile.noplugins
+  goos: linux
+  goarch: amd64
+  extra_files:
+    - etc/entrypoint.sh
+    - lib
+    - etc/plugin
   build_flag_templates:
   - "--build-arg=VERSION={{.Version}}"
   - "--build-arg=COMMIT={{.Commit}}"
