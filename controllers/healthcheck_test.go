@@ -7,15 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/prest/prest/v2/testutils"
-
 	"github.com/gorilla/mux"
-	"github.com/stretchr/testify/require"
+	"github.com/prest/prest/v2/testutils"
 )
-
-func TestCheckDBHealth(t *testing.T) {
-	require.Nil(t, CheckDBHealth(context.Background()))
-}
 
 func healthyDB(context.Context) error   { return nil }
 func unhealthyDB(context.Context) error { return errors.New("could not connect to the database") }

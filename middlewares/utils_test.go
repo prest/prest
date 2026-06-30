@@ -6,13 +6,25 @@ import (
 
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/middlewares/statements"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_getVars(t *testing.T) {
-	paths := getVars("foo/bar")
-	if paths != nil {
-		t.Errorf("expected nil, got %s", paths)
+	if got := getVars("foo/bar"); got != nil {
+		t.Errorf("expected nil, got %v", got)
 	}
+
+	got := getVars("prest/public/users")
+	require.Equal(t, "prest", got["database"])
+	require.Equal(t, "public", got["schema"])
+	require.Equal(t, "users", got["table"])
+
+	got = getVars("prest/public/users/extra")
+	require.Equal(t, "public", got["database"])
+	require.Equal(t, "users", got["schema"])
+	require.Equal(t, "extra", got["table"])
+
+	require.Nil(t, getVars("/prest/public/users/extra"))
 }
 
 func Test_permissionByMethod(t *testing.T) {

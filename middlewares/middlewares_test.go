@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
@@ -9,24 +10,546 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
+	"github.com/gorilla/mux"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/prest/prest/v2/adapters/mockgen"
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers/auth"
-
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	pctx "github.com/prest/prest/v2/context"
 	"github.com/stretchr/testify/require"
+	"github.com/urfave/negroni/v3"
 	jose "gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
+func withPrestConf(t *testing.T, cfg *config.Prest) {
+	t.Helper()
+	config.PrestConf = cfg
+	t.Cleanup(func() { config.PrestConf = nil })
+}
+
+func validClaims() auth.Claims {
+	return auth.Claims{
+		UserInfo:  auth.User{ID: 1, Username: "alice"},
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-time.Minute)),
+		Expiry:    jwt.NewNumericDate(time.Now().Add(time.Minute)),
+	}
+}
+
+func signTestJWT(t *testing.T, key string, claims auth.Claims) string {
+	t.Helper()
+	sig, err := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.HS256, Key: []byte(key)},
+		(&jose.SignerOptions{}).WithType("JWT"),
+	)
+	require.NoError(t, err)
+	token, err := jwt.Signed(sig).Claims(claims).CompactSerialize()
+	require.NoError(t, err)
+	return token
+}
+
+func serveMiddleware(h negroni.Handler, req *http.Request) (*httptest.ResponseRecorder, bool) {
+	rec := httptest.NewRecorder()
+	called := false
+	h.ServeHTTP(rec, req, func(http.ResponseWriter, *http.Request) {
+		called = true
+	})
+	return rec, called
+}
+
+func TestHandlerSet_JSONResponse(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	HandlerSet().ServeHTTP(rec, req, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"ok":true}`))
+	})
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+	require.Contains(t, rec.Body.String(), `"ok":true`)
+}
+
+func TestHandlerSet_ErrorJSON(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	HandlerSet().ServeHTTP(rec, req, func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "bad request", http.StatusBadRequest)
+	})
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Contains(t, rec.Body.String(), `"error": "bad request"`)
+}
+
+func TestHandlerSet_XMLRenderer(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/?_renderer=xml", nil)
+	rec := httptest.NewRecorder()
+
+	HandlerSet().ServeHTTP(rec, req, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"name":"prest"}`))
+	})
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "application/xml", rec.Header().Get("Content-Type"))
+	require.Contains(t, rec.Body.String(), "<objects>")
+	require.Contains(t, rec.Body.String(), "prest")
+}
+
+func TestSetTimeoutToContext(t *testing.T) {
+	withPrestConf(t, &config.Prest{HTTPTimeout: 42})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	var timeout int
+	SetTimeoutToContext().ServeHTTP(httptest.NewRecorder(), req, func(_ http.ResponseWriter, r *http.Request) {
+		timeout, _ = r.Context().Value(pctx.HTTPTimeoutKey).(int)
+	})
+
+	require.Equal(t, 42, timeout)
+}
+
+func TestSetTimeoutToContext_DefaultZero(t *testing.T) {
+	withPrestConf(t, &config.Prest{})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	var ctx context.Context
+	SetTimeoutToContext().ServeHTTP(httptest.NewRecorder(), req, func(_ http.ResponseWriter, r *http.Request) {
+		ctx = r.Context()
+	})
+
+	_, ok := ctx.Value(pctx.HTTPTimeoutKey).(int)
+	require.True(t, ok)
+}
+
+func TestAuthMiddleware_AuthDisabled(t *testing.T) {
+	withPrestConf(t, &config.Prest{AuthEnabled: false})
+
+	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
+	rec, called := serveMiddleware(AuthMiddleware("HS256"), req)
+
+	require.True(t, called)
+	require.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestAuthMiddleware_WhitelistedURL(t *testing.T) {
+	withPrestConf(t, &config.Prest{
+		AuthEnabled:  true,
+		JWTWhiteList: []string{`\/auth`},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/auth", nil)
+	rec, called := serveMiddleware(AuthMiddleware("HS256"), req)
+
+	require.True(t, called)
+	require.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestAuthMiddleware_EmptyToken(t *testing.T) {
+	withPrestConf(t, &config.Prest{AuthEnabled: true})
+
+	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
+	rec, called := serveMiddleware(AuthMiddleware("HS256"), req)
+
+	require.False(t, called)
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	require.Contains(t, rec.Body.String(), ErrAuthIsEmpty.Error())
+}
+
+func TestAuthMiddleware_ValidToken(t *testing.T) {
+	withPrestConf(t, &config.Prest{AuthEnabled: true, JWTKey: "secret"})
+
+	token := signTestJWT(t, "secret", validClaims())
+	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	var user auth.User
+	rec := httptest.NewRecorder()
+	AuthMiddleware("HS256").ServeHTTP(rec, req, func(_ http.ResponseWriter, r *http.Request) {
+		u, ok := r.Context().Value(pctx.UserInfoKey).(auth.User)
+		require.True(t, ok)
+		user = u
+	})
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "alice", user.Username)
+}
+
+func TestAuthMiddleware_EmptyKeyRejected(t *testing.T) {
+	withPrestConf(t, &config.Prest{AuthEnabled: true, JWTKey: ""})
+
+	token := signTestJWT(t, "", validClaims())
+	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	rec, called := serveMiddleware(AuthMiddleware("HS256"), req)
+
+	require.False(t, called)
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	require.Contains(t, rec.Body.String(), ErrJWTEmptyKey.Error())
+}
+
+func TestAuthMiddleware_ExpiredToken(t *testing.T) {
+	withPrestConf(t, &config.Prest{AuthEnabled: true, JWTKey: "secret"})
+
+	claims := auth.Claims{
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
+		Expiry:    jwt.NewNumericDate(time.Now().Add(-time.Hour)),
+	}
+	token := signTestJWT(t, "secret", claims)
+	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	rec, called := serveMiddleware(AuthMiddleware("HS256"), req)
+
+	require.False(t, called)
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	require.Contains(t, rec.Body.String(), ErrJWTValidate.Error())
+}
+
+func TestAuthMiddleware_InvalidToken(t *testing.T) {
+	withPrestConf(t, &config.Prest{AuthEnabled: true, JWTKey: "secret"})
+
+	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
+	req.Header.Set("Authorization", "Bearer not-a-jwt")
+
+	rec, called := serveMiddleware(AuthMiddleware("HS256"), req)
+
+	require.False(t, called)
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	require.Contains(t, rec.Body.String(), ErrJWTParseFail.Error())
+}
+
+func TestAuthMiddleware_WrongSigningKey(t *testing.T) {
+	withPrestConf(t, &config.Prest{AuthEnabled: true, JWTKey: "secret"})
+
+	token := signTestJWT(t, "other", validClaims())
+	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	rec, called := serveMiddleware(AuthMiddleware("HS256"), req)
+
+	require.False(t, called)
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
+func TestJwtAlgo(t *testing.T) {
+	require.Equal(t, jose.HS256, jwtAlgo("HS256"))
+	require.Equal(t, jose.HS512, jwtAlgo("HS512"))
+	require.Equal(t, jose.RS256, jwtAlgo("RS256"))
+	require.Equal(t, jose.EdDSA, jwtAlgo("EdDSA"))
+	require.Equal(t, jose.HS256, jwtAlgo("unknown"))
+}
+
+func TestAccessControl_Denied(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	perms.EXPECT().TablePermissions("test", "read", "").Return(false)
+
+	called := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+	})
+
+	handler := AccessControl(perms)
+	req := httptest.NewRequest(http.MethodGet, "/prest-test/public/test", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req, next.ServeHTTP)
+
+	require.False(t, called)
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	require.Contains(t, rec.Body.String(), "authorization required")
+}
+
+func TestAccessControl_Allowed(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	perms.EXPECT().TablePermissions("test", "read", "").Return(true)
+
+	called := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := AccessControl(perms)
+	req := httptest.NewRequest(http.MethodGet, "/prest-test/public/test", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req, next.ServeHTTP)
+
+	require.True(t, called)
+	require.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestAccessControl_SkipsNonPermissionMethods(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+
+	called := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+	})
+
+	handler := AccessControl(perms)
+	req := httptest.NewRequest(http.MethodOptions, "/prest-test/public/test", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req, next.ServeHTTP)
+
+	require.True(t, called)
+}
+
+func TestAccessControl_PassesUsername(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	perms.EXPECT().TablePermissions("test", "read", "bob").Return(true)
+
+	handler := AccessControl(perms)
+	req := httptest.NewRequest(http.MethodGet, "/prest-test/public/test", nil)
+	req = req.WithContext(withUser(req.Context(), auth.User{Username: "bob"}))
+
+	called := false
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req, func(http.ResponseWriter, *http.Request) {
+		called = true
+	})
+
+	require.True(t, called)
+}
+
+func withUser(ctx context.Context, user auth.User) context.Context {
+	return context.WithValue(ctx, pctx.UserInfoKey, user)
+}
+
+func TestAccessControl_SkipsNonTablePaths(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+
+	called := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+	})
+
+	handler := AccessControl(perms)
+	req := httptest.NewRequest(http.MethodGet, "/databases", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req, next.ServeHTTP)
+
+	require.True(t, called)
+}
+
+func TestJwtMiddleware_WhitelistedURL(t *testing.T) {
+	withPrestConf(t, &config.Prest{JWTWhiteList: []string{`\/auth`}})
+
+	req := httptest.NewRequest(http.MethodGet, "/auth", nil)
+	rec, called := serveMiddleware(JwtMiddleware("secret", "", "HS256"), req)
+
+	require.True(t, called)
+	require.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestJwtMiddleware_ValidHMACKey(t *testing.T) {
+	withPrestConf(t, &config.Prest{})
+
+	token := signTestJWT(t, "secret", validClaims())
+	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	rec, called := serveMiddleware(JwtMiddleware("secret", "", "HS256"), req)
+
+	require.True(t, called)
+	require.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestJwtMiddleware_EmptyToken(t *testing.T) {
+	withPrestConf(t, &config.Prest{})
+
+	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
+	rec, called := serveMiddleware(JwtMiddleware("secret", "", "HS256"), req)
+
+	require.False(t, called)
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	require.Contains(t, rec.Body.String(), ErrAuthIsEmpty.Error())
+}
+
+func TestJwtMiddleware_InvalidToken(t *testing.T) {
+	withPrestConf(t, &config.Prest{})
+
+	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
+	req.Header.Set("Authorization", "Bearer bad-token")
+
+	rec, called := serveMiddleware(JwtMiddleware("secret", "", "HS256"), req)
+
+	require.False(t, called)
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	require.Contains(t, rec.Body.String(), ErrJWTParseFail.Error())
+}
+
+func TestJwtMiddleware_ExpiredClaims(t *testing.T) {
+	withPrestConf(t, &config.Prest{})
+
+	claims := auth.Claims{
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
+		Expiry:    jwt.NewNumericDate(time.Now().Add(-time.Hour)),
+	}
+	token := signTestJWT(t, "secret", claims)
+	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	rec, called := serveMiddleware(JwtMiddleware("secret", "", "HS256"), req)
+
+	require.False(t, called)
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	require.Contains(t, rec.Body.String(), ErrJWTValidate.Error())
+}
+
+func TestJwtMiddleware_WrongKey(t *testing.T) {
+	withPrestConf(t, &config.Prest{})
+
+	token := signTestJWT(t, "other", validClaims())
+	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	rec, called := serveMiddleware(JwtMiddleware("secret", "", "HS256"), req)
+
+	require.False(t, called)
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	require.Contains(t, rec.Body.String(), ErrJWTValidate.Error())
+}
+
+func TestCors_PreflightAllowed(t *testing.T) {
+	req := httptest.NewRequest(http.MethodOptions, "/", nil)
+	req.Header.Set("Access-Control-Request-Method", "POST")
+	req.Header.Set("Origin", "https://example.com")
+
+	rec := httptest.NewRecorder()
+	Cors([]string{"https://example.com"}, []string{"Authorization"}).ServeHTTP(rec, req, func(http.ResponseWriter, *http.Request) {
+		t.Fatal("next should not be called for OPTIONS preflight")
+	})
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Header().Get(headerAllowMethods), "POST")
+	require.Contains(t, rec.Header().Get(headerAllowHeaders), "Authorization")
+}
+
+func TestCors_PreflightForbiddenOrigin(t *testing.T) {
+	req := httptest.NewRequest(http.MethodOptions, "/", nil)
+	req.Header.Set("Access-Control-Request-Method", "POST")
+	req.Header.Set("Origin", "https://evil.com")
+
+	rec := httptest.NewRecorder()
+	Cors([]string{"https://example.com"}, nil).ServeHTTP(rec, req, func(http.ResponseWriter, *http.Request) {
+		t.Fatal("next should not be called when origin is forbidden")
+	})
+
+	require.Equal(t, http.StatusForbidden, rec.Code)
+}
+
+func TestCors_RegularRequestPassesThrough(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec, called := serveMiddleware(Cors([]string{"*"}, nil), req)
+
+	require.True(t, called)
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "*", rec.Header().Get(headerAllowOrigin))
+}
+
+func TestExposureMiddleware_DatabasesDenied(t *testing.T) {
+	withPrestConf(t, &config.Prest{
+		ExposeConf: config.ExposeConf{DatabaseListing: false},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/databases", nil)
+	rec, called := serveMiddleware(ExposureMiddleware(), req)
+
+	require.False(t, called)
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	require.Contains(t, rec.Body.String(), "unauthorized listing")
+}
+
+func TestExposureMiddleware_SchemasDenied(t *testing.T) {
+	withPrestConf(t, &config.Prest{
+		ExposeConf: config.ExposeConf{SchemaListing: false},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/schemas", nil)
+	rec, called := serveMiddleware(ExposureMiddleware(), req)
+
+	require.False(t, called)
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
+func TestExposureMiddleware_TablesDenied(t *testing.T) {
+	withPrestConf(t, &config.Prest{
+		ExposeConf: config.ExposeConf{TableListing: false},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/tables", nil)
+	rec, called := serveMiddleware(ExposureMiddleware(), req)
+
+	require.False(t, called)
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
+func TestExposureMiddleware_Allowed(t *testing.T) {
+	withPrestConf(t, &config.Prest{
+		ExposeConf: config.ExposeConf{
+			DatabaseListing: true,
+			SchemaListing:   true,
+			TableListing:    true,
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/databases", nil)
+	rec, called := serveMiddleware(ExposureMiddleware(), req)
+
+	require.True(t, called)
+	require.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestExposureMiddleware_NonListingPath(t *testing.T) {
+	withPrestConf(t, &config.Prest{
+		ExposeConf: config.ExposeConf{},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
+	rec, called := serveMiddleware(ExposureMiddleware(), req)
+
+	require.True(t, called)
+	require.Equal(t, http.StatusOK, rec.Code)
+}
+
+func appTestWithJwt(t *testing.T) *negroni.Negroni {
+	resetAppState()
+	t.Cleanup(resetAppState)
+
+	n := GetApp()
+	r := mux.NewRouter()
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("test app"))
+	}).Methods("GET")
+	n.UseHandler(r)
+	return n
+}
+
 func TestJWTClaimsOk(t *testing.T) {
-	app = nil
-	MiddlewareStack = nil
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
 	t.Setenv("PREST_JWT_KEY", "s3cr3t")
 	t.Setenv("PREST_JWT_ALGO", "HS512")
 	config.Load()
-	nd := appTestWithJwt()
+	nd := appTestWithJwt(t)
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
 
@@ -59,13 +582,12 @@ func TestJWTClaimsOk(t *testing.T) {
 }
 
 func TestJWTClaimsNotOk(t *testing.T) {
-	app = nil
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
 	t.Setenv("PREST_JWT_KEY", "s3cr3t")
 	t.Setenv("PREST_JWT_ALGO", "HS256")
 	config.Load()
-	nd := appTestWithJwt()
+	nd := appTestWithJwt(t)
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
 
@@ -100,8 +622,6 @@ func TestJWTClaimsNotOk(t *testing.T) {
 
 // todo: Add unit test for other types of keys
 func TestJWKSetRSAOk(t *testing.T) {
-	app = nil
-	MiddlewareStack = nil
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
 
@@ -124,7 +644,7 @@ func TestJWKSetRSAOk(t *testing.T) {
 	t.Setenv("PREST_JWT_JWKS", string(jwkSetJSON))
 
 	config.Load()
-	nd := appTestWithJwt()
+	nd := appTestWithJwt(t)
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
 
@@ -158,8 +678,6 @@ func TestJWKSetRSAOk(t *testing.T) {
 }
 
 func TestJWKSetRSANoKey(t *testing.T) {
-	app = nil
-	MiddlewareStack = nil
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
 
@@ -186,7 +704,7 @@ func TestJWKSetRSANoKey(t *testing.T) {
 	require.NoError(t, err)
 
 	config.Load()
-	nd := appTestWithJwt()
+	nd := appTestWithJwt(t)
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
 

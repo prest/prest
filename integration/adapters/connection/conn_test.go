@@ -1,18 +1,16 @@
-package connection
+package connection_test
 
 import (
 	"testing"
 
-	config "github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/adapters/postgres"
+	"github.com/prest/prest/v2/integration/helpers"
 )
 
-func init() {
-	config.Load()
-}
-
 func TestGet(t *testing.T) {
+	helpers.LoadTestConfig(t)
 	t.Log("Open connection")
-	db, err := Get()
+	db, err := postgres.Get()
 	if err != nil {
 		t.Fatalf("Expected err equal to nil but got %q", err.Error())
 	}
@@ -25,8 +23,9 @@ func TestGet(t *testing.T) {
 }
 
 func TestMustGet(t *testing.T) {
+	helpers.LoadTestConfig(t)
 	t.Log("Open connection")
-	db := MustGet()
+	db := postgres.MustGet()
 	if db == nil {
 		t.Fatalf("expected db connection, but no was!")
 	}

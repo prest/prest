@@ -50,6 +50,11 @@ func initApp() {
 	app = negroni.New(MiddlewareStack...)
 }
 
+func resetAppState() {
+	app = nil
+	MiddlewareStack = nil
+}
+
 // GetApp get negroni
 func GetApp() *negroni.Negroni {
 	if app == nil {

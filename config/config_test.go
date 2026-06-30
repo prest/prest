@@ -26,12 +26,16 @@ func TestLoad(t *testing.T) {
 func TestParse(t *testing.T) {
 	t.Run("no envs", func(t *testing.T) {
 		t.Setenv("PREST_CONF", "../notfound.toml")
+		unsetEnvForTest(t, "PREST_PG_DATABASE")
+		unsetEnvForTest(t, "PREST_PG_HOST")
+		unsetEnvForTest(t, "PREST_PG_USER")
+		unsetEnvForTest(t, "PREST_PG_PASS")
 		cf := &Prest{}
 		viperCfg()
 		Parse(cf)
 		require.Equal(t, 3000, cf.HTTPPort)
-		require.Equal(t, "prest-test", cf.PGDatabase)
-		require.Equal(t, "postgres", cf.PGHost)
+		require.Equal(t, "prest", cf.PGDatabase)
+		require.Equal(t, "127.0.0.1", cf.PGHost)
 		require.Equal(t, "postgres", cf.PGUser)
 		require.Equal(t, "postgres", cf.PGPass)
 		require.Equal(t, true, cf.PGCache)
@@ -43,6 +47,7 @@ func TestParse(t *testing.T) {
 
 	t.Run("PREST_CONF", func(t *testing.T) {
 		t.Setenv("PREST_CONF", "../testdata/prest.toml")
+		t.Setenv("PREST_PG_DATABASE", "prest-test")
 		viperCfg()
 		cfg := &Prest{}
 		Parse(cfg)
@@ -384,4 +389,14 @@ func Test_ExposeDataConfig(t *testing.T) {
 	for i, v := range cfg.AuthMetadata {
 		require.Equal(t, metadata[i], v)
 	}
+}
+
+func unsetEnvForTest(t *testing.T, key string) {
+	t.Helper()
+	if prev, ok := os.LookupEnv(key); ok {
+		t.Cleanup(func() { _ = os.Setenv(key, prev) })
+	} else {
+		t.Cleanup(func() { _ = os.Unsetenv(key) })
+	}
+	require.NoError(t, os.Unsetenv(key))
 }

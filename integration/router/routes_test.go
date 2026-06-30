@@ -1,30 +1,26 @@
-package router
+package router_test
 
 import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/prest/prest/v2/adapters/postgres"
 	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/integration/helpers"
+	"github.com/prest/prest/v2/router"
 	"github.com/prest/prest/v2/testutils"
-
 	"github.com/stretchr/testify/require"
 )
 
-func init() {
-	// load configuration at the beginning of the tests
-	config.Load()
-	postgres.Load()
-}
-
 func TestRoutes(t *testing.T) {
-	r := Routes()
+	helpers.LoadTestConfig(t)
+	r := router.Routes()
 	require.NotNil(t, r)
 }
 
 func TestDefaultRouters(t *testing.T) {
-	server := httptest.NewServer(GetRouter())
+	helpers.LoadTestConfig(t)
+	server := httptest.NewServer(router.GetRouter())
 	defer server.Close()
 
 	var testCases = []struct {
@@ -53,8 +49,10 @@ func TestDefaultRouters(t *testing.T) {
 }
 
 func TestAuthRouterActive(t *testing.T) {
+	helpers.LoadTestConfig(t)
 	config.PrestConf.AuthEnabled = true
-	server := httptest.NewServer(GetRouter())
+	server := httptest.NewServer(router.GetRouter())
+	defer server.Close()
 	testutils.DoRequest(t, server.URL+"/auth", nil, "GET", http.StatusNotFound, "AuthEnable")
 	testutils.DoRequest(t, server.URL+"/auth", nil, "POST", http.StatusUnauthorized, "AuthEnable")
 }
