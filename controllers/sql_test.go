@@ -14,9 +14,10 @@ import (
 )
 
 func TestExecuteScriptQuery(t *testing.T) {
+	h := testHandlers()
 	r := mux.NewRouter()
 	r.HandleFunc("/testing/script-get/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp, err := ExecuteScriptQuery(r, "fulltable", "get_all")
+		resp, err := h.Script.ExecuteScriptQuery(r, "fulltable", "get_all")
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusBadRequest)
 		}
@@ -24,7 +25,7 @@ func TestExecuteScriptQuery(t *testing.T) {
 	}))
 
 	r.HandleFunc("/testing/script-post/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp, err := ExecuteScriptQuery(r, "fulltable", "write_all")
+		resp, err := h.Script.ExecuteScriptQuery(r, "fulltable", "write_all")
 		if err != nil {
 			jsonError(w, err.Error(), http.StatusBadRequest)
 		}
@@ -51,8 +52,9 @@ func TestExecuteScriptQuery(t *testing.T) {
 }
 
 func TestExecuteFromScripts(t *testing.T) {
+	h := testHandlers()
 	router := mux.NewRouter()
-	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", setHTTPTimeoutMiddleware(ExecuteFromScripts))
+	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", setHTTPTimeoutMiddleware(h.Script.Execute))
 	server := httptest.NewServer(router)
 	defer server.Close()
 
@@ -94,9 +96,10 @@ func TestRenderWithXML(t *testing.T) {
 	t.Setenv("PREST_DEBUG", "true")
 	config.Load()
 	postgres.Load()
+	h := testHandlers()
 	n := middlewares.GetApp()
 	r := mux.NewRouter()
-	r.HandleFunc("/schemas", GetSchemas).Methods("GET")
+	r.HandleFunc("/schemas", h.Catalog.ListSchemas).Methods("GET")
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
 	defer server.Close()
@@ -111,8 +114,9 @@ func TestSilentErrorsOnQuery(t *testing.T) {
 	t.Setenv("PREST_DEBUG", "false")
 	config.Load()
 	postgres.Load()
+	h := testHandlers()
 	router := mux.NewRouter()
-	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", setHTTPTimeoutMiddleware(ExecuteFromScripts))
+	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", setHTTPTimeoutMiddleware(h.Script.Execute))
 	server := httptest.NewServer(router)
 	defer server.Close()
 

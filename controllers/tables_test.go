@@ -55,8 +55,9 @@ func TestGetTables(t *testing.T) {
 		{"Get tables with noexistent column", "/tables?c.rolooo=$eq.test", "GET", http.StatusBadRequest},
 	}
 
+	h := testHandlers()
 	router := mux.NewRouter()
-	router.HandleFunc("/tables", setHTTPTimeoutMiddleware(GetTables)).
+	router.HandleFunc("/tables", setHTTPTimeoutMiddleware(h.Catalog.ListTables)).
 		Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -94,8 +95,9 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 		// Testing against multiple databases needs `SingleDB = false` in the
 		// config
 		config.PrestConf.SingleDB = false
+		h := testHandlers()
 		router := mux.NewRouter()
-		router.HandleFunc("/{database}/{schema}", setHTTPTimeoutMiddleware(GetTablesByDatabaseAndSchema)).
+		router.HandleFunc("/{database}/{schema}", setHTTPTimeoutMiddleware(h.Catalog.ListTablesByDatabaseAndSchema)).
 			Methods("GET")
 		server := httptest.NewServer(router)
 		defer server.Close()
@@ -107,8 +109,9 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 }
 
 func TestSelectFromTables(t *testing.T) {
+	h := testHandlers()
 	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(SelectFromTables)).
+	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(h.CRUD.Select)).
 		Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -195,8 +198,9 @@ func TestInsertInTables(t *testing.T) {
 	mARRAY := make(map[string]interface{})
 	mARRAY["data"] = []string{"value 1", "value 2", "value 3"}
 
+	h := testHandlers()
 	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(InsertInTables)).
+	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(h.CRUD.Insert)).
 		Methods("POST")
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -234,8 +238,9 @@ func TestBatchInsertInTables(t *testing.T) {
 	mARRAY := make([]map[string]interface{}, 0)
 	mARRAY = append(mARRAY, map[string]interface{}{"data": []string{"1", "2"}}, map[string]interface{}{"data": []string{"1", "2", "3"}})
 
+	h := testHandlers()
 	router := mux.NewRouter()
-	router.HandleFunc("/batch/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(BatchInsertInTables)).
+	router.HandleFunc("/batch/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(h.CRUD.BatchInsert)).
 		Methods("POST")
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -293,8 +298,9 @@ func TestBatchInsertInTables(t *testing.T) {
 }
 
 func TestDeleteFromTable(t *testing.T) {
+	h := testHandlers()
 	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(DeleteFromTable)).
+	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(h.CRUD.Delete)).
 		Methods("DELETE")
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -322,8 +328,9 @@ func TestDeleteFromTable(t *testing.T) {
 }
 
 func TestUpdateFromTable(t *testing.T) {
+	h := testHandlers()
 	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(UpdateTable)).
+	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(h.CRUD.Update)).
 		Methods("PUT", "PATCH")
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -359,8 +366,9 @@ func TestUpdateFromTable(t *testing.T) {
 }
 
 func TestShowTable(t *testing.T) {
+	h := testHandlers()
 	router := mux.NewRouter()
-	router.HandleFunc("/show/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(ShowTable)).
+	router.HandleFunc("/show/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(h.Table.Show)).
 		Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()

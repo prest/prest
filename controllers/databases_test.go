@@ -36,7 +36,8 @@ func TestGetDatabases(t *testing.T) {
 	}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/databases", GetDatabases).Methods("GET")
+	h := testHandlers()
+	router.HandleFunc("/databases", h.Catalog.ListDatabases).Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
 

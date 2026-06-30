@@ -12,49 +12,41 @@ import (
 	"github.com/urfave/negroni/v3"
 )
 
-// GetRouter reagister all routes
-// v2: this is not used anywhere, so we can make it private
-func GetRouter() *mux.Router {
-	router := mux.NewRouter().StrictSlash(true)
-
+// RegisterRoutes wires HTTP routes onto the given router.
+func RegisterRoutes(router *mux.Router, h *controllers.Handlers, crudStack *middlewares.CRUDStack) {
 	if config.PrestConf.AuthEnabled {
-		// can be db specific in the future, there's bellow a proposal
-		// maybe disable on multiple databases
-		router.HandleFunc("/auth", controllers.Auth).Methods("POST")
-		// multiple DB suggestion:
-		// router.HandleFunc("/db/{database}/auth", controllers.Auth).Methods("POST")
+		router.HandleFunc("/auth", h.Auth.Login).Methods("POST")
 	}
-	router.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
-	router.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
-	router.HandleFunc("/tables", controllers.GetTables).Methods("GET")
-	// breaking change
-	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", controllers.ExecuteFromScripts)
-	// router.HandleFunc("/_QUERIES/{database}/{queriesLocation}/{script}", controllers.ExecuteFromScripts)
-	// if it is windows it should not register the plugin endpoint
-	// we use go plugin system that does not support windows
-	// https://github.com/golang/go/issues/19282
+	router.HandleFunc("/databases", h.Catalog.ListDatabases).Methods("GET")
+	router.HandleFunc("/schemas", h.Catalog.ListSchemas).Methods("GET")
+	router.HandleFunc("/tables", h.Catalog.ListTables).Methods("GET")
+	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", h.Script.Execute)
 	if runtime.GOOS != "windows" {
 		router.HandleFunc("/_PLUGIN/{file}/{func}", plugins.HandlerPlugin)
 	}
-	router.HandleFunc("/{database}/{schema}", controllers.GetTablesByDatabaseAndSchema).Methods("GET")
-	router.HandleFunc("/show/{database}/{schema}/{table}", controllers.ShowTable).Methods("GET")
-	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
-	router.HandleFunc("/_health", controllers.WrappedHealthCheck(controllers.DefaultCheckList)).Methods("GET")
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.SelectFromTables).Methods("GET")
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.InsertInTables).Methods("POST")
-	crudRoutes.HandleFunc("/batch/{database}/{schema}/{table}", controllers.BatchInsertInTables).Methods("POST")
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.DeleteFromTable).Methods("DELETE")
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.UpdateTable).Methods("PUT", "PATCH")
-	router.PathPrefix("/").Handler(negroni.New(
-		middlewares.AuthMiddleware(config.PrestConf.JWTAlgo),
-		middlewares.AccessControl(),
-		middlewares.ExposureMiddleware(),
-		middlewares.CacheMiddleware(&config.PrestConf.Cache),
-		// plugins middleware
-		plugins.MiddlewarePlugin(),
-		negroni.Wrap(crudRoutes),
-	))
+	router.HandleFunc("/{database}/{schema}", h.Catalog.ListTablesByDatabaseAndSchema).Methods("GET")
+	router.HandleFunc("/show/{database}/{schema}/{table}", h.Table.Show).Methods("GET")
+	router.HandleFunc("/_health", h.Health.Handler()).Methods("GET")
 
+	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
+	crudRoutes.HandleFunc("/{database}/{schema}/{table}", h.CRUD.Select).Methods("GET")
+	crudRoutes.HandleFunc("/{database}/{schema}/{table}", h.CRUD.Insert).Methods("POST")
+	crudRoutes.HandleFunc("/batch/{database}/{schema}/{table}", h.CRUD.BatchInsert).Methods("POST")
+	crudRoutes.HandleFunc("/{database}/{schema}/{table}", h.CRUD.Delete).Methods("DELETE")
+	crudRoutes.HandleFunc("/{database}/{schema}/{table}", h.CRUD.Update).Methods("PUT", "PATCH")
+
+	router.PathPrefix("/").Handler(negroni.New(append(
+		crudStack.Handlers(),
+		negroni.Wrap(crudRoutes),
+	)...))
+}
+
+// GetRouter registers all routes using dependencies from config.
+func GetRouter() *mux.Router {
+	router := mux.NewRouter().StrictSlash(true)
+	h := controllers.NewHandlersFromConfig(config.PrestConf)
+	crudStack := middlewares.NewCRUDStack(config.PrestConf)
+	RegisterRoutes(router, h, crudStack)
 	return router
 }
 

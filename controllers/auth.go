@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers/auth"
 
@@ -38,44 +39,30 @@ type Login struct {
 	Password string `json:"password"`
 }
 
-// Token for user
-func Token(u auth.User) (t string, err error) {
-	// add start time (NotBefore)
-	getToken := time.Now()
-	// add expiry time in configuration (in minute format, so we support the maximum need)
-	expireToken := time.Now().Add(time.Hour * 6)
-
-	// TODO: JWT any Algorithm support
-	sig, err := jose.NewSigner(
-		jose.SigningKey{
-			Algorithm: jose.HS256,
-			Key:       []byte(config.PrestConf.JWTKey)},
-		(&jose.SignerOptions{}).WithType("JWT"))
-	if err != nil {
-		return
-	}
-
-	cl := auth.Claims{
-		UserInfo:  u,
-		NotBefore: jwt.NewNumericDate(getToken),
-		Expiry:    jwt.NewNumericDate(expireToken),
-	}
-	return jwt.Signed(sig).Claims(cl).CompactSerialize()
+// AuthHandler serves the authentication endpoint.
+type AuthHandler struct {
+	executor adapters.QueryExecutor
+	cfg      AuthConfig
 }
 
-// Auth controller
-func Auth(w http.ResponseWriter, r *http.Request) {
+// NewAuthHandler creates an AuthHandler.
+func NewAuthHandler(executor adapters.QueryExecutor, cfg AuthConfig) *AuthHandler {
+	return &AuthHandler{
+		executor: executor,
+		cfg:      cfg,
+	}
+}
+
+// Login authenticates a user and returns a JWT.
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	login := Login{}
-	switch config.PrestConf.AuthType {
-	// TODO: form support
+	switch h.cfg.AuthType {
 	case "body":
-		// to use body field authentication
 		dec := json.NewDecoder(r.Body)
 		dec.DisallowUnknownFields()
 		//nolint
 		dec.Decode(&login)
 	case "basic":
-		// to use http basic authentication
 		var ok bool
 		login.Username, login.Password, ok = r.BasicAuth()
 		if !ok {
@@ -84,12 +71,12 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	loggedUser, err := basicPasswordCheck(strings.ToLower(login.Username), login.Password)
+	loggedUser, err := h.basicPasswordCheck(strings.ToLower(login.Username), login.Password)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
-	token, err := Token(loggedUser)
+	token, err := h.token(loggedUser)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -105,15 +92,29 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// basicPasswordCheck
-func basicPasswordCheck(user, password string) (obj auth.User, err error) {
-	/**
-	table name, fields (user and password) and encryption must be defined in
-	the configuration file (toml)
-	by default this endpoint will not be available, it is necessary to activate
-	in the configuration file
-	*/
-	sc := config.PrestConf.Adapter.Query(getSelectQuery(), user, encrypt(password))
+func (h *AuthHandler) token(u auth.User) (t string, err error) {
+	getToken := time.Now()
+	expireToken := time.Now().Add(time.Hour * 6)
+
+	sig, err := jose.NewSigner(
+		jose.SigningKey{
+			Algorithm: jose.HS256,
+			Key:       []byte(h.cfg.JWTKey)},
+		(&jose.SignerOptions{}).WithType("JWT"))
+	if err != nil {
+		return
+	}
+
+	cl := auth.Claims{
+		UserInfo:  u,
+		NotBefore: jwt.NewNumericDate(getToken),
+		Expiry:    jwt.NewNumericDate(expireToken),
+	}
+	return jwt.Signed(sig).Claims(cl).CompactSerialize()
+}
+
+func (h *AuthHandler) basicPasswordCheck(user, password string) (obj auth.User, err error) {
+	sc := h.executor.Query(h.selectQuery(), user, h.encrypt(password))
 	if sc.Err() != nil {
 		err = sc.Err()
 		return
@@ -129,21 +130,25 @@ func basicPasswordCheck(user, password string) (obj auth.User, err error) {
 	return
 }
 
-// getSelectQuery create the query to authenticate the user
-func getSelectQuery() (query string) {
+func (h *AuthHandler) selectQuery() (query string) {
 	return fmt.Sprintf(
 		`SELECT * FROM %s.%s WHERE %s=$1 AND %s=$2 LIMIT 1`,
-		config.PrestConf.AuthSchema, config.PrestConf.AuthTable,
-		config.PrestConf.AuthUsername, config.PrestConf.AuthPassword)
+		h.cfg.Schema, h.cfg.Table,
+		h.cfg.Username, h.cfg.Password)
 }
 
-// encrypt will apply the encryption algorithm to the password
-func encrypt(password string) (encrypted string) {
-	switch config.PrestConf.AuthEncrypt {
+func (h *AuthHandler) encrypt(password string) (encrypted string) {
+	switch h.cfg.Encrypt {
 	case "MD5":
 		return fmt.Sprintf("%x", md5.Sum([]byte(password)))
 	case "SHA1":
 		return fmt.Sprintf("%x", sha1.Sum([]byte(password)))
 	}
 	return
+}
+
+// Token creates a JWT for the given user using global config (legacy helper for tests).
+func Token(u auth.User) (t string, err error) {
+	h := NewAuthHandler(nil, AuthConfig{JWTKey: config.PrestConf.JWTKey})
+	return h.token(u)
 }

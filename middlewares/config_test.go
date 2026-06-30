@@ -83,11 +83,12 @@ func Test_Middleware_DoesntBlock_CustomRoutes(t *testing.T) {
 	app = nil
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
+	h := controllers.NewHandlersFromConfig(config.PrestConf)
 	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.SelectFromTables).Methods("GET")
+	crudRoutes.HandleFunc("/{database}/{schema}/{table}", h.CRUD.Select).Methods("GET")
 
 	r.PathPrefix("/").Handler(negroni.New(
-		AccessControl(),
+		AccessControl(config.PrestConf.Adapter),
 		negroni.Wrap(crudRoutes),
 	))
 	t.Setenv("PREST_CONF", "../testdata/prest.toml")
@@ -286,10 +287,11 @@ func TestExposeTablesMiddleware(t *testing.T) {
 	t.Setenv("PREST_CONF", "../testdata/prest_expose.toml")
 	config.Load()
 	app = nil
+	h := controllers.NewHandlersFromConfig(config.PrestConf)
 	r := mux.NewRouter()
-	r.HandleFunc("/tables", controllers.GetTables).Methods("GET")
-	r.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
-	r.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
+	r.HandleFunc("/tables", h.Catalog.ListTables).Methods("GET")
+	r.HandleFunc("/databases", h.Catalog.ListDatabases).Methods("GET")
+	r.HandleFunc("/schemas", h.Catalog.ListSchemas).Methods("GET")
 	n := GetApp()
 	n.UseHandler(r)
 	server := httptest.NewServer(n)

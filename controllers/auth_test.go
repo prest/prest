@@ -17,18 +17,21 @@ import (
 
 func initAuthRoutes() *mux.Router {
 	r := mux.NewRouter()
-	// if auth is enabled
 	if config.PrestConf.AuthEnabled {
-		r.HandleFunc("/auth", Auth).Methods("POST")
+		r.HandleFunc("/auth", testHandlers().Auth.Login).Methods("POST")
 	}
 	return r
+}
+
+func testAuthHandler() *AuthHandler {
+	return testHandlers().Auth
 }
 
 func Test_basicPasswordCheck(t *testing.T) {
 	config.Load()
 	postgres.Load()
 
-	_, err := basicPasswordCheck("test@postgres.rest", "123456")
+	_, err := testAuthHandler().basicPasswordCheck("test@postgres.rest", "123456")
 	if err != nil {
 		t.Errorf("expected authenticated user, got: %s", err)
 	}
@@ -38,7 +41,7 @@ func Test_getSelectQuery(t *testing.T) {
 	config.Load()
 
 	expected := "SELECT * FROM public.prest_users WHERE username=$1 AND password=$2 LIMIT 1"
-	query := getSelectQuery()
+	query := testAuthHandler().selectQuery()
 
 	if query != expected {
 		t.Errorf("expected query: %s, got: %s", expected, query)
@@ -49,7 +52,7 @@ func Test_encrypt(t *testing.T) {
 	config.Load()
 
 	pwd := "123456"
-	enc := encrypt(pwd)
+	enc := testAuthHandler().encrypt(pwd)
 
 	md5Enc := fmt.Sprintf("%x", md5.Sum([]byte(pwd)))
 	if enc != md5Enc {
@@ -58,7 +61,7 @@ func Test_encrypt(t *testing.T) {
 
 	config.PrestConf.AuthEncrypt = "SHA1"
 
-	enc = encrypt(pwd)
+	enc = testAuthHandler().encrypt(pwd)
 
 	sha1Enc := fmt.Sprintf("%x", sha1.Sum([]byte(pwd)))
 	if enc != sha1Enc {

@@ -5,7 +5,7 @@ These instructions guide AI-generated changes in this repository.
 ## Project Scope
 
 - Repository: `github.com/prest/prest`
-- Language: Go (`go 1.25.0`, always check `go.mod`)
+- Language: Go (`go 1.26.0`, always check `go.mod`)
 - Primary domain: PostgreSQL-backed REST API server, CLI, middleware, adapters, and plugins.
 - Runtime entrypoint: `cmd/prestd/main.go`
 
@@ -13,7 +13,7 @@ These instructions guide AI-generated changes in this repository.
 
 - Prefer small, focused changes over broad refactors.
 - Preserve existing public behavior unless the task explicitly requires a change.
-- Keep compatibility with Go 1.25.0.
+- Keep compatibility with Go 1.26.0.
 - Favor readability and maintainability over clever abstractions.
 - Do not introduce breaking changes to command flags, config keys, routes, or plugin behavior without explicit request.
 

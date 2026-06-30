@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/config"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
@@ -121,7 +122,7 @@ func Validate(c auth.Claims) error {
 }
 
 // AccessControl is a middleware to handle permissions on tables in pREST
-func AccessControl() negroni.Handler {
+func AccessControl(perms adapters.PermissionsChecker) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
 		mapPath := getVars(rq.URL.Path)
 		if mapPath == nil {
@@ -145,7 +146,7 @@ func AccessControl() negroni.Handler {
 			return
 		}
 
-		if config.PrestConf.Adapter.TablePermissions(mapPath["table"], permission, userName) {
+		if perms.TablePermissions(mapPath["table"], permission, userName) {
 			next(rw, rq)
 			return
 		}
