@@ -26,7 +26,7 @@ echo "\n\n.:: PRESTD: TESTING STARTING..."
 if [ -z ${1+x} ]; then
     go test -v -race -failfast ./integration/...;
 else
-    go test -v -race -failfast $@
+    go test -v -race -failfast "$@"
 fi
 
 for db in $DATABASES; do
