@@ -28,6 +28,8 @@ func TestAuthDisable(t *testing.T) {
 
 func TestAuthEnable(t *testing.T) {
 	helpers.LoadTestConfig(t)
+	authEnabled := config.PrestConf.AuthEnabled
+	defer func() { config.PrestConf.AuthEnabled = authEnabled }()
 	config.PrestConf.AuthEnabled = true
 
 	r := mux.NewRouter()

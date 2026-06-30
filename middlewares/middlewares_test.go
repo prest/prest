@@ -20,7 +20,10 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
-func appTestWithJwt() *negroni.Negroni {
+func appTestWithJwt(t *testing.T) *negroni.Negroni {
+	ResetForTest()
+	t.Cleanup(ResetForTest)
+
 	n := GetApp()
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -31,14 +34,12 @@ func appTestWithJwt() *negroni.Negroni {
 }
 
 func TestJWTClaimsOk(t *testing.T) {
-	app = nil
-	MiddlewareStack = nil
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
 	t.Setenv("PREST_JWT_KEY", "s3cr3t")
 	t.Setenv("PREST_JWT_ALGO", "HS512")
 	config.Load()
-	nd := appTestWithJwt()
+	nd := appTestWithJwt(t)
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
 
@@ -71,13 +72,12 @@ func TestJWTClaimsOk(t *testing.T) {
 }
 
 func TestJWTClaimsNotOk(t *testing.T) {
-	app = nil
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
 	t.Setenv("PREST_JWT_KEY", "s3cr3t")
 	t.Setenv("PREST_JWT_ALGO", "HS256")
 	config.Load()
-	nd := appTestWithJwt()
+	nd := appTestWithJwt(t)
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
 
@@ -112,8 +112,6 @@ func TestJWTClaimsNotOk(t *testing.T) {
 
 // todo: Add unit test for other types of keys
 func TestJWKSetRSAOk(t *testing.T) {
-	app = nil
-	MiddlewareStack = nil
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
 
@@ -136,7 +134,7 @@ func TestJWKSetRSAOk(t *testing.T) {
 	t.Setenv("PREST_JWT_JWKS", string(jwkSetJSON))
 
 	config.Load()
-	nd := appTestWithJwt()
+	nd := appTestWithJwt(t)
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
 
@@ -170,8 +168,6 @@ func TestJWKSetRSAOk(t *testing.T) {
 }
 
 func TestJWKSetRSANoKey(t *testing.T) {
-	app = nil
-	MiddlewareStack = nil
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
 
@@ -198,7 +194,7 @@ func TestJWKSetRSANoKey(t *testing.T) {
 	require.NoError(t, err)
 
 	config.Load()
-	nd := appTestWithJwt()
+	nd := appTestWithJwt(t)
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
 

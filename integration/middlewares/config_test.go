@@ -27,16 +27,15 @@ func TestMain(m *testing.M) {
 
 func TestInitApp(t *testing.T) {
 	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
 	require.NotNil(t, middlewares.GetApp())
-	middlewares.ResetForTest()
 }
 
 func TestGetApp(t *testing.T) {
 	helpers.LoadTestConfig(t)
 	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
 	require.NotNil(t, middlewares.GetApp())
-
-	middlewares.ResetForTest()
 }
 
 func TestGetAppWithReorderedMiddleware(t *testing.T) {

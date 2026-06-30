@@ -20,7 +20,7 @@ func initMiddlewarePluginTestRouter() *negroni.Negroni {
 
 func TestPluginsMiddleware(t *testing.T) {
 	helpers.LoadTestConfig(t)
-	config.PrestConf.PluginPath = "../lib"
+	config.PrestConf.PluginPath = helpers.PluginLibDir()
 	config.PrestConf.PluginMiddlewareList = []config.PluginMiddleware{
 		{File: "hello", Func: "Hello"},
 	}

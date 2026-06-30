@@ -89,6 +89,10 @@ func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt
 
 // Load postgres
 func Load() {
+	if config.PrestConf == nil {
+		slog.Error("config not loaded")
+		os.Exit(1)
+	}
 	config.PrestConf.Adapter = &Postgres{}
 
 	if connection.GetDatabase() == "" {

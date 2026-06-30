@@ -4,7 +4,7 @@ UNIT_PKGS := $(shell go list ./... | grep -v '/integration')
 
 .PHONY: build_test_image test test-unit test-integration
 build_test_image:
-	$(DOCKER_COMPOSE) run --rm postgres -d
+	$(DOCKER_COMPOSE) up -d postgres
 
 test: test-unit
 
@@ -12,8 +12,10 @@ test-unit:
 	go test -race -count=1 -covermode=atomic -coverprofile=coverage.out $(UNIT_PKGS)
 
 test-integration:
-	docker compose -f docker-compose-test.yml up --abort-on-container-exit --exit-code-from tests
-	docker compose -f docker-compose-test.yml down -v --remove-orphans
+	docker compose -f docker-compose-test.yml up --abort-on-container-exit --exit-code-from tests; \
+	status=$$?; \
+	docker compose -f docker-compose-test.yml down -v --remove-orphans; \
+	exit $$status
 
 .PHONY: dc-up
 dc-up:

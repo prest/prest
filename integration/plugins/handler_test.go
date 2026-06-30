@@ -20,7 +20,7 @@ func initPluginRoutes() *mux.Router {
 
 func TestPlugins(t *testing.T) {
 	helpers.LoadTestConfig(t)
-	config.PrestConf.PluginPath = "../lib"
+	config.PrestConf.PluginPath = helpers.PluginLibDir()
 	server := httptest.NewServer(initPluginRoutes())
 	defer server.Close()
 

@@ -10,17 +10,16 @@ import (
 	"os/exec"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/adapters/postgres"
-		"github.com/prest/prest/v2/adapters/postgres/statements"
+	"github.com/prest/prest/v2/adapters/postgres/statements"
 	"github.com/prest/prest/v2/adapters/scanner"
 	"github.com/prest/prest/v2/config"
-	"github.com/prest/prest/v2/integration/helpers"
 	pctx "github.com/prest/prest/v2/context"
-
-	"log/slog"
+	"github.com/prest/prest/v2/integration/helpers"
 
 	"github.com/stretchr/testify/require"
 )
@@ -31,9 +30,21 @@ var databases = []string{"prest-test", "secondary-db"}
 
 func TestMain(m *testing.M) {
 	helpers.EnsureTestConfigEnv()
-	config.Load()
-	postgres.Load()
 	os.Exit(m.Run())
+}
+
+var setupOnce sync.Once
+
+func setupTestDB(t *testing.T) {
+	t.Helper()
+	setupOnce.Do(func() {
+		config.Load()
+		postgres.Load()
+	})
+}
+
+func testLoadInCrashMode() bool {
+	return os.Getenv("BE_CRASHER_SUBPROCESS") == "1"
 }
 
 func TestLoadHasDBSetted(t *testing.T) {
@@ -45,26 +56,22 @@ func TestLoadHasDBSetted(t *testing.T) {
 
 func TestLoad(t *testing.T) {
 	// Only run the failing part when a specific env variable is set
-	if os.Getenv("BE_CRASHER") == "1" {
+	if testLoadInCrashMode() {
 		postgres.Load()
-		t.Setenv("PREST_PG_DATABASE", "prest-test")
 		return
 	}
 	// Start the actual test in a different subprocess
-	cmd := exec.Command(os.Args[0], "-test.run=TestLoad")
-	cmd.Env = append(os.Environ(), "BE_CRASHER=1")
-	output, err := cmd.CombinedOutput()
+	cmd := exec.Command(os.Args[0], "-test.run=^TestLoad$")
+	cmd.Env = append(os.Environ(), "BE_CRASHER_SUBPROCESS=1")
+	err := cmd.Run()
 	e, ok := err.(*exec.ExitError)
 	if !ok || e.Success() {
-		t.Fatalf("Process ran with err %v, want exit status 255", err)
-	}
-	slog.Info("TestLoad output", "output", string(output), "err", e.Error())
-	if !cmd.ProcessState.Success() {
-		os.Exit(0)
+		t.Fatalf("postgres.Load without config.Load: got err %v, want non-zero exit", err)
 	}
 }
 
 func TestParseInsertRequest(t *testing.T) {
+	setupTestDB(t)
 	config.Load()
 	postgres.Load()
 	m := make(map[string]interface{})
@@ -117,6 +124,7 @@ func TestParseInsertRequest(t *testing.T) {
 }
 
 func TestSetByRequest(t *testing.T) {
+	setupTestDB(t)
 	m := make(map[string]interface{})
 	m["name"] = "prest"
 	mc := make(map[string]interface{})
@@ -178,6 +186,7 @@ func TestSetByRequest(t *testing.T) {
 }
 
 func TestWhereByRequest(t *testing.T) {
+	setupTestDB(t)
 	config.Load()
 	postgres.Load()
 	var testCases = []struct {
@@ -261,6 +270,7 @@ func TestWhereByRequest(t *testing.T) {
 }
 
 func TestInvalidWhereByRequest(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description string
 		url         string
@@ -293,6 +303,7 @@ func TestInvalidWhereByRequest(t *testing.T) {
 }
 
 func TestReturningByRequest(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description string
 		url         string
@@ -324,6 +335,7 @@ func TestReturningByRequest(t *testing.T) {
 }
 
 func TestGroupByClause(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description string
 		url         string
@@ -370,6 +382,7 @@ func TestGroupByClause(t *testing.T) {
 }
 
 func TestEmptyTable(t *testing.T) {
+	setupTestDB(t)
 	sc := config.PrestConf.Adapter.Query("SELECT * FROM test_empty_table")
 	if sc.Err() != nil {
 		t.Fatal(sc.Err())
@@ -380,6 +393,7 @@ func TestEmptyTable(t *testing.T) {
 }
 
 func TestQuery(t *testing.T) {
+	setupTestDB(t)
 	var sc adapters.Scanner
 
 	var testCases = []struct {
@@ -413,6 +427,7 @@ func TestQuery(t *testing.T) {
 }
 
 func TestQueryCtx(t *testing.T) {
+	setupTestDB(t)
 	var sc adapters.Scanner
 
 	for _, db := range databases {
@@ -449,6 +464,7 @@ func TestQueryCtx(t *testing.T) {
 }
 
 func TestInvalidQuery(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description string
 		sql         string
@@ -472,6 +488,7 @@ func TestInvalidQuery(t *testing.T) {
 }
 
 func TestPaginateIfPossible(t *testing.T) {
+	setupTestDB(t)
 	var testCase = []struct {
 		description string
 		url         string
@@ -502,6 +519,7 @@ func TestPaginateIfPossible(t *testing.T) {
 }
 
 func TestInvalidPaginateIfPossible(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description string
 		url         string
@@ -529,6 +547,7 @@ func TestInvalidPaginateIfPossible(t *testing.T) {
 }
 
 func TestInsert(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description string
 		sql         string
@@ -552,6 +571,7 @@ func TestInsert(t *testing.T) {
 }
 
 func TestInsertCtx(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description string
 		sql         string
@@ -579,6 +599,7 @@ func TestInsertCtx(t *testing.T) {
 }
 
 func TestInsertInvalid(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description string
 		sql         string
@@ -603,6 +624,7 @@ func TestInsertInvalid(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description string
 		sql         string
@@ -637,6 +659,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestDeleteCtx(t *testing.T) {
+	setupTestDB(t)
 	ctx := context.Background()
 
 	var testCases = []struct {
@@ -673,6 +696,7 @@ func TestDeleteCtx(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description string
 		sql         string
@@ -707,6 +731,7 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestUpdateCtx(t *testing.T) {
+	setupTestDB(t)
 	ctx := context.Background()
 
 	var testCases = []struct {
@@ -743,6 +768,7 @@ func TestUpdateCtx(t *testing.T) {
 }
 
 func TestChkInvaidIdentifier(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		in  string
 		out bool
@@ -773,6 +799,7 @@ func TestChkInvaidIdentifier(t *testing.T) {
 }
 
 func TestJoinByRequest(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description     string
 		url             string
@@ -855,6 +882,7 @@ func TestJoinByRequest(t *testing.T) {
 }
 
 func TestCountFields(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description string
 		url         string
@@ -902,6 +930,7 @@ func TestCountFields(t *testing.T) {
 }
 
 func TestDatabaseClause(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description   string
 		url           string
@@ -927,6 +956,7 @@ func TestDatabaseClause(t *testing.T) {
 }
 
 func TestSchemaClause(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description   string
 		url           string
@@ -951,6 +981,7 @@ func TestSchemaClause(t *testing.T) {
 }
 
 func TestGetQueryOperator(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		in  string
 		out string
@@ -996,6 +1027,7 @@ func TestGetQueryOperator(t *testing.T) {
 }
 
 func TestOrderByRequest(t *testing.T) {
+	setupTestDB(t)
 	t.Log("Query ORDER BY")
 	var expectedSQL = []string{"ORDER BY", `"name"`, `"number" DESC`}
 
@@ -1064,6 +1096,7 @@ func TestOrderByRequest(t *testing.T) {
 }
 
 func TestTablePermissions(t *testing.T) {
+	setupTestDB(t)
 	postgres.Load()
 	var testCases = []struct {
 		description string
@@ -1388,6 +1421,7 @@ func TestTablePermissions(t *testing.T) {
 }
 
 func TestSupportHyphenInTable(t *testing.T) {
+	setupTestDB(t)
 	_, err := http.NewRequest("GET", "/prest-test/public/test-table-support-hyphen", nil)
 	if err != nil {
 		t.Errorf("expected no errors on Support Hyphen in Table, but got: %v", err)
@@ -1395,8 +1429,10 @@ func TestSupportHyphenInTable(t *testing.T) {
 }
 
 func TestRestrictFalse(t *testing.T) {
+	setupTestDB(t)
 	helpers.LoadTestConfig(t)
-	defer func() { config.PrestConf.AccessConf.Restrict = true }()
+	restrict := config.PrestConf.AccessConf.Restrict
+	defer func() { config.PrestConf.AccessConf.Restrict = restrict }()
 	config.PrestConf.AccessConf.Restrict = false
 
 	t.Log("Read unrestrict", config.PrestConf.AccessConf.Restrict)
@@ -1422,6 +1458,7 @@ func TestRestrictFalse(t *testing.T) {
 }
 
 func TestSelectFields(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description string
 		fields      []string
@@ -1467,6 +1504,7 @@ func TestSelectFields(t *testing.T) {
 }
 
 func TestColumnsByRequest(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description string
 		url         string
@@ -1495,6 +1533,7 @@ func TestColumnsByRequest(t *testing.T) {
 }
 
 func TestDistinctClause(t *testing.T) {
+	setupTestDB(t)
 	var testCase = []struct {
 		description string
 		url         string
@@ -1525,6 +1564,7 @@ func TestDistinctClause(t *testing.T) {
 }
 
 func TestNormalizeGroupFunction(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description string
 		urlValue    string
@@ -1557,6 +1597,7 @@ func TestNormalizeGroupFunction(t *testing.T) {
 }
 
 func TestCacheQuery(t *testing.T) {
+	setupTestDB(t)
 	sc := config.PrestConf.Adapter.Query(`SELECT * FROM "TestCase"`)
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
@@ -1568,6 +1609,7 @@ func TestCacheQuery(t *testing.T) {
 }
 
 func TestCacheQueryCount(t *testing.T) {
+	setupTestDB(t)
 	sc := config.PrestConf.Adapter.QueryCount(`SELECT COUNT(*) FROM "TestCase"`)
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
@@ -1579,6 +1621,7 @@ func TestCacheQueryCount(t *testing.T) {
 }
 
 func TestCacheQueryCountCtx(t *testing.T) {
+	setupTestDB(t)
 	for _, db := range databases {
 		ctx := context.WithValue(context.Background(), pctx.DBNameKey, db)
 
@@ -1595,6 +1638,7 @@ func TestCacheQueryCountCtx(t *testing.T) {
 }
 
 func TestCacheInsert(t *testing.T) {
+	setupTestDB(t)
 	sc := config.PrestConf.Adapter.Insert("INSERT INTO test(name) VALUES('testcache')")
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
@@ -1606,6 +1650,7 @@ func TestCacheInsert(t *testing.T) {
 }
 
 func TestCacheUpdate(t *testing.T) {
+	setupTestDB(t)
 	sc := config.PrestConf.Adapter.Update("UPDATE test SET name='test cache' WHERE name='testcache'")
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
@@ -1617,6 +1662,7 @@ func TestCacheUpdate(t *testing.T) {
 }
 
 func TestCacheDelete(t *testing.T) {
+	setupTestDB(t)
 	sc := config.PrestConf.Adapter.Delete("DELETE FROM test WHERE name='test cache'")
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
@@ -1638,6 +1684,7 @@ func BenchmarkPrepare(b *testing.B) {
 }
 
 func TestDisableCache(t *testing.T) {
+	setupTestDB(t)
 	t.Setenv("PREST_PG_CACHE", "false")
 	config.Load()
 	postgres.Load()
@@ -1653,6 +1700,7 @@ func TestDisableCache(t *testing.T) {
 }
 
 func TestParseBatchInsertRequest(t *testing.T) {
+	setupTestDB(t)
 	config.Load()
 	postgres.Load()
 	m := make(map[string]interface{})
@@ -1704,6 +1752,7 @@ func TestParseBatchInsertRequest(t *testing.T) {
 }
 
 func TestBatchInsertValues(t *testing.T) {
+	setupTestDB(t)
 	config.Load()
 	postgres.Load()
 	var testCases = []struct {
@@ -1740,6 +1789,7 @@ func TestBatchInsertValues(t *testing.T) {
 }
 
 func TestBatchInsertValuesCtx(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description string
 		sql         string
@@ -1781,6 +1831,7 @@ func TestBatchInsertValuesCtx(t *testing.T) {
 }
 
 func TestPostgres_BatchInsertCopyCtx(t *testing.T) {
+	setupTestDB(t)
 
 	type args struct {
 		schema string
@@ -1842,6 +1893,7 @@ func TestPostgres_BatchInsertCopyCtx(t *testing.T) {
 }
 
 func TestPostgres_BatchInsertCopy(t *testing.T) {
+	setupTestDB(t)
 	config.Load()
 	postgres.Load()
 	type args struct {
@@ -1901,6 +1953,7 @@ func TestPostgres_BatchInsertCopy(t *testing.T) {
 }
 
 func TestPostgres_FieldsPermissions(t *testing.T) {
+	setupTestDB(t)
 	type args struct {
 		url         string
 		table       string
@@ -2431,9 +2484,8 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 	}
 }
 
-
-
 func Test_Postgres_GeneratesFuncs(t *testing.T) {
+	setupTestDB(t)
 
 	// TEST FOR THESE FUNCTIONS:
 	// SelectSQL
@@ -2619,6 +2671,7 @@ ORDER BY
 }
 
 func Test_ShowTable(t *testing.T) {
+	setupTestDB(t)
 	pg := postgres.Postgres{}
 	sc := pg.ShowTable("testschema", "testtable")
 
@@ -2630,6 +2683,7 @@ func Test_ShowTable(t *testing.T) {
 }
 
 func Test_ShowTableCtx(t *testing.T) {
+	setupTestDB(t)
 	pg := postgres.Postgres{}
 	for _, db := range databases {
 		ctx := context.WithValue(context.Background(), pctx.DBNameKey, db)
@@ -2653,8 +2707,8 @@ func newScannerMock(t *testing.T) (sc adapters.Scanner) {
 	return
 }
 
-
 func TestFieldsByPermission(t *testing.T) {
+	setupTestDB(t)
 	t.Parallel()
 
 	tests := []struct {

@@ -33,7 +33,6 @@ services:
       - PGPASSWORD=postgres
       - GOTOOLCHAIN=auto
       - GOPROXY=https://proxy.golang.org,direct
-      - BE_CRASHER=1
     volumes:
       - ./:/workspace
     command: >-

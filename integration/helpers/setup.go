@@ -26,6 +26,15 @@ func TestdataDir() string {
 	return filepath.Clean(filepath.Join(filepath.Dir(filename), "..", "..", "testdata"))
 }
 
+// PluginLibDir returns the absolute path to the repo lib/ directory for plugin tests.
+func PluginLibDir() string {
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		return "lib"
+	}
+	return filepath.Clean(filepath.Join(filepath.Dir(filename), "..", "..", "lib"))
+}
+
 // TestConfigPath returns the path to prest.toml for integration tests.
 // It respects PREST_CONF when set (e.g. by docker-compose-test.yml).
 func TestConfigPath() string {

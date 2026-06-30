@@ -26,10 +26,10 @@ func TestLoad(t *testing.T) {
 func TestParse(t *testing.T) {
 	t.Run("no envs", func(t *testing.T) {
 		t.Setenv("PREST_CONF", "../notfound.toml")
-		os.Unsetenv("PREST_PG_DATABASE")
-		os.Unsetenv("PREST_PG_HOST")
-		os.Unsetenv("PREST_PG_USER")
-		os.Unsetenv("PREST_PG_PASS")
+		unsetEnvForTest(t, "PREST_PG_DATABASE")
+		unsetEnvForTest(t, "PREST_PG_HOST")
+		unsetEnvForTest(t, "PREST_PG_USER")
+		unsetEnvForTest(t, "PREST_PG_PASS")
 		cf := &Prest{}
 		viperCfg()
 		Parse(cf)
@@ -389,4 +389,14 @@ func Test_ExposeDataConfig(t *testing.T) {
 	for i, v := range cfg.AuthMetadata {
 		require.Equal(t, metadata[i], v)
 	}
+}
+
+func unsetEnvForTest(t *testing.T, key string) {
+	t.Helper()
+	if prev, ok := os.LookupEnv(key); ok {
+		t.Cleanup(func() { _ = os.Setenv(key, prev) })
+	} else {
+		t.Cleanup(func() { _ = os.Unsetenv(key) })
+	}
+	require.NoError(t, os.Unsetenv(key))
 }
