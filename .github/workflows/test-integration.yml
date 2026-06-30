@@ -34,8 +34,3 @@ jobs:
 
       - name: Run integration tests via docker compose
         run: make test-integration
-
-      - name: Upload code coverage
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage.out
