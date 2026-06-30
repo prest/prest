@@ -36,19 +36,11 @@ jobs:
       - run: git checkout HEAD^2
         if: ${{ github.event_name == 'pull_request' }}
 
-      # pREST uses validated identifiers/operators and $n binding in SQL; legacy
-      # auth.encrypt modes verify pre-hashed DB values with MD5/SHA1.
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           build-mode: autobuild
-          config: |
-            query-filters:
-              - exclude:
-                  id: go/sql-injection
-              - exclude:
-                  id: go/weak-sensitive-data-hashing
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4

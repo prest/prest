@@ -249,6 +249,57 @@ func Test_getSelectQueryByUsername(t *testing.T) {
 	require.Equal(t, expected, query.selectQueryByUsername())
 }
 
+func TestAuthHandler_basicPasswordCheck_bcryptLegacyMD5Stored(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	sc := mockgen.NewMockScanner(ctrl)
+	cfg := testAuthConfig()
+	cfg.Encrypt = "bcrypt"
+	h := NewAuthHandler(executor, cfg)
+
+	executor.EXPECT().
+		Query(h.selectQueryByUsername(), "carol").
+		Return(sc)
+	sc.EXPECT().Err().Return(nil)
+	sc.EXPECT().Scan(gomock.Any()).DoAndReturn(func(dest interface{}) (int, error) {
+		row := dest.(*loginRow)
+		*row = loginRow{ID: 3, Username: "carol", Password: md5Hex("pw")}
+		return 1, nil
+	})
+
+	user, err := h.basicPasswordCheck("carol", "pw")
+	require.NoError(t, err)
+	require.Equal(t, "carol", user.Username)
+}
+
+func TestAuthHandler_basicPasswordCheck_bcryptLegacySHA1Stored(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	sc := mockgen.NewMockScanner(ctrl)
+	cfg := testAuthConfig()
+	cfg.Encrypt = "bcrypt"
+	h := NewAuthHandler(executor, cfg)
+	sha1Hex := fmt.Sprintf("%x", sha1.Sum([]byte("pw")))
+
+	executor.EXPECT().
+		Query(h.selectQueryByUsername(), "carol").
+		Return(sc)
+	sc.EXPECT().Err().Return(nil)
+	sc.EXPECT().Scan(gomock.Any()).DoAndReturn(func(dest interface{}) (int, error) {
+		row := dest.(*loginRow)
+		*row = loginRow{ID: 3, Username: "carol", Password: sha1Hex}
+		return 1, nil
+	})
+
+	user, err := h.basicPasswordCheck("carol", "pw")
+	require.NoError(t, err)
+	require.Equal(t, "carol", user.Username)
+}
+
 func TestAuthHandler_basicPasswordCheck_bcrypt(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

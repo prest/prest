@@ -3,6 +3,7 @@ package controllers
 import (
 	"crypto/md5"
 	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -160,11 +161,62 @@ func (h *AuthHandler) basicPasswordCheckBcrypt(user, password string) (obj auth.
 		err = ErrUserNotFound
 		return
 	}
-	if bcrypt.CompareHashAndPassword([]byte(row.Password), []byte(password)) != nil {
-		err = ErrUserNotFound
+	if err = h.verifyStoredPassword(password, row.Password); err != nil {
 		return
 	}
 	return row.user(), nil
+}
+
+// verifyStoredPassword verifies the stored password against the password provided.
+// It returns an error if the password is not valid.
+// if it is md5 or sha1, it will be verified against the stored value.
+// if it is bcrypt, it will be verified using bcrypt.CompareHashAndPassword.
+func (h *AuthHandler) verifyStoredPassword(password, stored string) error {
+	if isBcryptHash(stored) {
+		if bcrypt.CompareHashAndPassword([]byte(stored), []byte(password)) != nil {
+			return ErrUserNotFound
+		}
+		return nil
+	}
+	if alg := storedLegacyDigestAlgorithm(stored); alg != "" {
+		digest, err := h.legacyDigestForAlgorithm(password, alg)
+		if err != nil {
+			return err
+		}
+		if digest != stored {
+			return ErrUserNotFound
+		}
+		return nil
+	}
+	return ErrUserNotFound
+}
+
+func isBcryptHash(stored string) bool {
+	return strings.HasPrefix(stored, "$2a$") ||
+		strings.HasPrefix(stored, "$2b$") ||
+		strings.HasPrefix(stored, "$2y$")
+}
+
+func storedLegacyDigestAlgorithm(stored string) string {
+	if !isHexDigest(stored) {
+		return ""
+	}
+	switch len(stored) {
+	case 32:
+		return "MD5"
+	case 40:
+		return "SHA1"
+	default:
+		return ""
+	}
+}
+
+func isHexDigest(s string) bool {
+	if len(s) == 0 || len(s)%2 != 0 {
+		return false
+	}
+	_, err := hex.DecodeString(s)
+	return err == nil
 }
 
 type loginRow struct {
@@ -199,7 +251,11 @@ func (h *AuthHandler) selectQuery() (query string) {
 }
 
 func (h *AuthHandler) legacyDigest(password string) (string, error) {
-	switch strings.ToUpper(h.cfg.Encrypt) {
+	return h.legacyDigestForAlgorithm(password, h.cfg.Encrypt)
+}
+
+func (h *AuthHandler) legacyDigestForAlgorithm(password, algorithm string) (string, error) {
+	switch strings.ToUpper(algorithm) {
 	case "MD5":
 		// Legacy verification only: compares against pre-hashed values stored in the DB.
 		// codeql[go/weak-sensitive-data-hashing]
