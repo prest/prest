@@ -52,6 +52,7 @@ These instructions guide AI-generated changes in this repository.
 - Mock **ports** (`adapters/*` interfaces), not `adapters/postgres` types, in unit tests.
 - Maintain ≥80% coverage on new code paths (unit + integration combined).
 - Name test files after the source file under test: `<source_file>_test.go` (e.g. `catalog.go` → `catalog_test.go`).
+- Any new change in behavior on the controllers package should introduce a new integration test as well as a unit test.
 
 Common commands:
 
