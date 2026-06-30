@@ -1,0 +1,11 @@
+name: prest CodeQL
+
+# pREST maps HTTP filters to SQL using validated identifiers/operators and $n
+# parameter binding. The adapter intentionally reaches database/sql Prepare with
+# dynamically assembled query text; CodeQL cannot fully model that sanitization.
+packs:
+  - local: .github/codeql/extensions/prest-go-models
+
+query-filters:
+  - exclude:
+      id: go/sql-injection

@@ -58,7 +58,10 @@ type Stmt struct {
 	PrepareMap map[string]*sql.Stmt
 }
 
-// Prepare statement
+// Prepare statement.
+// SQL passed here is assembled by the adapter from HTTP requests: identifiers and
+// operators are validated (ident.IsValid, GetQueryOperator) and filter values use
+// $n placeholders. pREST is a PostgREST-style query surface by design.
 func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt, err error) {
 	if config.PrestConf.PGCache && (tx == nil) {
 		var exists bool
