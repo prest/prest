@@ -77,7 +77,7 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 	config.PrestConf.SingleDB = false
 	h := controllers.NewHandlersFromConfig(config.PrestConf)
 
-	for _, db := range helpers.Databases {
+	for _, db := range helpers.Databases() {
 		router := mux.NewRouter()
 		router.HandleFunc("/{database}/{schema}", helpers.WithHTTPTimeout(h.Catalog.ListTablesByDatabaseAndSchema)).
 			Methods("GET")
@@ -155,7 +155,7 @@ func TestSelectFromTables(t *testing.T) {
 
 		{"execute select in a db that does not exist", "/invalid/public/view_test?_count=0celphone", "GET", http.StatusBadRequest, ""},
 	}
-	for _, db := range helpers.Databases {
+	for _, db := range helpers.Databases() {
 		for _, tc := range testCases {
 			t.Log(fmt.Sprintf("(DB: %s) %s", db, tc.description))
 			//config.PrestConf = &config.Prest{}

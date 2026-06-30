@@ -9,7 +9,7 @@ build_test_image:
 test: test-unit
 
 test-unit:
-	go test -race -count=1 -covermode=atomic -coverprofile=coverage.out $(UNIT_PKGS)
+	go test -tags prest_test_hooks -race -count=1 -covermode=atomic -coverprofile=coverage.out $(UNIT_PKGS)
 
 test-integration:
 	docker compose -f docker-compose-test.yml up --abort-on-container-exit --exit-code-from tests; \

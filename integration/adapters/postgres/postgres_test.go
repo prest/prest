@@ -24,10 +24,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Should be in sync with databases under test (see `testdata/runtest.sh` and
-// Github `test` workflow)
-var databases = []string{"prest-test", "secondary-db"}
-
 func TestMain(m *testing.M) {
 	helpers.EnsureTestConfigEnv()
 	os.Exit(m.Run())
@@ -430,7 +426,7 @@ func TestQueryCtx(t *testing.T) {
 	setupTestDB(t)
 	var sc adapters.Scanner
 
-	for _, db := range databases {
+	for _, db := range helpers.Databases() {
 		ctx := context.WithValue(context.Background(), pctx.DBNameKey, db)
 		var testCases = []struct {
 			description string
@@ -582,7 +578,7 @@ func TestInsertCtx(t *testing.T) {
 		{"Insert data into a table with more than one field and with quotes case sensitive", `INSERT INTO "%s"."public"."TestCase"("name") VALUES($1)`, []interface{}{"prest-test-insert-ctx"}},
 	}
 
-	for _, db := range databases {
+	for _, db := range helpers.Databases() {
 		ctx := context.WithValue(context.Background(), pctx.DBNameKey, db)
 
 		for _, tc := range testCases {
@@ -1622,7 +1618,7 @@ func TestCacheQueryCount(t *testing.T) {
 
 func TestCacheQueryCountCtx(t *testing.T) {
 	setupTestDB(t)
-	for _, db := range databases {
+	for _, db := range helpers.Databases() {
 		ctx := context.WithValue(context.Background(), pctx.DBNameKey, db)
 
 		t.Log(fmt.Sprintf("(DB: %s) Cached query count", db))
@@ -1810,7 +1806,7 @@ func TestBatchInsertValuesCtx(t *testing.T) {
 		},
 	}
 
-	for _, db := range databases {
+	for _, db := range helpers.Databases() {
 		ctx := context.WithValue(context.Background(), pctx.DBNameKey, db)
 
 		config.Load()
@@ -1876,7 +1872,7 @@ func TestPostgres_BatchInsertCopyCtx(t *testing.T) {
 		},
 	}
 
-	for _, db := range databases {
+	for _, db := range helpers.Databases() {
 		ctx := context.WithValue(context.Background(), pctx.DBNameKey, db)
 
 		config.Load()
@@ -2685,7 +2681,7 @@ func Test_ShowTable(t *testing.T) {
 func Test_ShowTableCtx(t *testing.T) {
 	setupTestDB(t)
 	pg := postgres.Postgres{}
-	for _, db := range databases {
+	for _, db := range helpers.Databases() {
 		ctx := context.WithValue(context.Background(), pctx.DBNameKey, db)
 
 		sc := pg.ShowTableCtx(ctx, "testschema", "testtable")

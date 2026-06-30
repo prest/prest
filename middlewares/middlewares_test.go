@@ -531,8 +531,8 @@ func TestExposureMiddleware_NonListingPath(t *testing.T) {
 }
 
 func appTestWithJwt(t *testing.T) *negroni.Negroni {
-	ResetForTest()
-	t.Cleanup(ResetForTest)
+	resetAppState()
+	t.Cleanup(resetAppState)
 
 	n := GetApp()
 	r := mux.NewRouter()

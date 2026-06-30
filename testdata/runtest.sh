@@ -24,9 +24,9 @@ go run ./cmd/prestd/main.go migrate up --path ./testdata/migrations
 
 echo "\n\n.:: PRESTD: TESTING STARTING..."
 if [ -z ${1+x} ]; then
-    go test -v -race -failfast ./integration/...;
+    go test -tags prest_test_hooks -v -race -failfast ./integration/...;
 else
-    go test -v -race -failfast "$@"
+    go test -tags prest_test_hooks -v -race -failfast "$@"
 fi
 
 for db in $DATABASES; do

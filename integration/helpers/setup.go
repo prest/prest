@@ -14,8 +14,10 @@ import (
 	pctx "github.com/prest/prest/v2/context"
 )
 
-// Databases used by integration tests (see testdata/runtest.sh).
-var Databases = []string{"prest-test", "secondary-db"}
+// Databases returns the database names used by integration tests (see testdata/runtest.sh).
+func Databases() []string {
+	return []string{"prest-test", "secondary-db"}
+}
 
 // TestdataDir returns the absolute path to the repo testdata directory.
 func TestdataDir() string {
