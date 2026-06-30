@@ -6,9 +6,13 @@ ARG COMMIT
 ARG DATE
 ENV GOOS linux
 ENV CGO_ENABLED 1
-RUN go mod vendor && \
-    go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}" -o prestd cmd/prestd/main.go && \
-    apt-get update && apt-get upgrade -y && apt-get install --no-install-recommends -yq netcat-traditional && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install --no-install-recommends -yq netcat-traditional && \
+    rm -rf /var/lib/apt/lists/* && \
+    if [ -f go.mod ]; then \
+      go mod vendor && \
+      go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}" -o prestd cmd/prestd/main.go; \
+    fi
 
 # Use runtime image
 # Plugins not supported

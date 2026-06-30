@@ -73,7 +73,7 @@ You can build the Docker image locally for development (this compiles the code f
 docker build -t prest/prest:latest .
 ```
 
-For release builds, GoReleaser uses the same `Dockerfile` but injects version information via build arguments:
+For release builds, GoReleaser uses the same `Dockerfile` / `Dockerfile.noplugins` with a pre-built `prestd` binary (no `go.mod` in the build context). Local source builds pass version metadata via build arguments:
 
 ```bash
 docker build \
