@@ -530,6 +530,29 @@ func TestExposureMiddleware_NonListingPath(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 }
 
+func TestSetMiddlewareStackForTest_InvalidatesCachedApp(t *testing.T) {
+	resetAppState()
+	t.Cleanup(resetAppState)
+
+	withPrestConf(t, &config.Prest{})
+
+	_ = GetApp()
+
+	SetMiddlewareStackForTest([]negroni.Handler{
+		negroni.Handler(negroni.HandlerFunc(CustomMiddlewareForTest)),
+	})
+
+	r := mux.NewRouter()
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {})
+	n := GetApp()
+	n.UseHandler(r)
+
+	rec := httptest.NewRecorder()
+	n.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	require.Contains(t, rec.Body.String(), "Calling custom middleware")
+}
+
 func appTestWithJwt(t *testing.T) *negroni.Negroni {
 	resetAppState()
 	t.Cleanup(resetAppState)

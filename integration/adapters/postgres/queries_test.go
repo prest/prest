@@ -3,7 +3,7 @@ package postgres_test
 import (
 	"context"
 	"fmt"
-	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -12,6 +12,7 @@ import (
 )
 
 func TestValidGetScript(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description string
 		method      string
@@ -36,6 +37,7 @@ func TestValidGetScript(t *testing.T) {
 }
 
 func TestInvalidGetScript(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description string
 		method      string
@@ -57,10 +59,11 @@ func TestInvalidGetScript(t *testing.T) {
 }
 
 func TestParseScriptInvalid(t *testing.T) {
+	setupTestDB(t)
 	templateData := map[string]interface{}{}
 	templateData["field1"] = "abc"
 
-	scriptPath := fmt.Sprint(os.Getenv("PREST_QUERIES_LOCATION"), "/fulltable/%s")
+	scriptPath := filepath.Join(config.PrestConf.QueriesPath, "fulltable", "%s")
 	t.Log("Parse script with get_all file")
 	sql, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "get_all.read.sql"), templateData)
 	if err != nil {
@@ -73,20 +76,25 @@ func TestParseScriptInvalid(t *testing.T) {
 }
 
 func TestParseScriptSyntaxInvalid(t *testing.T) {
+	setupTestDB(t)
 	templateData := map[string]interface{}{}
 	templateData["field1"] = 1
-	scriptPath := fmt.Sprint(os.Getenv("PREST_QUERIES_LOCATION"), "/fulltable/%s")
+	scriptPath := filepath.Join(config.PrestConf.QueriesPath, "fulltable", "%s")
 	_, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "parse_syntax_invalid.read.sql"), templateData)
+	if err == nil {
+		t.Fatal("expected parse error, got nil")
+	}
 	if !strings.Contains(err.Error(), "could not parse file") {
-		t.Errorf("expected no error, but got: %v", err)
+		t.Errorf("expected error containing %q, got: %v", "could not parse file", err)
 	}
 }
 
 func TestParseScript(t *testing.T) {
+	setupTestDB(t)
 	templateData := map[string]interface{}{}
 	templateData["field1"] = []string{"abc", "test"}
 
-	scriptPath := fmt.Sprint(os.Getenv("PREST_QUERIES_LOCATION"), "/fulltable/%s")
+	scriptPath := filepath.Join(config.PrestConf.QueriesPath, "fulltable", "%s")
 
 	t.Log("Parse script with get_all_slice file")
 	sql, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "get_all_slice.read.sql"), templateData)
@@ -100,6 +108,7 @@ func TestParseScript(t *testing.T) {
 }
 
 func TestWriteSQL(t *testing.T) {
+	setupTestDB(t)
 	var testValidCases = []struct {
 		description string
 		sql         string
@@ -123,6 +132,7 @@ func TestWriteSQL(t *testing.T) {
 }
 
 func TestWriteSQLCtx(t *testing.T) {
+	setupTestDB(t)
 	ctx := context.Background()
 
 	var testValidCases = []struct {
@@ -148,6 +158,7 @@ func TestWriteSQLCtx(t *testing.T) {
 }
 
 func TestExecuteScripts(t *testing.T) {
+	setupTestDB(t)
 	var testCases = []struct {
 		description string
 		method      string
@@ -183,6 +194,7 @@ func TestExecuteScripts(t *testing.T) {
 }
 
 func TestExecuteScriptsCtx(t *testing.T) {
+	setupTestDB(t)
 	ctx := context.Background()
 
 	var testCases = []struct {
@@ -220,9 +232,10 @@ func TestExecuteScriptsCtx(t *testing.T) {
 }
 
 func TestParseFuncLimitOffset(t *testing.T) {
+	setupTestDB(t)
 	templateData := map[string]interface{}{}
 
-	scriptPath := fmt.Sprint(os.Getenv("PREST_QUERIES_LOCATION"), "/fulltable/%s")
+	scriptPath := filepath.Join(config.PrestConf.QueriesPath, "fulltable", "%s")
 
 	t.Log("Parse script with limitoffset file")
 	sql, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "limitoffset.read.sql"), templateData)

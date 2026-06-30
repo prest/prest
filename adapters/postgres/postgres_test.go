@@ -11,6 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	defaultMockDB = "default-db"
+	contextMockDB = "ctx-db"
+)
+
 func testAdapter() *Postgres {
 	return &Postgres{}
 }
@@ -24,7 +29,7 @@ func withPrestConf(t *testing.T, cfg *config.Prest) {
 
 func defaultTestConf() *config.Prest {
 	return &config.Prest{
-		PGDatabase:  "test",
+		PGDatabase:  defaultMockDB,
 		JSONAggType: "json_agg",
 		PGCache:     false,
 		PGHost:      "localhost",

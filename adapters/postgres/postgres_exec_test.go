@@ -21,13 +21,35 @@ func withSQLMock(t *testing.T) (*Postgres, sqlmock.Sqlmock) {
 
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
 	withPrestConf(t, defaultTestConf())
-	connection.SetDatabase("test")
-	connection.InjectDBForTest(connection.GetURI("test"), sqlxDB)
+	connection.SetDatabase(defaultMockDB)
+	connection.InjectDBForTest(connection.GetURI(defaultMockDB), sqlxDB)
 	t.Cleanup(connection.ResetPoolForTest)
 	ClearStmt()
 	t.Cleanup(ClearStmt)
 
 	return testAdapter(), mock
+}
+
+func withSQLMocks(t *testing.T) (*Postgres, sqlmock.Sqlmock, sqlmock.Sqlmock) {
+	t.Helper()
+	defaultDB, defaultMock, err := sqlmock.New()
+	require.NoError(t, err)
+	ctxDB, ctxMock, err := sqlmock.New()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = defaultDB.Close()
+		_ = ctxDB.Close()
+	})
+
+	withPrestConf(t, defaultTestConf())
+	connection.SetDatabase(defaultMockDB)
+	connection.InjectDBForTest(connection.GetURI(defaultMockDB), sqlx.NewDb(defaultDB, "sqlmock"))
+	connection.InjectDBForTest(connection.GetURI(contextMockDB), sqlx.NewDb(ctxDB, "sqlmock"))
+	t.Cleanup(connection.ResetPoolForTest)
+	ClearStmt()
+	t.Cleanup(ClearStmt)
+
+	return testAdapter(), defaultMock, ctxMock
 }
 
 func TestQuery_SuccessEmpty(t *testing.T) {
@@ -80,17 +102,18 @@ func TestQuery_ScanError(t *testing.T) {
 }
 
 func TestQueryCtx_WithDBNameKey(t *testing.T) {
-	adapter, mock := withSQLMock(t)
+	adapter, defaultMock, ctxMock := withSQLMocks(t)
 
-	ctx := context.WithValue(context.Background(), pctx.DBNameKey, "test")
-	mock.ExpectPrepare(`SELECT json_agg\(s\) FROM \(SELECT 1\) s`).
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
+	ctxMock.ExpectPrepare(`SELECT json_agg\(s\) FROM \(SELECT 1\) s`).
 		ExpectQuery().
 		WillReturnRows(sqlmock.NewRows([]string{"json_agg"}).AddRow([]byte(`[1]`)))
 
 	sc := adapter.QueryCtx(ctx, "SELECT 1")
 	require.NoError(t, sc.Err())
 	require.Equal(t, "[1]", string(sc.Bytes()))
-	require.NoError(t, mock.ExpectationsWereMet())
+	require.NoError(t, ctxMock.ExpectationsWereMet())
+	require.NoError(t, defaultMock.ExpectationsWereMet())
 }
 
 func TestInsert_Success(t *testing.T) {
@@ -209,7 +232,7 @@ func TestShowTable_Success(t *testing.T) {
 
 func TestQuery_WithStatementCache(t *testing.T) {
 	withPrestConf(t, &config.Prest{
-		PGDatabase:  "test",
+		PGDatabase:  defaultMockDB,
 		JSONAggType: "json_agg",
 		PGCache:     true,
 		PGHost:      "localhost",
@@ -223,8 +246,8 @@ func TestQuery_WithStatementCache(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
-	connection.SetDatabase("test")
-	connection.InjectDBForTest(connection.GetURI("test"), sqlxDB)
+	connection.SetDatabase(defaultMockDB)
+	connection.InjectDBForTest(connection.GetURI(defaultMockDB), sqlxDB)
 	t.Cleanup(connection.ResetPoolForTest)
 	ClearStmt()
 	t.Cleanup(ClearStmt)

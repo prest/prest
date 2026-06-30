@@ -7,8 +7,9 @@ import (
 )
 
 var (
-	ErrUserNotFound = errors.New(unf)
-	jsonErrorMsg    = `{"error":"%s"}`
+	ErrUserNotFound             = errors.New(unf)
+	ErrUnknownEncryptAlgorithm  = errors.New("unknown encrypt algorithm")
+	jsonErrorMsg                = `{"error":"%s"}`
 )
 
 const (

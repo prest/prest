@@ -138,29 +138,31 @@ func TestWriteSQL_PrepareError(t *testing.T) {
 }
 
 func TestExecuteScriptsCtx_WithContext(t *testing.T) {
-	adapter, mock := withSQLMock(t)
+	adapter, defaultMock, ctxMock := withSQLMocks(t)
 
-	ctx := context.WithValue(context.Background(), pctx.DBNameKey, "test")
-	mock.ExpectPrepare(`SELECT json_agg\(s\) FROM \(SELECT 1\) s`).
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
+	ctxMock.ExpectPrepare(`SELECT json_agg\(s\) FROM \(SELECT 1\) s`).
 		ExpectQuery().
 		WillReturnRows(sqlmock.NewRows([]string{"json_agg"}).AddRow([]byte(`[1]`)))
 
 	sc := adapter.ExecuteScriptsCtx(ctx, "GET", "SELECT 1", nil)
 	require.NoError(t, sc.Err())
 	require.Equal(t, "[1]", string(sc.Bytes()))
-	require.NoError(t, mock.ExpectationsWereMet())
+	require.NoError(t, ctxMock.ExpectationsWereMet())
+	require.NoError(t, defaultMock.ExpectationsWereMet())
 }
 
 func TestWriteSQLCtx_Success(t *testing.T) {
-	_, mock := withSQLMock(t)
+	_, defaultMock, ctxMock := withSQLMocks(t)
 
-	ctx := context.WithValue(context.Background(), pctx.DBNameKey, "test")
-	mock.ExpectPrepare(`DELETE FROM users`).
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
+	ctxMock.ExpectPrepare(`DELETE FROM users`).
 		ExpectExec().
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	sc := WriteSQLCtx(ctx, "DELETE FROM users WHERE id=1", nil)
 	require.NoError(t, sc.Err())
 	require.JSONEq(t, `{"rows_affected":1}`, string(sc.Bytes()))
-	require.NoError(t, mock.ExpectationsWereMet())
+	require.NoError(t, ctxMock.ExpectationsWereMet())
+	require.NoError(t, defaultMock.ExpectationsWereMet())
 }

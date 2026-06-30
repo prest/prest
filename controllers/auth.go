@@ -114,7 +114,11 @@ func (h *AuthHandler) token(u auth.User) (t string, err error) {
 }
 
 func (h *AuthHandler) basicPasswordCheck(user, password string) (obj auth.User, err error) {
-	sc := h.executor.Query(h.selectQuery(), user, h.encrypt(password))
+	encrypted, err := h.encrypt(password)
+	if err != nil {
+		return
+	}
+	sc := h.executor.Query(h.selectQuery(), user, encrypted)
 	if sc.Err() != nil {
 		err = sc.Err()
 		return
@@ -137,14 +141,15 @@ func (h *AuthHandler) selectQuery() (query string) {
 		h.cfg.Username, h.cfg.Password)
 }
 
-func (h *AuthHandler) encrypt(password string) (encrypted string) {
+func (h *AuthHandler) encrypt(password string) (string, error) {
 	switch h.cfg.Encrypt {
 	case "MD5":
-		return fmt.Sprintf("%x", md5.Sum([]byte(password)))
+		return fmt.Sprintf("%x", md5.Sum([]byte(password))), nil
 	case "SHA1":
-		return fmt.Sprintf("%x", sha1.Sum([]byte(password)))
+		return fmt.Sprintf("%x", sha1.Sum([]byte(password))), nil
+	default:
+		return "", ErrUnknownEncryptAlgorithm
 	}
-	return
 }
 
 // Token creates a JWT for the given user using global config (legacy helper for tests).

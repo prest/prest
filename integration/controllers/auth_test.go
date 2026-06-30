@@ -14,6 +14,10 @@ import (
 
 func TestAuthDisable(t *testing.T) {
 	helpers.LoadTestConfig(t)
+	authEnabled := config.PrestConf.AuthEnabled
+	defer func() { config.PrestConf.AuthEnabled = authEnabled }()
+	config.PrestConf.AuthEnabled = false
+
 	r := mux.NewRouter()
 	h := controllers.NewHandlersFromConfig(config.PrestConf)
 	if config.PrestConf.AuthEnabled {

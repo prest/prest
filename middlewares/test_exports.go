@@ -10,6 +10,7 @@ import (
 // SetMiddlewareStackForTest replaces the middleware stack for integration tests.
 func SetMiddlewareStackForTest(stack []negroni.Handler) {
 	MiddlewareStack = stack
+	app = nil
 }
 
 // CustomMiddlewareForTest is a JSON response middleware used in integration tests.

@@ -1,6 +1,6 @@
 DOCKER_COMPOSE?=docker-compose -f docker-compose.yml
 
-UNIT_PKGS := $(shell go list ./... | grep -v '/integration')
+UNIT_PKGS = $(shell go list ./... | grep -v '/integration')
 
 .PHONY: build_test_image test test-unit test-integration
 build_test_image:

@@ -57,7 +57,8 @@ func Test_getSelectQuery(t *testing.T) {
 func Test_encrypt(t *testing.T) {
 	h := testAuthHandler()
 	pwd := "123456"
-	enc := h.encrypt(pwd)
+	enc, err := h.encrypt(pwd)
+	require.NoError(t, err)
 
 	md5Enc := fmt.Sprintf("%x", md5.Sum([]byte(pwd)))
 	if enc != md5Enc {
@@ -65,7 +66,8 @@ func Test_encrypt(t *testing.T) {
 	}
 
 	h.cfg.Encrypt = "SHA1"
-	enc = h.encrypt(pwd)
+	enc, err = h.encrypt(pwd)
+	require.NoError(t, err)
 
 	sha1Enc := fmt.Sprintf("%x", sha1.Sum([]byte(pwd)))
 	if enc != sha1Enc {
@@ -76,7 +78,8 @@ func Test_encrypt(t *testing.T) {
 func Test_encrypt_unknownAlgorithm(t *testing.T) {
 	h := testAuthHandler()
 	h.cfg.Encrypt = "PLAINTEXT"
-	require.Empty(t, h.encrypt("secret"))
+	_, err := h.encrypt("secret")
+	require.ErrorIs(t, err, ErrUnknownEncryptAlgorithm)
 }
 
 func TestAuthHandler_Login_BodySuccess(t *testing.T) {
@@ -256,8 +259,9 @@ func TestAuthHandler_basicPasswordCheck(t *testing.T) {
 }
 
 func TestToken(t *testing.T) {
+	prev := config.PrestConf
+	t.Cleanup(func() { config.PrestConf = prev })
 	config.PrestConf = &config.Prest{JWTKey: "legacy-key"}
-	t.Cleanup(func() { config.PrestConf = nil })
 
 	user := auth.User{ID: 7, Username: "legacy"}
 	token, err := Token(user)
