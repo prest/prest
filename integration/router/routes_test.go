@@ -53,6 +53,6 @@ func TestAuthRouterActive(t *testing.T) {
 	config.PrestConf.AuthEnabled = true
 	server := httptest.NewServer(router.GetRouter())
 	defer server.Close()
-	testutils.DoRequest(t, server.URL+"/auth", nil, "GET", http.StatusNotFound, "AuthEnable")
+	testutils.DoRequest(t, server.URL+"/auth", nil, "GET", http.StatusMethodNotAllowed, "AuthEnable")
 	testutils.DoRequest(t, server.URL+"/auth", nil, "POST", http.StatusUnauthorized, "AuthEnable")
 }

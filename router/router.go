@@ -1,6 +1,7 @@
 package router
 
 import (
+	"net/http"
 	"runtime"
 
 	"github.com/prest/prest/v2/config"
@@ -28,17 +29,15 @@ func RegisterRoutes(router *mux.Router, h *controllers.Handlers, crudStack *midd
 	router.HandleFunc("/show/{database}/{schema}/{table}", h.Table.Show).Methods("GET")
 	router.HandleFunc("/_health", h.Health.Handler()).Methods("GET")
 
-	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", h.CRUD.Select).Methods("GET")
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", h.CRUD.Insert).Methods("POST")
-	crudRoutes.HandleFunc("/batch/{database}/{schema}/{table}", h.CRUD.BatchInsert).Methods("POST")
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", h.CRUD.Delete).Methods("DELETE")
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", h.CRUD.Update).Methods("PUT", "PATCH")
+	router.Handle("/{database}/{schema}/{table}", crudRoute(crudStack, h.CRUD.Select)).Methods("GET")
+	router.Handle("/{database}/{schema}/{table}", crudRoute(crudStack, h.CRUD.Insert)).Methods("POST")
+	router.Handle("/batch/{database}/{schema}/{table}", crudRoute(crudStack, h.CRUD.BatchInsert)).Methods("POST")
+	router.Handle("/{database}/{schema}/{table}", crudRoute(crudStack, h.CRUD.Delete)).Methods("DELETE")
+	router.Handle("/{database}/{schema}/{table}", crudRoute(crudStack, h.CRUD.Update)).Methods("PUT", "PATCH")
+}
 
-	router.PathPrefix("/").Handler(negroni.New(append(
-		crudStack.Handlers(),
-		negroni.Wrap(crudRoutes),
-	)...))
+func crudRoute(stack *middlewares.CRUDStack, handler http.HandlerFunc) http.Handler {
+	return negroni.New(append(stack.Handlers(), negroni.Wrap(handler))...)
 }
 
 // GetRouter registers all routes using dependencies from config.

@@ -1,13 +1,10 @@
 package controllers
 
 import (
-	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/prest/prest/v2/adapters"
-	pctx "github.com/prest/prest/v2/context"
 
 	"github.com/gorilla/mux"
 )
@@ -43,10 +40,7 @@ func (h *ScriptHandler) Execute(w http.ResponseWriter, r *http.Request) {
 		database = h.db.GetDatabase()
 	}
 
-	ctx := context.WithValue(r.Context(), pctx.DBNameKey, database)
-
-	timeout, _ := ctx.Value(pctx.HTTPTimeoutKey).(int)
-	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
+	ctx, cancel := requestContext(r, database)
 	defer cancel()
 
 	result, err := h.ExecuteScriptQuery(r.WithContext(ctx), queriesPath, script)

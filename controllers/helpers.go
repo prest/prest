@@ -14,7 +14,10 @@ import (
 
 func requestContext(r *http.Request, database string) (context.Context, context.CancelFunc) {
 	ctx := context.WithValue(r.Context(), pctx.DBNameKey, database)
-	timeout, _ := ctx.Value(pctx.HTTPTimeoutKey).(int)
+	timeout, ok := ctx.Value(pctx.HTTPTimeoutKey).(int)
+	if !ok || timeout <= 0 {
+		return context.WithCancel(ctx)
+	}
 	return context.WithTimeout(ctx, time.Second*time.Duration(timeout))
 }
 
