@@ -1,49 +1,52 @@
-package middlewares
+package middlewares_test
 
 import (
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
+	"github.com/gorilla/mux"
 	"github.com/prest/prest/v2/adapters/postgres"
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers"
-
-	"github.com/gorilla/mux"
+	"github.com/prest/prest/v2/integration/helpers"
+	"github.com/prest/prest/v2/middlewares"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/negroni/v3"
 )
 
-func init() {
+func TestMain(m *testing.M) {
+	helpers.EnsureTestConfigEnv()
 	config.Load()
 	postgres.Load()
+	os.Exit(m.Run())
 }
 
 func TestInitApp(t *testing.T) {
-	app = nil
-	initApp()
-	require.NotNil(t, app)
-
-	MiddlewareStack = []negroni.Handler{}
+	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
+	require.NotNil(t, middlewares.GetApp())
 }
 
 func TestGetApp(t *testing.T) {
-	app = nil
-	require.NotNil(t, GetApp())
-
-	MiddlewareStack = []negroni.Handler{}
+	helpers.LoadTestConfig(t)
+	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
+	require.NotNil(t, middlewares.GetApp())
 }
 
 func TestGetAppWithReorderedMiddleware(t *testing.T) {
-	app = nil
-	MiddlewareStack = []negroni.Handler{
+	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
+	middlewares.MiddlewareStack = []negroni.Handler{
 		negroni.Handler(negroni.HandlerFunc(customMiddleware)),
 	}
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {})
-	n := GetApp()
+	n := middlewares.GetApp()
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
 	defer server.Close()
@@ -57,41 +60,40 @@ func TestGetAppWithReorderedMiddleware(t *testing.T) {
 	require.Contains(t, string(body), "Calling custom middleware")
 	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-
-	MiddlewareStack = []negroni.Handler{}
 }
 
 func TestGetAppWithoutReorderedMiddleware(t *testing.T) {
-	app = nil
+	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {})
-	n := GetApp()
+	n := middlewares.GetApp()
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
 	defer server.Close()
 	resp, err := http.Get(server.URL)
 	require.NoError(t, err)
 	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
-
-	MiddlewareStack = []negroni.Handler{}
 }
 
 func Test_Middleware_DoesntBlock_CustomRoutes(t *testing.T) {
 	t.Setenv("PREST_DEBUG", "true")
+	helpers.EnsureTestConfigEnv()
 	config.Load()
 	postgres.Load()
-	app = nil
+	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
+	h := controllers.NewHandlersFromConfig(config.PrestConf)
 	crudRoutes := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
-	crudRoutes.HandleFunc("/{database}/{schema}/{table}", controllers.SelectFromTables).Methods("GET")
+	crudRoutes.HandleFunc("/{database}/{schema}/{table}", h.CRUD.Select).Methods("GET")
 
 	r.PathPrefix("/").Handler(negroni.New(
-		AccessControl(),
+		middlewares.AccessControl(config.PrestConf.Adapter),
 		negroni.Wrap(crudRoutes),
 	))
-	t.Setenv("PREST_CONF", "../testdata/prest.toml")
-	n := GetApp()
+	n := middlewares.GetApp()
 	n.UseHandler(r)
 
 	server := httptest.NewServer(n)
@@ -108,7 +110,7 @@ func Test_Middleware_DoesntBlock_CustomRoutes(t *testing.T) {
 	require.Contains(t, string(body), "custom route")
 	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
 
-	resp, err = http.Get(server.URL + "/prest/public/test_write_and_delete_access")
+	resp, err = http.Get(server.URL + "/prest-test/public/test_write_and_delete_access")
 	require.NoError(t, err)
 
 	body, err = io.ReadAll(resp.Body)
@@ -119,8 +121,6 @@ func Test_Middleware_DoesntBlock_CustomRoutes(t *testing.T) {
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
 	require.Contains(t, string(body), "authorization required")
-
-	MiddlewareStack = []negroni.Handler{}
 }
 
 func customMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -146,7 +146,8 @@ func TestDebug(t *testing.T) {
 }
 
 func TestEnableDefaultJWT(t *testing.T) {
-	app = nil
+	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
 	t.Setenv("PREST_JWT_DEFAULT", "false")
 	t.Setenv("PREST_DEBUG", "false")
 	config.Load()
@@ -159,8 +160,8 @@ func TestEnableDefaultJWT(t *testing.T) {
 }
 
 func TestJWTIsRequired(t *testing.T) {
-	MiddlewareStack = []negroni.Handler{}
-	app = nil
+	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
 	config.Load()
@@ -174,8 +175,9 @@ func TestJWTIsRequired(t *testing.T) {
 }
 
 func TestJWTSignatureOk(t *testing.T) {
-	app = nil
-	MiddlewareStack = nil
+	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
+	middlewares.MiddlewareStack = nil
 	bearer := "Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImpvaG4uZG9lQHNvbWV3aGVyZS5jb20iLCJpYXQiOjE1MTc1NjM2MTYsImlzcyI6InByaXZhdGUiLCJqdGkiOiJjZWZhNzRmZS04OTRjLWZmNjMtZDgxNi00NjIwYjhjZDkyZWUiLCJvcmciOiJwcml2YXRlIiwic3ViIjoiam9obi5kb2UifQ.zLWkEd4hP4XdCD_DlRy6mgPeKwEl1dcdtx5A_jHSfmc87EsrGgNSdi8eBTzCgSU0jgV6ssTgQwzY6x4egze2xA"
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
@@ -198,7 +200,8 @@ func TestJWTSignatureOk(t *testing.T) {
 }
 
 func TestJWTSignatureKo(t *testing.T) {
-	app = nil
+	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
 	bearer := "Bearer: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImpvaG4uZG9lQHNvbWV3aGVyZS5jb20iLCJleHAiOjE1MjUzMzk2MTYsImlhdCI6MTUxNzU2MzYxNiwiaXNzIjoicHJpdmF0ZSIsImp0aSI6ImNlZmE3NGZlLTg5NGMtZmY2My1kODE2LTQ2MjBiOGNkOTJlZSIsIm9yZyI6InByaXZhdGUiLCJzdWIiOiJqb2huLmRvZSJ9.zGP1Xths2bK2r9FN0Gv1SzyoisO0dhRwvqrPvunGxUyU5TbkfdnTcQRJNYZzJfGILeQ9r3tbuakWm-NIoDlbbA"
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
@@ -221,7 +224,7 @@ func TestJWTSignatureKo(t *testing.T) {
 }
 
 func appTest() *negroni.Negroni {
-	n := GetApp()
+	n := middlewares.GetApp()
 	r := mux.NewRouter()
 	if !config.PrestConf.Debug && !config.PrestConf.EnableDefaultJWT {
 		n.UseHandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -237,7 +240,7 @@ func appTest() *negroni.Negroni {
 }
 
 func appTestWithJwt() *negroni.Negroni {
-	n := GetApp()
+	n := middlewares.GetApp()
 	r := mux.NewRouter()
 
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -249,15 +252,15 @@ func appTestWithJwt() *negroni.Negroni {
 }
 
 func Test_CORS_Middleware(t *testing.T) {
-	MiddlewareStack = []negroni.Handler{}
+	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
 	t.Setenv("PREST_DEBUG", "true")
 	t.Setenv("PREST_CORS_ALLOWORIGIN", "*")
-	t.Setenv("PREST_CONF", "../testdata/prest.toml")
+	t.Setenv("PREST_CONF", helpers.TestConfigPath())
 	config.Load()
-	app = nil
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("custom route")) })
-	n := GetApp()
+	n := middlewares.GetApp()
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
 	defer server.Close()
@@ -280,17 +283,18 @@ func Test_CORS_Middleware(t *testing.T) {
 }
 
 func TestExposeTablesMiddleware(t *testing.T) {
-	MiddlewareStack = []negroni.Handler{}
-	app = nil
+	helpers.LoadTestConfig(t)
+	middlewares.ResetForTest()
+	t.Cleanup(middlewares.ResetForTest)
 	t.Setenv("PREST_DEBUG", "true")
-	t.Setenv("PREST_CONF", "../testdata/prest_expose.toml")
+	t.Setenv("PREST_CONF", helpers.TestExposeConfigPath())
 	config.Load()
-	app = nil
+	h := controllers.NewHandlersFromConfig(config.PrestConf)
 	r := mux.NewRouter()
-	r.HandleFunc("/tables", controllers.GetTables).Methods("GET")
-	r.HandleFunc("/databases", controllers.GetDatabases).Methods("GET")
-	r.HandleFunc("/schemas", controllers.GetSchemas).Methods("GET")
-	n := GetApp()
+	r.HandleFunc("/tables", h.Catalog.ListTables).Methods("GET")
+	r.HandleFunc("/databases", h.Catalog.ListDatabases).Methods("GET")
+	r.HandleFunc("/schemas", h.Catalog.ListSchemas).Methods("GET")
+	n := middlewares.GetApp()
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
 	defer server.Close()

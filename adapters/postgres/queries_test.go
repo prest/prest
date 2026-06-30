@@ -2,241 +2,167 @@ package postgres
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"os"
-	"strings"
+	"path/filepath"
 	"testing"
 
-	"github.com/prest/prest/v2/config"
+	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	pctx "github.com/prest/prest/v2/context"
+	"github.com/stretchr/testify/require"
 )
 
-func TestMain(m *testing.M) {
-	os.Setenv("PREST_CONF", "./testdata/prest.toml")
-	config.Load()
-	code := m.Run()
-	os.Exit(code)
+func TestGetScript_InvalidVerb(t *testing.T) {
+	withPrestConf(t, defaultTestConf())
+	adapter := testAdapter()
+
+	_, err := adapter.GetScript("ANY", "folder", "script")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid http method")
 }
 
-func TestValidGetScript(t *testing.T) {
-	var testCases = []struct {
-		description string
-		method      string
-		path        string
-		file        string
-		err         error
-	}{
-		{"Get script file by GET Method", "GET", "fulltable", "get_all", nil},
-		{"Get script file by POST Method", "POST", "fulltable", "write_all", nil},
-		{"Get script file by PUT Method", "PUT", "fulltable", "put_all", nil},
-		{"Get script file by PATCH Method", "PATCH", "fulltable", "patch_all", nil},
-		{"Get script file by DELETE Method", "DELETE", "fulltable", "delete_all", nil},
-	}
+func TestGetScript_MissingFile(t *testing.T) {
+	dir := t.TempDir()
+	cfg := defaultTestConf()
+	cfg.QueriesPath = dir
+	withPrestConf(t, cfg)
+	adapter := testAdapter()
 
-	for _, tc := range testCases {
-		t.Log(tc.description)
-		_, err := config.PrestConf.Adapter.GetScript(tc.method, tc.path, tc.file)
-		if err != tc.err {
-			t.Errorf("expected no errors, but got %s", err)
-		}
-	}
+	_, err := adapter.GetScript("GET", "missing", "script")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "could not load script")
 }
 
-func TestInvalidGetScript(t *testing.T) {
-	var testCases = []struct {
-		description string
-		method      string
-		path        string
-		file        string
-	}{
-		{"Try get a script with INVALID HTTP Method", "ANY", "fulltable", "delete_all"},
-		{"Try get a script noexistent", "GET", "fulltable", "dloohot_all"},
-		{"Try get a script with nonexistent folder", "GET", "sasalla", "get_all"},
-	}
+func TestGetScript_Success(t *testing.T) {
+	dir := t.TempDir()
+	folder := filepath.Join(dir, "queries")
+	require.NoError(t, os.MkdirAll(folder, 0o755))
+	scriptPath := filepath.Join(folder, "list.read.sql")
+	require.NoError(t, os.WriteFile(scriptPath, []byte("SELECT 1"), 0o644))
 
-	for _, tc := range testCases {
-		t.Log(tc.description)
-		_, err := config.PrestConf.Adapter.GetScript(tc.method, tc.path, tc.file)
-		if err == nil {
-			t.Errorf("expected no error, but got %s", err)
-		}
-	}
+	cfg := defaultTestConf()
+	cfg.QueriesPath = dir
+	withPrestConf(t, cfg)
+	adapter := testAdapter()
+
+	got, err := adapter.GetScript("GET", "queries", "list")
+	require.NoError(t, err)
+	require.Equal(t, scriptPath, got)
 }
 
-func TestParseScriptInvalid(t *testing.T) {
-	templateData := map[string]interface{}{}
-	templateData["field1"] = "abc"
+func TestParseScript_Template(t *testing.T) {
+	dir := t.TempDir()
+	scriptPath := filepath.Join(dir, "query.read.sql")
+	require.NoError(t, os.WriteFile(scriptPath, []byte(`SELECT * FROM users WHERE name = '{{ .field1 }}'`), 0o644))
 
-	scriptPath := fmt.Sprint(os.Getenv("PREST_QUERIES_LOCATION"), "/fulltable/%s")
-	t.Log("Parse script with get_all file")
-	sql, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "get_all.read.sql"), templateData)
-	if err != nil {
-		t.Errorf("expected no error, but got: %v", err)
-	}
+	withPrestConf(t, defaultTestConf())
+	adapter := testAdapter()
 
-	if sql != "SELECT * FROM test7 WHERE name = 'abc'" {
-		t.Errorf("SQL unexpected, got: %s", sql)
-	}
+	sql, values, err := adapter.ParseScript(scriptPath, map[string]interface{}{"field1": "abc"})
+	require.NoError(t, err)
+	require.Equal(t, "SELECT * FROM users WHERE name = 'abc'", sql)
+	require.Empty(t, values)
 }
 
-func TestParseScriptSyntaxInvalid(t *testing.T) {
-	templateData := map[string]interface{}{}
-	templateData["field1"] = 1
-	scriptPath := fmt.Sprint(os.Getenv("PREST_QUERIES_LOCATION"), "/fulltable/%s")
-	_, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "parse_syntax_invalid.read.sql"), templateData)
-	if !strings.Contains(err.Error(), "could not parse file") {
-		t.Errorf("expected no error, but got: %v", err)
-	}
+func TestParseScript_InvalidTemplate(t *testing.T) {
+	dir := t.TempDir()
+	scriptPath := filepath.Join(dir, "bad.read.sql")
+	require.NoError(t, os.WriteFile(scriptPath, []byte(`{{ .missing`), 0o644))
+
+	withPrestConf(t, defaultTestConf())
+	adapter := testAdapter()
+
+	_, _, err := adapter.ParseScript(scriptPath, map[string]interface{}{})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "could not parse file")
 }
 
-func TestParseScript(t *testing.T) {
-	templateData := map[string]interface{}{}
-	templateData["field1"] = []string{"abc", "test"}
+func TestExecuteScripts_InvalidMethod(t *testing.T) {
+	withPrestConf(t, defaultTestConf())
+	adapter := testAdapter()
 
-	scriptPath := fmt.Sprint(os.Getenv("PREST_QUERIES_LOCATION"), "/fulltable/%s")
-
-	t.Log("Parse script with get_all_slice file")
-	sql, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "get_all_slice.read.sql"), templateData)
-	if err != nil {
-		t.Errorf("expected no error, but got: %v", err)
-	}
-
-	if sql != "SELECT * FROM test7 WHERE name IN ('abc', 'test')" {
-		t.Errorf("SQL unexpected, got: %s", sql)
-	}
+	sc := adapter.ExecuteScripts("ANY", "SELECT 1", nil)
+	require.Error(t, sc.Err())
+	require.Contains(t, sc.Err().Error(), "invalid method")
+	require.Empty(t, sc.Bytes())
 }
 
-func TestWriteSQL(t *testing.T) {
-	var testValidCases = []struct {
-		description string
-		sql         string
-		values      []interface{}
-		pass        bool
-	}{
-		{"Execute a valid INSERT sql", "INSERT INTO test7(name) values ('lulu')", []interface{}{}, true},
-		{"Execute a valid UPDATE sql", "UPDATE test7 SET name = 'lulu' WHERE surname = 'temer'", []interface{}{}, true},
-		{"Execute a valid DELETE sql", "DELETE FROM test7 WHERE name = 'lulu'", []interface{}{}, true},
-		{"Execute a valid DELETE sql", "DELETE FROM test7 WHERE name = 'lulu'", []interface{}{1, 2}, false},
-	}
-	for _, tc := range testValidCases {
-		t.Log(tc.description)
-		sc := WriteSQL(tc.sql, tc.values)
-		if sc.Err() != nil && tc.pass {
-			t.Errorf("pass true, got: %s", sc.Err())
-		} else if sc.Err() == nil && !tc.pass {
-			t.Errorf("pass false, got: %s", sc.Err())
-		}
-	}
+func TestExecuteScripts_GET(t *testing.T) {
+	adapter, mock := withSQLMock(t)
+
+	mock.ExpectPrepare(`SELECT json_agg\(s\) FROM \(SELECT \* FROM users\) s`).
+		ExpectQuery().
+		WillReturnRows(sqlmock.NewRows([]string{"json_agg"}).AddRow([]byte(`[{"id":1}]`)))
+
+	sc := adapter.ExecuteScripts("GET", "SELECT * FROM users", nil)
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `[{"id":1}]`, string(sc.Bytes()))
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestWriteSQLCtx(t *testing.T) {
-	ctx := context.Background()
+func TestExecuteScripts_POST(t *testing.T) {
+	adapter, mock := withSQLMock(t)
 
-	var testValidCases = []struct {
-		description string
-		sql         string
-		values      []interface{}
-		pass        bool
-	}{
-		{"Execute a valid INSERT sql", "INSERT INTO test7(name) values ('lulu')", []interface{}{}, true},
-		{"Execute a valid UPDATE sql", "UPDATE test7 SET name = 'lulu' WHERE surname = 'temer'", []interface{}{}, true},
-		{"Execute a valid DELETE sql", "DELETE FROM test7 WHERE name = 'lulu'", []interface{}{}, true},
-		{"Execute a valid DELETE sql", "DELETE FROM test7 WHERE name = 'lulu'", []interface{}{1, 2}, false},
-	}
-	for _, tc := range testValidCases {
-		t.Log(tc.description)
-		sc := WriteSQLCtx(ctx, tc.sql, tc.values)
-		if sc.Err() != nil && tc.pass {
-			t.Errorf("pass true, got: %s", sc.Err())
-		} else if sc.Err() == nil && !tc.pass {
-			t.Errorf("pass false, got: %s", sc.Err())
-		}
-	}
+	mock.ExpectPrepare(`INSERT INTO users`).
+		ExpectExec().
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	sc := adapter.ExecuteScripts("POST", "INSERT INTO users(name) VALUES('alice')", nil)
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `{"rows_affected":1}`, string(sc.Bytes()))
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestExecuteScripts(t *testing.T) {
-	var testCases = []struct {
-		description string
-		method      string
-		sql         string
-		values      []interface{}
-		err         error
-	}{
-		{"Get result with GET HTTP Method", "GET", "SELECT * FROM test7", []interface{}{}, nil},
-		{"Get result with POST HTTP Method", "POST", "INSERT INTO test7 (name) VALUES ('lala')", []interface{}{}, nil},
-		{"Get result with PUT HTTP Method", "PUT", "UPDATE test7 SET name = 'lala' WHERE surname = 'temer'", []interface{}{}, nil},
-		{"Get result with PATCH HTTP Method", "PATCH", "UPDATE test7 SET surname = 'temer' WHERE name = 'lala'", []interface{}{}, nil},
-		{"Get result with DELETE HTTP Method", "DELETE", "DELETE FROM test7 WHERE surname = 'lala'", []interface{}{}, nil},
-	}
+func TestWriteSQL_Success(t *testing.T) {
+	_, mock := withSQLMock(t)
 
-	for _, tc := range testCases {
-		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.ExecuteScripts(tc.method, tc.sql, tc.values)
-		if tc.err != sc.Err() {
-			t.Errorf("expected no errors, but got %s", sc.Err())
-		}
-	}
+	mock.ExpectPrepare(`UPDATE users`).
+		ExpectExec().
+		WillReturnResult(sqlmock.NewResult(0, 2))
 
-	t.Log("Get errors with invalid HTTP Method")
-	values := make([]interface{}, 0)
-	sc := config.PrestConf.Adapter.ExecuteScripts("ANY", "SELECT * FROM test7", values)
-	if len(sc.Bytes()) > 0 {
-		t.Errorf("expected empty result, but got %s", sc.Bytes())
-	}
-
-	if sc.Err() == nil {
-		t.Errorf("expected errors, but got %s", sc.Err())
-	}
+	sc := WriteSQL("UPDATE users SET active=true", nil)
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `{"rows_affected":2}`, string(sc.Bytes()))
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestExecuteScriptsCtx(t *testing.T) {
-	ctx := context.Background()
+func TestWriteSQL_PrepareError(t *testing.T) {
+	_, mock := withSQLMock(t)
 
-	var testCases = []struct {
-		description string
-		method      string
-		sql         string
-		values      []interface{}
-		err         error
-	}{
-		{"Get result with GET HTTP Method", "GET", "SELECT * FROM test7", []interface{}{}, nil},
-		{"Get result with POST HTTP Method", "POST", "INSERT INTO test7 (name) VALUES ('lala')", []interface{}{}, nil},
-		{"Get result with PUT HTTP Method", "PUT", "UPDATE test7 SET name = 'lala' WHERE surname = 'temer'", []interface{}{}, nil},
-		{"Get result with PATCH HTTP Method", "PATCH", "UPDATE test7 SET surname = 'temer' WHERE name = 'lala'", []interface{}{}, nil},
-		{"Get result with DELETE HTTP Method", "DELETE", "DELETE FROM test7 WHERE surname = 'lala'", []interface{}{}, nil},
-	}
+	mock.ExpectPrepare(`DELETE FROM users`).WillReturnError(errors.New("prepare failed"))
 
-	for _, tc := range testCases {
-		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.ExecuteScriptsCtx(ctx, tc.method, tc.sql, tc.values)
-		if tc.err != sc.Err() {
-			t.Errorf("expected no errors, but got %s", sc.Err())
-		}
-	}
-
-	t.Log("Get errors with invalid HTTP Method")
-	values := make([]interface{}, 0)
-	sc := config.PrestConf.Adapter.ExecuteScriptsCtx(ctx, "ANY", "SELECT * FROM test7", values)
-	if len(sc.Bytes()) > 0 {
-		t.Errorf("expected empty result, but got %s", sc.Bytes())
-	}
-
-	if sc.Err() == nil {
-		t.Errorf("expected errors, but got %s", sc.Err())
-	}
+	sc := WriteSQL("DELETE FROM users", nil)
+	require.Error(t, sc.Err())
+	require.Contains(t, sc.Err().Error(), "could not prepare sql")
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestParseFuncLimitOffset(t *testing.T) {
-	templateData := map[string]interface{}{}
+func TestExecuteScriptsCtx_WithContext(t *testing.T) {
+	adapter, defaultMock, ctxMock := withSQLMocks(t)
 
-	scriptPath := fmt.Sprint(os.Getenv("PREST_QUERIES_LOCATION"), "/fulltable/%s")
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
+	ctxMock.ExpectPrepare(`SELECT json_agg\(s\) FROM \(SELECT 1\) s`).
+		ExpectQuery().
+		WillReturnRows(sqlmock.NewRows([]string{"json_agg"}).AddRow([]byte(`[1]`)))
 
-	t.Log("Parse script with limitoffset file")
-	sql, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "limitoffset.read.sql"), templateData)
-	if err != nil {
-		t.Errorf("expected no error, but got: %v", err)
-	}
+	sc := adapter.ExecuteScriptsCtx(ctx, "GET", "SELECT 1", nil)
+	require.NoError(t, sc.Err())
+	require.Equal(t, "[1]", string(sc.Bytes()))
+	require.NoError(t, ctxMock.ExpectationsWereMet())
+	require.NoError(t, defaultMock.ExpectationsWereMet())
+}
 
-	if sql != "SELECT * FROM test7 LIMIT 10 OFFSET(1 - 1) * 10\n" {
-		t.Errorf("SQL unexpected, got: %s", sql)
-	}
+func TestWriteSQLCtx_Success(t *testing.T) {
+	_, defaultMock, ctxMock := withSQLMocks(t)
+
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
+	ctxMock.ExpectPrepare(`DELETE FROM users`).
+		ExpectExec().
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	sc := WriteSQLCtx(ctx, "DELETE FROM users WHERE id=1", nil)
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `{"rows_affected":1}`, string(sc.Bytes()))
+	require.NoError(t, ctxMock.ExpectationsWereMet())
+	require.NoError(t, defaultMock.ExpectationsWereMet())
 }

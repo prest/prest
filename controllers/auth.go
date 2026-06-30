@@ -3,14 +3,17 @@ package controllers
 import (
 	"crypto/md5"
 	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers/auth"
+	"golang.org/x/crypto/bcrypt"
 
 	jose "gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
@@ -38,44 +41,30 @@ type Login struct {
 	Password string `json:"password"`
 }
 
-// Token for user
-func Token(u auth.User) (t string, err error) {
-	// add start time (NotBefore)
-	getToken := time.Now()
-	// add expiry time in configuration (in minute format, so we support the maximum need)
-	expireToken := time.Now().Add(time.Hour * 6)
-
-	// TODO: JWT any Algorithm support
-	sig, err := jose.NewSigner(
-		jose.SigningKey{
-			Algorithm: jose.HS256,
-			Key:       []byte(config.PrestConf.JWTKey)},
-		(&jose.SignerOptions{}).WithType("JWT"))
-	if err != nil {
-		return
-	}
-
-	cl := auth.Claims{
-		UserInfo:  u,
-		NotBefore: jwt.NewNumericDate(getToken),
-		Expiry:    jwt.NewNumericDate(expireToken),
-	}
-	return jwt.Signed(sig).Claims(cl).CompactSerialize()
+// AuthHandler serves the authentication endpoint.
+type AuthHandler struct {
+	executor adapters.QueryExecutor
+	cfg      AuthConfig
 }
 
-// Auth controller
-func Auth(w http.ResponseWriter, r *http.Request) {
+// NewAuthHandler creates an AuthHandler.
+func NewAuthHandler(executor adapters.QueryExecutor, cfg AuthConfig) *AuthHandler {
+	return &AuthHandler{
+		executor: executor,
+		cfg:      cfg,
+	}
+}
+
+// Login authenticates a user and returns a JWT.
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	login := Login{}
-	switch config.PrestConf.AuthType {
-	// TODO: form support
+	switch h.cfg.AuthType {
 	case "body":
-		// to use body field authentication
 		dec := json.NewDecoder(r.Body)
 		dec.DisallowUnknownFields()
 		//nolint
 		dec.Decode(&login)
 	case "basic":
-		// to use http basic authentication
 		var ok bool
 		login.Username, login.Password, ok = r.BasicAuth()
 		if !ok {
@@ -84,12 +73,12 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	loggedUser, err := basicPasswordCheck(strings.ToLower(login.Username), login.Password)
+	loggedUser, err := h.basicPasswordCheck(strings.ToLower(login.Username), login.Password)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
-	token, err := Token(loggedUser)
+	token, err := h.token(loggedUser)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -105,15 +94,44 @@ func Auth(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// basicPasswordCheck
-func basicPasswordCheck(user, password string) (obj auth.User, err error) {
-	/**
-	table name, fields (user and password) and encryption must be defined in
-	the configuration file (toml)
-	by default this endpoint will not be available, it is necessary to activate
-	in the configuration file
-	*/
-	sc := config.PrestConf.Adapter.Query(getSelectQuery(), user, encrypt(password))
+func (h *AuthHandler) token(u auth.User) (t string, err error) {
+	getToken := time.Now()
+	expireToken := time.Now().Add(time.Hour * 6)
+
+	sig, err := jose.NewSigner(
+		jose.SigningKey{
+			Algorithm: jose.HS256,
+			Key:       []byte(h.cfg.JWTKey)},
+		(&jose.SignerOptions{}).WithType("JWT"))
+	if err != nil {
+		return
+	}
+
+	cl := auth.Claims{
+		UserInfo:  u,
+		NotBefore: jwt.NewNumericDate(getToken),
+		Expiry:    jwt.NewNumericDate(expireToken),
+	}
+	return jwt.Signed(sig).Claims(cl).CompactSerialize()
+}
+
+func (h *AuthHandler) basicPasswordCheck(user, password string) (obj auth.User, err error) {
+	switch strings.ToUpper(h.cfg.Encrypt) {
+	case "MD5", "SHA1":
+		return h.basicPasswordCheckLegacy(user, password)
+	case "BCRYPT":
+		return h.basicPasswordCheckBcrypt(user, password)
+	default:
+		return obj, ErrUnknownEncryptAlgorithm
+	}
+}
+
+func (h *AuthHandler) basicPasswordCheckLegacy(user, password string) (obj auth.User, err error) {
+	digest, err := h.legacyDigest(password)
+	if err != nil {
+		return
+	}
+	sc := h.executor.Query(h.selectQuery(), user, digest)
 	if sc.Err() != nil {
 		err = sc.Err()
 		return
@@ -125,25 +143,143 @@ func basicPasswordCheck(user, password string) (obj auth.User, err error) {
 	if n != 1 {
 		err = ErrUserNotFound
 	}
-
 	return
 }
 
-// getSelectQuery create the query to authenticate the user
-func getSelectQuery() (query string) {
+func (h *AuthHandler) basicPasswordCheckBcrypt(user, password string) (obj auth.User, err error) {
+	sc := h.executor.Query(h.selectQueryByUsername(), user)
+	if sc.Err() != nil {
+		err = sc.Err()
+		return
+	}
+	var row loginRow
+	n, err := sc.Scan(&row)
+	if err != nil {
+		return
+	}
+	if n != 1 {
+		err = ErrUserNotFound
+		return
+	}
+	if err = h.verifyStoredPassword(password, row.Password); err != nil {
+		return
+	}
+	return row.user(), nil
+}
+
+// verifyStoredPassword verifies the stored password against the password provided.
+// It returns an error if the password is not valid.
+// if it is md5 or sha1, it will be verified against the stored value.
+// if it is bcrypt, it will be verified using bcrypt.CompareHashAndPassword.
+func (h *AuthHandler) verifyStoredPassword(password, stored string) error {
+	if isBcryptHash(stored) {
+		if bcrypt.CompareHashAndPassword([]byte(stored), []byte(password)) != nil {
+			return ErrUserNotFound
+		}
+		return nil
+	}
+	if alg := storedLegacyDigestAlgorithm(stored); alg != "" {
+		digest, err := h.legacyDigestForAlgorithm(password, alg)
+		if err != nil {
+			return err
+		}
+		if digest != stored {
+			return ErrUserNotFound
+		}
+		return nil
+	}
+	return ErrUserNotFound
+}
+
+func isBcryptHash(stored string) bool {
+	return strings.HasPrefix(stored, "$2a$") ||
+		strings.HasPrefix(stored, "$2b$") ||
+		strings.HasPrefix(stored, "$2y$")
+}
+
+func storedLegacyDigestAlgorithm(stored string) string {
+	if !isHexDigest(stored) {
+		return ""
+	}
+	switch len(stored) {
+	case 32:
+		return "MD5"
+	case 40:
+		return "SHA1"
+	default:
+		return ""
+	}
+}
+
+func isHexDigest(s string) bool {
+	if len(s) == 0 || len(s)%2 != 0 {
+		return false
+	}
+	_, err := hex.DecodeString(s)
+	return err == nil
+}
+
+type loginRow struct {
+	ID       int
+	Name     string
+	Username string
+	Metadata interface{}
+	Password string
+}
+
+func (r loginRow) user() auth.User {
+	return auth.User{
+		ID:       r.ID,
+		Name:     r.Name,
+		Username: r.Username,
+		Metadata: r.Metadata,
+	}
+}
+
+func (h *AuthHandler) selectQueryByUsername() string {
+	return fmt.Sprintf(
+		`SELECT * FROM %s.%s WHERE %s=$1 LIMIT 1`,
+		h.cfg.Schema, h.cfg.Table,
+		h.cfg.Username)
+}
+
+func (h *AuthHandler) selectQuery() (query string) {
 	return fmt.Sprintf(
 		`SELECT * FROM %s.%s WHERE %s=$1 AND %s=$2 LIMIT 1`,
-		config.PrestConf.AuthSchema, config.PrestConf.AuthTable,
-		config.PrestConf.AuthUsername, config.PrestConf.AuthPassword)
+		h.cfg.Schema, h.cfg.Table,
+		h.cfg.Username, h.cfg.Password)
 }
 
-// encrypt will apply the encryption algorithm to the password
-func encrypt(password string) (encrypted string) {
-	switch config.PrestConf.AuthEncrypt {
+func (h *AuthHandler) legacyDigest(password string) (string, error) {
+	return h.legacyDigestForAlgorithm(password, h.cfg.Encrypt)
+}
+
+func (h *AuthHandler) legacyDigestForAlgorithm(password, algorithm string) (string, error) {
+	switch strings.ToUpper(algorithm) {
 	case "MD5":
-		return fmt.Sprintf("%x", md5.Sum([]byte(password)))
+		// Legacy verification only: compares against pre-hashed values stored in the DB.
+		// codeql[go/weak-sensitive-data-hashing]
+		return fmt.Sprintf("%x", md5.Sum([]byte(password))), nil
 	case "SHA1":
-		return fmt.Sprintf("%x", sha1.Sum([]byte(password)))
+		// Legacy verification only: compares against pre-hashed values stored in the DB.
+		// codeql[go/weak-sensitive-data-hashing]
+		return fmt.Sprintf("%x", sha1.Sum([]byte(password))), nil
+	default:
+		return "", ErrUnknownEncryptAlgorithm
 	}
-	return
+}
+
+// HashPassword returns a bcrypt hash for storing in the auth password column.
+func HashPassword(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hash), nil
+}
+
+// Token creates a JWT for the given user using global config (legacy helper for tests).
+func Token(u auth.User) (t string, err error) {
+	h := NewAuthHandler(nil, AuthConfig{JWTKey: config.PrestConf.JWTKey})
+	return h.token(u)
 }

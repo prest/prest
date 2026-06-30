@@ -5,7 +5,7 @@ These instructions guide AI-generated changes in this repository.
 ## Project Scope
 
 - Repository: `github.com/prest/prest`
-- Language: Go (`go 1.25.0`, always check `go.mod`)
+- Language: Go (`go 1.26.0`, always check `go.mod`)
 - Primary domain: PostgreSQL-backed REST API server, CLI, middleware, adapters, and plugins.
 - Runtime entrypoint: `cmd/prestd/main.go`
 
@@ -13,16 +13,16 @@ These instructions guide AI-generated changes in this repository.
 
 - Prefer small, focused changes over broad refactors.
 - Preserve existing public behavior unless the task explicitly requires a change.
-- Keep compatibility with Go 1.25.0.
+- Keep compatibility with Go 1.26.0.
 - Favor readability and maintainability over clever abstractions.
 - Do not introduce breaking changes to command flags, config keys, routes, or plugin behavior without explicit request.
 
 ## Code Organization Conventions
 
 - Keep new code in the most relevant existing package instead of creating new top-level folders.
-- Follow existing package boundaries (examples: `controllers/`, `middlewares/`, `adapters/`, `plugins/`, `router/`, `config/`).
-- Keep HTTP-related logic in controllers/middlewares and DB-specific logic in adapter/postgres layers.
-- Avoid cyclic imports; prefer dependency injection and interfaces where patterns already exist.
+- Follow existing package boundaries and hexagonal roles (see **Hexagonal Architecture** below).
+- Keep HTTP-related logic in controllers/middlewares and DB-specific logic in `adapters/postgres/`.
+- Avoid cyclic imports; depend on narrow ports in `adapters/`, not concrete implementations.
 
 ## Go Style and Implementation Rules
 
@@ -45,20 +45,25 @@ These instructions guide AI-generated changes in this repository.
 ## Testing Expectations
 
 - Add or update tests for behavior changes.
-- Prefer package-local unit tests near changed code.
-- Reuse existing test patterns (`*_test.go`, `testify`, existing mocks in `adapters/mock/`, `testutils/`).
-- When integration behavior is affected, use existing Docker-based test workflow.
-- All added code must be covered by tests unless explicitly justified.
-- Added tests must cover at least 80% of new code paths and edge cases.
+- **Unit tests:** co-located `*_test.go` in the source package; use gomock of narrow adapter interfaces; never call `postgres.Load()` or hit a real database.
+- **Integration tests:** only under `integration/`, mirroring package layout; exercise public HTTP/adapter surfaces end-to-end with Docker Postgres.
+- Never add `postgres.Load()` outside `integration/`.
+- Reuse existing test patterns (`testify`, `adapters/mockgen/`, `handlerstest.NewTestHandlers`, `testutils/` for HTTP helpers).
+- Mock **ports** (`adapters/*` interfaces), not `adapters/postgres` types, in unit tests.
+- Maintain ≥80% coverage on new code paths (unit + integration combined).
+- Name test files after the source file under test: `<source_file>_test.go` (e.g. `catalog.go` → `catalog_test.go`).
+- Any new change in behavior on the controllers package should introduce a new integration test as well as a unit test.
 
 Common commands:
 
 ```sh
-# Unit/integration flow used by repository
-make test
+# Unit tests (no database, co-located in each package)
+make test          # or: make test-unit
+go test $(go list ./... | grep -v /integration)
 
-# Local package-level tests
-go test ./...
+# Integration tests (Docker Postgres, integration/ tree only)
+make test-integration
+go test ./integration/...
 ```
 
 ## Config and CLI Changes
@@ -88,7 +93,82 @@ Before finalizing changes, verify:
 - New logic has tests or a clear reason why tests were not added.
 - No accidental breaking change in API, CLI, or config surface.
 
+## Hexagonal Architecture
+
+pREST v2 uses **ports and adapters**. Business-facing HTTP code sits at the edge; PostgreSQL and other infrastructure sit behind interfaces. Dependencies point **inward** — application code never imports `adapters/postgres`.
+
+### Layer map
+
+| Role | Packages | Responsibility |
+|------|----------|----------------|
+| **Driving adapters** (primary) | `controllers/`, `middlewares/`, `router/`, `cmd/` | HTTP transport, auth, routing, CLI wiring |
+| **Application core** | Handler structs + `controllers.Deps` | Orchestrate requests; depend only on ports |
+| **Ports** | `adapters/` (interface files) | Contracts the core needs from the outside world |
+| **Driven adapters** (secondary) | `adapters/postgres/`, `cache/`, `plugins/` | Concrete PostgreSQL, cache, and plugin implementations |
+| **Composition root** | `router/`, `cmd/prestd/`, `NewDepsFromConfig` | Wire config → adapter → handlers → routes |
+
+### Ports (`adapters/`)
+
+Define narrow interfaces in `adapters/` — one file per concern:
+
+- `QueryExecutor`, `RequestQueryBuilder`, `CatalogQuerier`, `SQLBuilder`
+- `PermissionsChecker`, `ScriptRunner`, `DatabaseRegistry`, `Scanner`
+- `Adapter` — composite of all ports; implemented only by `adapters/postgres`
+
+Handlers should depend on the **smallest port** that suffices (e.g. `CRUDHandler` takes `QueryExecutor`, not `*postgres.Postgres`). Bundle ports in `controllers.Deps` and inject via `NewHandlers(deps)`.
+
+### Driven adapters (`adapters/postgres/`)
+
+- All SQL, connection pooling, `pq` usage, and Postgres-specific types live here.
+- Must implement ports in `adapters/`; must not import `controllers/` or `middlewares/`.
+- Shared query/scan helpers stay in this package or its subpackages (`formatters/`, `statements/`).
+
+### Driving adapters (`controllers/`, `middlewares/`)
+
+- Translate HTTP (path vars, headers, status codes, JSON) into port calls.
+- No raw SQL, no `database/sql` or `pq` imports.
+- Cross-cutting concerns (JWT, ACL, cache, exposure) belong in `middlewares/`, not controllers.
+- Local handler-specific ports (e.g. `controllers.ResponseCacher`) stay in the consumer package when they are not shared infrastructure.
+
+### Composition and wiring
+
+- **`controllers.NewDepsFromConfig`** — maps `config.Prest` + `p.Adapter` into `controllers.Deps`.
+- **`controllers.NewHandlers(deps)`** — constructs handlers from injected ports (preferred in tests).
+- **`router.RegisterRoutes`** — attaches handlers and middleware stacks; no business logic.
+- **`config.Prest.Adapter`** — set once at startup (`postgres.Load` / integration setup); not read directly by handlers.
+
+### Adding a new feature (checklist)
+
+1. **Port** — add or extend an interface in `adapters/` if the core needs new external capability.
+2. **Adapter** — implement it in `adapters/postgres/` (or another driven adapter package).
+3. **Handler** — add methods on a handler struct; accept the port via constructor/`Deps`.
+4. **Route** — register in `router/router.go`; add middleware in `middlewares/` if needed.
+5. **Mocks** — run `make mockgen` for new/changed interfaces; unit-test handlers with `adapters/mockgen/`.
+6. **Integration** — add `integration/<package>/` tests for end-to-end behavior with Docker Postgres.
+
+### Dependency rules (do / don't)
+
+**Do**
+
+- Inject dependencies through constructors and `controllers.Deps`.
+- Keep ports small and purpose-specific (interface segregation).
+- Use `context.Context` on port methods that perform I/O (`*Ctx` variants on `QueryExecutor`).
+- Put integration tests under `integration/` mirroring the production package layout.
+
+**Don't**
+
+- Import `adapters/postgres` from `controllers/`, `middlewares/`, or `router/`.
+- Call `postgres.Load()` or open DB connections outside `integration/` and startup (`cmd/`).
+- Add business logic to `router/` or `config/` beyond wiring and validation.
+- Make handlers depend on the composite `Adapter` when a narrower port is enough.
+- Leak `http.Request` or `mux.Vars` into `adapters/postgres`.
+
+### Mock generation
+
+Interfaces in `adapters/` are mocked via `make mockgen`, outputting to `adapters/mockgen/`. Regenerate mocks whenever a port signature changes.
+
 ## Architecture and Design Guidance
 
-- Current architecture is based on a layered design: controllers, middlewares, adapters, and plugins.
-- Current v2 architecture is designed to follow a hexagonal architecture pattern, with http handlers/controllers on the outside and adapters for database access on the inside.
+- Prefer extending existing ports and handlers over new top-level abstractions.
+- When refactoring legacy code, move Postgres coupling behind an existing port rather than introducing parallel access paths.
+- Plugins (`plugins/`) are optional driving/driven adapters loaded at runtime; keep their surface compatible with existing middleware and route conventions.

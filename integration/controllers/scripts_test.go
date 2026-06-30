@@ -1,5 +1,5 @@
 // nolint
-package controllers
+package controllers_test
 
 import (
 	"net/http"
@@ -7,30 +7,15 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/v2/adapters/postgres"
-	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/middlewares"
 	"github.com/prest/prest/v2/testutils"
 )
 
 func TestExecuteScriptQuery(t *testing.T) {
+	h := helpers.NewIntegrationHandlers(t)
 	r := mux.NewRouter()
-	r.HandleFunc("/testing/script-get/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp, err := ExecuteScriptQuery(r, "fulltable", "get_all")
-		if err != nil {
-			jsonError(w, err.Error(), http.StatusBadRequest)
-		}
-		w.Write(resp)
-	}))
-
-	r.HandleFunc("/testing/script-post/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp, err := ExecuteScriptQuery(r, "fulltable", "write_all")
-		if err != nil {
-			jsonError(w, err.Error(), http.StatusBadRequest)
-		}
-		w.Write(resp)
-	}))
-
+	r.HandleFunc("/_QUERIES/{queriesLocation}/{script}", helpers.WithHTTPTimeout(h.Script.Execute))
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -40,8 +25,8 @@ func TestExecuteScriptQuery(t *testing.T) {
 		method      string
 		status      int
 	}{
-		{"Execute script GET method", "/testing/script-get/?field1=gopher", "GET", http.StatusOK},
-		{"Execute script POST method", "/testing/script-post/?field1=gopherzin&field2=pereira", "POST", http.StatusOK},
+		{"Execute script GET method", "/_QUERIES/fulltable/get_all?field1=gopher", "GET", http.StatusOK},
+		{"Execute script POST method", "/_QUERIES/fulltable/write_all?field1=gopherzin&field2=pereira", "POST", http.StatusOK},
 	}
 
 	for _, tc := range testCases {
@@ -51,8 +36,9 @@ func TestExecuteScriptQuery(t *testing.T) {
 }
 
 func TestExecuteFromScripts(t *testing.T) {
+	h := helpers.NewIntegrationHandlers(t)
 	router := mux.NewRouter()
-	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", setHTTPTimeoutMiddleware(ExecuteFromScripts))
+	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", helpers.WithHTTPTimeout(h.Script.Execute))
 	server := httptest.NewServer(router)
 	defer server.Close()
 
@@ -92,11 +78,10 @@ func TestRenderWithXML(t *testing.T) {
 		{"Get schemas with COUNT clause with XML Render", "/schemas?_count=*&_renderer=xml", "GET", 200, "<objects><object><count>4</count></object></objects>"},
 	}
 	t.Setenv("PREST_DEBUG", "true")
-	config.Load()
-	postgres.Load()
+	h := helpers.NewIntegrationHandlers(t)
 	n := middlewares.GetApp()
 	r := mux.NewRouter()
-	r.HandleFunc("/schemas", GetSchemas).Methods("GET")
+	r.HandleFunc("/schemas", h.Catalog.ListSchemas).Methods("GET")
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
 	defer server.Close()
@@ -109,10 +94,9 @@ func TestRenderWithXML(t *testing.T) {
 
 func TestSilentErrorsOnQuery(t *testing.T) {
 	t.Setenv("PREST_DEBUG", "false")
-	config.Load()
-	postgres.Load()
+	h := helpers.NewIntegrationHandlers(t)
 	router := mux.NewRouter()
-	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", setHTTPTimeoutMiddleware(ExecuteFromScripts))
+	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", helpers.WithHTTPTimeout(h.Script.Execute))
 	server := httptest.NewServer(router)
 	defer server.Close()
 

@@ -182,7 +182,7 @@ func viperCfg() {
 	viper.SetDefault("auth.password", "password")
 	viper.SetDefault("auth.schema", "public")
 	viper.SetDefault("auth.table", "prest_users")
-	viper.SetDefault("auth.encrypt", "MD5")
+	viper.SetDefault("auth.encrypt", "bcrypt")
 	viper.SetDefault("auth.type", "body")
 
 	viper.SetDefault("http.host", "0.0.0.0")

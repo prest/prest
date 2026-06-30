@@ -1,4 +1,4 @@
-FROM registry.hub.docker.com/library/golang:1.25 as builder
+FROM registry.hub.docker.com/library/golang:1.26 as builder
 WORKDIR /workspace
 COPY . .
 ARG VERSION

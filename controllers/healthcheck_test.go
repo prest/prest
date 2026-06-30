@@ -7,15 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/prest/prest/v2/testutils"
-
 	"github.com/gorilla/mux"
-	"github.com/stretchr/testify/require"
+	"github.com/prest/prest/v2/testutils"
 )
-
-func TestCheckDBHealth(t *testing.T) {
-	require.Nil(t, CheckDBHealth(context.Background()))
-}
 
 func healthyDB(context.Context) error   { return nil }
 func unhealthyDB(context.Context) error { return errors.New("could not connect to the database") }
@@ -29,9 +23,10 @@ func TestHealthStatus(t *testing.T) {
 		{healthyDB, "healthy database", http.StatusOK},
 		{unhealthyDB, "unhealthy database", http.StatusServiceUnavailable},
 	} {
-		router := mux.NewRouter()
 		checks := CheckList{tc.checkDBHealth}
-		router.HandleFunc("/_health", WrappedHealthCheck(checks)).Methods("GET")
+		router := mux.NewRouter()
+		h := NewHealthHandler(checks)
+		router.HandleFunc("/_health", h.Handler()).Methods("GET")
 		server := httptest.NewServer(router)
 		defer server.Close()
 		testutils.DoRequest(t, server.URL+"/_health", nil, "GET", tc.expected, "")

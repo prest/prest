@@ -1,11 +1,12 @@
 module github.com/prest/prest/v2
 
-go 1.25.0
+go 1.26.0
 
 // todo: upgrade go-jose
 // github.com/go-jose/go-jose/v4 v4.0.4
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/avelino/slugify v0.0.0-20180501145920-855f152bd774
 	github.com/clbanning/mxj v1.8.4
 	github.com/golang/mock v1.6.0
@@ -54,7 +55,7 @@ require (
 	github.com/tidwall/rtred v0.1.2 // indirect
 	github.com/tidwall/tinyqueue v0.1.1 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.47.0 // indirect
+	golang.org/x/crypto v0.47.0
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect

@@ -1,0 +1,40 @@
+name: test-integration
+run-name: integration tests
+
+on:
+  push:
+    branches:
+      - "main"
+    tags:
+      - "v*"
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version: 1.26
+          cache: ${{ github.event_name != 'pull_request' }}
+      - name: Run unit tests
+        run: make test-unit
+
+  integration:
+    runs-on: ubuntu-latest
+    needs: [unit]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run integration tests via docker compose
+        run: make test-integration

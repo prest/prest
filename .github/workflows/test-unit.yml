@@ -1,0 +1,59 @@
+name: test-unit
+run-name: unit tests
+
+on:
+  push:
+    branches:
+      - "main"
+    tags:
+      - "v*"
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.26
+          cache: ${{ github.event_name != 'pull_request' }}
+
+      - name: Run unit tests
+        run: make test-unit
+
+      - name: Archive code coverage results
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage
+          path: coverage.out
+
+      - name: Upload code coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.out
+
+  coverage-report:
+    name: Coverage PR comment
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: unit
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    steps:
+      - uses: fgrosse/go-coverage-report@v1.3.0
+        with:
+          coverage-artifact-name: code-coverage
+          coverage-file-name: coverage.out
+          root-package: github.com/prest/prest/v2
+          trim: github.com/prest/prest/v2/
+          github-baseline-workflow-ref: test-unit.yml

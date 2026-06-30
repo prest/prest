@@ -26,12 +26,16 @@ func TestLoad(t *testing.T) {
 func TestParse(t *testing.T) {
 	t.Run("no envs", func(t *testing.T) {
 		t.Setenv("PREST_CONF", "../notfound.toml")
+		unsetEnvForTest(t, "PREST_PG_DATABASE")
+		unsetEnvForTest(t, "PREST_PG_HOST")
+		unsetEnvForTest(t, "PREST_PG_USER")
+		unsetEnvForTest(t, "PREST_PG_PASS")
 		cf := &Prest{}
 		viperCfg()
 		Parse(cf)
 		require.Equal(t, 3000, cf.HTTPPort)
-		require.Equal(t, "prest-test", cf.PGDatabase)
-		require.Equal(t, "postgres", cf.PGHost)
+		require.Equal(t, "prest", cf.PGDatabase)
+		require.Equal(t, "127.0.0.1", cf.PGHost)
 		require.Equal(t, "postgres", cf.PGUser)
 		require.Equal(t, "postgres", cf.PGPass)
 		require.Equal(t, true, cf.PGCache)
@@ -43,11 +47,14 @@ func TestParse(t *testing.T) {
 
 	t.Run("PREST_CONF", func(t *testing.T) {
 		t.Setenv("PREST_CONF", "../testdata/prest.toml")
+		unsetEnvForTest(t, "PREST_PG_DATABASE")
 		viperCfg()
 		cfg := &Prest{}
 		Parse(cfg)
 		require.Equal(t, 3000, cfg.HTTPPort)
-		require.Equal(t, "prest-test", cfg.PGDatabase)
+		require.True(t, cfg.AccessConf.Restrict)
+		require.True(t, cfg.Cache.Enabled)
+		require.Greater(t, len(cfg.AccessConf.Tables), 2)
 	})
 
 	t.Run("PREST_HTTP_PORT and unset PREST_JWT_DEFAULT", func(t *testing.T) {
@@ -357,7 +364,7 @@ func Test_Auth(t *testing.T) {
 	require.Equal(t, "prest_users", cfg.AuthTable)
 	require.Equal(t, "username", cfg.AuthUsername)
 	require.Equal(t, "password", cfg.AuthPassword)
-	require.Equal(t, "MD5", cfg.AuthEncrypt)
+	require.Equal(t, "bcrypt", cfg.AuthEncrypt)
 
 	metadata := []string{"first_name", "last_name", "last_login"}
 	require.Equal(t, len(metadata), len(cfg.AuthMetadata))
@@ -384,4 +391,14 @@ func Test_ExposeDataConfig(t *testing.T) {
 	for i, v := range cfg.AuthMetadata {
 		require.Equal(t, metadata[i], v)
 	}
+}
+
+func unsetEnvForTest(t *testing.T, key string) {
+	t.Helper()
+	if prev, ok := os.LookupEnv(key); ok {
+		t.Cleanup(func() { _ = os.Setenv(key, prev) })
+	} else {
+		t.Cleanup(func() { _ = os.Unsetenv(key) })
+	}
+	require.NoError(t, os.Unsetenv(key))
 }
