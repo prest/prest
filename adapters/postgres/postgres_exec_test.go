@@ -25,6 +25,7 @@ func withSQLMock(t *testing.T) (*Postgres, sqlmock.Sqlmock) {
 	connection.InjectDBForTest(connection.GetURI("test"), sqlxDB)
 	t.Cleanup(connection.ResetPoolForTest)
 	ClearStmt()
+	t.Cleanup(ClearStmt)
 
 	return testAdapter(), mock
 }
@@ -226,6 +227,7 @@ func TestQuery_WithStatementCache(t *testing.T) {
 	connection.InjectDBForTest(connection.GetURI("test"), sqlxDB)
 	t.Cleanup(connection.ResetPoolForTest)
 	ClearStmt()
+	t.Cleanup(ClearStmt)
 
 	adapter := testAdapter()
 	prep := mock.ExpectPrepare(`SELECT json_agg\(s\) FROM \(SELECT 1\) s`)
