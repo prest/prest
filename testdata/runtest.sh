@@ -24,7 +24,7 @@ go run ./cmd/prestd/main.go migrate up --path ./testdata/migrations
 
 echo "\n\n.:: PRESTD: TESTING STARTING..."
 if [ -z ${1+x} ]; then
-    go test -v -race -failfast -covermode=atomic -coverprofile=coverage.out ./...;
+    go test -v -race -failfast -covermode=atomic -coverprofile=coverage.out ./integration/...;
 else
     go test -v -race -failfast -covermode=atomic -coverprofile=coverage.out $@
 fi

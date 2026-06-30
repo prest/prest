@@ -1,41 +1,22 @@
-package controllers
+package controllers_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
-	"github.com/prest/prest/v2/adapters/postgres"
-	"github.com/prest/prest/v2/config"
-	pctx "github.com/prest/prest/v2/context"
-	"github.com/prest/prest/v2/testutils"
-
 	"github.com/gorilla/mux"
+	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/controllers"
+	"github.com/prest/prest/v2/integration/helpers"
+	"github.com/prest/prest/v2/testutils"
 )
 
-// Should be in sync with databases under test (see `testdata/runtest.sh` and
-// Github `test` workflow)
-var databases = []string{"prest-test", "secondary-db"}
 
-func Init() {
-	config.Load()
-	postgres.Load()
-	if config.PrestConf.PGDatabase != "prest-test" {
-		slog.Error("expected db: 'prest-test'", "got", config.PrestConf.PGDatabase)
-		os.Exit(1)
-	}
-	if config.PrestConf.Adapter.GetDatabase() != "prest-test" {
-		slog.Error("expected Adapter db: 'prest-test'", "got", config.PrestConf.Adapter.GetDatabase())
-		os.Exit(1)
-	}
-}
 
 func TestGetTables(t *testing.T) {
 	var testCases = []struct {
@@ -55,9 +36,9 @@ func TestGetTables(t *testing.T) {
 		{"Get tables with noexistent column", "/tables?c.rolooo=$eq.test", "GET", http.StatusBadRequest},
 	}
 
-	h := testHandlers()
+	h := helpers.NewIntegrationHandlers(t)
 	router := mux.NewRouter()
-	router.HandleFunc("/tables", setHTTPTimeoutMiddleware(h.Catalog.ListTables)).
+	router.HandleFunc("/tables", helpers.WithHTTPTimeout(h.Catalog.ListTables)).
 		Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -69,6 +50,7 @@ func TestGetTables(t *testing.T) {
 }
 
 func TestGetTablesByDatabaseAndSchema(t *testing.T) {
+	helpers.LoadTestConfig(t)
 	var testCases = []struct {
 		description string
 		url         string
@@ -88,16 +70,16 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 		{"Get tables by databases with not configured database", "/random/public?t.taababa=$eq.test", "GET", http.StatusBadRequest},
 	}
 
+	helpers.LoadTestConfig(t)
 	// Re-initialize pREST instance under test, mostly to revert `config` changes below
-	defer Init()
+	defer func() { helpers.LoadTestConfig(t) }()
 
-	for _, db := range databases {
-		// Testing against multiple databases needs `SingleDB = false` in the
-		// config
-		config.PrestConf.SingleDB = false
-		h := testHandlers()
+	config.PrestConf.SingleDB = false
+	h := controllers.NewHandlersFromConfig(config.PrestConf)
+
+	for _, db := range helpers.Databases {
 		router := mux.NewRouter()
-		router.HandleFunc("/{database}/{schema}", setHTTPTimeoutMiddleware(h.Catalog.ListTablesByDatabaseAndSchema)).
+		router.HandleFunc("/{database}/{schema}", helpers.WithHTTPTimeout(h.Catalog.ListTablesByDatabaseAndSchema)).
 			Methods("GET")
 		server := httptest.NewServer(router)
 		defer server.Close()
@@ -109,13 +91,16 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 }
 
 func TestSelectFromTables(t *testing.T) {
-	h := testHandlers()
+	helpers.LoadTestConfig(t)
+	defer func() { helpers.LoadTestConfig(t) }()
+
+	config.PrestConf.SingleDB = false
+	h := controllers.NewHandlersFromConfig(config.PrestConf)
 	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(h.CRUD.Select)).
+	router.HandleFunc("/{database}/{schema}/{table}", helpers.WithHTTPTimeout(h.CRUD.Select)).
 		Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
-	defer Init()
 
 	var testCases = []struct {
 		description string
@@ -170,9 +155,7 @@ func TestSelectFromTables(t *testing.T) {
 
 		{"execute select in a db that does not exist", "/invalid/public/view_test?_count=0celphone", "GET", http.StatusBadRequest, ""},
 	}
-	for _, db := range databases {
-		config.PrestConf.SingleDB = false
-
+	for _, db := range helpers.Databases {
 		for _, tc := range testCases {
 			t.Log(fmt.Sprintf("(DB: %s) %s", db, tc.description))
 			//config.PrestConf = &config.Prest{}
@@ -198,9 +181,9 @@ func TestInsertInTables(t *testing.T) {
 	mARRAY := make(map[string]interface{})
 	mARRAY["data"] = []string{"value 1", "value 2", "value 3"}
 
-	h := testHandlers()
+	h := helpers.NewIntegrationHandlers(t)
 	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(h.CRUD.Insert)).
+	router.HandleFunc("/{database}/{schema}/{table}", helpers.WithHTTPTimeout(h.CRUD.Insert)).
 		Methods("POST")
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -238,9 +221,9 @@ func TestBatchInsertInTables(t *testing.T) {
 	mARRAY := make([]map[string]interface{}, 0)
 	mARRAY = append(mARRAY, map[string]interface{}{"data": []string{"1", "2"}}, map[string]interface{}{"data": []string{"1", "2", "3"}})
 
-	h := testHandlers()
+	h := helpers.NewIntegrationHandlers(t)
 	router := mux.NewRouter()
-	router.HandleFunc("/batch/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(h.CRUD.BatchInsert)).
+	router.HandleFunc("/batch/{database}/{schema}/{table}", helpers.WithHTTPTimeout(h.CRUD.BatchInsert)).
 		Methods("POST")
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -298,9 +281,9 @@ func TestBatchInsertInTables(t *testing.T) {
 }
 
 func TestDeleteFromTable(t *testing.T) {
-	h := testHandlers()
+	h := helpers.NewIntegrationHandlers(t)
 	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(h.CRUD.Delete)).
+	router.HandleFunc("/{database}/{schema}/{table}", helpers.WithHTTPTimeout(h.CRUD.Delete)).
 		Methods("DELETE")
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -328,9 +311,9 @@ func TestDeleteFromTable(t *testing.T) {
 }
 
 func TestUpdateFromTable(t *testing.T) {
-	h := testHandlers()
+	h := helpers.NewIntegrationHandlers(t)
 	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(h.CRUD.Update)).
+	router.HandleFunc("/{database}/{schema}/{table}", helpers.WithHTTPTimeout(h.CRUD.Update)).
 		Methods("PUT", "PATCH")
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -366,9 +349,9 @@ func TestUpdateFromTable(t *testing.T) {
 }
 
 func TestShowTable(t *testing.T) {
-	h := testHandlers()
+	h := helpers.NewIntegrationHandlers(t)
 	router := mux.NewRouter()
-	router.HandleFunc("/show/{database}/{schema}/{table}", setHTTPTimeoutMiddleware(h.Table.Show)).
+	router.HandleFunc("/show/{database}/{schema}/{table}", helpers.WithHTTPTimeout(h.Table.Show)).
 		Methods("GET")
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -387,11 +370,5 @@ func TestShowTable(t *testing.T) {
 	for _, tc := range testCases {
 		t.Log(tc.description)
 		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "ShowTable")
-	}
-}
-
-func setHTTPTimeoutMiddleware(h http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		h.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), pctx.HTTPTimeoutKey, 60))) // nolint
 	}
 }

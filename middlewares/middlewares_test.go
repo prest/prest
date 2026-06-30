@@ -12,11 +12,23 @@ import (
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers/auth"
 
+	"github.com/gorilla/mux"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/stretchr/testify/require"
+	"github.com/urfave/negroni/v3"
 	jose "gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 )
+
+func appTestWithJwt() *negroni.Negroni {
+	n := GetApp()
+	r := mux.NewRouter()
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("test app"))
+	}).Methods("GET")
+	n.UseHandler(r)
+	return n
+}
 
 func TestJWTClaimsOk(t *testing.T) {
 	app = nil

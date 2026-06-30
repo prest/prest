@@ -50,6 +50,12 @@ func initApp() {
 	app = negroni.New(MiddlewareStack...)
 }
 
+// ResetForTest clears cached middleware app state between tests.
+func ResetForTest() {
+	app = nil
+	MiddlewareStack = nil
+}
+
 // GetApp get negroni
 func GetApp() *negroni.Negroni {
 	if app == nil {

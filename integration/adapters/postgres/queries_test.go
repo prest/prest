@@ -1,4 +1,4 @@
-package postgres
+package postgres_test
 
 import (
 	"context"
@@ -7,15 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/prest/prest/v2/adapters/postgres"
 	"github.com/prest/prest/v2/config"
 )
-
-func TestMain(m *testing.M) {
-	os.Setenv("PREST_CONF", "./testdata/prest.toml")
-	config.Load()
-	code := m.Run()
-	os.Exit(code)
-}
 
 func TestValidGetScript(t *testing.T) {
 	var testCases = []struct {
@@ -119,7 +113,7 @@ func TestWriteSQL(t *testing.T) {
 	}
 	for _, tc := range testValidCases {
 		t.Log(tc.description)
-		sc := WriteSQL(tc.sql, tc.values)
+		sc := postgres.WriteSQL(tc.sql, tc.values)
 		if sc.Err() != nil && tc.pass {
 			t.Errorf("pass true, got: %s", sc.Err())
 		} else if sc.Err() == nil && !tc.pass {
@@ -144,7 +138,7 @@ func TestWriteSQLCtx(t *testing.T) {
 	}
 	for _, tc := range testValidCases {
 		t.Log(tc.description)
-		sc := WriteSQLCtx(ctx, tc.sql, tc.values)
+		sc := postgres.WriteSQLCtx(ctx, tc.sql, tc.values)
 		if sc.Err() != nil && tc.pass {
 			t.Errorf("pass true, got: %s", sc.Err())
 		} else if sc.Err() == nil && !tc.pass {

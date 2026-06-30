@@ -1,4 +1,4 @@
-package postgres
+package postgres_test
 
 import (
 	"bytes"
@@ -13,10 +13,11 @@ import (
 	"testing"
 
 	"github.com/prest/prest/v2/adapters"
-	"github.com/prest/prest/v2/adapters/postgres/internal/connection"
-	"github.com/prest/prest/v2/adapters/postgres/statements"
+	"github.com/prest/prest/v2/adapters/postgres"
+		"github.com/prest/prest/v2/adapters/postgres/statements"
 	"github.com/prest/prest/v2/adapters/scanner"
 	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/integration/helpers"
 	pctx "github.com/prest/prest/v2/context"
 
 	"log/slog"
@@ -28,14 +29,16 @@ import (
 // Github `test` workflow)
 var databases = []string{"prest-test", "secondary-db"}
 
-func init() {
+func TestMain(m *testing.M) {
+	helpers.EnsureTestConfigEnv()
 	config.Load()
-	Load()
+	postgres.Load()
+	os.Exit(m.Run())
 }
 
 func TestLoadHasDBSetted(t *testing.T) {
 	config.Load()
-	Load()
+	postgres.Load()
 	require.Equal(t, "prest-test", config.PrestConf.PGDatabase)
 	require.Equal(t, "prest-test", config.PrestConf.Adapter.GetDatabase())
 }
@@ -43,7 +46,7 @@ func TestLoadHasDBSetted(t *testing.T) {
 func TestLoad(t *testing.T) {
 	// Only run the failing part when a specific env variable is set
 	if os.Getenv("BE_CRASHER") == "1" {
-		Load()
+		postgres.Load()
 		t.Setenv("PREST_PG_DATABASE", "prest-test")
 		return
 	}
@@ -63,7 +66,7 @@ func TestLoad(t *testing.T) {
 
 func TestParseInsertRequest(t *testing.T) {
 	config.Load()
-	Load()
+	postgres.Load()
 	m := make(map[string]interface{})
 	m["name"] = "prest"
 	mc := make(map[string]interface{})
@@ -79,7 +82,7 @@ func TestParseInsertRequest(t *testing.T) {
 	}{
 		{"insert by request more than one field", mc, []string{"dbname", "test"}, []string{"prest", "prest"}, nil},
 		{"insert by request one field", m, []string{"name"}, []string{"prest"}, nil},
-		{"insert by request empty body", nil, nil, nil, ErrBodyEmpty},
+		{"insert by request empty body", nil, nil, nil, postgres.ErrBodyEmpty},
 	}
 
 	for _, tc := range testCases {
@@ -140,7 +143,7 @@ func TestSetByRequest(t *testing.T) {
 		{"set by request one JSONB List field", mjl, []string{`"prest"=$`}, []string{`["prest", "is", "awesome"]`}, nil},
 		{"set by request one JSONB Object field", mjo, []string{`"prest"=$`}, []string{mjoStr}, nil},
 		{"set by request alias", ma, []string{`"c".`, `"name"=$`}, []string{"prest"}, nil},
-		{"set by request empty body", nil, nil, nil, ErrBodyEmpty},
+		{"set by request empty body", nil, nil, nil, postgres.ErrBodyEmpty},
 	}
 
 	for _, tc := range testCases {
@@ -176,7 +179,7 @@ func TestSetByRequest(t *testing.T) {
 
 func TestWhereByRequest(t *testing.T) {
 	config.Load()
-	Load()
+	postgres.Load()
 	var testCases = []struct {
 		description    string
 		url            string
@@ -207,7 +210,7 @@ func TestWhereByRequest(t *testing.T) {
 		{"Where by request with _or preserving quoted OR value", `/prest-test/public/test5?_or=title=$eq."foo OR bar" OR phoneNumber=$eq.123`, []string{`("title" = $`, ` OR "phoneNumber" = $`, `)`}, []string{`"foo OR bar"`, "123"}, false, false, nil},
 		{"Where by request with _or using $in", "/prest-test/public/test5?_or=name=$in.foo,bar||phoneNumber=$eq.123", []string{`("name" IN (`, ` OR "phoneNumber" = $`, `)`}, []string{"foo", "bar", "123"}, false, false, nil},
 		{"Where by request with empty _or", "/prest-test/public/test5?_or=", nil, nil, true, true, nil},
-		{"Where by request with empty _or rhs", "/prest-test/public/test5?_or=name=", nil, nil, true, true, ErrInvalidOperator},
+		{"Where by request with empty _or rhs", "/prest-test/public/test5?_or=name=", nil, nil, true, true, postgres.ErrInvalidOperator},
 		{"Where by request with malformed _or", "/prest-test/public/test5?_or=namevalue", nil, nil, true, true, nil},
 	}
 
@@ -762,7 +765,7 @@ func TestChkInvaidIdentifier(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		result := chkInvalidIdentifier(tc.in)
+		result := postgres.ChkInvalidIdentifierExported(tc.in)
 		if result != tc.out {
 			t.Errorf("expected %v, got %v", tc.out, result)
 		}
@@ -981,13 +984,13 @@ func TestGetQueryOperator(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Logf("Query operator %s", tc.in)
-		op, err := GetQueryOperator(tc.in)
+		op, err := postgres.GetQueryOperator(tc.in)
 		require.NoError(t, err)
 		require.Equal(t, tc.out, op)
 	}
 
 	t.Log("Invalid query operator")
-	op, err := GetQueryOperator("!lol")
+	op, err := postgres.GetQueryOperator("!lol")
 	require.Error(t, err)
 	require.Empty(t, op)
 }
@@ -1061,6 +1064,7 @@ func TestOrderByRequest(t *testing.T) {
 }
 
 func TestTablePermissions(t *testing.T) {
+	postgres.Load()
 	var testCases = []struct {
 		description string
 		table       string
@@ -1374,7 +1378,6 @@ func TestTablePermissions(t *testing.T) {
 		{"try foo_read_write_delete delete no_user_read_write_delete_table", "no_user_read_write_delete_table", "delete", "foo_read_write_delete", true},
 	}
 
-	Load()
 	for _, tc := range testCases {
 		t.Log(tc.description)
 		p := config.PrestConf.Adapter.TablePermissions(tc.table, tc.permission, tc.userName)
@@ -1392,6 +1395,8 @@ func TestSupportHyphenInTable(t *testing.T) {
 }
 
 func TestRestrictFalse(t *testing.T) {
+	helpers.LoadTestConfig(t)
+	defer func() { config.PrestConf.AccessConf.Restrict = true }()
 	config.PrestConf.AccessConf.Restrict = false
 
 	t.Log("Read unrestrict", config.PrestConf.AccessConf.Restrict)
@@ -1481,7 +1486,7 @@ func TestColumnsByRequest(t *testing.T) {
 			t.Errorf("expected no errors on NewRequest, but got: %v", err)
 		}
 
-		selectQuery, _ := columnsByRequest(r)
+		selectQuery, _ := postgres.ColumnsByRequestExported(r)
 		selectStr := strings.Join(selectQuery, ",")
 		if selectStr != tc.expectedSQL {
 			t.Errorf("expected %s, got: %s", tc.expectedSQL, selectStr)
@@ -1540,7 +1545,7 @@ func TestNormalizeGroupFunction(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		partialSQL, err := NormalizeGroupFunction(tc.urlValue)
+		partialSQL, err := postgres.NormalizeGroupFunction(tc.urlValue)
 		if err != nil {
 			t.Errorf("This function should not return error: %s", tc.description)
 		}
@@ -1623,9 +1628,9 @@ func TestCacheDelete(t *testing.T) {
 }
 
 func BenchmarkPrepare(b *testing.B) {
-	db := connection.MustGet()
+	db := postgres.MustGet()
 	for index := 0; index < b.N; index++ {
-		_, err := Prepare(db, `SELECT * FROM "TestCase"`)
+		_, err := postgres.Prepare(db, `SELECT * FROM "TestCase"`)
 		if err != nil {
 			b.Fail()
 		}
@@ -1635,13 +1640,13 @@ func BenchmarkPrepare(b *testing.B) {
 func TestDisableCache(t *testing.T) {
 	t.Setenv("PREST_PG_CACHE", "false")
 	config.Load()
-	Load()
-	ClearStmt()
+	postgres.Load()
+	postgres.ClearStmt()
 	sc := config.PrestConf.Adapter.Query(`SELECT * FROM "TestCase"`)
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
-	_, ok := stmts.PrepareMap[`SELECT jsonb_agg(s) FROM (SELECT * FROM "TestCase") s`]
+	_, ok := postgres.GetStmt().PrepareMap[`SELECT jsonb_agg(s) FROM (SELECT * FROM "TestCase") s`]
 	if ok {
 		t.Error("has query in cache")
 	}
@@ -1649,7 +1654,7 @@ func TestDisableCache(t *testing.T) {
 
 func TestParseBatchInsertRequest(t *testing.T) {
 	config.Load()
-	Load()
+	postgres.Load()
 	m := make(map[string]interface{})
 	m["name"] = "prest"
 	m["pumpkin"] = "prest"
@@ -1700,7 +1705,7 @@ func TestParseBatchInsertRequest(t *testing.T) {
 
 func TestBatchInsertValues(t *testing.T) {
 	config.Load()
-	Load()
+	postgres.Load()
 	var testCases = []struct {
 		description string
 		sql         string
@@ -1759,7 +1764,7 @@ func TestBatchInsertValuesCtx(t *testing.T) {
 		ctx := context.WithValue(context.Background(), pctx.DBNameKey, db)
 
 		config.Load()
-		Load()
+		postgres.Load()
 
 		for _, tc := range testCases {
 			t.Log(fmt.Sprintf("(DB: %s) %s", db, tc.description))
@@ -1824,7 +1829,7 @@ func TestPostgres_BatchInsertCopyCtx(t *testing.T) {
 		ctx := context.WithValue(context.Background(), pctx.DBNameKey, db)
 
 		config.Load()
-		Load()
+		postgres.Load()
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				gotSc := config.PrestConf.Adapter.BatchInsertCopyCtx(ctx, db, tt.args.schema, tt.args.table, tt.args.keys, tt.args.values...)
@@ -1838,7 +1843,7 @@ func TestPostgres_BatchInsertCopyCtx(t *testing.T) {
 
 func TestPostgres_BatchInsertCopy(t *testing.T) {
 	config.Load()
-	Load()
+	postgres.Load()
 	type args struct {
 		dbname string
 		schema string
@@ -2415,7 +2420,7 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 			})
 
 		t.Run(tt.name, func(t *testing.T) {
-			adapter := &Postgres{}
+			adapter := &postgres.Postgres{}
 			r, err := http.NewRequest(http.MethodGet, tt.args.url, strings.NewReader(""))
 			require.NoError(t, err)
 
@@ -2426,65 +2431,7 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 	}
 }
 
-func Test_intersection(t *testing.T) {
-	type args struct {
-		set   []string
-		other []string
-	}
-	tests := []struct {
-		name      string
-		args      args
-		wantInter []string
-	}{
-		{name: "two empty sets returns empty", wantInter: nil},
-		{name: "intersection with empty set returns empty set", args: args{set: []string{"name"}, other: []string{}},
-			wantInter: nil},
-		{name: "intersection of empty set with other returns empty set", args: args{set: []string{}, other: []string{"name"}},
-			wantInter: nil},
-		{name: "intersection of two sets", args: args{set: []string{"name", "age"}, other: []string{"name"}},
-			wantInter: []string{"name"}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if gotInter := intersection(tt.args.set, tt.args.other); !reflect.DeepEqual(gotInter, tt.wantInter) {
-				t.Errorf("intersection() = %v, want %v", gotInter, tt.wantInter)
-			}
-		})
-	}
-}
 
-func Test_containsAsterisk(t *testing.T) {
-	type args struct {
-		arr []string
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{
-			name: "contains *",
-			args: args{
-				arr: []string{"*"},
-			},
-			want: true,
-		},
-		{
-			name: "dont contains *",
-			args: args{
-				arr: []string{},
-			},
-			want: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := containsAsterisk(tt.args.arr); got != tt.want {
-				t.Errorf("containsAsterisk() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func Test_Postgres_GeneratesFuncs(t *testing.T) {
 
@@ -2505,7 +2452,7 @@ func Test_Postgres_GeneratesFuncs(t *testing.T) {
 
 	//Postgres struct MOCK
 	// will be used just to invoke the functions
-	pg := Postgres{}
+	pg := postgres.Postgres{}
 
 	// all of this tests is for functions whats returns a string. We can use two string as args of tests. The string we will got by the function, and the expected string.
 	type args struct {
@@ -2672,7 +2619,7 @@ ORDER BY
 }
 
 func Test_ShowTable(t *testing.T) {
-	pg := Postgres{}
+	pg := postgres.Postgres{}
 	sc := pg.ShowTable("testschema", "testtable")
 
 	scMock := newScannerMock(t)
@@ -2683,7 +2630,7 @@ func Test_ShowTable(t *testing.T) {
 }
 
 func Test_ShowTableCtx(t *testing.T) {
-	pg := Postgres{}
+	pg := postgres.Postgres{}
 	for _, db := range databases {
 		ctx := context.WithValue(context.Background(), pctx.DBNameKey, db)
 
@@ -2706,33 +2653,6 @@ func newScannerMock(t *testing.T) (sc adapters.Scanner) {
 	return
 }
 
-func TestSliceToJSONList(t *testing.T) {
-	var i interface{}
-	var testCases = []struct {
-		description   string
-		body          interface{}
-		expectedValue string
-		err           error
-	}{
-		{"String slice", []string{"one", "two", "three"}, `["one", "two", "three"]`, nil},
-		{"Integer slice", []int{1, 2, 3}, `[1, 2, 3]`, nil},
-		{"Interface error", i, `[]`, ErrEmptyOrInvalidSlice},
-	}
-
-	for _, tc := range testCases {
-		t.Log(tc.description)
-
-		value, err := sliceToJSONList(tc.body)
-
-		if !strings.Contains(tc.expectedValue, value) {
-			t.Errorf("expected %s in %s", value, tc.expectedValue)
-		}
-
-		if err != tc.err {
-			t.Errorf("expected %s in %s", err, tc.err)
-		}
-	}
-}
 
 func TestFieldsByPermission(t *testing.T) {
 	t.Parallel()
@@ -2838,9 +2758,9 @@ func TestFieldsByPermission(t *testing.T) {
 			config.PrestConf.AccessConf.Tables = tt.tablesConf
 			config.PrestConf.AccessConf.Users = tt.usersConf
 
-			gotFields := fieldsByPermission(tt.table, tt.op, tt.userName)
+			gotFields := postgres.FieldsByPermissionExported(tt.table, tt.op, tt.userName)
 			if !reflect.DeepEqual(gotFields, tt.wantFields) {
-				t.Errorf("fieldsByPermission() = %v, want %v", gotFields, tt.wantFields)
+				t.Errorf("postgres.FieldsByPermissionExported() = %v, want %v", gotFields, tt.wantFields)
 			}
 		})
 	}

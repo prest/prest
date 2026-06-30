@@ -45,20 +45,22 @@ These instructions guide AI-generated changes in this repository.
 ## Testing Expectations
 
 - Add or update tests for behavior changes.
-- Prefer package-local unit tests near changed code.
-- Reuse existing test patterns (`*_test.go`, `testify`, existing mocks in `adapters/mock/`, `testutils/`).
-- When integration behavior is affected, use existing Docker-based test workflow.
-- All added code must be covered by tests unless explicitly justified.
-- Added tests must cover at least 80% of new code paths and edge cases.
+- **Unit tests:** co-located `*_test.go` in the source package; use gomock of narrow adapter interfaces; never call `postgres.Load()` or hit a real database.
+- **Integration tests:** only under `integration/`, mirroring package layout; exercise public HTTP/adapter surfaces end-to-end with Docker Postgres.
+- Never add `postgres.Load()` outside `integration/`.
+- Reuse existing test patterns (`testify`, `adapters/mockgen/`, `handlerstest.NewTestHandlers`, `testutils/` for HTTP helpers).
+- Maintain ≥80% coverage on new code paths (unit + integration combined).
 
 Common commands:
 
 ```sh
-# Unit/integration flow used by repository
-make test
+# Unit tests (no database, co-located in each package)
+make test          # or: make test-unit
+go test $(go list ./... | grep -v /integration)
 
-# Local package-level tests
-go test ./...
+# Integration tests (Docker Postgres, integration/ tree only)
+make test-integration
+go test ./integration/...
 ```
 
 ## Config and CLI Changes
