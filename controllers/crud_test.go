@@ -8,11 +8,32 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/gorilla/mux"
 	"github.com/prest/prest/v2/adapters/mockgen"
 	"github.com/prest/prest/v2/controllers/auth"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/stretchr/testify/require"
 )
+
+func withTestTimeout(ctx context.Context) context.Context {
+	return context.WithValue(ctx, pctx.HTTPTimeoutKey, 60) //nolint:staticcheck
+}
+
+func crudRequest(method, path string, vars map[string]string) *http.Request {
+	req := httptest.NewRequest(method, path, nil)
+	req = mux.SetURLVars(req, vars)
+	return req.WithContext(withTestTimeout(req.Context()))
+}
+
+type recordingCacher struct {
+	key   string
+	value string
+}
+
+func (c *recordingCacher) BuntSet(key, value string) {
+	c.key = key
+	c.value = value
+}
 
 func TestCRUDHandler_Select_PermissionDenied(t *testing.T) {
 	ctrl := gomock.NewController(t)
