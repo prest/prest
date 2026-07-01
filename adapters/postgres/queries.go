@@ -12,6 +12,7 @@ import (
 
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/adapters/scanner"
+	"github.com/prest/prest/v2/internal/logsafe"
 	"github.com/prest/prest/v2/template"
 
 	"log/slog"
@@ -79,13 +80,13 @@ func (adapter *postgres) ParseScript(scriptPath string, templateData map[string]
 func (adapter *postgres) WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
 	db, err := adapter.conn.Get()
 	if err != nil {
-		slog.Error("connection get error", "err", err)
+		slog.Error("connection get error", "err", logsafe.Error(err))
 		sc = &scanner.PrestScanner{Error: fmt.Errorf("connection get error: %w", err)}
 		return
 	}
 	stmt, err := adapter.Prepare(db, sql)
 	if err != nil {
-		slog.Info("could not prepare sql", "sql", sql, "err", err)
+		slog.Error("could not prepare sql", "sql", sql, "err", err)
 		sc = &scanner.PrestScanner{Error: fmt.Errorf("could not prepare sql: %w", err)}
 		return
 	}
@@ -125,13 +126,13 @@ func (adapter *postgres) WriteSQL(sql string, values []interface{}) (sc adapters
 func (adapter *postgres) WriteSQLCtx(ctx context.Context, sql string, values []interface{}) (sc adapters.Scanner) {
 	db, err := adapter.dbFromCtx(ctx)
 	if err != nil {
-		slog.Warn("connection get error", "err", err)
+		slog.Error("connection get error", "err", logsafe.Error(err))
 		sc = &scanner.PrestScanner{Error: fmt.Errorf("connection get error: %w", err)}
 		return
 	}
 	stmt, err := adapter.Prepare(db, sql)
 	if err != nil {
-		slog.Info("could not prepare sql", "sql", sql, "err", err)
+		slog.Error("could not prepare sql", "sql", sql, "err", logsafe.Error(err))
 		sc = &scanner.PrestScanner{Error: fmt.Errorf("could not prepare sql: %w", err)}
 		return
 	}

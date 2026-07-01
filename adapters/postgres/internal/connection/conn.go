@@ -7,15 +7,17 @@ import (
 	"sync"
 
 	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/internal/logsafe"
 
 	"github.com/jmoiron/sqlx"
 	// Used pg drive on sqlx
 	_ "github.com/lib/pq"
+	"golang.org/x/sync/singleflight"
 )
 
 // Pool struct
 type Pool struct {
-	Mtx *sync.Mutex
+	Mtx *sync.RWMutex
 	DB  map[string]*sqlx.DB
 }
 
@@ -24,7 +26,13 @@ type Manager struct {
 	cfg          *config.Prest
 	pool         *Pool
 	currDatabase string
+	addDB        singleflight.Group
 }
+
+// dbConnect opens a database connection. Overridden in unit tests.
+// do not use this function directly, use Get() instead
+// nolint:revive
+var dbConnect = sqlx.Connect
 
 // NewManager creates a connection manager for the given config.
 func NewManager(cfg *config.Prest) *Manager {
@@ -34,7 +42,7 @@ func NewManager(cfg *config.Prest) *Manager {
 func (m *Manager) getPool() *Pool {
 	if m.pool == nil {
 		m.pool = &Pool{
-			Mtx: &sync.Mutex{},
+			Mtx: &sync.RWMutex{},
 			DB:  make(map[string]*sqlx.DB),
 		}
 	}
@@ -102,30 +110,48 @@ func (m *Manager) GetPool() *Pool {
 }
 
 func (m *Manager) getDatabaseFromPool(name string) *sqlx.DB {
-	var DB *sqlx.DB
+	uri := m.GetURI(name)
 	p := m.getPool()
 
-	p.Mtx.Lock()
-	DB = p.DB[m.GetURI(name)]
-	p.Mtx.Unlock()
+	p.Mtx.RLock()
+	DB := p.DB[uri]
+	p.Mtx.RUnlock()
 
 	return DB
 }
 
 // AddDatabaseToPool create and add connection to the pool
 func (m *Manager) AddDatabaseToPool(name string) (*sqlx.DB, error) {
-	DB, err := sqlx.Connect("postgres", m.GetURI(name))
+	if DB := m.getDatabaseFromPool(name); DB != nil {
+		return DB, nil
+	}
+
+	uri := m.GetURI(name)
+	result, err, _ := m.addDB.Do(uri, func() (interface{}, error) {
+		if DB := m.getDatabaseFromPool(name); DB != nil {
+			return DB, nil
+		}
+
+		DB, err := dbConnect("postgres", uri)
+		if err != nil {
+			return nil, err
+		}
+		DB.SetMaxIdleConns(m.cfg.PGMaxIdleConn)
+		DB.SetMaxOpenConns(m.cfg.PGMaxOpenConn)
+
+		p := m.getPool()
+		p.Mtx.Lock()
+		p.DB[uri] = DB
+		p.Mtx.Unlock()
+		return DB, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	DB.SetMaxIdleConns(m.cfg.PGMaxIdleConn)
-	DB.SetMaxOpenConns(m.cfg.PGMaxOpenConn)
-
-	p := m.getPool()
-
-	p.Mtx.Lock()
-	p.DB[m.GetURI(name)] = DB
-	p.Mtx.Unlock()
+	DB, ok := result.(*sqlx.DB)
+	if !ok {
+		return nil, errors.New("unexpected connection pool result")
+	}
 	return DB, nil
 }
 
@@ -136,7 +162,7 @@ func (m *Manager) MustGet() *sqlx.DB {
 
 	DB, err = m.Get()
 	if err != nil {
-		slog.Error("Unable to connect to database", "error", err)
+		slog.Error("Unable to connect to database", "error", logsafe.Error(err))
 		panic(err)
 	}
 	return DB

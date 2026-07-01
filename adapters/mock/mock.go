@@ -16,6 +16,7 @@ import (
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/adapters/scanner"
 	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/internal/logsafe"
 )
 
 // Item mock
@@ -61,7 +62,7 @@ func (m *Mock) Open(dsn string) (c driver.Conn, err error) {
 	if !ok {
 		slog.Debug(
 			"mock connection not found",
-			"dsn", dsn,
+			"dsn", logsafe.Error(fmt.Errorf("%s", dsn)).Error(),
 			"available_dsns", maps.Keys(m.conns),
 		)
 		return c, fmt.Errorf("expected a connection to be available, but it is not: conn=%v, available_dsns=%v", c, maps.Keys(m.conns))

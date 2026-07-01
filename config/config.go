@@ -15,6 +15,7 @@ import (
 
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/cache"
+	"github.com/prest/prest/v2/internal/logsafe"
 	"github.com/structy/log"
 
 	"log/slog"
@@ -336,7 +337,7 @@ func parseDatabaseURL(cfg *Prest) {
 	// Parser PG URL, get database connection via string URL
 	u, err := url.Parse(cfg.PGURL)
 	if err != nil {
-		slog.Error("cannot parse db url", "err", err)
+		slog.Error("cannot parse db url", "err", logsafe.Error(err))
 		return
 	}
 	cfg.PGHost = u.Hostname()

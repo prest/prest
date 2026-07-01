@@ -92,8 +92,7 @@ func (p *postgres) Ping(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	_, err = db.ExecContext(ctx, ";")
-	return err
+	return db.PingContext(ctx)
 }
 
 func (p *postgres) getStmts() *Stmt {
