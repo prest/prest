@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"plugin"
 	"runtime"
+	"sync"
 
 	"github.com/prest/prest/v2/config"
 
@@ -41,63 +42,115 @@ func New(cfg *config.Prest) *Plugins {
 }
 
 // loadedFunc global variable to control plugins loaded, blocking duplicate loading
-var loadedFunc = map[string]LoadedPlugin{}
+var (
+	loadedFuncMu sync.Mutex
+	loadedFunc   = map[string]LoadedPlugin{}
+)
 
 // loadedMiddlewareFunc global variable to control plugins loaded, blocking duplicate loading
-var loadedMiddlewareFunc = map[string]LoadedPlugin{}
+var (
+	loadedMiddlewareMu sync.Mutex
+	loadedMiddlewareFunc = map[string]LoadedPlugin{}
+)
+
+// pluginInvokeMu serializes handler invocation per .so path. Plugin ABI exposes
+// HTTPVars and URLQuery as package-level symbols; concurrent requests would
+// overwrite each other's values without this lock.
+var pluginInvokeMu sync.Map // map[string]*sync.Mutex
+
+func pluginInvokeMutex(libPath string) *sync.Mutex {
+	v, _ := pluginInvokeMu.LoadOrStore(libPath, &sync.Mutex{})
+	return v.(*sync.Mutex)
+}
 
 // loadFunc private func to load and exec OS Library
 func (plg *Plugins) loadFunc(fileName, funcName string, r *http.Request) (ret PluginFuncReturn, err error) {
 	libPath := filepath.Join(plg.cfg.PluginPath, fmt.Sprintf("%s.so", fileName))
+
+	loadedFuncMu.Lock()
 	loadedPlugin := loadedFunc[libPath]
 	p := loadedPlugin.Plugin
 	if !loadedPlugin.Loaded {
+		loadedFuncMu.Unlock()
 		p, err = plugin.Open(libPath)
 		if err != nil {
 			return
 		}
-		loadedPlugin = LoadedPlugin{
-			Loaded: true,
-			Plugin: p,
+		loadedFuncMu.Lock()
+		if existing, ok := loadedFunc[libPath]; ok && existing.Loaded {
+			p = existing.Plugin
+		} else {
+			loadedFunc[libPath] = LoadedPlugin{
+				Loaded: true,
+				Plugin: p,
+			}
 		}
-		loadedFunc[libPath] = loadedPlugin
 	}
+	loadedFuncMu.Unlock()
+
+	mu := pluginInvokeMutex(libPath)
+	mu.Lock()
+	defer mu.Unlock()
 
 	vars := mux.Vars(r)
 	httpVars, err := p.Lookup("HTTPVars")
 	if err != nil {
 		return
 	}
-	*httpVars.(*map[string]string) = vars
+	if err = assignPluginHTTPVars(httpVars, vars); err != nil {
+		return
+	}
 
 	urlQuery, err := p.Lookup("URLQuery")
 	if err != nil {
 		return
 	}
-	*urlQuery.(*map[string][]string) = r.URL.Query()
+	if err = assignPluginURLQuery(urlQuery, r.URL.Query()); err != nil {
+		return
+	}
 
-	f, err := p.Lookup(fmt.Sprintf("%s%sHandler", r.Method, funcName))
+	handlerName := fmt.Sprintf("%s%sHandler", r.Method, funcName)
+	f, err := p.Lookup(handlerName)
 	if err != nil {
 		return
 	}
-	function, ok := f.(func() string)
+	ret, err = invokePluginHandler(f, handlerName)
+	return
+}
 
+func assignPluginHTTPVars(sym plugin.Symbol, vars map[string]string) error {
+	httpVars, ok := sym.(*map[string]string)
 	if !ok {
-		function := f.(func() (string, int))
+		return fmt.Errorf("plugin HTTPVars symbol is not *map[string]string")
+	}
+	*httpVars = vars
+	return nil
+}
+
+func assignPluginURLQuery(sym plugin.Symbol, query map[string][]string) error {
+	urlQuery, ok := sym.(*map[string][]string)
+	if !ok {
+		return fmt.Errorf("plugin URLQuery symbol is not *map[string][]string")
+	}
+	*urlQuery = query
+	return nil
+}
+
+func invokePluginHandler(sym plugin.Symbol, handlerName string) (ret PluginFuncReturn, err error) {
+	if function, ok := sym.(func() string); ok {
+		ret.ReturnJson = function()
+		ret.StatusCode = -1
+		slog.Info("ret plugin:", "ret.ReturnJson", ret.ReturnJson)
+		return
+	}
+	if function, ok := sym.(func() (string, int)); ok {
 		retJson, code := function()
 		ret.ReturnJson = retJson
 		ret.StatusCode = code
-
 		slog.Info("ret plugin(status %d): %s\n", "code", code, "ret.ReturnJson", ret.ReturnJson)
-	} else {
-		retJson := function()
-		ret.ReturnJson = retJson
-		ret.StatusCode = -1
-
-		slog.Info("ret plugin:", "ret.ReturnJson", ret.ReturnJson)
+		return
 	}
-
-	return
+	return ret, fmt.Errorf("plugin handler %s is not func() string or func() (string, int)", handlerName)
 }
 
 // Handler serves plugin endpoints.
@@ -124,18 +177,27 @@ func (plg *Plugins) Handler() http.HandlerFunc {
 
 func (plg *Plugins) loadMiddlewareFunc(fileName, funcName string) (handlerFunc negroni.HandlerFunc, err error) {
 	libPath := filepath.Join(plg.cfg.PluginPath, "middlewares", fmt.Sprintf("%s.so", fileName))
+
+	loadedMiddlewareMu.Lock()
 	loadedPlugin := loadedMiddlewareFunc[libPath]
 	p := loadedPlugin.Plugin
 	if !loadedPlugin.Loaded {
+		loadedMiddlewareMu.Unlock()
 		p, err = plugin.Open(libPath)
 		if err != nil {
 			return
 		}
-		loadedMiddlewareFunc[libPath] = LoadedPlugin{
-			Loaded: true,
-			Plugin: p,
+		loadedMiddlewareMu.Lock()
+		if existing, ok := loadedMiddlewareFunc[libPath]; ok && existing.Loaded {
+			p = existing.Plugin
+		} else {
+			loadedMiddlewareFunc[libPath] = LoadedPlugin{
+				Loaded: true,
+				Plugin: p,
+			}
 		}
 	}
+	loadedMiddlewareMu.Unlock()
 	f, err := p.Lookup(fmt.Sprintf("%sMiddlewareLoad", funcName))
 	if err != nil {
 		slog.Error("unable to load middleware plugin function: %s", "funcName", funcName)
