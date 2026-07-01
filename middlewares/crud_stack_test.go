@@ -9,6 +9,7 @@ import (
 	"github.com/prest/prest/v2/adapters/mockgen"
 	"github.com/prest/prest/v2/cache"
 	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/plugins"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/negroni/v3"
 )
@@ -42,9 +43,7 @@ func TestNewCRUDStack(t *testing.T) {
 		JWTAlgo:     "HS256",
 		Cache:       cache.Config{Enabled: false},
 	}
-	withPrestConf(t, cfg)
-
-	stack := NewCRUDStack(cfg)
+	stack := NewCRUDStack(cfg, plugins.New(cfg))
 	require.Len(t, stack.Handlers(), 5)
 
 	req := httptest.NewRequest(http.MethodGet, "/prest-test/public/test", nil)
@@ -66,9 +65,7 @@ func TestNewCRUDStackWithPerms(t *testing.T) {
 		JWTAlgo:     "HS256",
 		Cache:       cache.Config{Enabled: false},
 	}
-	withPrestConf(t, cfg)
-
-	stack := NewCRUDStackWithPerms(cfg, perms)
+	stack := NewCRUDStackWithPerms(cfg, plugins.New(cfg), perms)
 	require.Len(t, stack.Handlers(), 5)
 
 	req := httptest.NewRequest(http.MethodGet, "/prest-test/public/test", nil)

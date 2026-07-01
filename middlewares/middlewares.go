@@ -48,25 +48,29 @@ func HandlerSet() negroni.Handler {
 	})
 }
 
-// SetTimeoutToContext adds the configured timeout in seconds to the request context
-//
-// By default it is 60 seconds, can be modified to a different value
-func SetTimeoutToContext() negroni.Handler {
+// AuthSettings holds auth middleware configuration.
+type AuthSettings struct {
+	Enabled      bool
+	JWTKey       string
+	JWTWhiteList []string
+}
+
+// SetTimeoutToContext adds the configured timeout in seconds to the request context.
+func SetTimeoutToContext(timeout int) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		next(rw, r.WithContext(context.WithValue(r.Context(), pctx.HTTPTimeoutKey, config.PrestConf.HTTPTimeout))) // nolint
+		next(rw, r.WithContext(context.WithValue(r.Context(), pctx.HTTPTimeoutKey, timeout))) // nolint
 	})
 }
 
 // AuthMiddleware handle request token validation
-func AuthMiddleware(_ string) negroni.Handler {
+func AuthMiddleware(settings AuthSettings) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		match, err := MatchURL(r.URL.String())
+		match, err := MatchURL(r.URL.String(), settings.JWTWhiteList)
 		if err != nil {
 			http.Error(rw, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusInternalServerError)
 			return
 		}
-		if config.PrestConf.AuthEnabled && !match {
-			// extract authorization token
+		if settings.Enabled && !match {
 			token := strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1)
 			if token == "" {
 				slog.Error("authorization token is empty")
@@ -79,18 +83,13 @@ func AuthMiddleware(_ string) negroni.Handler {
 				http.Error(rw, fmt.Sprintf(jsonErrFormat, ErrJWTParseFail.Error()), http.StatusUnauthorized)
 				return
 			}
-			// Defense-in-depth: refuse to verify with an empty HMAC key.
-			// config.ValidateJWTConfig should already prevent this on
-			// startup, but we keep the guard so a misconfigured runtime
-			// can't silently degrade to "any token accepted".
-			// GHSA-fj7v-859r-2fm4.
-			if config.PrestConf.JWTKey == "" {
+			if settings.JWTKey == "" {
 				slog.Error("JWT verification key is empty; refusing to validate token")
 				http.Error(rw, fmt.Sprintf(jsonErrFormat, ErrJWTEmptyKey.Error()), http.StatusUnauthorized)
 				return
 			}
 			claims := auth.Claims{}
-			if err := tok.Claims([]byte(config.PrestConf.JWTKey), &claims); err != nil {
+			if err := tok.Claims([]byte(settings.JWTKey), &claims); err != nil {
 				http.Error(rw, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusUnauthorized)
 				return
 			}
@@ -99,13 +98,11 @@ func AuthMiddleware(_ string) negroni.Handler {
 				return
 			}
 
-			// pass user_info to the next handler
 			ctx := r.Context()
 			ctx = context.WithValue(ctx, pctx.UserInfoKey, claims.UserInfo)
 			r = r.WithContext(ctx)
 		}
 
-		// if auth isn't enabled
 		next(rw, r)
 	})
 }
@@ -156,9 +153,9 @@ func AccessControl(perms adapters.PermissionsChecker) negroni.Handler {
 }
 
 // JwtMiddleware check if actual request have JWT
-func JwtMiddleware(key string, JWKSet, _ string) negroni.Handler {
+func JwtMiddleware(key string, JWKSet, _ string, whitelist []string) negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		match, err := MatchURL(r.URL.String())
+		match, err := MatchURL(r.URL.String(), whitelist)
 		if err != nil {
 			http.Error(w, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusInternalServerError)
 			return
@@ -260,22 +257,21 @@ func Cors(origin []string, headers []string) negroni.Handler {
 	})
 }
 
-func ExposureMiddleware() negroni.Handler {
+func ExposureMiddleware(expose config.ExposeConf) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
 		url := rq.URL.Path
-		exposeConf := config.PrestConf.ExposeConf
 
-		if strings.HasPrefix(url, "/databases") && !exposeConf.DatabaseListing {
+		if strings.HasPrefix(url, "/databases") && !expose.DatabaseListing {
 			http.Error(rw, fmt.Sprintf(jsonErrFormat, "unauthorized listing"), http.StatusUnauthorized)
 			return
 		}
 
-		if strings.HasPrefix(url, "/tables") && !exposeConf.TableListing {
+		if strings.HasPrefix(url, "/tables") && !expose.TableListing {
 			http.Error(rw, fmt.Sprintf(jsonErrFormat, "unauthorized listing"), http.StatusUnauthorized)
 			return
 		}
 
-		if strings.HasPrefix(url, "/schemas") && !exposeConf.SchemaListing {
+		if strings.HasPrefix(url, "/schemas") && !expose.SchemaListing {
 			http.Error(rw, fmt.Sprintf(jsonErrFormat, "unauthorized listing"), http.StatusUnauthorized)
 			return
 		}

@@ -90,7 +90,7 @@ func NewHandlers(deps Deps) *Handlers {
 	}
 }
 
-// NewHandlersFromConfig builds handlers using global config.
+// NewHandlersFromConfig builds handlers from application config.
 func NewHandlersFromConfig(p *config.Prest) *Handlers {
 	return NewHandlers(NewDepsFromConfig(p))
 }

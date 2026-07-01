@@ -27,10 +27,11 @@ type Item struct {
 
 // Mock adapter
 type Mock struct {
-	mtx   *sync.RWMutex
-	t     *testing.T
-	conns map[string]*mockConn
-	Items []Item
+	mtx        *sync.RWMutex
+	t          *testing.T
+	conns      map[string]*mockConn
+	Items      []Item
+	AccessConf config.AccessConf
 }
 
 var _ adapters.Adapter = (*Mock)(nil) // Verify that Mock implements Adapter.
@@ -93,12 +94,12 @@ func (m *Mock) perform(query bool) (sc adapters.Scanner) {
 // TablePermissions mock
 func (m *Mock) TablePermissions(table string, op string, userName string) (ok bool) {
 	m.t.Helper()
-	restrict := config.PrestConf.AccessConf.Restrict
+	restrict := m.AccessConf.Restrict
 	if !restrict {
 		return true
 	}
 
-	tables := config.PrestConf.AccessConf.Tables
+	tables := m.AccessConf.Tables
 	access := false
 	for _, t := range tables {
 		if t.Name == table {
@@ -115,7 +116,7 @@ func (m *Mock) TablePermissions(table string, op string, userName string) (ok bo
 	// currently, access is granted to all users based on the table settings.
 	// if it is later discovered that there are specific permission settings for an individual user,
 	// then the latter settings should be applied.
-	users := config.PrestConf.AccessConf.Users
+	users := m.AccessConf.Users
 	for _, u := range users {
 		if u.Name == userName {
 			for _, t := range u.Tables {

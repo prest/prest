@@ -6,46 +6,37 @@ import (
 	"testing"
 
 	"github.com/prest/prest/v2/cache"
-	"github.com/prest/prest/v2/config"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCacheMiddleware_Disabled(t *testing.T) {
-	withPrestConf(t, &config.Prest{})
-
 	cfg := &cache.Config{Enabled: false}
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
-	rec, called := serveMiddleware(CacheMiddleware(cfg), req)
+	rec, called := serveMiddleware(CacheMiddleware(cfg, nil), req)
 
 	require.True(t, called)
 	require.Equal(t, http.StatusOK, rec.Code)
 }
 
 func TestCacheMiddleware_NonGETPassesThrough(t *testing.T) {
-	withPrestConf(t, &config.Prest{})
-
 	cfg := &cache.Config{Enabled: true}
 	req := httptest.NewRequest(http.MethodPost, "/prest/public/test", nil)
-	rec, called := serveMiddleware(CacheMiddleware(cfg), req)
+	rec, called := serveMiddleware(CacheMiddleware(cfg, nil), req)
 
 	require.True(t, called)
 	require.Equal(t, http.StatusOK, rec.Code)
 }
 
 func TestCacheMiddleware_WhitelistedURL(t *testing.T) {
-	withPrestConf(t, &config.Prest{JWTWhiteList: []string{`\/auth`}})
-
 	cfg := &cache.Config{Enabled: true}
 	req := httptest.NewRequest(http.MethodGet, "/auth", nil)
-	rec, called := serveMiddleware(CacheMiddleware(cfg), req)
+	rec, called := serveMiddleware(CacheMiddleware(cfg, []string{`\/auth`}), req)
 
 	require.True(t, called)
 	require.Equal(t, http.StatusOK, rec.Code)
 }
 
 func TestCacheMiddleware_NoEndpointRule(t *testing.T) {
-	withPrestConf(t, &config.Prest{})
-
 	cfg := &cache.Config{
 		Enabled: true,
 		Endpoints: []cache.Endpoint{
@@ -53,26 +44,22 @@ func TestCacheMiddleware_NoEndpointRule(t *testing.T) {
 		},
 	}
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
-	rec, called := serveMiddleware(CacheMiddleware(cfg), req)
+	rec, called := serveMiddleware(CacheMiddleware(cfg, nil), req)
 
 	require.True(t, called)
 	require.Equal(t, http.StatusOK, rec.Code)
 }
 
 func TestCacheMiddleware_MatchURLError(t *testing.T) {
-	withPrestConf(t, &config.Prest{JWTWhiteList: []string{"[invalid"}})
-
 	cfg := &cache.Config{Enabled: true}
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
-	rec, called := serveMiddleware(CacheMiddleware(cfg), req)
+	rec, called := serveMiddleware(CacheMiddleware(cfg, []string{"[invalid"}), req)
 
 	require.False(t, called)
 	require.Equal(t, http.StatusInternalServerError, rec.Code)
 }
 
 func TestCacheMiddleware_CacheLookup(t *testing.T) {
-	withPrestConf(t, &config.Prest{})
-
 	const path = "/prest/public/test"
 	newCfg := func(t *testing.T) *cache.Config {
 		t.Helper()
@@ -91,7 +78,7 @@ func TestCacheMiddleware_CacheLookup(t *testing.T) {
 		cfg.BuntSet(path, `[{"cached":true}]`)
 
 		req := httptest.NewRequest(http.MethodGet, path, nil)
-		rec, called := serveMiddleware(CacheMiddleware(cfg), req)
+		rec, called := serveMiddleware(CacheMiddleware(cfg, nil), req)
 
 		require.False(t, called)
 		require.Equal(t, http.StatusOK, rec.Code)
@@ -103,7 +90,7 @@ func TestCacheMiddleware_CacheLookup(t *testing.T) {
 		cfg := newCfg(t)
 
 		req := httptest.NewRequest(http.MethodGet, path, nil)
-		rec, called := serveMiddleware(CacheMiddleware(cfg), req)
+		rec, called := serveMiddleware(CacheMiddleware(cfg, nil), req)
 
 		require.True(t, called)
 		require.Equal(t, http.StatusOK, rec.Code)

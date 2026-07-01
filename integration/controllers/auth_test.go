@@ -6,38 +6,31 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers"
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/testutils"
 )
 
 func TestAuthDisable(t *testing.T) {
-	helpers.LoadTestConfig(t)
-	authEnabled := config.PrestConf.AuthEnabled
-	defer func() { config.PrestConf.AuthEnabled = authEnabled }()
-	config.PrestConf.AuthEnabled = false
+	cfg := helpers.LoadTestConfig(t)
+	cfg.AuthEnabled = false
 
 	r := mux.NewRouter()
-	h := controllers.NewHandlersFromConfig(config.PrestConf)
-	if config.PrestConf.AuthEnabled {
-		r.HandleFunc("/auth", h.Auth.Login).Methods("POST")
-	}
+	h := controllers.NewHandlersFromConfig(cfg)
 	server := httptest.NewServer(r)
 	defer server.Close()
 
 	t.Log("/auth request POST method, disable auth")
 	testutils.DoRequest(t, server.URL+"/auth", nil, "POST", http.StatusNotFound, "AuthDisable")
+	_ = h
 }
 
 func TestAuthEnable(t *testing.T) {
-	helpers.LoadTestConfig(t)
-	authEnabled := config.PrestConf.AuthEnabled
-	defer func() { config.PrestConf.AuthEnabled = authEnabled }()
-	config.PrestConf.AuthEnabled = true
+	cfg := helpers.LoadTestConfig(t)
+	cfg.AuthEnabled = true
 
 	r := mux.NewRouter()
-	h := controllers.NewHandlersFromConfig(config.PrestConf)
+	h := controllers.NewHandlersFromConfig(cfg)
 	r.HandleFunc("/auth", h.Auth.Login).Methods("POST")
 	server := httptest.NewServer(r)
 	defer server.Close()

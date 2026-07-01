@@ -1,6 +1,12 @@
 package postgres
 
-import "net/http"
+import (
+	"context"
+	"net/http"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/prest/prest/v2/adapters"
+)
 
 // ChkInvalidIdentifierExported exposes chkInvalidIdentifier for integration tests.
 func ChkInvalidIdentifierExported(identifier ...string) bool {
@@ -13,6 +19,55 @@ func ColumnsByRequestExported(r *http.Request) ([]string, error) {
 }
 
 // FieldsByPermissionExported exposes fieldsByPermission for integration tests.
-func FieldsByPermissionExported(table, operation, userName string) []string {
-	return fieldsByPermission(table, operation, userName)
+func FieldsByPermissionExported(a adapters.Adapter, table, operation, userName string) []string {
+	p, ok := a.(*postgres)
+	if !ok {
+		return nil
+	}
+	return p.fieldsByPermission(table, operation, userName)
+}
+
+// ClearStmtExported clears the prepared statement cache for integration tests.
+func ClearStmtExported(a adapters.Adapter) {
+	p, ok := a.(*postgres)
+	if !ok {
+		return
+	}
+	p.ClearStmt()
+}
+
+// GetStmtExported returns the statement cache for integration tests.
+func GetStmtExported(a adapters.Adapter) *Stmt {
+	p, ok := a.(*postgres)
+	if !ok {
+		return nil
+	}
+	return p.GetStmt()
+}
+
+// WriteSQLExported runs a write SQL statement for integration tests.
+func WriteSQLExported(a adapters.Adapter, sql string, values []interface{}) adapters.Scanner {
+	p, ok := a.(*postgres)
+	if !ok {
+		return nil
+	}
+	return p.WriteSQL(sql, values)
+}
+
+// WriteSQLCtxExported runs a write SQL statement with context for integration tests.
+func WriteSQLCtxExported(ctx context.Context, a adapters.Adapter, sql string, values []interface{}) adapters.Scanner {
+	p, ok := a.(*postgres)
+	if !ok {
+		return nil
+	}
+	return p.WriteSQLCtx(ctx, sql, values)
+}
+
+func PrepareExported(a adapters.Adapter, db *sqlx.DB, sql string) error {
+	p, ok := a.(*postgres)
+	if !ok {
+		return ErrNotPostgresAdapter
+	}
+	_, err := p.Prepare(db, sql)
+	return err
 }

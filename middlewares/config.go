@@ -7,58 +7,41 @@ import (
 	"github.com/prest/prest/v2/config"
 )
 
-var (
-	app *negroni.Negroni
-
-	// MiddlewareStack on pREST
-	MiddlewareStack []negroni.Handler
-
-	// BaseStack Middlewares
-	BaseStack = []negroni.Handler{
+// BaseStack returns the default middleware handlers without config-specific layers.
+func BaseStack(timeout int) []negroni.Handler {
+	return []negroni.Handler{
 		negroni.Handler(negroni.NewRecovery()),
 		negroni.Handler(negroni.NewLogger()),
 		HandlerSet(),
-		SetTimeoutToContext(),
+		SetTimeoutToContext(timeout),
 	}
-)
-
-func initApp() {
-	if len(MiddlewareStack) == 0 {
-		MiddlewareStack = append(MiddlewareStack, BaseStack...)
-		if config.PrestConf.CORSAllowOrigin != nil {
-			MiddlewareStack = append(
-				MiddlewareStack,
-				cors.New(cors.Options{
-					AllowedOrigins:   config.PrestConf.CORSAllowOrigin,
-					AllowedMethods:   config.PrestConf.CORSAllowMethods,
-					AllowedHeaders:   config.PrestConf.CORSAllowHeaders,
-					AllowCredentials: config.PrestConf.CORSAllowCredentials,
-				}))
-		}
-		if !config.PrestConf.Debug && config.PrestConf.EnableDefaultJWT {
-			MiddlewareStack = append(
-				MiddlewareStack,
-				JwtMiddleware(config.PrestConf.JWTKey, config.PrestConf.JWTJWKS, config.PrestConf.JWTAlgo))
-		}
-		if config.PrestConf.Cache.Enabled {
-			MiddlewareStack = append(MiddlewareStack, CacheMiddleware(&config.PrestConf.Cache))
-		}
-		if config.PrestConf.ExposeConf.Enabled {
-			MiddlewareStack = append(MiddlewareStack, ExposureMiddleware())
-		}
-	}
-	app = negroni.New(MiddlewareStack...)
 }
 
-func resetAppState() {
-	app = nil
-	MiddlewareStack = nil
-}
+// New builds the negroni middleware stack from config.
+func New(cfg *config.Prest) *negroni.Negroni {
+	stack := BaseStack(cfg.HTTPTimeout)
 
-// GetApp get negroni
-func GetApp() *negroni.Negroni {
-	if app == nil {
-		initApp()
+	if cfg.CORSAllowOrigin != nil {
+		stack = append(
+			stack,
+			cors.New(cors.Options{
+				AllowedOrigins:   cfg.CORSAllowOrigin,
+				AllowedMethods:   cfg.CORSAllowMethods,
+				AllowedHeaders:   cfg.CORSAllowHeaders,
+				AllowCredentials: cfg.CORSAllowCredentials,
+			}))
 	}
-	return app
+	if !cfg.Debug && cfg.EnableDefaultJWT {
+		stack = append(
+			stack,
+			JwtMiddleware(cfg.JWTKey, cfg.JWTJWKS, cfg.JWTAlgo, cfg.JWTWhiteList))
+	}
+	if cfg.Cache.Enabled {
+		stack = append(stack, CacheMiddleware(&cfg.Cache, cfg.JWTWhiteList))
+	}
+	if cfg.ExposeConf.Enabled {
+		stack = append(stack, ExposureMiddleware(cfg.ExposeConf))
+	}
+
+	return negroni.New(stack...)
 }

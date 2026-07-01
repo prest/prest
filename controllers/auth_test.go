@@ -12,7 +12,6 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/prest/prest/v2/adapters/mockgen"
-	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers/auth"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
@@ -385,12 +384,8 @@ func TestAuthHandler_basicPasswordCheck(t *testing.T) {
 }
 
 func TestToken(t *testing.T) {
-	prev := config.PrestConf
-	t.Cleanup(func() { config.PrestConf = prev })
-	config.PrestConf = &config.Prest{JWTKey: "legacy-key"}
-
 	user := auth.User{ID: 7, Username: "legacy"}
-	token, err := Token(user)
+	token, err := Token(user, "legacy-key")
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 

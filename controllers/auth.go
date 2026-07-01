@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/prest/prest/v2/adapters"
-	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers/auth"
 	"golang.org/x/crypto/bcrypt"
 
@@ -278,8 +277,8 @@ func HashPassword(password string) (string, error) {
 	return string(hash), nil
 }
 
-// Token creates a JWT for the given user using global config (legacy helper for tests).
-func Token(u auth.User) (t string, err error) {
-	h := NewAuthHandler(nil, AuthConfig{JWTKey: config.PrestConf.JWTKey})
+// Token creates a JWT for the given user (legacy helper for tests).
+func Token(u auth.User, jwtKey string) (t string, err error) {
+	h := NewAuthHandler(nil, AuthConfig{JWTKey: jwtKey})
 	return h.token(u)
 }

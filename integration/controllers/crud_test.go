@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers"
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/testutils"
@@ -74,8 +73,9 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 	// Re-initialize pREST instance under test, mostly to revert `config` changes below
 	defer func() { helpers.LoadTestConfig(t) }()
 
-	config.PrestConf.SingleDB = false
-	h := controllers.NewHandlersFromConfig(config.PrestConf)
+	cfg := helpers.LoadTestConfig(t)
+	cfg.SingleDB = false
+	h := controllers.NewHandlersFromConfig(cfg)
 
 	for _, db := range helpers.Databases() {
 		router := mux.NewRouter()
@@ -94,8 +94,9 @@ func TestSelectFromTables(t *testing.T) {
 	helpers.LoadTestConfig(t)
 	defer func() { helpers.LoadTestConfig(t) }()
 
-	config.PrestConf.SingleDB = false
-	h := controllers.NewHandlersFromConfig(config.PrestConf)
+	cfg := helpers.LoadTestConfig(t)
+	cfg.SingleDB = false
+	h := controllers.NewHandlersFromConfig(cfg)
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}/{table}", helpers.WithHTTPTimeout(h.CRUD.Select)).
 		Methods("GET")
@@ -158,8 +159,6 @@ func TestSelectFromTables(t *testing.T) {
 	for _, db := range helpers.Databases() {
 		for _, tc := range testCases {
 			t.Log(fmt.Sprintf("(DB: %s) %s", db, tc.description))
-			//config.PrestConf = &config.Prest{}
-			//config.Load()
 
 			if tc.body != "" {
 				testutils.DoRequest(t, fmt.Sprintf(server.URL+tc.url, db), nil, tc.method, tc.status, "SelectFromTables", tc.body)

@@ -16,15 +16,12 @@ const (
 	contextMockDB = "ctx-db"
 )
 
-func testAdapter() *Postgres {
-	return &Postgres{}
-}
-
-func withPrestConf(t *testing.T, cfg *config.Prest) {
-	t.Helper()
-	old := config.PrestConf
-	config.PrestConf = cfg
-	t.Cleanup(func() { config.PrestConf = old })
+func testAdapter(cfg ...*config.Prest) *postgres {
+	c := defaultTestConf()
+	if len(cfg) > 0 && cfg[0] != nil {
+		c = cfg[0]
+	}
+	return New(c).(*postgres)
 }
 
 func defaultTestConf() *config.Prest {
@@ -64,7 +61,7 @@ func permissionTestConf() *config.Prest {
 }
 
 func TestGetQueryOperator(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
+
 	testCases := []struct {
 		in  string
 		out string
@@ -111,7 +108,7 @@ func TestGetQueryOperator(t *testing.T) {
 }
 
 func TestChkInvalidIdentifier(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
+
 	testCases := []struct {
 		in  string
 		out bool
@@ -137,7 +134,7 @@ func TestChkInvalidIdentifier(t *testing.T) {
 }
 
 func TestNormalizeGroupFunction(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
+
 	testCases := []struct {
 		urlValue    string
 		expectedSQL string
@@ -164,7 +161,7 @@ func TestNormalizeGroupFunction(t *testing.T) {
 }
 
 func TestWhereByRequest(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
+
 	adapter := testAdapter()
 
 	testCases := []struct {
@@ -243,7 +240,7 @@ func TestWhereByRequest(t *testing.T) {
 }
 
 func TestSetByRequest(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
+
 	adapter := testAdapter()
 
 	m := map[string]interface{}{"name": "prest"}
@@ -300,7 +297,7 @@ func TestSetByRequest(t *testing.T) {
 }
 
 func TestParseInsertRequest(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
+
 	adapter := testAdapter()
 
 	m := map[string]interface{}{"name": "prest"}
@@ -357,7 +354,7 @@ func TestParseInsertRequest(t *testing.T) {
 }
 
 func TestParseBatchInsertRequest(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
+
 	adapter := testAdapter()
 
 	body := []map[string]interface{}{
@@ -378,7 +375,7 @@ func TestParseBatchInsertRequest(t *testing.T) {
 }
 
 func TestReturningByRequest(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
+
 	adapter := testAdapter()
 
 	req, err := http.NewRequest(http.MethodPost, "/?_returning=id&_returning=name", nil)
@@ -397,7 +394,7 @@ func TestReturningByRequest(t *testing.T) {
 }
 
 func TestDistinctClause(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
+
 	adapter := testAdapter()
 
 	req, err := http.NewRequest(http.MethodGet, "/?_distinct=true", nil)
@@ -414,7 +411,7 @@ func TestDistinctClause(t *testing.T) {
 }
 
 func TestGroupByClause(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
+
 	adapter := testAdapter()
 
 	req, err := http.NewRequest(http.MethodGet, "/?_groupby=name,age", nil)
@@ -426,7 +423,7 @@ func TestGroupByClause(t *testing.T) {
 }
 
 func TestJoinByRequest(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
+
 	adapter := testAdapter()
 
 	req, err := http.NewRequest(http.MethodGet, "/public/test?_join=inner:test2:test2.name:$eq:test.name", nil)
@@ -444,7 +441,7 @@ func TestJoinByRequest(t *testing.T) {
 }
 
 func TestOrderByRequest(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
+
 	adapter := testAdapter()
 
 	req, err := http.NewRequest(http.MethodGet, "/public/test?_order=name,-number", nil)
@@ -462,7 +459,7 @@ func TestOrderByRequest(t *testing.T) {
 }
 
 func TestSelectFields(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
+
 	adapter := testAdapter()
 
 	sql, err := adapter.SelectFields([]string{"name", "age"})
@@ -475,7 +472,7 @@ func TestSelectFields(t *testing.T) {
 }
 
 func TestCountByRequest(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
+
 	adapter := testAdapter()
 
 	req, err := http.NewRequest(http.MethodGet, "/public/test?_count=true", nil)
@@ -486,7 +483,7 @@ func TestCountByRequest(t *testing.T) {
 }
 
 func TestPaginateIfPossible(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
+
 	adapter := testAdapter()
 
 	req, err := http.NewRequest(http.MethodGet, "/public/test?_page=1&_page_size=10", nil)
@@ -498,7 +495,7 @@ func TestPaginateIfPossible(t *testing.T) {
 }
 
 func TestDatabaseClause(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
+
 	adapter := testAdapter()
 
 	req, err := http.NewRequest(http.MethodGet, "/databases", nil)
@@ -514,7 +511,7 @@ func TestDatabaseClause(t *testing.T) {
 }
 
 func TestSchemaClause(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
+
 	adapter := testAdapter()
 
 	req, err := http.NewRequest(http.MethodGet, "/schemas", nil)
@@ -530,7 +527,7 @@ func TestSchemaClause(t *testing.T) {
 }
 
 func TestSelectInsertDeleteUpdateSQL(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
+
 	adapter := testAdapter()
 
 	selectSQL := adapter.SelectSQL("SELECT", "db", "public", "users")
@@ -549,8 +546,7 @@ func TestSelectInsertDeleteUpdateSQL(t *testing.T) {
 }
 
 func TestTablePermissions(t *testing.T) {
-	withPrestConf(t, permissionTestConf())
-	adapter := testAdapter()
+	adapter := testAdapter(permissionTestConf())
 
 	testCases := []struct {
 		name       string
@@ -575,15 +571,19 @@ func TestTablePermissions(t *testing.T) {
 			require.Equal(t, tc.want, got)
 		})
 	}
+}
 
-	withPrestConf(t, defaultTestConf())
+func TestTablePermissionsUnrestrict(t *testing.T) {
+	cfg := permissionTestConf()
+	cfg.AccessConf.Restrict = false
+	adapter := testAdapter(cfg)
+
 	got := adapter.TablePermissions("any_table", "read", "")
 	require.True(t, got)
 }
 
 func TestFieldsPermissions(t *testing.T) {
-	withPrestConf(t, permissionTestConf())
-	adapter := testAdapter()
+	adapter := testAdapter(permissionTestConf())
 
 	req, err := http.NewRequest(http.MethodGet, "/public/test?_select=name,surname", nil)
 	require.NoError(t, err)
@@ -605,14 +605,14 @@ func TestFieldsPermissions(t *testing.T) {
 }
 
 func TestFieldsByPermission(t *testing.T) {
-	withPrestConf(t, permissionTestConf())
+	adapter := testAdapter(permissionTestConf())
 
-	fields := fieldsByPermission("test_fields_access", "read", "")
+	fields := adapter.fieldsByPermission("test_fields_access", "read", "")
 	require.Equal(t, []string{"name", "surname"}, fields)
 
-	fields = fieldsByPermission("test_write_and_delete_access", "read", "foo_read")
+	fields = adapter.fieldsByPermission("test_write_and_delete_access", "read", "foo_read")
 	require.Equal(t, []string{"*"}, fields)
 
-	fields = fieldsByPermission("no_user_write_table", "write", "foo_read")
+	fields = adapter.fieldsByPermission("no_user_write_table", "write", "foo_read")
 	require.Equal(t, []string{"name"}, fields)
 }

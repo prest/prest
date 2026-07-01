@@ -7,30 +7,30 @@ import (
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
-	"github.com/prest/prest/v2/adapters/postgres/internal/connection"
 	"github.com/prest/prest/v2/config"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/stretchr/testify/require"
 )
 
-func withSQLMock(t *testing.T) (*Postgres, sqlmock.Sqlmock) {
+func withSQLMock(t *testing.T) (*postgres, sqlmock.Sqlmock) {
 	t.Helper()
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
-	withPrestConf(t, defaultTestConf())
-	connection.SetDatabase(defaultMockDB)
-	connection.InjectDBForTest(connection.GetURI(defaultMockDB), sqlxDB)
-	t.Cleanup(connection.ResetPoolForTest)
-	ClearStmt()
-	t.Cleanup(ClearStmt)
+	cfg := defaultTestConf()
+	pg := New(cfg).(*postgres)
+	pg.conn.SetDatabase(defaultMockDB)
+	pg.conn.InjectDBForTest(pg.conn.GetURI(defaultMockDB), sqlxDB)
+	t.Cleanup(func() { pg.conn.ResetPoolForTest() })
+	pg.ClearStmt()
+	t.Cleanup(pg.ClearStmt)
 
-	return testAdapter(), mock
+	return pg, mock
 }
 
-func withSQLMocks(t *testing.T) (*Postgres, sqlmock.Sqlmock, sqlmock.Sqlmock) {
+func withSQLMocks(t *testing.T) (*postgres, sqlmock.Sqlmock, sqlmock.Sqlmock) {
 	t.Helper()
 	defaultDB, defaultMock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -41,15 +41,16 @@ func withSQLMocks(t *testing.T) (*Postgres, sqlmock.Sqlmock, sqlmock.Sqlmock) {
 		_ = ctxDB.Close()
 	})
 
-	withPrestConf(t, defaultTestConf())
-	connection.SetDatabase(defaultMockDB)
-	connection.InjectDBForTest(connection.GetURI(defaultMockDB), sqlx.NewDb(defaultDB, "sqlmock"))
-	connection.InjectDBForTest(connection.GetURI(contextMockDB), sqlx.NewDb(ctxDB, "sqlmock"))
-	t.Cleanup(connection.ResetPoolForTest)
-	ClearStmt()
-	t.Cleanup(ClearStmt)
+	cfg := defaultTestConf()
+	pg := New(cfg).(*postgres)
+	pg.conn.SetDatabase(defaultMockDB)
+	pg.conn.InjectDBForTest(pg.conn.GetURI(defaultMockDB), sqlx.NewDb(defaultDB, "sqlmock"))
+	pg.conn.InjectDBForTest(pg.conn.GetURI(contextMockDB), sqlx.NewDb(ctxDB, "sqlmock"))
+	t.Cleanup(func() { pg.conn.ResetPoolForTest() })
+	pg.ClearStmt()
+	t.Cleanup(pg.ClearStmt)
 
-	return testAdapter(), defaultMock, ctxMock
+	return pg, defaultMock, ctxMock
 }
 
 func TestQuery_SuccessEmpty(t *testing.T) {
@@ -231,7 +232,7 @@ func TestShowTable_Success(t *testing.T) {
 }
 
 func TestQuery_WithStatementCache(t *testing.T) {
-	withPrestConf(t, &config.Prest{
+	cfg := &config.Prest{
 		PGDatabase:  defaultMockDB,
 		JSONAggType: "json_agg",
 		PGCache:     true,
@@ -239,20 +240,19 @@ func TestQuery_WithStatementCache(t *testing.T) {
 		PGPort:      5432,
 		PGUser:      "u",
 		PGSSLMode:   "disable",
-	})
+	}
 
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 
 	sqlxDB := sqlx.NewDb(db, "sqlmock")
-	connection.SetDatabase(defaultMockDB)
-	connection.InjectDBForTest(connection.GetURI(defaultMockDB), sqlxDB)
-	t.Cleanup(connection.ResetPoolForTest)
-	ClearStmt()
-	t.Cleanup(ClearStmt)
-
-	adapter := testAdapter()
+	adapter := New(cfg).(*postgres)
+	adapter.conn.SetDatabase(defaultMockDB)
+	adapter.conn.InjectDBForTest(adapter.conn.GetURI(defaultMockDB), sqlxDB)
+	t.Cleanup(func() { adapter.conn.ResetPoolForTest() })
+	adapter.ClearStmt()
+	t.Cleanup(adapter.ClearStmt)
 	prep := mock.ExpectPrepare(`SELECT json_agg\(s\) FROM \(SELECT 1\) s`)
 	prep.ExpectQuery().WillReturnRows(sqlmock.NewRows([]string{"json_agg"}).AddRow([]byte(`[1]`)))
 	prep.ExpectQuery().WillReturnRows(sqlmock.NewRows([]string{"json_agg"}).AddRow([]byte(`[1]`)))

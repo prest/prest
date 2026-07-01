@@ -6,12 +6,18 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"testing"
 
+	"github.com/gorilla/mux"
 	"github.com/prest/prest/v2/adapters/postgres"
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers"
+	"github.com/prest/prest/v2/middlewares"
+	"github.com/prest/prest/v2/plugins"
 	pctx "github.com/prest/prest/v2/context"
+	"github.com/prest/prest/v2/router"
+	"github.com/urfave/negroni/v3"
 )
 
 // Databases returns the database names used by integration tests (see testdata/runtest.sh).
@@ -58,32 +64,62 @@ func EnsureTestConfigEnv() {
 	}
 }
 
+var (
+	loadOnce sync.Once
+	loadedCfg *config.Prest
+	loadErr   error
+)
+
 // LoadTestConfig loads application config and connects to the test database.
-func LoadTestConfig(t *testing.T) {
+func LoadTestConfig(t *testing.T) *config.Prest {
 	t.Helper()
 	if os.Getenv("PREST_CONF") == "" {
 		t.Setenv("PREST_CONF", TestConfigPath())
 	}
-	config.Load()
-	postgres.Load()
+	loadOnce.Do(func() {
+		loadedCfg, loadErr = config.Load()
+		if loadErr != nil {
+			return
+		}
+		pg := postgres.New(loadedCfg)
+		loadErr = postgres.Connect(pg)
+		if loadErr != nil {
+			return
+		}
+		loadedCfg.Adapter = pg
+	})
+	if loadErr != nil {
+		t.Fatalf("load test config: %v", loadErr)
+	}
+	// Integration tests expect catalog and custom routes without default JWT
+	// enforcement (matches PREST_DEBUG=true in local docker-compose).
+	loadedCfg.Debug = true
+	return loadedCfg
+}
+
+// MiddlewareStack builds the negroni middleware stack for integration tests.
+func MiddlewareStack(cfg *config.Prest) *negroni.Negroni {
+	testCfg := *cfg
+	testCfg.Debug = true
+	return middlewares.New(&testCfg)
 }
 
 // VerifyTestDatabases asserts the configured default database matches test expectations.
-func VerifyTestDatabases(t *testing.T) {
+func VerifyTestDatabases(t *testing.T, cfg *config.Prest) {
 	t.Helper()
-	if config.PrestConf.PGDatabase != "prest-test" {
-		t.Fatalf("expected db: 'prest-test', got: %s", config.PrestConf.PGDatabase)
+	if cfg.PGDatabase != "prest-test" {
+		t.Fatalf("expected db: 'prest-test', got: %s", cfg.PGDatabase)
 	}
-	if config.PrestConf.Adapter.GetDatabase() != "prest-test" {
-		t.Fatalf("expected Adapter db: 'prest-test', got: %s", config.PrestConf.Adapter.GetDatabase())
+	if cfg.Adapter.GetDatabase() != "prest-test" {
+		t.Fatalf("expected Adapter db: 'prest-test', got: %s", cfg.Adapter.GetDatabase())
 	}
 }
 
 // NewIntegrationHandlers returns handlers wired to the test database.
 func NewIntegrationHandlers(t *testing.T) *controllers.Handlers {
 	t.Helper()
-	LoadTestConfig(t)
-	return controllers.NewHandlersFromConfig(config.PrestConf)
+	cfg := LoadTestConfig(t)
+	return controllers.NewHandlersFromConfig(cfg)
 }
 
 // WithHTTPTimeout sets the request context timeout expected by CRUD handlers.
@@ -91,4 +127,17 @@ func WithHTTPTimeout(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		h.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), pctx.HTTPTimeoutKey, 60))) //nolint:staticcheck
 	}
+}
+
+// IntegrationHandler builds the full negroni middleware stack and router for integration tests.
+func IntegrationHandler(t *testing.T, cfg *config.Prest) http.Handler {
+	t.Helper()
+	h := controllers.NewHandlersFromConfig(cfg)
+	plg := plugins.New(cfg)
+	crud := middlewares.NewCRUDStack(cfg, plg)
+	muxRouter := mux.NewRouter().StrictSlash(true)
+	router.RegisterRoutes(muxRouter, cfg, h, crud, plg)
+	n := MiddlewareStack(cfg)
+	n.UseHandler(muxRouter)
+	return n
 }

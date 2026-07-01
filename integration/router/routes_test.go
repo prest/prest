@@ -5,22 +5,20 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/integration/helpers"
-	"github.com/prest/prest/v2/router"
 	"github.com/prest/prest/v2/testutils"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRoutes(t *testing.T) {
-	helpers.LoadTestConfig(t)
-	r := router.Routes()
-	require.NotNil(t, r)
+	cfg := helpers.LoadTestConfig(t)
+	h := helpers.IntegrationHandler(t, cfg)
+	require.NotNil(t, h)
 }
 
 func TestDefaultRouters(t *testing.T) {
-	helpers.LoadTestConfig(t)
-	server := httptest.NewServer(router.GetRouter())
+	cfg := helpers.LoadTestConfig(t)
+	server := httptest.NewServer(helpers.IntegrationHandler(t, cfg))
 	defer server.Close()
 
 	var testCases = []struct {
@@ -49,9 +47,9 @@ func TestDefaultRouters(t *testing.T) {
 }
 
 func TestAuthRouterActive(t *testing.T) {
-	helpers.LoadTestConfig(t)
-	config.PrestConf.AuthEnabled = true
-	server := httptest.NewServer(router.GetRouter())
+	cfg := helpers.LoadTestConfig(t)
+	cfg.AuthEnabled = true
+	server := httptest.NewServer(helpers.IntegrationHandler(t, cfg))
 	defer server.Close()
 	testutils.DoRequest(t, server.URL+"/auth", nil, "GET", http.StatusMethodNotAllowed, "AuthEnable")
 	testutils.DoRequest(t, server.URL+"/auth", nil, "POST", http.StatusUnauthorized, "AuthEnable")

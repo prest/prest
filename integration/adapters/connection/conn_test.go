@@ -8,9 +8,9 @@ import (
 )
 
 func TestGet(t *testing.T) {
-	helpers.LoadTestConfig(t)
+	cfg := helpers.LoadTestConfig(t)
 	t.Log("Open connection")
-	db, err := postgres.Get()
+	db, err := postgres.DB(cfg.Adapter)
 	if err != nil {
 		t.Fatalf("Expected err equal to nil but got %q", err.Error())
 	}
@@ -23,15 +23,18 @@ func TestGet(t *testing.T) {
 }
 
 func TestMustGet(t *testing.T) {
-	helpers.LoadTestConfig(t)
+	cfg := helpers.LoadTestConfig(t)
 	t.Log("Open connection")
-	db := postgres.MustGet()
+	db, err := postgres.DB(cfg.Adapter)
+	if err != nil {
+		t.Fatalf("expected no error opening db, but got: %v", err)
+	}
 	if db == nil {
 		t.Fatalf("expected db connection, but no was!")
 	}
 
 	t.Log("Ping Pong")
-	err := db.Ping()
+	err = db.Ping()
 	if err != nil {
 		t.Fatalf("expected no error, but got: %v", err)
 	}

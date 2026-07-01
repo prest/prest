@@ -121,35 +121,37 @@ type Prest struct {
 const defaultCacheDir = "./"
 
 var (
-	// PrestConf config variable
-	PrestConf      *Prest
 	configFile     string
 	defaultCfgFile = "./prest.toml"
 )
 
 // Load configuration
-func Load() {
+func Load() (*Prest, error) {
 	viperCfg()
-	PrestConf = &Prest{}
-	Parse(PrestConf)
-	if _, err := os.Stat(PrestConf.QueriesPath); os.IsNotExist(err) {
-		if err = os.MkdirAll(PrestConf.QueriesPath, 0700); err != nil {
-			slog.Error("Queries directory was not created", "path", PrestConf.QueriesPath, "err", err)
+	cfg := &Prest{}
+	Parse(cfg)
+	if _, err := os.Stat(cfg.QueriesPath); os.IsNotExist(err) {
+		if err = os.MkdirAll(cfg.QueriesPath, 0700); err != nil {
+			slog.Error("Queries directory was not created", "path", cfg.QueriesPath, "err", err)
 		}
 	}
 
 	// ignore cache if disabled
-	if !PrestConf.Cache.Enabled {
-		return
+	if !cfg.Cache.Enabled {
+		return setupLogger(cfg)
 	}
 
-	if _, err := os.Stat(PrestConf.Cache.StoragePath); os.IsNotExist(err) {
-		if err = os.MkdirAll(PrestConf.Cache.StoragePath, 0700); err != nil {
-			slog.Error("Cache directory was not created, falling back to default './'", "path", PrestConf.Cache.StoragePath, "err", err)
-			PrestConf.Cache.StoragePath = defaultCacheDir
+	if _, err := os.Stat(cfg.Cache.StoragePath); os.IsNotExist(err) {
+		if err = os.MkdirAll(cfg.Cache.StoragePath, 0700); err != nil {
+			slog.Error("Cache directory was not created, falling back to default './'", "path", cfg.Cache.StoragePath, "err", err)
+			cfg.Cache.StoragePath = defaultCacheDir
 		}
 	}
 
+	return setupLogger(cfg)
+}
+
+func setupLogger(cfg *Prest) (*Prest, error) {
 	opts := &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	}
@@ -160,8 +162,9 @@ func Load() {
 		}
 	}
 	PrestdHandler := slog.NewJSONHandler(os.Stdout, opts)
-	PrestConf.Logger = slog.New(PrestdHandler)
-	slog.SetDefault(PrestConf.Logger)
+	cfg.Logger = slog.New(PrestdHandler)
+	slog.SetDefault(cfg.Logger)
+	return cfg, nil
 }
 
 func viperCfg() {
@@ -238,9 +241,9 @@ func viperCfg() {
 	hDir, err := homedir.Dir()
 	if err != nil {
 		slog.Error("could not find homedir", "err", err)
-		os.Exit(1)
+	} else {
+		viper.SetDefault("queries.location", filepath.Join(hDir, "queries"))
 	}
-	viper.SetDefault("queries.location", filepath.Join(hDir, "queries"))
 }
 
 func getPrestConfFile(prestConf string) string {

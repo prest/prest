@@ -13,7 +13,6 @@ import (
 )
 
 func TestGetScript_InvalidVerb(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
 	adapter := testAdapter()
 
 	_, err := adapter.GetScript("ANY", "folder", "script")
@@ -25,8 +24,7 @@ func TestGetScript_MissingFile(t *testing.T) {
 	dir := t.TempDir()
 	cfg := defaultTestConf()
 	cfg.QueriesPath = dir
-	withPrestConf(t, cfg)
-	adapter := testAdapter()
+	adapter := testAdapter(cfg)
 
 	_, err := adapter.GetScript("GET", "missing", "script")
 	require.Error(t, err)
@@ -42,8 +40,7 @@ func TestGetScript_Success(t *testing.T) {
 
 	cfg := defaultTestConf()
 	cfg.QueriesPath = dir
-	withPrestConf(t, cfg)
-	adapter := testAdapter()
+	adapter := testAdapter(cfg)
 
 	got, err := adapter.GetScript("GET", "queries", "list")
 	require.NoError(t, err)
@@ -55,7 +52,6 @@ func TestParseScript_Template(t *testing.T) {
 	scriptPath := filepath.Join(dir, "query.read.sql")
 	require.NoError(t, os.WriteFile(scriptPath, []byte(`SELECT * FROM users WHERE name = '{{ .field1 }}'`), 0o644))
 
-	withPrestConf(t, defaultTestConf())
 	adapter := testAdapter()
 
 	sql, values, err := adapter.ParseScript(scriptPath, map[string]interface{}{"field1": "abc"})
@@ -69,7 +65,6 @@ func TestParseScript_InvalidTemplate(t *testing.T) {
 	scriptPath := filepath.Join(dir, "bad.read.sql")
 	require.NoError(t, os.WriteFile(scriptPath, []byte(`{{ .missing`), 0o644))
 
-	withPrestConf(t, defaultTestConf())
 	adapter := testAdapter()
 
 	_, _, err := adapter.ParseScript(scriptPath, map[string]interface{}{})
@@ -78,7 +73,6 @@ func TestParseScript_InvalidTemplate(t *testing.T) {
 }
 
 func TestExecuteScripts_InvalidMethod(t *testing.T) {
-	withPrestConf(t, defaultTestConf())
 	adapter := testAdapter()
 
 	sc := adapter.ExecuteScripts("ANY", "SELECT 1", nil)
@@ -114,24 +108,24 @@ func TestExecuteScripts_POST(t *testing.T) {
 }
 
 func TestWriteSQL_Success(t *testing.T) {
-	_, mock := withSQLMock(t)
+	adapter, mock := withSQLMock(t)
 
 	mock.ExpectPrepare(`UPDATE users`).
 		ExpectExec().
 		WillReturnResult(sqlmock.NewResult(0, 2))
 
-	sc := WriteSQL("UPDATE users SET active=true", nil)
+	sc := adapter.WriteSQL("UPDATE users SET active=true", nil)
 	require.NoError(t, sc.Err())
 	require.JSONEq(t, `{"rows_affected":2}`, string(sc.Bytes()))
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestWriteSQL_PrepareError(t *testing.T) {
-	_, mock := withSQLMock(t)
+	adapter, mock := withSQLMock(t)
 
 	mock.ExpectPrepare(`DELETE FROM users`).WillReturnError(errors.New("prepare failed"))
 
-	sc := WriteSQL("DELETE FROM users", nil)
+	sc := adapter.WriteSQL("DELETE FROM users", nil)
 	require.Error(t, sc.Err())
 	require.Contains(t, sc.Err().Error(), "could not prepare sql")
 	require.NoError(t, mock.ExpectationsWereMet())
@@ -153,14 +147,14 @@ func TestExecuteScriptsCtx_WithContext(t *testing.T) {
 }
 
 func TestWriteSQLCtx_Success(t *testing.T) {
-	_, defaultMock, ctxMock := withSQLMocks(t)
+	adapter, defaultMock, ctxMock := withSQLMocks(t)
 
 	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
 	ctxMock.ExpectPrepare(`DELETE FROM users`).
 		ExpectExec().
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	sc := WriteSQLCtx(ctx, "DELETE FROM users WHERE id=1", nil)
+	sc := adapter.WriteSQLCtx(ctx, "DELETE FROM users WHERE id=1", nil)
 	require.NoError(t, sc.Err())
 	require.JSONEq(t, `{"rows_affected":1}`, string(sc.Bytes()))
 	require.NoError(t, ctxMock.ExpectationsWereMet())

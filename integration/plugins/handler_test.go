@@ -12,16 +12,17 @@ import (
 	"github.com/prest/prest/v2/testutils"
 )
 
-func initPluginRoutes() *mux.Router {
+func initPluginRoutes(cfg *config.Prest) *mux.Router {
+	plg := plugins.New(cfg)
 	r := mux.NewRouter()
-	r.HandleFunc("/_PLUGIN/{file}/{func}", plugins.HandlerPlugin)
+	r.HandleFunc("/_PLUGIN/{file}/{func}", plg.Handler())
 	return r
 }
 
 func TestPlugins(t *testing.T) {
-	helpers.LoadTestConfig(t)
-	config.PrestConf.PluginPath = helpers.PluginLibDir()
-	server := httptest.NewServer(initPluginRoutes())
+	cfg := helpers.LoadTestConfig(t)
+	cfg.PluginPath = helpers.PluginLibDir()
+	server := httptest.NewServer(initPluginRoutes(cfg))
 	defer server.Close()
 
 	var testCases = []struct {

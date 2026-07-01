@@ -11,16 +11,17 @@ import (
 
 func TestLoad(t *testing.T) {
 	t.Setenv("PREST_CONF", "../testdata/prest.toml")
-	Load()
-	require.Greaterf(t, len(PrestConf.AccessConf.Tables), 2,
-		"expected > 2, got: %d", len(PrestConf.AccessConf.Tables))
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Greaterf(t, len(cfg.AccessConf.Tables), 2,
+		"expected > 2, got: %d", len(cfg.AccessConf.Tables))
 
-	for _, ignoretable := range PrestConf.AccessConf.IgnoreTable {
+	for _, ignoretable := range cfg.AccessConf.IgnoreTable {
 		require.Equal(t, "test_permission_does_not_exist", ignoretable,
 			"expected ['test_permission_does_not_exist'], but got another result")
 	}
-	require.True(t, PrestConf.AccessConf.Restrict, "expected true, but got false")
-	require.Equal(t, 60, PrestConf.HTTPTimeout)
+	require.True(t, cfg.AccessConf.Restrict, "expected true, but got false")
+	require.Equal(t, 60, cfg.HTTPTimeout)
 }
 
 func TestParse(t *testing.T) {

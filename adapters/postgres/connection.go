@@ -7,37 +7,36 @@ import (
 )
 
 // GetURI postgres connection URI
-func GetURI(DBName string) string {
-	return connection.GetURI(DBName)
+func (adapter *postgres) GetURI(DBName string) string {
+	return adapter.conn.GetURI(DBName)
 }
 
 // Get get postgres connection
-func Get() (*sqlx.DB, error) {
-	return connection.Get()
+func (adapter *postgres) Get() (*sqlx.DB, error) {
+	return adapter.conn.Get()
 }
 
 // GetPool of connection
-func GetPool() *connection.Pool {
-	return connection.GetPool()
+func (adapter *postgres) GetPool() *connection.Pool {
+	return adapter.conn.GetPool()
 }
 
 // AddDatabaseToPool add connection to pool
-func AddDatabaseToPool(name string) (*sqlx.DB, error) {
-	return connection.AddDatabaseToPool(name)
+func (adapter *postgres) AddDatabaseToPool(name string) (*sqlx.DB, error) {
+	return adapter.conn.AddDatabaseToPool(name)
 }
 
 // MustGet get postgres connection
-func MustGet() *sqlx.DB {
-	return connection.MustGet()
+func (adapter *postgres) MustGet() *sqlx.DB {
+	return adapter.conn.MustGet()
 }
 
 // SetDatabase set current database in use
-// todo: remove when ctx is fully implemented
-func SetDatabase(name string) {
-	connection.SetDatabase(name)
+func (adapter *postgres) SetDatabase(name string) {
+	adapter.conn.SetDatabase(name)
 }
 
-// GetDatabase get current database in use
-func GetDatabase() string {
-	return connection.GetDatabase()
+// ConnManager returns the underlying connection manager (for tests).
+func (adapter *postgres) ConnManager() *connection.Manager {
+	return adapter.conn
 }

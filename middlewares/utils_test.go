@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/middlewares/statements"
 	"github.com/stretchr/testify/require"
 )
@@ -112,8 +111,7 @@ func TestMatchURL(t *testing.T) {
 
 	for _, tt := range test {
 		t.Run(tt.Label, func(t *testing.T) {
-			config.PrestConf.JWTWhiteList = tt.JWTWhiteList
-			match, err := MatchURL(tt.URL)
+			match, err := MatchURL(tt.URL, tt.JWTWhiteList)
 			if err != nil {
 				t.Error(err)
 			}

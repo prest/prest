@@ -13,66 +13,83 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var (
-	pool         *Pool
-	currDatabase string
-)
-
 // Pool struct
 type Pool struct {
 	Mtx *sync.Mutex
 	DB  map[string]*sqlx.DB
 }
 
+// Manager holds connection pool state for a single config instance.
+type Manager struct {
+	cfg          *config.Prest
+	pool         *Pool
+	currDatabase string
+}
+
+// NewManager creates a connection manager for the given config.
+func NewManager(cfg *config.Prest) *Manager {
+	return &Manager{cfg: cfg}
+}
+
+func (m *Manager) getPool() *Pool {
+	if m.pool == nil {
+		m.pool = &Pool{
+			Mtx: &sync.Mutex{},
+			DB:  make(map[string]*sqlx.DB),
+		}
+	}
+	return m.pool
+}
+
 // GetURI postgres connection URI
-func GetURI(DBName string) string {
+func (m *Manager) GetURI(DBName string) string {
 	var dbURI string
 
 	if DBName == "" {
-		DBName = config.PrestConf.PGDatabase
+		DBName = m.cfg.PGDatabase
 	}
 	dbURI = fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=%v connect_timeout=%d",
-		config.PrestConf.PGUser,
+		m.cfg.PGUser,
 		DBName,
-		config.PrestConf.PGHost,
-		config.PrestConf.PGPort,
-		config.PrestConf.PGSSLMode,
-		config.PrestConf.PGConnTimeout)
+		m.cfg.PGHost,
+		m.cfg.PGPort,
+		m.cfg.PGSSLMode,
+		m.cfg.PGConnTimeout)
 
-	if config.PrestConf.PGPass != "" {
-		dbURI += " password=" + config.PrestConf.PGPass
+	if m.cfg.PGPass != "" {
+		dbURI += " password=" + m.cfg.PGPass
 	}
-	if config.PrestConf.PGSSLCert != "" {
-		dbURI += " sslcert=" + config.PrestConf.PGSSLCert
+	if m.cfg.PGSSLCert != "" {
+		dbURI += " sslcert=" + m.cfg.PGSSLCert
 	}
-	if config.PrestConf.PGSSLKey != "" {
-		dbURI += " sslkey=" + config.PrestConf.PGSSLKey
+	if m.cfg.PGSSLKey != "" {
+		dbURI += " sslkey=" + m.cfg.PGSSLKey
 	}
-	if config.PrestConf.PGSSLRootCert != "" {
-		dbURI += " sslrootcert=" + config.PrestConf.PGSSLRootCert
+	if m.cfg.PGSSLRootCert != "" {
+		dbURI += " sslrootcert=" + m.cfg.PGSSLRootCert
 	}
 
 	return dbURI
 }
 
 // Get get Postgres connection adding it to the pool if needed
-func Get() (*sqlx.DB, error) {
-	DB := getDatabaseFromPool(GetDatabase())
+func (m *Manager) Get() (*sqlx.DB, error) {
+	DB := m.getDatabaseFromPool(m.GetDatabase())
 	// Connection is already in the pool
 	if DB != nil {
 		return DB, nil
 	}
 
 	// Connection is not in the pool, add it
-	DB, err := AddDatabaseToPool(GetDatabase())
+	DB, err := m.AddDatabaseToPool(m.GetDatabase())
 
 	return DB, err
 }
 
 // GetFromPool tries to get the db name from the db pool
 // will return error if not found
-func GetFromPool(dbName string) (*sqlx.DB, error) {
-	DB := getDatabaseFromPool(dbName)
+func (m *Manager) GetFromPool(dbName string) (*sqlx.DB, error) {
+	DB := m.getDatabaseFromPool(dbName)
 	if DB == nil {
 		return nil, errors.New("db not found in pool")
 	}
@@ -80,50 +97,44 @@ func GetFromPool(dbName string) (*sqlx.DB, error) {
 }
 
 // GetPool of connection
-func GetPool() *Pool {
-	if pool == nil {
-		pool = &Pool{
-			Mtx: &sync.Mutex{},
-			DB:  make(map[string]*sqlx.DB),
-		}
-	}
-	return pool
+func (m *Manager) GetPool() *Pool {
+	return m.getPool()
 }
 
-func getDatabaseFromPool(name string) *sqlx.DB {
+func (m *Manager) getDatabaseFromPool(name string) *sqlx.DB {
 	var DB *sqlx.DB
-	p := GetPool()
+	p := m.getPool()
 
 	p.Mtx.Lock()
-	DB = p.DB[GetURI(name)]
+	DB = p.DB[m.GetURI(name)]
 	p.Mtx.Unlock()
 
 	return DB
 }
 
 // AddDatabaseToPool create and add connection to the pool
-func AddDatabaseToPool(name string) (*sqlx.DB, error) {
-	DB, err := sqlx.Connect("postgres", GetURI(name))
+func (m *Manager) AddDatabaseToPool(name string) (*sqlx.DB, error) {
+	DB, err := sqlx.Connect("postgres", m.GetURI(name))
 	if err != nil {
 		return nil, err
 	}
-	DB.SetMaxIdleConns(config.PrestConf.PGMaxIdleConn)
-	DB.SetMaxOpenConns(config.PrestConf.PGMaxOpenConn)
+	DB.SetMaxIdleConns(m.cfg.PGMaxIdleConn)
+	DB.SetMaxOpenConns(m.cfg.PGMaxOpenConn)
 
-	p := GetPool()
+	p := m.getPool()
 
 	p.Mtx.Lock()
-	p.DB[GetURI(name)] = DB
+	p.DB[m.GetURI(name)] = DB
 	p.Mtx.Unlock()
 	return DB, nil
 }
 
 // MustGet get postgres connection
-func MustGet() *sqlx.DB {
+func (m *Manager) MustGet() *sqlx.DB {
 	var err error
 	var DB *sqlx.DB
 
-	DB, err = Get()
+	DB, err = m.Get()
 	if err != nil {
 		slog.Error("Unable to connect to database", "error", err)
 		panic(err)
@@ -132,11 +143,11 @@ func MustGet() *sqlx.DB {
 }
 
 // SetDatabase set current database in use
-func SetDatabase(name string) {
-	currDatabase = name
+func (m *Manager) SetDatabase(name string) {
+	m.currDatabase = name
 }
 
 // GetDatabase get current database in use
-func GetDatabase() string {
-	return currDatabase
+func (m *Manager) GetDatabase() string {
+	return m.currDatabase
 }

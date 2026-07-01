@@ -83,9 +83,7 @@ func TestMock_perform(t *testing.T) {
 }
 
 func TestMock_TablePermissions(t *testing.T) {
-	config.Load()
-
-	config.PrestConf.AccessConf.Tables = []config.TablesConf{
+	tables := []config.TablesConf{
 		config.TablesConf{
 			Name:        "testpermission",
 			Permissions: []string{"read"},
@@ -163,7 +161,7 @@ func TestMock_TablePermissions(t *testing.T) {
 			Fields:      []string{"id", "name", "email"},
 		},
 	}
-	config.PrestConf.AccessConf.Users = []config.UsersConf{
+	users := []config.UsersConf{
 		config.UsersConf{
 			Name: "foo_read",
 			Tables: []config.TablesConf{
@@ -571,10 +569,14 @@ func TestMock_TablePermissions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config.PrestConf.AccessConf.Restrict = tt.restrict
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
+				AccessConf: config.AccessConf{
+					Restrict: tt.restrict,
+					Tables:   tables,
+					Users:    users,
+				},
 			}
 			if gotOk := m.TablePermissions(tt.table, tt.op, tt.userName); gotOk != tt.wantOk {
 				t.Errorf("Mock.TablePermissions() = %v, want %v", gotOk, tt.wantOk)
