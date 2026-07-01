@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	passwordKV = regexp.MustCompile(`(?i)password=[^\s'"]+`)
+	passwordKV = regexp.MustCompile(`(?i)password=(?:'[^']*'|"[^"]*"|[^\s'"]+)`)
 	pgURLCreds = regexp.MustCompile(`postgres(?:ql)?://([^:@/]+):([^@/]+)@`)
 )
 

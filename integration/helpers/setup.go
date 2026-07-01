@@ -65,12 +65,15 @@ func EnsureTestConfigEnv() {
 }
 
 var (
-	loadOnce sync.Once
-	loadedCfg *config.Prest
+	loadOnce  sync.Once
+	loadedCfg *config.Prest // initialized once; callers receive shallow copies
 	loadErr   error
 )
 
 // LoadTestConfig loads application config and connects to the test database.
+// Config and DB connection are initialized once; each call returns a fresh
+// shallow copy so per-test field mutations do not leak across tests. The
+// shared Adapter pointer is reused (tests mutate config fields, not the adapter).
 func LoadTestConfig(t *testing.T) *config.Prest {
 	t.Helper()
 	if os.Getenv("PREST_CONF") == "" {
@@ -93,8 +96,9 @@ func LoadTestConfig(t *testing.T) *config.Prest {
 	}
 	// Integration tests expect catalog and custom routes without default JWT
 	// enforcement (matches PREST_DEBUG=true in local docker-compose).
-	loadedCfg.Debug = true
-	return loadedCfg
+	cfg := *loadedCfg
+	cfg.Debug = true
+	return &cfg
 }
 
 // MiddlewareStack builds the negroni middleware stack for integration tests.

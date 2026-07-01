@@ -12,9 +12,34 @@ func TestError_nil(t *testing.T) {
 }
 
 func TestError_passwordKV(t *testing.T) {
-	err := errors.New(`connect failed: user=u password=secret dbname=db host=localhost`)
-	redacted := Error(err)
-	require.Equal(t, `connect failed: user=u password=*** dbname=db host=localhost`, redacted.Error())
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "plain",
+			input: `connect failed: user=u password=secret dbname=db host=localhost`,
+			want:  `connect failed: user=u password=*** dbname=db host=localhost`,
+		},
+		{
+			name:  "single-quoted",
+			input: `connect failed: password='s3cret!' dbname=db`,
+			want:  `connect failed: password=*** dbname=db`,
+		},
+		{
+			name:  "double-quoted",
+			input: `connect failed: password="s3cret!" dbname=db`,
+			want:  `connect failed: password=*** dbname=db`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := errors.New(tt.input)
+			redacted := Error(err)
+			require.Equal(t, tt.want, redacted.Error())
+		})
+	}
 }
 
 func TestError_postgresURL(t *testing.T) {
