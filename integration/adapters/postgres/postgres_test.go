@@ -2519,7 +2519,7 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 			r, err := http.NewRequest(http.MethodGet, tt.args.url, strings.NewReader(""))
 			require.NoError(t, err)
 
-			gotFields, err := adapter.FieldsPermissions(r, tt.args.table, tt.args.op, tt.args.userName)
+			gotFields, err := adapter.FieldsPermissions(r, "", "public", tt.args.table, tt.args.op, tt.args.userName)
 			require.Equal(t, tt.wantErr, err != nil)
 			require.Equal(t, tt.wantFields, gotFields)
 		})

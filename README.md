@@ -65,6 +65,35 @@ docker compose -f docker-compose-test.yml down -v --remove-orphans
 
 The `tests` service runs `./testdata/runtest.sh`, provisioning databases and executing Go tests.
 
+### Multi-cluster databases
+
+pREST can route each HTTP `{database}` path segment to a distinct Postgres cluster using a **database registry**. Configuration is **env-first** (recommended for Kubernetes); TOML `[[databases]]` is a local-dev fallback.
+
+**Indexed env pairs** (1-based, contiguous):
+
+```sh
+DATABASE_ALIAS_1=tenant-a
+DATABASE_URL_1=postgres://user:pass@cluster-a.example.com:5432/app?sslmode=require
+DATABASE_ALIAS_2=tenant-b
+DATABASE_URL_2=postgres://user:pass@cluster-b.example.com:5432/app?sslmode=require
+```
+
+**Manifest + per-alias URL:**
+
+```sh
+PREST_DATABASES=tenant-a,tenant-b
+PREST_DATABASE_TENANT_A_URL=postgres://...
+PREST_DATABASE_TENANT_B_URL=postgres://...
+```
+
+When no registry is configured, legacy `DATABASE_URL` / `pg.*` behavior is unchanged (`pg.single` still applies).
+
+**Connection budgeting:** plan for `replicas × aliases × pg.maxopenconn` connections per cluster; use PgBouncer or RDS Proxy when many aliases are registered.
+
+**Health checks:** `/_health` pings the default database (liveness); `/_ready` pings every registered alias (readiness).
+
+See `install-manifests/kubernetes/deployment.yaml` for a multi-secret example with liveness/readiness probes.
+
 ## Example: Docker Build
 
 You can build the Docker image locally for development (this compiles the code from source):

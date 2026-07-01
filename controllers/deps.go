@@ -25,13 +25,15 @@ type AuthConfig struct {
 
 // Deps bundles dependencies for HTTP handlers.
 type Deps struct {
-	Catalog  adapters.CatalogQuerier
-	Builder  adapters.RequestQueryBuilder
-	Executor adapters.QueryExecutor
-	SQL      adapters.SQLBuilder
-	Perms    adapters.PermissionsChecker
-	Scripts  adapters.ScriptRunner
-	DB       adapters.DatabaseRegistry
+	Catalog    adapters.CatalogQuerier
+	Builder    adapters.RequestQueryBuilder
+	Executor   adapters.QueryExecutor
+	SQL        adapters.SQLBuilder
+	Perms      adapters.PermissionsChecker
+	Scripts    adapters.ScriptRunner
+	DB         adapters.DatabaseRegistry
+	Pinger     adapters.DatabasePinger
+	Readiness  adapters.ReadinessChecker
 	Cache      ResponseCacher
 	SingleDB   bool
 	PGDatabase string
@@ -45,13 +47,15 @@ func NewDepsFromConfig(p *config.Prest) Deps {
 		cacher = &p.Cache
 	}
 	return Deps{
-		Catalog:  p.Adapter,
-		Builder:  p.Adapter,
-		Executor: p.Adapter,
-		SQL:      p.Adapter,
-		Perms:    p.Adapter,
-		Scripts:  p.Adapter,
-		DB:       p.Adapter,
+		Catalog:    p.Adapter,
+		Builder:    p.Adapter,
+		Executor:   p.Adapter,
+		SQL:        p.Adapter,
+		Perms:      p.Adapter,
+		Scripts:    p.Adapter,
+		DB:         p.Adapter,
+		Pinger:     p.Adapter,
+		Readiness:  p.Adapter,
 		Cache:      cacher,
 		SingleDB:   p.SingleDB,
 		PGDatabase: p.PGDatabase,
@@ -76,6 +80,7 @@ type Handlers struct {
 	CRUD    *CRUDHandler
 	Script  *ScriptHandler
 	Health  *HealthHandler
+	Ready   *HealthHandler
 }
 
 // NewHandlers constructs handlers from dependencies.
@@ -91,6 +96,7 @@ func NewHandlers(deps Deps) *Handlers {
 		CRUD:    NewCRUDHandler(deps),
 		Script:  NewScriptHandler(deps),
 		Health:  NewHealthHandler(checks),
+		Ready:   NewHealthHandler(DefaultReadyCheckList(deps.Readiness)),
 	}
 }
 

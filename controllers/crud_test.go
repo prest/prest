@@ -19,6 +19,13 @@ func withTestTimeout(ctx context.Context) context.Context {
 	return context.WithValue(ctx, pctx.HTTPTimeoutKey, 60) //nolint:staticcheck
 }
 
+func mockDatabaseRegistry(ctrl *gomock.Controller) *mockgen.MockDatabaseRegistry {
+	db := mockgen.NewMockDatabaseRegistry(ctrl)
+	db.EXPECT().IsRegistered(gomock.Any()).Return(true).AnyTimes()
+	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	return db
+}
+
 func crudRequest(method, path string, vars map[string]string) *http.Request {
 	req := httptest.NewRequest(method, path, nil)
 	req = mux.SetURLVars(req, vars)
@@ -40,10 +47,9 @@ func TestCRUDHandler_Select_PermissionDenied(t *testing.T) {
 	defer ctrl.Finish()
 
 	perms := mockgen.NewMockPermissionsChecker(ctrl)
-	perms.EXPECT().FieldsPermissions(gomock.Any(), "test", "read", "").Return([]string{}, nil)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "test", "read", "").Return([]string{}, nil)
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	h := NewCRUDHandler(Deps{
 		Perms:    perms,
@@ -67,8 +73,7 @@ func TestCRUDHandler_Select_InvalidPath(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	h := NewCRUDHandler(Deps{
 		DB:       db,
@@ -93,7 +98,7 @@ func TestCRUDHandler_Select_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	perms := mockgen.NewMockPermissionsChecker(ctrl)
-	perms.EXPECT().FieldsPermissions(gomock.Any(), "test", "read", "").Return([]string{"name"}, nil)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "test", "read", "").Return([]string{"name"}, nil)
 
 	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
 	sqlBuilder.EXPECT().SelectFields([]string{"name"}).Return(`"name"`, nil)
@@ -115,8 +120,7 @@ func TestCRUDHandler_Select_Success(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	h := NewCRUDHandler(Deps{
 		Perms:    perms,
@@ -141,7 +145,7 @@ func TestCRUDHandler_Select_WithCache(t *testing.T) {
 	defer ctrl.Finish()
 
 	perms := mockgen.NewMockPermissionsChecker(ctrl)
-	perms.EXPECT().FieldsPermissions(gomock.Any(), "test", "read", "").Return([]string{"name"}, nil)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "test", "read", "").Return([]string{"name"}, nil)
 
 	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
 	sqlBuilder.EXPECT().SelectFields([]string{"name"}).Return(`"name"`, nil)
@@ -163,8 +167,7 @@ func TestCRUDHandler_Select_WithCache(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	cacher := &recordingCacher{}
 	h := NewCRUDHandler(Deps{
@@ -188,7 +191,7 @@ func TestCRUDHandler_Select_RelationNotFound(t *testing.T) {
 	defer ctrl.Finish()
 
 	perms := mockgen.NewMockPermissionsChecker(ctrl)
-	perms.EXPECT().FieldsPermissions(gomock.Any(), "missing", "read", "").Return([]string{"id"}, nil)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "missing", "read", "").Return([]string{"id"}, nil)
 
 	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
 	sqlBuilder.EXPECT().SelectFields([]string{"id"}).Return(`"id"`, nil)
@@ -209,8 +212,7 @@ func TestCRUDHandler_Select_RelationNotFound(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	h := NewCRUDHandler(Deps{Perms: perms, SQL: sqlBuilder, Builder: builder, Executor: executor, DB: db})
 	req := crudRequest(http.MethodGet, "/prest-test/public/missing", map[string]string{
@@ -227,7 +229,7 @@ func TestCRUDHandler_Select_WithUserContext(t *testing.T) {
 	defer ctrl.Finish()
 
 	perms := mockgen.NewMockPermissionsChecker(ctrl)
-	perms.EXPECT().FieldsPermissions(gomock.Any(), "test", "read", "alice").Return([]string{"name"}, nil)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "test", "read", "alice").Return([]string{"name"}, nil)
 
 	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
 	sqlBuilder.EXPECT().SelectFields([]string{"name"}).Return(`"name"`, nil)
@@ -249,8 +251,7 @@ func TestCRUDHandler_Select_WithUserContext(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	h := NewCRUDHandler(Deps{Perms: perms, SQL: sqlBuilder, Builder: builder, Executor: executor, DB: db})
 	req := crudRequest(http.MethodGet, "/prest-test/public/test", map[string]string{
@@ -282,8 +283,7 @@ func TestCRUDHandler_Insert_Success(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().InsertCtx(gomock.Any(), `INSERT INTO test`, "prest").Return(scanner)
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: db})
 	req := crudRequest(http.MethodPost, "/prest-test/public/test", map[string]string{
@@ -312,8 +312,7 @@ func TestCRUDHandler_Insert_RelationNotFound(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().InsertCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: db})
 	req := crudRequest(http.MethodPost, "/prest-test/public/missing", map[string]string{
@@ -330,8 +329,7 @@ func TestCRUDHandler_Insert_InvalidPath(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	h := NewCRUDHandler(Deps{
 		DB:       db,
@@ -367,8 +365,7 @@ func TestCRUDHandler_BatchInsert_Values(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().BatchInsertValuesCtx(gomock.Any(), `INSERT INTO test`, "a", "b").Return(scanner)
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: db})
 	req := crudRequest(http.MethodPost, "/prest-test/public/test", map[string]string{
@@ -394,8 +391,7 @@ func TestCRUDHandler_BatchInsert_Copy(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().BatchInsertCopyCtx(gomock.Any(), "prest-test", "public", "test", []string{"name", "age"}, "a", 1).Return(scanner)
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	h := NewCRUDHandler(Deps{Builder: builder, SQL: mockgen.NewMockSQLBuilder(ctrl), Executor: executor, DB: db})
 	req := crudRequest(http.MethodPost, "/prest-test/public/test", map[string]string{
@@ -426,8 +422,7 @@ func TestCRUDHandler_Delete_Success(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().DeleteCtx(gomock.Any(), `DELETE FROM test WHERE id=$1 RETURNING "id"`, 1).Return(scanner)
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: db})
 	req := crudRequest(http.MethodDelete, "/prest-test/public/test?id=1", map[string]string{
@@ -443,8 +438,7 @@ func TestCRUDHandler_Delete_InvalidPath(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	h := NewCRUDHandler(Deps{
 		DB:       db,
@@ -482,8 +476,7 @@ func TestCRUDHandler_Update_Success(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().UpdateCtx(gomock.Any(), `UPDATE test SET name=$1 WHERE id=$2`, "new", 1).Return(scanner)
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: db})
 	req := crudRequest(http.MethodPatch, "/prest-test/public/test", map[string]string{
@@ -513,8 +506,7 @@ func TestCRUDHandler_Update_RelationNotFound(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().UpdateCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: db})
 	req := crudRequest(http.MethodPatch, "/prest-test/public/missing", map[string]string{
@@ -530,8 +522,7 @@ func TestCRUDHandler_Update_InvalidPath(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	h := NewCRUDHandler(Deps{
 		DB:       db,

@@ -286,18 +286,18 @@ func (mr *MockAdapterMockRecorder) ExecuteScriptsCtx(arg0, arg1, arg2, arg3 inte
 }
 
 // FieldsPermissions mocks base method.
-func (m *MockAdapter) FieldsPermissions(arg0 *http.Request, arg1, arg2, arg3 string) ([]string, error) {
+func (m *MockAdapter) FieldsPermissions(arg0 *http.Request, arg1, arg2, arg3, arg4, arg5 string) ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FieldsPermissions", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "FieldsPermissions", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FieldsPermissions indicates an expected call of FieldsPermissions.
-func (mr *MockAdapterMockRecorder) FieldsPermissions(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockAdapterMockRecorder) FieldsPermissions(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FieldsPermissions", reflect.TypeOf((*MockAdapter)(nil).FieldsPermissions), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FieldsPermissions", reflect.TypeOf((*MockAdapter)(nil).FieldsPermissions), arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
 // GetDatabase mocks base method.
@@ -444,6 +444,20 @@ func (mr *MockAdapterMockRecorder) InsertWithTransaction(arg0, arg1 interface{},
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertWithTransaction", reflect.TypeOf((*MockAdapter)(nil).InsertWithTransaction), varargs...)
 }
 
+// IsRegistered mocks base method.
+func (m *MockAdapter) IsRegistered(arg0 string) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsRegistered", arg0)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsRegistered indicates an expected call of IsRegistered.
+func (mr *MockAdapterMockRecorder) IsRegistered(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsRegistered", reflect.TypeOf((*MockAdapter)(nil).IsRegistered), arg0)
+}
+
 // JoinByRequest mocks base method.
 func (m *MockAdapter) JoinByRequest(arg0 *http.Request) ([]string, error) {
 	m.ctrl.T.Helper()
@@ -537,6 +551,48 @@ func (m *MockAdapter) ParseScript(arg0 string, arg1 map[string]interface{}) (str
 func (mr *MockAdapterMockRecorder) ParseScript(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ParseScript", reflect.TypeOf((*MockAdapter)(nil).ParseScript), arg0, arg1)
+}
+
+// PhysicalName mocks base method.
+func (m *MockAdapter) PhysicalName(arg0 string) string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PhysicalName", arg0)
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// PhysicalName indicates an expected call of PhysicalName.
+func (mr *MockAdapterMockRecorder) PhysicalName(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PhysicalName", reflect.TypeOf((*MockAdapter)(nil).PhysicalName), arg0)
+}
+
+// Ping mocks base method.
+func (m *MockAdapter) Ping(arg0 context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Ping", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Ping indicates an expected call of Ping.
+func (mr *MockAdapterMockRecorder) Ping(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockAdapter)(nil).Ping), arg0)
+}
+
+// PingAll mocks base method.
+func (m *MockAdapter) PingAll(arg0 context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PingAll", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PingAll indicates an expected call of PingAll.
+func (mr *MockAdapterMockRecorder) PingAll(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PingAll", reflect.TypeOf((*MockAdapter)(nil).PingAll), arg0)
 }
 
 // Query mocks base method.
@@ -815,17 +871,17 @@ func (mr *MockAdapterMockRecorder) TableOrderBy(arg0 interface{}) *gomock.Call {
 }
 
 // TablePermissions mocks base method.
-func (m *MockAdapter) TablePermissions(arg0, arg1, arg2 string) bool {
+func (m *MockAdapter) TablePermissions(arg0, arg1, arg2, arg3, arg4 string) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TablePermissions", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "TablePermissions", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // TablePermissions indicates an expected call of TablePermissions.
-func (mr *MockAdapterMockRecorder) TablePermissions(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockAdapterMockRecorder) TablePermissions(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TablePermissions", reflect.TypeOf((*MockAdapter)(nil).TablePermissions), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TablePermissions", reflect.TypeOf((*MockAdapter)(nil).TablePermissions), arg0, arg1, arg2, arg3, arg4)
 }
 
 // TableWhere mocks base method.

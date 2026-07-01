@@ -165,85 +165,85 @@ func TestMock_TablePermissions(t *testing.T) {
 		config.UsersConf{
 			Name: "foo_read",
 			Tables: []config.TablesConf{
-				{"read_table", []string{"read"}, []string{"id", "name", "email"}},
-				{"write_table", []string{"read"}, []string{"id", "name", "email"}},
-				{"delete_table", []string{"read"}, []string{"id", "name", "email"}},
-				{"read_write_table", []string{"read"}, []string{"id", "name", "email"}},
-				{"read_delete_table", []string{"read"}, []string{"id", "name", "email"}},
-				{"write_delete_table", []string{"read"}, []string{"id", "name", "email"}},
-				{"read_write_delete_table", []string{"read"}, []string{"id", "name", "email"}},
+				{Name: "read_table", Permissions: []string{"read"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_table", Permissions: []string{"read"}, Fields: []string{"id", "name", "email"}},
+				{Name: "delete_table", Permissions: []string{"read"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_table", Permissions: []string{"read"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_delete_table", Permissions: []string{"read"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_delete_table", Permissions: []string{"read"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_delete_table", Permissions: []string{"read"}, Fields: []string{"id", "name", "email"}},
 			},
 		},
 		config.UsersConf{
 			Name: "foo_write",
 			Tables: []config.TablesConf{
-				{"read_table", []string{"write"}, []string{"id", "name", "email"}},
-				{"write_table", []string{"write"}, []string{"id", "name", "email"}},
-				{"delete_table", []string{"write"}, []string{"id", "name", "email"}},
-				{"read_write_table", []string{"write"}, []string{"id", "name", "email"}},
-				{"read_delete_table", []string{"write"}, []string{"id", "name", "email"}},
-				{"write_delete_table", []string{"write"}, []string{"id", "name", "email"}},
-				{"read_write_delete_table", []string{"write"}, []string{"id", "name", "email"}},
+				{Name: "read_table", Permissions: []string{"write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_table", Permissions: []string{"write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "delete_table", Permissions: []string{"write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_table", Permissions: []string{"write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_delete_table", Permissions: []string{"write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_delete_table", Permissions: []string{"write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_delete_table", Permissions: []string{"write"}, Fields: []string{"id", "name", "email"}},
 			},
 		},
 		config.UsersConf{
 			Name: "foo_delete",
 			Tables: []config.TablesConf{
-				{"read_table", []string{"delete"}, []string{"id", "name", "email"}},
-				{"write_table", []string{"delete"}, []string{"id", "name", "email"}},
-				{"delete_table", []string{"delete"}, []string{"id", "name", "email"}},
-				{"read_write_table", []string{"delete"}, []string{"id", "name", "email"}},
-				{"read_delete_table", []string{"delete"}, []string{"id", "name", "email"}},
-				{"write_delete_table", []string{"delete"}, []string{"id", "name", "email"}},
-				{"read_write_delete_table", []string{"delete"}, []string{"id", "name", "email"}},
+				{Name: "read_table", Permissions: []string{"delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_table", Permissions: []string{"delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "delete_table", Permissions: []string{"delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_table", Permissions: []string{"delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_delete_table", Permissions: []string{"delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_delete_table", Permissions: []string{"delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_delete_table", Permissions: []string{"delete"}, Fields: []string{"id", "name", "email"}},
 			},
 		},
 		config.UsersConf{
 			Name: "foo_read_write",
 			Tables: []config.TablesConf{
-				{"read_table", []string{"read", "write"}, []string{"id", "name", "email"}},
-				{"write_table", []string{"read", "write"}, []string{"id", "name", "email"}},
-				{"delete_table", []string{"read", "write"}, []string{"id", "name", "email"}},
-				{"read_write_table", []string{"read", "write"}, []string{"id", "name", "email"}},
-				{"read_delete_table", []string{"read", "write"}, []string{"id", "name", "email"}},
-				{"write_delete_table", []string{"read", "write"}, []string{"id", "name", "email"}},
-				{"read_write_delete_table", []string{"read", "write"}, []string{"id", "name", "email"}},
+				{Name: "read_table", Permissions: []string{"read", "write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_table", Permissions: []string{"read", "write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "delete_table", Permissions: []string{"read", "write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_table", Permissions: []string{"read", "write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_delete_table", Permissions: []string{"read", "write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_delete_table", Permissions: []string{"read", "write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_delete_table", Permissions: []string{"read", "write"}, Fields: []string{"id", "name", "email"}},
 			},
 		},
 		config.UsersConf{
 			Name: "foo_read_delete",
 			Tables: []config.TablesConf{
-				{"read_table", []string{"read", "delete"}, []string{"id", "name", "email"}},
-				{"write_table", []string{"read", "delete"}, []string{"id", "name", "email"}},
-				{"delete_table", []string{"read", "delete"}, []string{"id", "name", "email"}},
-				{"read_write_table", []string{"read", "delete"}, []string{"id", "name", "email"}},
-				{"read_delete_table", []string{"read", "delete"}, []string{"id", "name", "email"}},
-				{"write_delete_table", []string{"read", "delete"}, []string{"id", "name", "email"}},
-				{"read_write_delete_table", []string{"read", "delete"}, []string{"id", "name", "email"}},
+				{Name: "read_table", Permissions: []string{"read", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_table", Permissions: []string{"read", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "delete_table", Permissions: []string{"read", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_table", Permissions: []string{"read", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_delete_table", Permissions: []string{"read", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_delete_table", Permissions: []string{"read", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_delete_table", Permissions: []string{"read", "delete"}, Fields: []string{"id", "name", "email"}},
 			},
 		},
 		config.UsersConf{
 			Name: "foo_write_delete",
 			Tables: []config.TablesConf{
-				{"read_table", []string{"write", "delete"}, []string{"id", "name", "email"}},
-				{"write_table", []string{"write", "delete"}, []string{"id", "name", "email"}},
-				{"delete_table", []string{"write", "delete"}, []string{"id", "name", "email"}},
-				{"read_write_table", []string{"write", "delete"}, []string{"id", "name", "email"}},
-				{"read_delete_table", []string{"write", "delete"}, []string{"id", "name", "email"}},
-				{"write_delete_table", []string{"write", "delete"}, []string{"id", "name", "email"}},
-				{"read_write_delete_table", []string{"write", "delete"}, []string{"id", "name", "email"}},
+				{Name: "read_table", Permissions: []string{"write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_table", Permissions: []string{"write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "delete_table", Permissions: []string{"write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_table", Permissions: []string{"write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_delete_table", Permissions: []string{"write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_delete_table", Permissions: []string{"write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_delete_table", Permissions: []string{"write", "delete"}, Fields: []string{"id", "name", "email"}},
 			},
 		},
 		config.UsersConf{
 			Name: "foo_read_write_delete",
 			Tables: []config.TablesConf{
-				{"read_table", []string{"read", "write", "delete"}, []string{"id", "name", "email"}},
-				{"write_table", []string{"read", "write", "delete"}, []string{"id", "name", "email"}},
-				{"delete_table", []string{"read", "write", "delete"}, []string{"id", "name", "email"}},
-				{"read_write_table", []string{"read", "write", "delete"}, []string{"id", "name", "email"}},
-				{"read_delete_table", []string{"read", "write", "delete"}, []string{"id", "name", "email"}},
-				{"write_delete_table", []string{"read", "write", "delete"}, []string{"id", "name", "email"}},
-				{"read_write_delete_table", []string{"read", "write", "delete"}, []string{"id", "name", "email"}},
+				{Name: "read_table", Permissions: []string{"read", "write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_table", Permissions: []string{"read", "write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "delete_table", Permissions: []string{"read", "write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_table", Permissions: []string{"read", "write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_delete_table", Permissions: []string{"read", "write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_delete_table", Permissions: []string{"read", "write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_delete_table", Permissions: []string{"read", "write", "delete"}, Fields: []string{"id", "name", "email"}},
 			},
 		},
 	}
@@ -578,7 +578,7 @@ func TestMock_TablePermissions(t *testing.T) {
 					Users:    users,
 				},
 			}
-			if gotOk := m.TablePermissions(tt.table, tt.op, tt.userName); gotOk != tt.wantOk {
+			if gotOk := m.TablePermissions("", "", tt.table, tt.op, tt.userName); gotOk != tt.wantOk {
 				t.Errorf("Mock.TablePermissions() = %v, want %v", gotOk, tt.wantOk)
 			}
 		})
@@ -992,7 +992,7 @@ func TestMockEmptyMethods(t *testing.T) {
 	}
 
 	// FieldsPermissions
-	fields, err := mock.FieldsPermissions(&http.Request{}, "test", "select", "")
+	fields, err := mock.FieldsPermissions(&http.Request{}, "", "public", "test", "select", "")
 	if err != nil {
 		t.Errorf("expected empty return, got: %s", err)
 	}

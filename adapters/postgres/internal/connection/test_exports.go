@@ -7,7 +7,7 @@ import "github.com/jmoiron/sqlx"
 func (m *Manager) InjectDBForTest(uri string, db *sqlx.DB) {
 	p := m.getPool()
 	p.Mtx.Lock()
-	p.DB[uri] = db
+	p.DB[poolKey(alias)] = db
 	p.Mtx.Unlock()
 }
 

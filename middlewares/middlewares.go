@@ -143,7 +143,7 @@ func AccessControl(perms adapters.PermissionsChecker) negroni.Handler {
 			return
 		}
 
-		if perms.TablePermissions(mapPath["table"], permission, userName) {
+		if perms.TablePermissions(mapPath["database"], mapPath["schema"], mapPath["table"], permission, userName) {
 			next(rw, rq)
 			return
 		}

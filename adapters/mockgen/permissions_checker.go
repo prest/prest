@@ -35,30 +35,30 @@ func (m *MockPermissionsChecker) EXPECT() *MockPermissionsCheckerMockRecorder {
 }
 
 // FieldsPermissions mocks base method.
-func (m *MockPermissionsChecker) FieldsPermissions(arg0 *http.Request, arg1, arg2, arg3 string) ([]string, error) {
+func (m *MockPermissionsChecker) FieldsPermissions(arg0 *http.Request, arg1, arg2, arg3, arg4, arg5 string) ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FieldsPermissions", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "FieldsPermissions", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FieldsPermissions indicates an expected call of FieldsPermissions.
-func (mr *MockPermissionsCheckerMockRecorder) FieldsPermissions(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockPermissionsCheckerMockRecorder) FieldsPermissions(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FieldsPermissions", reflect.TypeOf((*MockPermissionsChecker)(nil).FieldsPermissions), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FieldsPermissions", reflect.TypeOf((*MockPermissionsChecker)(nil).FieldsPermissions), arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
 // TablePermissions mocks base method.
-func (m *MockPermissionsChecker) TablePermissions(arg0, arg1, arg2 string) bool {
+func (m *MockPermissionsChecker) TablePermissions(arg0, arg1, arg2, arg3, arg4 string) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TablePermissions", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "TablePermissions", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
 // TablePermissions indicates an expected call of TablePermissions.
-func (mr *MockPermissionsCheckerMockRecorder) TablePermissions(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockPermissionsCheckerMockRecorder) TablePermissions(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TablePermissions", reflect.TypeOf((*MockPermissionsChecker)(nil).TablePermissions), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TablePermissions", reflect.TypeOf((*MockPermissionsChecker)(nil).TablePermissions), arg0, arg1, arg2, arg3, arg4)
 }

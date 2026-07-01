@@ -74,6 +74,77 @@ func (m *Manager) GetURI(DBName string) string {
 		m.cfg.PGPort,
 		m.cfg.PGSSLMode,
 		m.cfg.PGConnTimeout)
+	return dbURI
+}
+
+func registryActive() bool {
+	return config.PrestConf != nil && config.HasDatabaseRegistry(config.PrestConf)
+}
+
+func profileForAlias(alias string) (config.DatabaseConf, bool) {
+	return config.ProfileByAlias(config.PrestConf, alias)
+}
+
+// BuildURI builds a postgres connection URI from a database profile.
+func BuildURI(conf config.DatabaseConf) string {
+	if conf.URL != "" {
+		return conf.URL
+	}
+
+	dbName := conf.Database
+	if dbName == "" {
+		dbName = config.PrestConf.PGDatabase
+	}
+	port := conf.Port
+	if port == 0 {
+		port = config.PrestConf.PGPort
+	}
+	sslMode := conf.SSL.Mode
+	if sslMode == "" {
+		sslMode = config.PrestConf.PGSSLMode
+	}
+	connTimeout := config.PrestConf.PGConnTimeout
+
+	dbURI := fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=%v connect_timeout=%d",
+		conf.User,
+		dbName,
+		conf.Host,
+		port,
+		sslMode,
+		connTimeout,
+	)
+	if conf.Pass != "" {
+		dbURI += " password=" + conf.Pass
+	}
+	if conf.SSL.Cert != "" {
+		dbURI += " sslcert=" + conf.SSL.Cert
+	}
+	if conf.SSL.Key != "" {
+		dbURI += " sslkey=" + conf.SSL.Key
+	}
+	if conf.SSL.RootCert != "" {
+		dbURI += " sslrootcert=" + conf.SSL.RootCert
+	}
+	return dbURI
+}
+
+// GetURI postgres connection URI for alias or legacy database name.
+func GetURI(alias string) string {
+	if conf, ok := profileForAlias(alias); ok {
+		return BuildURI(conf)
+	}
+
+	dbName := alias
+	if dbName == "" {
+		dbName = config.PrestConf.PGDatabase
+	}
+	dbURI := fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=%v connect_timeout=%d",
+		config.PrestConf.PGUser,
+		dbName,
+		config.PrestConf.PGHost,
+		config.PrestConf.PGPort,
+		config.PrestConf.PGSSLMode,
+		config.PrestConf.PGConnTimeout)
 
 	if m.cfg.PGPass != "" {
 		dbURI += " password=" + m.cfg.PGPass
@@ -89,6 +160,13 @@ func (m *Manager) GetURI(DBName string) string {
 	}
 
 	return dbURI
+}
+
+func poolKey(alias string) string {
+	if alias == "" {
+		return config.PrestConf.PGDatabase
+	}
+	return alias
 }
 
 // Get get Postgres connection adding it to the pool if needed
@@ -208,4 +286,16 @@ func (m *Manager) CacheKeyForDB(db *sqlx.DB) string {
 		}
 	}
 	return fmt.Sprintf("%p", db)
+}
+
+// RegisteredAliases returns configured database aliases when a registry is active.
+func RegisteredAliases() []string {
+	if !registryActive() {
+		return nil
+	}
+	aliases := make([]string, len(config.PrestConf.Databases))
+	for i, db := range config.PrestConf.Databases {
+		aliases[i] = db.Alias
+	}
+	return aliases
 }

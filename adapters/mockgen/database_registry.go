@@ -47,6 +47,34 @@ func (mr *MockDatabaseRegistryMockRecorder) GetDatabase() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDatabase", reflect.TypeOf((*MockDatabaseRegistry)(nil).GetDatabase))
 }
 
+// IsRegistered mocks base method.
+func (m *MockDatabaseRegistry) IsRegistered(arg0 string) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsRegistered", arg0)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsRegistered indicates an expected call of IsRegistered.
+func (mr *MockDatabaseRegistryMockRecorder) IsRegistered(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsRegistered", reflect.TypeOf((*MockDatabaseRegistry)(nil).IsRegistered), arg0)
+}
+
+// PhysicalName mocks base method.
+func (m *MockDatabaseRegistry) PhysicalName(arg0 string) string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PhysicalName", arg0)
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// PhysicalName indicates an expected call of PhysicalName.
+func (mr *MockDatabaseRegistryMockRecorder) PhysicalName(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PhysicalName", reflect.TypeOf((*MockDatabaseRegistry)(nil).PhysicalName), arg0)
+}
+
 // SetDatabase mocks base method.
 func (m *MockDatabaseRegistry) SetDatabase(arg0 string) {
 	m.ctrl.T.Helper()

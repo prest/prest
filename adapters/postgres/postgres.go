@@ -1692,7 +1692,6 @@ func (adapter *postgres) TablePermissions(table string, op string, userName stri
 		}
 	}
 
-	// If userName is empty, means use table access.
 	if userName == "" {
 		return access
 	}
@@ -1711,6 +1710,34 @@ func (adapter *postgres) TablePermissions(table string, op string, userName stri
 		}
 	}
 	return access
+}
+
+func matchTableConf(tables []config.TablesConf, database, schema, table string) (config.TablesConf, bool) {
+	var tableOnly, schemaTable, full *config.TablesConf
+	for i := range tables {
+		t := &tables[i]
+		if t.Name != table {
+			continue
+		}
+		switch {
+		case t.Database == database && t.Schema == schema:
+			full = t
+		case t.Database == "" && t.Schema == schema:
+			schemaTable = t
+		case t.Database == "" && t.Schema == "":
+			tableOnly = t
+		}
+	}
+	if full != nil {
+		return *full, true
+	}
+	if schemaTable != nil {
+		return *schemaTable, true
+	}
+	if tableOnly != nil {
+		return *tableOnly, true
+	}
+	return config.TablesConf{}, false
 }
 
 // fieldsByPermission returns a list of fields that a user is allowed to access

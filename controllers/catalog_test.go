@@ -155,8 +155,7 @@ func TestCatalogHandler_ListTablesByDatabaseAndSchema_InvalidPath(t *testing.T) 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	h := NewCatalogHandler(Deps{
 		Builder:  mockgen.NewMockRequestQueryBuilder(ctrl),
@@ -181,8 +180,7 @@ func TestCatalogHandler_ListTablesByDatabaseAndSchema_Success(t *testing.T) {
 	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	scanner := mockgen.NewMockScanner(ctrl)
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	builder.EXPECT().WhereByRequest(gomock.Any(), 3).Return("", nil, nil)
 	catalog.EXPECT().SchemaTablesWhere("").Return(" AND schemaname=$2")
@@ -208,6 +206,7 @@ func TestCatalogHandler_ListTablesByDatabaseAndSchema_UnregisteredDatabase(t *te
 	defer ctrl.Finish()
 
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
+	db.EXPECT().IsRegistered("other").Return(false)
 	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
 
 	h := NewCatalogHandler(Deps{

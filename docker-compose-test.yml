@@ -5,8 +5,20 @@ services:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-    ports:
-      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  postgres-b:
+    image: postgres:16
+    environment:
+      - POSTGRES_DB=secondary-cluster
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
       interval: 5s
@@ -21,11 +33,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-b:
+        condition: service_healthy
     environment:
       - PREST_CONF=/workspace/testdata/prest.toml
       - PREST_MIGRATIONS=/workspace/testdata/migrations
       - PREST_QUERIES_LOCATION=/workspace/testdata/queries
       - PREST_PG_HOST=postgres
+      - PREST_PG_HOST_B=postgres-b
       - PREST_PG_PORT=5432
       - PREST_PG_USER=postgres
       - PREST_PG_PASS=postgres

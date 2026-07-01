@@ -1,4 +1,5 @@
 DATABASES="$PREST_PG_DATABASE secondary-db"
+SECONDARY_CLUSTER_DB="secondary-cluster"
 
 # Create databases for tests
 set -euo pipefail
@@ -12,6 +13,11 @@ for db in $DATABASES; do
     echo "\n\n.:: POSTGRES: LOAD DATA SCHEMA"
     psql -h $PREST_PG_HOST -p $PREST_PG_PORT -U $PREST_PG_USER -d $db -f ./testdata/schema.sql
 done
+
+if [ -n "${PREST_PG_HOST_B:-}" ]; then
+    echo "\n\n.:: POSTGRES-B: PROVISION SECONDARY CLUSTER DATABASE $SECONDARY_CLUSTER_DB"
+    psql -h "$PREST_PG_HOST_B" -p "${PREST_PG_PORT:-5432}" -U $PREST_PG_USER -d "$SECONDARY_CLUSTER_DB" -f ./testdata/schema.sql
+fi
 
 echo "\n\n.:: GOLANG: DOWNLOAD MODULES"
 go mod download

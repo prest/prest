@@ -1,0 +1,17 @@
+[[databases]]
+alias = "tenant-a"
+host = "127.0.0.1"
+port = 5432
+database = "app_a"
+user = "postgres"
+pass = "postgres"
+ssl.mode = "disable"
+
+[[databases]]
+alias = "tenant-b"
+host = "127.0.0.1"
+port = 5433
+database = "app_b"
+user = "postgres"
+pass = "postgres"
+ssl.mode = "disable"

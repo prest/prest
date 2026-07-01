@@ -28,7 +28,6 @@ func TestScriptHandler_Execute_Success(t *testing.T) {
 	executor.EXPECT().ExecuteScriptsCtx(gomock.Any(), http.MethodGet, `SELECT 1`, gomock.Any()).Return(scanner)
 
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().SetDatabase("prest-test")
 
 	h := NewScriptHandler(Deps{Scripts: scripts, Executor: executor, DB: db, PGDatabase: "prest-test"})
 	req := httptest.NewRequest(http.MethodGet, "/queries/list", nil)
@@ -58,7 +57,6 @@ func TestScriptHandler_Execute_DefaultDatabase(t *testing.T) {
 	executor.EXPECT().ExecuteScriptsCtx(gomock.Any(), http.MethodGet, `SELECT 1`, gomock.Any()).Return(scanner)
 
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().SetDatabase("prest-test")
 	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
 
 	h := NewScriptHandler(Deps{Scripts: scripts, Executor: executor, DB: db, PGDatabase: "prest-test"})
@@ -88,8 +86,6 @@ func TestScriptHandler_Execute_WithCache(t *testing.T) {
 	executor.EXPECT().ExecuteScriptsCtx(gomock.Any(), http.MethodGet, `SELECT 1`, gomock.Any()).Return(scanner)
 
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().SetDatabase("prest-test")
-
 	cacher := &recordingCacher{}
 	h := NewScriptHandler(Deps{Scripts: scripts, Executor: executor, DB: db, PGDatabase: "prest-test", Cache: cacher})
 
@@ -114,7 +110,6 @@ func TestScriptHandler_ExecuteScriptQuery_GetScriptError(t *testing.T) {
 	scripts.EXPECT().GetScript(http.MethodGet, "queries", "missing").Return("", errors.New("not found"))
 
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().SetDatabase("prest-test")
 
 	h := NewScriptHandler(Deps{Scripts: scripts, Executor: mockgen.NewMockQueryExecutor(ctrl), DB: db, PGDatabase: "prest-test"})
 	req := httptest.NewRequest(http.MethodGet, "/queries/missing", nil)
@@ -139,7 +134,6 @@ func TestScriptHandler_ExecuteScriptQuery_ExecuteError(t *testing.T) {
 	executor.EXPECT().ExecuteScriptsCtx(gomock.Any(), http.MethodGet, `SELECT bad`, gomock.Any()).Return(scanner)
 
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().SetDatabase("prest-test")
 
 	h := NewScriptHandler(Deps{Scripts: scripts, Executor: executor, DB: db, PGDatabase: "prest-test"})
 	req := httptest.NewRequest(http.MethodGet, "/queries/bad", nil)

@@ -32,3 +32,21 @@ func TestHealthStatus(t *testing.T) {
 		testutils.DoRequest(t, server.URL+"/_health", nil, "GET", tc.expected, "")
 	}
 }
+
+func TestReadyStatus(t *testing.T) {
+	for _, tc := range []struct {
+		check func(context.Context) error
+		want  int
+		desc  string
+	}{
+		{healthyDB, http.StatusOK, "all databases ready"},
+		{unhealthyDB, http.StatusServiceUnavailable, "database unavailable"},
+	} {
+		h := NewHealthHandler(CheckList{tc.check})
+		router := mux.NewRouter()
+		router.HandleFunc("/_ready", h.Handler()).Methods("GET")
+		server := httptest.NewServer(router)
+		defer server.Close()
+		testutils.DoRequest(t, server.URL+"/_ready", nil, "GET", tc.want, tc.desc)
+	}
+}

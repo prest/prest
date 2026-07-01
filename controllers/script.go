@@ -59,7 +59,6 @@ func (h *ScriptHandler) Execute(w http.ResponseWriter, r *http.Request) {
 
 // ExecuteScriptQuery runs a script and returns the result bytes.
 func (h *ScriptHandler) ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]byte, error) {
-	h.db.SetDatabase(h.pgDB)
 	sqlPath, err := h.scripts.GetScript(rq.Method, queriesPath, script)
 	if err != nil {
 		err = fmt.Errorf("could not get script %s/%s, %v", queriesPath, script, err)

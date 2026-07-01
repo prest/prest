@@ -222,7 +222,7 @@ func TestAccessControl_Denied(t *testing.T) {
 	defer ctrl.Finish()
 
 	perms := mockgen.NewMockPermissionsChecker(ctrl)
-	perms.EXPECT().TablePermissions("test", "read", "").Return(false)
+	perms.EXPECT().TablePermissions("prest-test", "public", "test", "read", "").Return(false)
 
 	called := false
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -244,7 +244,7 @@ func TestAccessControl_Allowed(t *testing.T) {
 	defer ctrl.Finish()
 
 	perms := mockgen.NewMockPermissionsChecker(ctrl)
-	perms.EXPECT().TablePermissions("test", "read", "").Return(true)
+	perms.EXPECT().TablePermissions("prest-test", "public", "test", "read", "").Return(true)
 
 	called := false
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -285,7 +285,7 @@ func TestAccessControl_PassesUsername(t *testing.T) {
 	defer ctrl.Finish()
 
 	perms := mockgen.NewMockPermissionsChecker(ctrl)
-	perms.EXPECT().TablePermissions("test", "read", "bob").Return(true)
+	perms.EXPECT().TablePermissions("prest-test", "public", "test", "read", "bob").Return(true)
 
 	handler := AccessControl(perms)
 	req := httptest.NewRequest(http.MethodGet, "/prest-test/public/test", nil)

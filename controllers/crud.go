@@ -62,7 +62,7 @@ func (h *CRUDHandler) Select(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	cols, err := h.perms.FieldsPermissions(r, table, "read", userName)
+	cols, err := h.perms.FieldsPermissions(r, database, schema, table, "read", userName)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return

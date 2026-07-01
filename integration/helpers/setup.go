@@ -12,10 +12,10 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/v2/adapters/postgres"
 	"github.com/prest/prest/v2/config"
+	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers"
 	"github.com/prest/prest/v2/middlewares"
 	"github.com/prest/prest/v2/plugins"
-	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/router"
 	"github.com/urfave/negroni/v3"
 )
@@ -69,6 +69,19 @@ var (
 	loadedCfg *config.Prest // initialized once; callers receive shallow copies
 	loadErr   error
 )
+
+// SecondaryClusterHost returns the host for the second Postgres cluster in integration tests.
+func SecondaryClusterHost() string {
+	return os.Getenv("PREST_PG_HOST_B")
+}
+
+// LoadMultiClusterConfig loads the multi-cluster test configuration.
+func LoadMultiClusterConfig(t *testing.T) {
+	t.Helper()
+	t.Setenv("PREST_CONF", filepath.Join(TestdataDir(), "prest_multicluster.toml"))
+	config.Load()
+	postgres.Load()
+}
 
 // LoadTestConfig loads application config and connects to the test database.
 // Config and DB connection are initialized once; each call returns a fresh
