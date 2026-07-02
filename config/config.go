@@ -119,16 +119,13 @@ type Prest struct {
 	Logger               *slog.Logger
 }
 
-var (
-	configFile     string
-	defaultCfgFile = "./prest.toml"
-)
+const defaultCfgFile = "./prest.toml"
 
 // Load configuration
 func Load() (*Prest, error) {
-	v := viperCfg()
+	v, configPath := viperCfg()
 	cfg := &Prest{}
-	Parse(v, cfg)
+	Parse(v, cfg, configPath)
 	if _, err := os.Stat(cfg.QueriesPath); os.IsNotExist(err) {
 		if err = os.MkdirAll(cfg.QueriesPath, 0700); err != nil {
 			return nil, fmt.Errorf("create queries directory %q: %w", cfg.QueriesPath, err)
@@ -165,11 +162,11 @@ func setupLogger(cfg *Prest) (*Prest, error) {
 	return cfg, nil
 }
 
-func viperCfg() *viper.Viper {
+func viperCfg() (*viper.Viper, string) {
 	v := viper.New()
-	configFile = getPrestConfFile(os.Getenv("PREST_CONF"))
+	configPath := getPrestConfFile(os.Getenv("PREST_CONF"))
 
-	dir, file := filepath.Split(configFile)
+	dir, file := filepath.Split(configPath)
 	file = strings.TrimSuffix(file, filepath.Ext(file))
 	replacer := strings.NewReplacer(".", "_")
 	v.SetEnvPrefix("PREST")
@@ -243,7 +240,7 @@ func viperCfg() *viper.Viper {
 	} else {
 		v.SetDefault("queries.location", filepath.Join(hDir, "queries"))
 	}
-	return v
+	return v, configPath
 }
 
 func getPrestConfFile(prestConf string) string {
@@ -255,11 +252,11 @@ func getPrestConfFile(prestConf string) string {
 
 // Parse pREST config
 // todo: split config onto methods to simplify this
-func Parse(v *viper.Viper, cfg *Prest) {
+func Parse(v *viper.Viper, cfg *Prest, configPath string) {
 	err := v.ReadInConfig()
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			slog.Warn("file not found, falling back to default settings", "file", configFile)
+			slog.Warn("file not found, falling back to default settings", "file", configPath)
 			cfg.PGSSLMode = "disable"
 		}
 		slog.Warn("read env config error", "err", err)
