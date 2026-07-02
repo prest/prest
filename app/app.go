@@ -23,7 +23,13 @@ type App struct {
 	pg      adapters.Adapter
 }
 
-// New wires postgres, handlers, middlewares, router, and plugins.
+// New builds a ready-to-serve App from cfg.
+//
+// If cfg.Adapter is nil, a postgres adapter is created and connected; the
+// resulting adapter is stored back on cfg for reuse. Handlers, CRUD middleware,
+// routes, global middleware, and plugins are wired into a single http.Handler.
+//
+// Returns an error when the database connection cannot be established.
 func New(cfg *config.Prest) (*App, error) {
 	if cfg.Adapter == nil {
 		pg := postgres.New(cfg)
