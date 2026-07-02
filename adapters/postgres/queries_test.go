@@ -160,3 +160,61 @@ func TestWriteSQLCtx_Success(t *testing.T) {
 	require.NoError(t, ctxMock.ExpectationsWereMet())
 	require.NoError(t, defaultMock.ExpectationsWereMet())
 }
+
+func TestWriteSQLCtx_PrepareError(t *testing.T) {
+	adapter, defaultMock, ctxMock := withSQLMocks(t)
+
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
+	ctxMock.ExpectPrepare(`DELETE FROM users`).WillReturnError(errors.New("prepare failed"))
+
+	sc := adapter.WriteSQLCtx(ctx, "DELETE FROM users", nil)
+	require.Error(t, sc.Err())
+	require.Contains(t, sc.Err().Error(), "could not prepare sql")
+	require.NoError(t, ctxMock.ExpectationsWereMet())
+	require.NoError(t, defaultMock.ExpectationsWereMet())
+}
+
+func TestWriteSQLCtx_ExecError(t *testing.T) {
+	adapter, defaultMock, ctxMock := withSQLMocks(t)
+
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
+	ctxMock.ExpectPrepare(`DELETE FROM users`).
+		ExpectExec().
+		WillReturnError(errors.New("exec failed"))
+
+	sc := adapter.WriteSQLCtx(ctx, "DELETE FROM users", nil)
+	require.Error(t, sc.Err())
+	require.Contains(t, sc.Err().Error(), "could not peform sql")
+	require.NoError(t, ctxMock.ExpectationsWereMet())
+	require.NoError(t, defaultMock.ExpectationsWereMet())
+}
+
+func TestExecuteScriptsCtx_WriteMethods(t *testing.T) {
+	adapter, defaultMock, ctxMock := withSQLMocks(t)
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
+
+	testCases := []struct {
+		method      string
+		sql         string
+		prepareLike string
+	}{
+		{"POST", "INSERT INTO users(name) VALUES('alice')", `INSERT INTO users`},
+		{"PUT", "UPDATE users SET active=true", `UPDATE users SET`},
+		{"PATCH", "UPDATE users SET active=false WHERE id=1", `UPDATE users SET`},
+		{"DELETE", "DELETE FROM users WHERE id=1", `DELETE FROM users`},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.method, func(t *testing.T) {
+			ctxMock.ExpectPrepare(tc.prepareLike).
+				ExpectExec().
+				WillReturnResult(sqlmock.NewResult(0, 1))
+
+			sc := adapter.ExecuteScriptsCtx(ctx, tc.method, tc.sql, nil)
+			require.NoError(t, sc.Err())
+			require.JSONEq(t, `{"rows_affected":1}`, string(sc.Bytes()))
+		})
+	}
+	require.NoError(t, ctxMock.ExpectationsWereMet())
+	require.NoError(t, defaultMock.ExpectationsWereMet())
+}

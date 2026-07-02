@@ -286,3 +286,225 @@ func TestQuery_WithStatementCachePerDatabase(t *testing.T) {
 	require.NoError(t, defaultMock.ExpectationsWereMet())
 	require.NoError(t, ctxMock.ExpectationsWereMet())
 }
+
+func TestInsertCtx_Success(t *testing.T) {
+	adapter, defaultMock, ctxMock := withSQLMocks(t)
+
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
+	sql := `INSERT INTO "test"."public"."users"("name") VALUES($1)`
+	ctxMock.ExpectPrepare(`INSERT INTO "test"."public"."users"`).
+		ExpectQuery().
+		WithArgs("alice").
+		WillReturnRows(sqlmock.NewRows([]string{"row_to_json"}).AddRow([]byte(`{"name":"alice"}`)))
+
+	sc := adapter.InsertCtx(ctx, sql, "alice")
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `{"name":"alice"}`, string(sc.Bytes()))
+	require.NoError(t, ctxMock.ExpectationsWereMet())
+	require.NoError(t, defaultMock.ExpectationsWereMet())
+}
+
+func TestDeleteCtx_Success(t *testing.T) {
+	adapter, defaultMock, ctxMock := withSQLMocks(t)
+
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
+	sql := `DELETE FROM "test"."public"."users" WHERE "id"=$1`
+	ctxMock.ExpectPrepare(`DELETE FROM`).
+		ExpectExec().
+		WithArgs(1).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	sc := adapter.DeleteCtx(ctx, sql, 1)
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `{"rows_affected":1}`, string(sc.Bytes()))
+	require.NoError(t, ctxMock.ExpectationsWereMet())
+	require.NoError(t, defaultMock.ExpectationsWereMet())
+}
+
+func TestUpdateCtx_Success(t *testing.T) {
+	adapter, defaultMock, ctxMock := withSQLMocks(t)
+
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
+	sql := `UPDATE "test"."public"."users" SET "name"=$1 WHERE "id"=$2`
+	ctxMock.ExpectPrepare(`UPDATE "test"."public"."users"`).
+		ExpectExec().
+		WithArgs("bob", 1).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	sc := adapter.UpdateCtx(ctx, sql, "bob", 1)
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `{"rows_affected":1}`, string(sc.Bytes()))
+	require.NoError(t, ctxMock.ExpectationsWereMet())
+	require.NoError(t, defaultMock.ExpectationsWereMet())
+}
+
+func TestQueryCount_Success(t *testing.T) {
+	adapter, mock := withSQLMock(t)
+
+	mock.ExpectPrepare(`SELECT COUNT\(\*\) FROM users`).
+		ExpectQuery().
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(42)))
+
+	sc := adapter.QueryCount(`SELECT COUNT(*) FROM users`)
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `{"count":42}`, string(sc.Bytes()))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestQueryCountCtx_Success(t *testing.T) {
+	adapter, defaultMock, ctxMock := withSQLMocks(t)
+
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
+	ctxMock.ExpectPrepare(`SELECT COUNT\(\*\) FROM users`).
+		ExpectQuery().
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(7)))
+
+	sc := adapter.QueryCountCtx(ctx, `SELECT COUNT(*) FROM users`)
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `{"count":7}`, string(sc.Bytes()))
+	require.NoError(t, ctxMock.ExpectationsWereMet())
+	require.NoError(t, defaultMock.ExpectationsWereMet())
+}
+
+func TestShowTableCtx_Success(t *testing.T) {
+	adapter, defaultMock, ctxMock := withSQLMocks(t)
+
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
+	ctxMock.ExpectPrepare(`SELECT json_agg\(s\) FROM \(SELECT table_schema`).
+		ExpectQuery().
+		WithArgs("users", "public").
+		WillReturnRows(sqlmock.NewRows([]string{"json_agg"}).AddRow([]byte(`[{"column_name":"id"}]`)))
+
+	sc := adapter.ShowTableCtx(ctx, "public", "users")
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `[{"column_name":"id"}]`, string(sc.Bytes()))
+	require.NoError(t, ctxMock.ExpectationsWereMet())
+	require.NoError(t, defaultMock.ExpectationsWereMet())
+}
+
+func TestGetTransaction_Success(t *testing.T) {
+	adapter, mock := withSQLMock(t)
+
+	mock.ExpectBegin()
+	tx, err := adapter.GetTransaction()
+	require.NoError(t, err)
+	require.NotNil(t, tx)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestGetTransactionCtx_Success(t *testing.T) {
+	adapter, defaultMock, ctxMock := withSQLMocks(t)
+
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
+	ctxMock.ExpectBegin()
+	tx, err := adapter.GetTransactionCtx(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, tx)
+	require.NoError(t, ctxMock.ExpectationsWereMet())
+	require.NoError(t, defaultMock.ExpectationsWereMet())
+}
+
+func TestInsertWithTransaction_Success(t *testing.T) {
+	adapter, mock := withSQLMock(t)
+
+	sql := `INSERT INTO "test"."public"."users"("name") VALUES($1)`
+	mock.ExpectBegin()
+	mock.ExpectPrepare(`INSERT INTO "test"."public"."users"`).
+		ExpectQuery().
+		WithArgs("alice").
+		WillReturnRows(sqlmock.NewRows([]string{"row_to_json"}).AddRow([]byte(`{"name":"alice"}`)))
+
+	tx, err := adapter.GetTransaction()
+	require.NoError(t, err)
+	sc := adapter.InsertWithTransaction(tx, sql, "alice")
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `{"name":"alice"}`, string(sc.Bytes()))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestDeleteWithTransaction_Success(t *testing.T) {
+	adapter, mock := withSQLMock(t)
+
+	sql := `DELETE FROM "test"."public"."users" WHERE "id"=$1`
+	mock.ExpectBegin()
+	mock.ExpectPrepare(`DELETE FROM`).
+		ExpectExec().
+		WithArgs(1).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	tx, err := adapter.GetTransaction()
+	require.NoError(t, err)
+	sc := adapter.DeleteWithTransaction(tx, sql, 1)
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `{"rows_affected":1}`, string(sc.Bytes()))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestUpdateWithTransaction_Success(t *testing.T) {
+	adapter, mock := withSQLMock(t)
+
+	sql := `UPDATE "test"."public"."users" SET "name"=$1 WHERE "id"=$2`
+	mock.ExpectBegin()
+	mock.ExpectPrepare(`UPDATE "test"."public"."users"`).
+		ExpectExec().
+		WithArgs("bob", 1).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	tx, err := adapter.GetTransaction()
+	require.NoError(t, err)
+	sc := adapter.UpdateWithTransaction(tx, sql, "bob", 1)
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `{"rows_affected":1}`, string(sc.Bytes()))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestBatchInsertValues_Success(t *testing.T) {
+	adapter, mock := withSQLMock(t)
+
+	sql := `INSERT INTO "test"."public"."users"("name","age") VALUES($1,$2),($3,$4)`
+	mock.ExpectPrepare(`INSERT INTO "test"."public"."users"`).
+		ExpectQuery().
+		WithArgs("a", 1, "b", 2).
+		WillReturnRows(sqlmock.NewRows([]string{"row_to_json"}).
+			AddRow([]byte(`{"name":"a"}`)).
+			AddRow([]byte(`{"name":"b"}`)))
+
+	sc := adapter.BatchInsertValues(sql, "a", 1, "b", 2)
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `[{"name":"a"},{"name":"b"}]`, string(sc.Bytes()))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestBatchInsertValuesCtx_Success(t *testing.T) {
+	adapter, defaultMock, ctxMock := withSQLMocks(t)
+
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
+	sql := `INSERT INTO "test"."public"."users"("name","age") VALUES($1,$2),($3,$4)`
+	ctxMock.ExpectPrepare(`INSERT INTO "test"."public"."users"`).
+		ExpectQuery().
+		WithArgs("a", 1, "b", 2).
+		WillReturnRows(sqlmock.NewRows([]string{"row_to_json"}).
+			AddRow([]byte(`{"name":"a"}`)).
+			AddRow([]byte(`{"name":"b"}`)))
+
+	sc := adapter.BatchInsertValuesCtx(ctx, sql, "a", 1, "b", 2)
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `[{"name":"a"},{"name":"b"}]`, string(sc.Bytes()))
+	require.NoError(t, ctxMock.ExpectationsWereMet())
+	require.NoError(t, defaultMock.ExpectationsWereMet())
+}
+
+func TestBatchInsertCopy_ConnectionError(t *testing.T) {
+	adapter := New(defaultTestConf()).(*postgres)
+
+	sc := adapter.BatchInsertCopy(defaultMockDB, "public", "users", []string{"name"}, "alice")
+	require.Error(t, sc.Err())
+}
+
+func TestBatchInsertCopyCtx_ConnectionError(t *testing.T) {
+	adapter := New(defaultTestConf()).(*postgres)
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
+
+	sc := adapter.BatchInsertCopyCtx(ctx, contextMockDB, "public", "users", []string{"name"}, "alice")
+	require.Error(t, sc.Err())
+}

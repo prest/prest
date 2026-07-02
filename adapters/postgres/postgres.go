@@ -364,6 +364,7 @@ func (adapter *postgres) WhereByRequest(r *http.Request, initialPlaceholderID in
 	return
 }
 
+// splitTopLevelOrGroup splits a string into a slice of strings, each representing a top-level OR group.
 func splitTopLevelOrGroup(v string) []string {
 	parts := make([]string, 0)
 	var current strings.Builder
@@ -475,6 +476,7 @@ func isWhitespace(b byte) bool {
 	return unicode.IsSpace(rune(b))
 }
 
+// whereKeyAndValue splits a string into a key and a value, and returns the key and the values.
 func (adapter *postgres) whereKeyAndValue(rawKey, v string, pid *int) (key string, values []interface{}, err error) {
 	var value, op string
 	if v == "" {
@@ -614,6 +616,7 @@ func (adapter *postgres) ReturningByRequest(r *http.Request) (returningSyntax st
 	return
 }
 
+// sliceToJSONList converts a slice to a JSON list.
 func sliceToJSONList(ifaceSlice interface{}) (returnValue string, err error) {
 	v := reflect.ValueOf(ifaceSlice)
 
