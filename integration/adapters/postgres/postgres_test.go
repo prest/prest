@@ -2494,6 +2494,7 @@ func TestPostgres_FieldsPermissions(t *testing.T) {
 				Fields:      tt.args.fields,
 			})
 
+		testCfg.AccessConf.Users = []config.UsersConf{}
 		testCfg.AccessConf.Users = append(testCfg.AccessConf.Users,
 			config.UsersConf{
 				Name: "foo",

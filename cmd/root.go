@@ -51,7 +51,7 @@ func Execute(cfg *config.Prest) {
 	migrateCmd.PersistentFlags().StringVar(&path, "path", cfg.MigrationsPath, "Migrations directory")
 
 	if err := RootCmd.Execute(); err != nil {
-		slog.Error("executing root command", "err", err)
+		slog.Error("executing root command", "err", logsafe.Error(err))
 		os.Exit(1)
 	}
 }

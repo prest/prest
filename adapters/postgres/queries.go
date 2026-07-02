@@ -130,7 +130,7 @@ func (adapter *postgres) WriteSQLCtx(ctx context.Context, sql string, values []i
 		sc = &scanner.PrestScanner{Error: fmt.Errorf("connection get error: %w", err)}
 		return
 	}
-	stmt, err := adapter.Prepare(db, sql)
+	stmt, err := adapter.PrepareContext(ctx, db, sql)
 	if err != nil {
 		slog.Error("could not prepare sql", "sql", sql, "err", logsafe.Error(err))
 		sc = &scanner.PrestScanner{Error: fmt.Errorf("could not prepare sql: %w", err)}

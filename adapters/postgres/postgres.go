@@ -154,6 +154,35 @@ func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt
 	return
 }
 
+// PrepareContext statement with context for cancellation/deadline support.
+func (s *Stmt) PrepareContext(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt, err error) {
+	if s.pgCache && (tx == nil) {
+		var exists bool
+		s.Mtx.Lock()
+		statement, exists = s.PrepareMap[SQL]
+		s.Mtx.Unlock()
+		if exists {
+			return
+		}
+	}
+
+	if tx != nil {
+		statement, err = tx.PrepareContext(ctx, SQL)
+	} else {
+		statement, err = db.PrepareContext(ctx, SQL)
+	}
+
+	if err != nil {
+		return
+	}
+	if s.pgCache && (tx == nil) {
+		s.Mtx.Lock()
+		s.PrepareMap[SQL] = statement
+		s.Mtx.Unlock()
+	}
+	return
+}
+
 func init() {
 	removeOperatorRegex = regexp.MustCompile(`\$[a-z]+.`)
 	insertTableNameRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.|-]*\.)*([\w|-]+)\s*\(`)
@@ -164,6 +193,11 @@ func init() {
 // Prepare statement func
 func (p *postgres) Prepare(db *sqlx.DB, SQL string) (stmt *sql.Stmt, err error) {
 	return p.getStmts().Prepare(db, nil, SQL)
+}
+
+// PrepareContext statement func
+func (p *postgres) PrepareContext(ctx context.Context, db *sqlx.DB, SQL string) (stmt *sql.Stmt, err error) {
+	return p.getStmts().PrepareContext(ctx, db, nil, SQL)
 }
 
 // PrepareTx statement func
