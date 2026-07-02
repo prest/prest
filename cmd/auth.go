@@ -16,9 +16,6 @@ var authUpCmd = &cobra.Command{
 	Long:  "Create basic table to use on auth endpoint",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg := configFrom(cmd)
-		if err := app.EnsureAdapter(cfg); err != nil {
-			return err
-		}
 		db, err := app.PostgresDB(cfg)
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
@@ -39,9 +36,6 @@ var authDownCmd = &cobra.Command{
 	Long:  "Drop basic table used on auth endpoint",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg := configFrom(cmd)
-		if err := app.EnsureAdapter(cfg); err != nil {
-			return err
-		}
 
 		db, err := app.PostgresDB(cfg)
 		if err != nil {

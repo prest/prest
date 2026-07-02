@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
 
@@ -15,5 +16,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	cmd.Execute(cfg)
+	cmd.Execute(context.Background(), cfg)
 }
