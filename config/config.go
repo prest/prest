@@ -119,8 +119,6 @@ type Prest struct {
 	Logger               *slog.Logger
 }
 
-const defaultCacheDir = "./"
-
 var (
 	configFile     string
 	defaultCfgFile = "./prest.toml"
@@ -128,24 +126,23 @@ var (
 
 // Load configuration
 func Load() (*Prest, error) {
-	viperCfg()
+	v := viperCfg()
 	cfg := &Prest{}
-	Parse(cfg)
+	Parse(v, cfg)
 	if _, err := os.Stat(cfg.QueriesPath); os.IsNotExist(err) {
 		if err = os.MkdirAll(cfg.QueriesPath, 0700); err != nil {
-			slog.Error("Queries directory was not created", "path", cfg.QueriesPath, "err", err)
+			return nil, fmt.Errorf("create queries directory %q: %w", cfg.QueriesPath, err)
 		}
 	}
 
-	// ignore cache if disabled
+	// Cache storage is optional when cache is disabled.
 	if !cfg.Cache.Enabled {
 		return setupLogger(cfg)
 	}
 
 	if _, err := os.Stat(cfg.Cache.StoragePath); os.IsNotExist(err) {
 		if err = os.MkdirAll(cfg.Cache.StoragePath, 0700); err != nil {
-			slog.Error("Cache directory was not created, falling back to default './'", "path", cfg.Cache.StoragePath, "err", err)
-			cfg.Cache.StoragePath = defaultCacheDir
+			return nil, fmt.Errorf("create cache directory %q: %w", cfg.Cache.StoragePath, err)
 		}
 	}
 
@@ -168,83 +165,85 @@ func setupLogger(cfg *Prest) (*Prest, error) {
 	return cfg, nil
 }
 
-func viperCfg() {
+func viperCfg() *viper.Viper {
+	v := viper.New()
 	configFile = getPrestConfFile(os.Getenv("PREST_CONF"))
 
 	dir, file := filepath.Split(configFile)
 	file = strings.TrimSuffix(file, filepath.Ext(file))
 	replacer := strings.NewReplacer(".", "_")
-	viper.SetEnvPrefix("PREST")
-	viper.AutomaticEnv()
-	viper.SetEnvKeyReplacer(replacer)
-	viper.AddConfigPath(dir)
-	viper.SetConfigName(file)
-	viper.SetConfigType("toml")
+	v.SetEnvPrefix("PREST")
+	v.AutomaticEnv()
+	v.SetEnvKeyReplacer(replacer)
+	v.AddConfigPath(dir)
+	v.SetConfigName(file)
+	v.SetConfigType("toml")
 
-	viper.SetDefault("auth.enabled", false)
-	viper.SetDefault("auth.username", "username")
-	viper.SetDefault("auth.password", "password")
-	viper.SetDefault("auth.schema", "public")
-	viper.SetDefault("auth.table", "prest_users")
-	viper.SetDefault("auth.encrypt", "bcrypt")
-	viper.SetDefault("auth.type", "body")
+	v.SetDefault("auth.enabled", false)
+	v.SetDefault("auth.username", "username")
+	v.SetDefault("auth.password", "password")
+	v.SetDefault("auth.schema", "public")
+	v.SetDefault("auth.table", "prest_users")
+	v.SetDefault("auth.encrypt", "bcrypt")
+	v.SetDefault("auth.type", "body")
 
-	viper.SetDefault("http.host", "0.0.0.0")
-	viper.SetDefault("http.port", 3000)
-	viper.SetDefault("http.timeout", 60)
+	v.SetDefault("http.host", "0.0.0.0")
+	v.SetDefault("http.port", 3000)
+	v.SetDefault("http.timeout", 60)
 
-	viper.SetDefault("pg.host", "127.0.0.1")
-	viper.SetDefault("pg.port", 5432)
-	viper.SetDefault("pg.database", "prest")
-	viper.SetDefault("pg.user", "postgres")
-	viper.SetDefault("pg.pass", "postgres")
-	viper.SetDefault("pg.maxidleconn", 0) // avoids db memory leak on req timeout
-	viper.SetDefault("pg.maxopenconn", 10)
-	viper.SetDefault("pg.conntimeout", 10)
-	viper.SetDefault("pg.single", true)
-	viper.SetDefault("pg.cache", true)
+	v.SetDefault("pg.host", "127.0.0.1")
+	v.SetDefault("pg.port", 5432)
+	v.SetDefault("pg.database", "prest")
+	v.SetDefault("pg.user", "postgres")
+	v.SetDefault("pg.pass", "postgres")
+	v.SetDefault("pg.maxidleconn", 0) // avoids db memory leak on req timeout
+	v.SetDefault("pg.maxopenconn", 10)
+	v.SetDefault("pg.conntimeout", 10)
+	v.SetDefault("pg.single", true)
+	v.SetDefault("pg.cache", true)
 	// todo: replace this with prefer, will need to replace lib/pq
 	// https://github.com/jackc/pgx/blob/47d631e34be7128997a0aa89b75885cc4ad4c82e/pgconn/config.go#L218
-	viper.SetDefault("pg.ssl.mode", "disable")
+	v.SetDefault("pg.ssl.mode", "disable")
 
-	viper.SetDefault("jwt.default", true)
-	viper.SetDefault("jwt.algo", "HS256")
-	viper.SetDefault("jwt.wellknownurl", "")
-	viper.SetDefault("jwt.jwks", "")
-	viper.SetDefault("jwt.whitelist", []string{`^\/auth$`})
+	v.SetDefault("jwt.default", true)
+	v.SetDefault("jwt.algo", "HS256")
+	v.SetDefault("jwt.wellknownurl", "")
+	v.SetDefault("jwt.jwks", "")
+	v.SetDefault("jwt.whitelist", []string{`^\/auth$`})
 
-	viper.SetDefault("json.agg.type", "jsonb_agg")
+	v.SetDefault("json.agg.type", "jsonb_agg")
 
-	viper.SetDefault("cors.allowheaders", []string{"Content-Type"})
-	viper.SetDefault("cors.allowmethods", []string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
-	viper.SetDefault("cors.alloworigin", []string{"*"})
-	viper.SetDefault("cors.allowcredentials", true)
+	v.SetDefault("cors.allowheaders", []string{"Content-Type"})
+	v.SetDefault("cors.allowmethods", []string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
+	v.SetDefault("cors.alloworigin", []string{"*"})
+	v.SetDefault("cors.allowcredentials", true)
 
-	viper.SetDefault("https.mode", false)
-	viper.SetDefault("https.cert", "/etc/certs/cert.crt")
-	viper.SetDefault("https.key", "/etc/certs/cert.key")
+	v.SetDefault("https.mode", false)
+	v.SetDefault("https.cert", "/etc/certs/cert.crt")
+	v.SetDefault("https.key", "/etc/certs/cert.key")
 
-	viper.SetDefault("cache.enabled", false)
-	viper.SetDefault("cache.time", 10)
-	viper.SetDefault("cache.storagepath", "./")
-	viper.SetDefault("cache.sufixfile", ".cache.prestd.db")
+	v.SetDefault("cache.enabled", false)
+	v.SetDefault("cache.time", 10)
+	v.SetDefault("cache.storagepath", "./")
+	v.SetDefault("cache.sufixfile", ".cache.prestd.db")
 
-	viper.SetDefault("version", 1)
-	viper.SetDefault("debug", false)
-	viper.SetDefault("context", "/")
-	viper.SetDefault("pluginpath", "./lib")
-	viper.SetDefault("pluginmiddlewarelist", []PluginMiddleware{})
-	viper.SetDefault("expose.enabled", false)
-	viper.SetDefault("expose.tables", true)
-	viper.SetDefault("expose.schemas", true)
-	viper.SetDefault("expose.databases", true)
+	v.SetDefault("version", 1)
+	v.SetDefault("debug", false)
+	v.SetDefault("context", "/")
+	v.SetDefault("pluginpath", "./lib")
+	v.SetDefault("pluginmiddlewarelist", []PluginMiddleware{})
+	v.SetDefault("expose.enabled", false)
+	v.SetDefault("expose.tables", true)
+	v.SetDefault("expose.schemas", true)
+	v.SetDefault("expose.databases", true)
 
 	hDir, err := homedir.Dir()
 	if err != nil {
 		slog.Error("could not find homedir", "err", err)
 	} else {
-		viper.SetDefault("queries.location", filepath.Join(hDir, "queries"))
+		v.SetDefault("queries.location", filepath.Join(hDir, "queries"))
 	}
+	return v
 }
 
 func getPrestConfFile(prestConf string) string {
@@ -256,8 +255,8 @@ func getPrestConfFile(prestConf string) string {
 
 // Parse pREST config
 // todo: split config onto methods to simplify this
-func Parse(cfg *Prest) {
-	err := viper.ReadInConfig()
+func Parse(v *viper.Viper, cfg *Prest) {
+	err := v.ReadInConfig()
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			slog.Warn("file not found, falling back to default settings", "file", configFile)
@@ -266,54 +265,54 @@ func Parse(cfg *Prest) {
 		slog.Warn("read env config error", "err", err)
 	}
 
-	parseAuthConfig(cfg)
-	parseHTTPConfig(cfg)
+	parseAuthConfig(v, cfg)
+	parseHTTPConfig(v, cfg)
 	portFromEnv(cfg)
-	parseDBConfig(cfg)
+	parseDBConfig(v, cfg)
 
-	cfg.JWTKey = viper.GetString("jwt.key")
-	cfg.JWTAlgo = viper.GetString("jwt.algo")
-	cfg.JWTWellKnownURL = viper.GetString("jwt.wellknownurl")
-	cfg.JWTJWKS = viper.GetString("jwt.jwks")
-	cfg.JWTWhiteList = viper.GetStringSlice("jwt.whitelist")
+	cfg.JWTKey = v.GetString("jwt.key")
+	cfg.JWTAlgo = v.GetString("jwt.algo")
+	cfg.JWTWellKnownURL = v.GetString("jwt.wellknownurl")
+	cfg.JWTJWKS = v.GetString("jwt.jwks")
+	cfg.JWTWhiteList = v.GetStringSlice("jwt.whitelist")
 	fetchJWKS(cfg)
 
-	cfg.JSONAggType = getJSONAgg()
+	cfg.JSONAggType = getJSONAgg(v)
 
-	cfg.MigrationsPath = viper.GetString("migrations")
+	cfg.MigrationsPath = v.GetString("migrations")
 
-	cfg.AccessConf.Restrict = viper.GetBool("access.restrict")
-	cfg.AccessConf.IgnoreTable = viper.GetStringSlice("access.ignore_table")
-	cfg.QueriesPath = viper.GetString("queries.location")
+	cfg.AccessConf.Restrict = v.GetBool("access.restrict")
+	cfg.AccessConf.IgnoreTable = v.GetStringSlice("access.ignore_table")
+	cfg.QueriesPath = v.GetString("queries.location")
 
-	cfg.CORSAllowOrigin = viper.GetStringSlice("cors.alloworigin")
-	cfg.CORSAllowHeaders = viper.GetStringSlice("cors.allowheaders")
-	cfg.CORSAllowMethods = viper.GetStringSlice("cors.allowmethods")
-	cfg.CORSAllowCredentials = viper.GetBool("cors.allowcredentials")
+	cfg.CORSAllowOrigin = v.GetStringSlice("cors.alloworigin")
+	cfg.CORSAllowHeaders = v.GetStringSlice("cors.allowheaders")
+	cfg.CORSAllowMethods = v.GetStringSlice("cors.allowmethods")
+	cfg.CORSAllowCredentials = v.GetBool("cors.allowcredentials")
 
-	cfg.Debug = viper.GetBool("debug")
-	cfg.EnableDefaultJWT = viper.GetBool("jwt.default")
-	cfg.ContextPath = viper.GetString("context")
+	cfg.Debug = v.GetBool("debug")
+	cfg.EnableDefaultJWT = v.GetBool("jwt.default")
+	cfg.ContextPath = v.GetString("context")
 
-	cfg.PluginPath = viper.GetString("pluginpath")
+	cfg.PluginPath = v.GetString("pluginpath")
 
-	loadCacheConfig(cfg)
+	loadCacheConfig(v, cfg)
 
-	cfg.ExposeConf.Enabled = viper.GetBool("expose.enabled")
-	cfg.ExposeConf.TableListing = viper.GetBool("expose.tables")
-	cfg.ExposeConf.SchemaListing = viper.GetBool("expose.schemas")
-	cfg.ExposeConf.DatabaseListing = viper.GetBool("expose.databases")
+	cfg.ExposeConf.Enabled = v.GetBool("expose.enabled")
+	cfg.ExposeConf.TableListing = v.GetBool("expose.tables")
+	cfg.ExposeConf.SchemaListing = v.GetBool("expose.schemas")
+	cfg.ExposeConf.DatabaseListing = v.GetBool("expose.databases")
 
 	// table access config
 	var tablesconf []TablesConf
-	err = viper.UnmarshalKey("access.tables", &tablesconf)
+	err = v.UnmarshalKey("access.tables", &tablesconf)
 	if err != nil {
 		slog.Error("could not unmarshal access tables", "err", err)
 	}
 	cfg.AccessConf.Tables = tablesconf
 
 	var usersconf []UsersConf
-	err = viper.UnmarshalKey("access.users", &usersconf)
+	err = v.UnmarshalKey("access.users", &usersconf)
 	if err != nil {
 		slog.Error("could not unmarshal access users", "err", err)
 	}
@@ -321,7 +320,7 @@ func Parse(cfg *Prest) {
 
 	// plugin middleware list config
 	var pluginMiddlewareConfig []PluginMiddleware
-	err = viper.UnmarshalKey("pluginmiddlewarelist", &pluginMiddlewareConfig)
+	err = v.UnmarshalKey("pluginmiddlewarelist", &pluginMiddlewareConfig)
 	if err != nil {
 		slog.Error("could not unmarshal access plugin middleware list", "err", err)
 	}
@@ -478,8 +477,8 @@ func portFromEnv(cfg *Prest) {
 // support `jsonb` and `json`; `jsonb` is the default value
 //
 // https://www.postgresql.org/docs/9.5/functions-aggregate.html
-func getJSONAgg() (config string) {
-	config = viper.GetString("json.agg.type")
+func getJSONAgg(v *viper.Viper) (config string) {
+	config = v.GetString("json.agg.type")
 	if config == jsonAgg {
 		return jsonAgg
 	}
@@ -489,17 +488,17 @@ func getJSONAgg() (config string) {
 	return jsonAggDefault
 }
 
-func parseDBConfig(cfg *Prest) {
-	cfg.PGURL = viper.GetString("pg.url")
-	cfg.PGHost = viper.GetString("pg.host")
-	cfg.PGPort = viper.GetInt("pg.port")
-	cfg.PGUser = viper.GetString("pg.user")
-	cfg.PGPass = viper.GetString("pg.pass")
-	cfg.PGDatabase = viper.GetString("pg.database")
-	cfg.PGSSLMode = viper.GetString("pg.ssl.mode")
-	cfg.PGSSLKey = viper.GetString("pg.ssl.key")
-	cfg.PGSSLCert = viper.GetString("pg.ssl.cert")
-	cfg.PGSSLRootCert = viper.GetString("pg.ssl.rootcert")
+func parseDBConfig(v *viper.Viper, cfg *Prest) {
+	cfg.PGURL = v.GetString("pg.url")
+	cfg.PGHost = v.GetString("pg.host")
+	cfg.PGPort = v.GetInt("pg.port")
+	cfg.PGUser = v.GetString("pg.user")
+	cfg.PGPass = v.GetString("pg.pass")
+	cfg.PGDatabase = v.GetString("pg.database")
+	cfg.PGSSLMode = v.GetString("pg.ssl.mode")
+	cfg.PGSSLKey = v.GetString("pg.ssl.key")
+	cfg.PGSSLCert = v.GetString("pg.ssl.cert")
+	cfg.PGSSLRootCert = v.GetString("pg.ssl.rootcert")
 
 	if os.Getenv("DATABASE_URL") != "" {
 		// cloud factor support: https://devcenter.heroku.com/changelog-items/438
@@ -507,45 +506,45 @@ func parseDBConfig(cfg *Prest) {
 	}
 	parseDatabaseURL(cfg)
 
-	cfg.PGMaxIdleConn = viper.GetInt("pg.maxidleconn")
-	cfg.PGMaxOpenConn = viper.GetInt("pg.maxopenconn")
-	cfg.PGConnTimeout = viper.GetInt("pg.conntimeout")
-	cfg.PGCache = viper.GetBool("pg.cache")
-	cfg.SingleDB = viper.GetBool("pg.single")
+	cfg.PGMaxIdleConn = v.GetInt("pg.maxidleconn")
+	cfg.PGMaxOpenConn = v.GetInt("pg.maxopenconn")
+	cfg.PGConnTimeout = v.GetInt("pg.conntimeout")
+	cfg.PGCache = v.GetBool("pg.cache")
+	cfg.SingleDB = v.GetBool("pg.single")
 }
 
-func loadCacheConfig(cfg *Prest) {
-	cfg.Cache.Enabled = viper.GetBool("cache.enabled")
-	cfg.Cache.Time = viper.GetInt("cache.time")
-	cfg.Cache.StoragePath = viper.GetString("cache.storagepath")
-	cfg.Cache.SufixFile = viper.GetString("cache.sufixfile")
+func loadCacheConfig(v *viper.Viper, cfg *Prest) {
+	cfg.Cache.Enabled = v.GetBool("cache.enabled")
+	cfg.Cache.Time = v.GetInt("cache.time")
+	cfg.Cache.StoragePath = v.GetString("cache.storagepath")
+	cfg.Cache.SufixFile = v.GetString("cache.sufixfile")
 
 	// cache endpoints config
 	var cacheendpoints = []cache.Endpoint{}
-	err := viper.UnmarshalKey("cache.endpoints", &cacheendpoints)
+	err := v.UnmarshalKey("cache.endpoints", &cacheendpoints)
 	if err != nil {
 		slog.Error("could not unmarshal cache endpoints", "err", err)
 	}
 	cfg.Cache.Endpoints = cacheendpoints
 }
 
-func parseAuthConfig(cfg *Prest) {
-	cfg.AuthEnabled = viper.GetBool("auth.enabled")
-	cfg.AuthSchema = viper.GetString("auth.schema")
-	cfg.AuthTable = viper.GetString("auth.table")
-	cfg.AuthUsername = viper.GetString("auth.username")
-	cfg.AuthPassword = viper.GetString("auth.password")
-	cfg.AuthEncrypt = viper.GetString("auth.encrypt")
-	cfg.AuthMetadata = viper.GetStringSlice("auth.metadata")
-	cfg.AuthType = viper.GetString("auth.type")
+func parseAuthConfig(v *viper.Viper, cfg *Prest) {
+	cfg.AuthEnabled = v.GetBool("auth.enabled")
+	cfg.AuthSchema = v.GetString("auth.schema")
+	cfg.AuthTable = v.GetString("auth.table")
+	cfg.AuthUsername = v.GetString("auth.username")
+	cfg.AuthPassword = v.GetString("auth.password")
+	cfg.AuthEncrypt = v.GetString("auth.encrypt")
+	cfg.AuthMetadata = v.GetStringSlice("auth.metadata")
+	cfg.AuthType = v.GetString("auth.type")
 }
 
-func parseHTTPConfig(cfg *Prest) {
-	cfg.HTTPHost = viper.GetString("http.host")
-	cfg.HTTPPort = viper.GetInt("http.port")
-	cfg.HTTPTimeout = viper.GetInt("http.timeout")
+func parseHTTPConfig(v *viper.Viper, cfg *Prest) {
+	cfg.HTTPHost = v.GetString("http.host")
+	cfg.HTTPPort = v.GetInt("http.port")
+	cfg.HTTPTimeout = v.GetInt("http.timeout")
 
-	cfg.HTTPSMode = viper.GetBool("https.mode")
-	cfg.HTTPSCert = viper.GetString("https.cert")
-	cfg.HTTPSKey = viper.GetString("https.key")
+	cfg.HTTPSMode = v.GetBool("https.mode")
+	cfg.HTTPSCert = v.GetString("https.cert")
+	cfg.HTTPSKey = v.GetString("https.key")
 }

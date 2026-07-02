@@ -27,6 +27,7 @@ import (
 	"github.com/prest/prest/v2/config"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/internal/ident"
+	"github.com/prest/prest/v2/internal/logsafe"
 	"github.com/prest/prest/v2/template"
 
 	"github.com/jmoiron/sqlx"
@@ -36,9 +37,10 @@ import (
 
 // postgres adapter
 type postgres struct {
-	cfg   *config.Prest
-	conn  *connection.Manager
-	stmts *Stmt
+	cfg     *config.Prest
+	conn    *connection.Manager
+	stmts   *Stmt
+	stmtsMu sync.Mutex
 }
 
 const (
@@ -96,6 +98,8 @@ func (p *postgres) Ping(ctx context.Context) error {
 }
 
 func (p *postgres) getStmts() *Stmt {
+	p.stmtsMu.Lock()
+	defer p.stmtsMu.Unlock()
 	if p.stmts == nil {
 		p.stmts = &Stmt{
 			Mtx:        &sync.Mutex{},
@@ -108,6 +112,8 @@ func (p *postgres) getStmts() *Stmt {
 
 // ClearStmt used to reset the cache and allow multiple tests
 func (p *postgres) ClearStmt() {
+	p.stmtsMu.Lock()
+	defer p.stmtsMu.Unlock()
 	p.stmts = nil
 }
 
@@ -169,7 +175,7 @@ func (p *postgres) PrepareTx(tx *sql.Tx, SQL string) (stmt *sql.Stmt, err error)
 func (adapter *postgres) GetTransaction() (tx *sql.Tx, err error) {
 	db, err := adapter.conn.Get()
 	if err != nil {
-		slog.Info("log details", "err", err)
+		slog.Info("log details", "err", logsafe.Error(err))
 		return
 	}
 	return db.Begin()
@@ -179,10 +185,10 @@ func (adapter *postgres) GetTransaction() (tx *sql.Tx, err error) {
 func (adapter *postgres) GetTransactionCtx(ctx context.Context) (tx *sql.Tx, err error) {
 	db, err := adapter.dbFromCtx(ctx)
 	if err != nil {
-		slog.Error("error details", "err", err)
+		slog.Error("error details", "err", logsafe.Error(err))
 		return
 	}
-	return db.Begin()
+	return db.BeginTx(ctx, nil)
 }
 
 // chkInvalidIdentifier return true if identifier is invalid
@@ -905,7 +911,7 @@ func (adapter *postgres) QueryCtx(ctx context.Context, SQL string, params ...int
 	// use the db_name that was set on request to avoid runtime collisions
 	db, err := adapter.dbFromCtx(ctx)
 	if err != nil {
-		slog.Error("log details", "err", err)
+		slog.Error("log details", "err", logsafe.Error(err))
 		return &scanner.PrestScanner{Error: err}
 	}
 	SQL = fmt.Sprintf("SELECT %s(s) FROM (%s) s", adapter.cfg.JSONAggType, SQL)
@@ -930,7 +936,7 @@ func (adapter *postgres) QueryCtx(ctx context.Context, SQL string, params ...int
 func (adapter *postgres) Query(SQL string, params ...interface{}) (sc adapters.Scanner) {
 	db, err := adapter.conn.Get()
 	if err != nil {
-		slog.Info("log details", "err", err)
+		slog.Info("log details", "err", logsafe.Error(err))
 		return &scanner.PrestScanner{Error: err}
 	}
 	SQL = fmt.Sprintf("SELECT %s(s) FROM (%s) s", adapter.cfg.JSONAggType, SQL)
@@ -984,7 +990,7 @@ func (adapter *postgres) QueryCount(SQL string, params ...interface{}) (sc adapt
 func (adapter *postgres) QueryCountCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	db, err := adapter.dbFromCtx(ctx)
 	if err != nil {
-		slog.Error("log details", "err", err)
+		slog.Error("log details", "err", logsafe.Error(err))
 		return &scanner.PrestScanner{Error: err}
 	}
 	slog.Debug("generated SQL", "sql", SQL, "parameters", params)
@@ -998,7 +1004,7 @@ func (adapter *postgres) QueryCountCtx(ctx context.Context, SQL string, params .
 		Count int64 `json:"count"`
 	}
 
-	row := p.QueryRow(params...)
+	row := p.QueryRowContext(ctx, params...)
 	if err = row.Scan(&result.Count); err != nil {
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
@@ -1036,7 +1042,7 @@ func (adapter *postgres) PaginateIfPossible(r *http.Request) (paginatedQuery str
 func (adapter *postgres) BatchInsertCopy(dbname, schema, table string, keys []string, values ...interface{}) (sc adapters.Scanner) {
 	db, err := adapter.conn.Get()
 	if err != nil {
-		slog.Error("log details", "err", err)
+		slog.Error("log details", "err", logsafe.Error(err))
 		return &scanner.PrestScanner{Error: err}
 	}
 	tx, err := db.Begin()
@@ -1102,10 +1108,10 @@ func (adapter *postgres) BatchInsertCopy(dbname, schema, table string, keys []st
 func (adapter *postgres) BatchInsertCopyCtx(ctx context.Context, dbname, schema, table string, keys []string, values ...interface{}) (sc adapters.Scanner) {
 	db, err := adapter.dbFromCtx(ctx)
 	if err != nil {
-		slog.Error("log details", "err", err)
+		slog.Error("log details", "err", logsafe.Error(err))
 		return &scanner.PrestScanner{Error: err}
 	}
-	tx, err := db.Begin()
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
@@ -1143,7 +1149,7 @@ func (adapter *postgres) BatchInsertCopyCtx(ctx context.Context, dbname, schema,
 	initOffSet := 0
 	limitOffset := len(keys)
 	for limitOffset <= len(values) {
-		_, err = stmt.Exec(values[initOffSet:limitOffset]...)
+		_, err = stmt.ExecContext(ctx, values[initOffSet:limitOffset]...)
 		if err != nil {
 			slog.Error("log details", "err", err)
 			return &scanner.PrestScanner{Error: err}
@@ -1151,7 +1157,7 @@ func (adapter *postgres) BatchInsertCopyCtx(ctx context.Context, dbname, schema,
 		initOffSet = limitOffset
 		limitOffset += len(keys)
 	}
-	_, err = stmt.Exec()
+	_, err = stmt.ExecContext(ctx)
 	if err != nil {
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
@@ -1168,7 +1174,7 @@ func (adapter *postgres) BatchInsertCopyCtx(ctx context.Context, dbname, schema,
 func (adapter *postgres) BatchInsertValues(SQL string, values ...interface{}) (sc adapters.Scanner) {
 	db, err := adapter.conn.Get()
 	if err != nil {
-		slog.Error("log details", "err", err)
+		slog.Error("log details", "err", logsafe.Error(err))
 		return &scanner.PrestScanner{Error: err}
 	}
 	stmt, err := adapter.fullInsert(db, nil, SQL)
@@ -1211,7 +1217,7 @@ func (adapter *postgres) BatchInsertValues(SQL string, values ...interface{}) (s
 func (adapter *postgres) BatchInsertValuesCtx(ctx context.Context, SQL string, values ...interface{}) (sc adapters.Scanner) {
 	db, err := adapter.dbFromCtx(ctx)
 	if err != nil {
-		slog.Error("log details", "err", err)
+		slog.Error("log details", "err", logsafe.Error(err))
 		return &scanner.PrestScanner{Error: err}
 	}
 	stmt, err := adapter.fullInsert(db, nil, SQL)
@@ -1220,7 +1226,7 @@ func (adapter *postgres) BatchInsertValuesCtx(ctx context.Context, SQL string, v
 		return &scanner.PrestScanner{Error: err}
 	}
 	jsonData := []byte("[")
-	rows, err := stmt.Query(values...)
+	rows, err := stmt.QueryContext(ctx, values...)
 	if err != nil {
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
@@ -1272,28 +1278,28 @@ func (adapter *postgres) fullInsert(db *sqlx.DB, tx *sql.Tx, SQL string) (stmt *
 func (adapter *postgres) Insert(SQL string, params ...interface{}) (sc adapters.Scanner) {
 	db, err := adapter.conn.Get()
 	if err != nil {
-		slog.Error("log details", "err", err)
+		slog.Error("log details", "err", logsafe.Error(err))
 		return &scanner.PrestScanner{Error: err}
 	}
-	return adapter.insert(db, nil, SQL, params...)
+	return adapter.insert(nil, db, nil, SQL, params...)
 }
 
 // InsertCtx execute insert sql into a table
 func (adapter *postgres) InsertCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	db, err := adapter.dbFromCtx(ctx)
 	if err != nil {
-		slog.Error("log details", "err", err)
+		slog.Error("log details", "err", logsafe.Error(err))
 		return &scanner.PrestScanner{Error: err}
 	}
-	return adapter.insert(db, nil, SQL, params...)
+	return adapter.insert(ctx, db, nil, SQL, params...)
 }
 
 // InsertWithTransaction execute insert sql into a table
 func (adapter *postgres) InsertWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
-	return adapter.insert(nil, tx, SQL, params...)
+	return adapter.insert(nil, nil, tx, SQL, params...)
 }
 
-func (adapter *postgres) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (adapter *postgres) insert(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	stmt, err := adapter.fullInsert(db, tx, SQL)
 	if err != nil {
 		slog.Error("log details", "err", err)
@@ -1301,7 +1307,11 @@ func (adapter *postgres) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 	}
 	slog.Debug("log details", "sql", SQL, "parameters", params)
 	var jsonData []byte
-	err = stmt.QueryRow(params...).Scan(&jsonData)
+	if ctx != nil {
+		err = stmt.QueryRowContext(ctx, params...).Scan(&jsonData)
+	} else {
+		err = stmt.QueryRow(params...).Scan(&jsonData)
+	}
 	return &scanner.PrestScanner{
 		Error: err,
 		Buff:  bytes.NewBuffer(jsonData),
@@ -1312,28 +1322,28 @@ func (adapter *postgres) insert(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 func (adapter *postgres) Delete(SQL string, params ...interface{}) (sc adapters.Scanner) {
 	db, err := adapter.conn.Get()
 	if err != nil {
-		slog.Error("log details", "err", err)
+		slog.Error("log details", "err", logsafe.Error(err))
 		return &scanner.PrestScanner{Error: err}
 	}
-	return adapter.delete(db, nil, SQL, params...)
+	return adapter.delete(nil, db, nil, SQL, params...)
 }
 
 // Delete execute delete sql into a table
 func (adapter *postgres) DeleteCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	db, err := adapter.dbFromCtx(ctx)
 	if err != nil {
-		slog.Error("log details", "err", err)
+		slog.Error("log details", "err", logsafe.Error(err))
 		return &scanner.PrestScanner{Error: err}
 	}
-	return adapter.delete(db, nil, SQL, params...)
+	return adapter.delete(ctx, db, nil, SQL, params...)
 }
 
 // DeleteWithTransaction execute delete sql into a table
 func (adapter *postgres) DeleteWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
-	return adapter.delete(nil, tx, SQL, params...)
+	return adapter.delete(nil, nil, tx, SQL, params...)
 }
 
-func (adapter *postgres) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (adapter *postgres) delete(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	slog.Debug("generated SQL", "sql", SQL, "parameters", params)
 	var stmt *sql.Stmt
 	var err error
@@ -1347,7 +1357,12 @@ func (adapter *postgres) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 		return &scanner.PrestScanner{Error: err}
 	}
 	if strings.Contains(SQL, "RETURNING") {
-		rows, _ := stmt.Query(params...)
+		var rows *sql.Rows
+		if ctx != nil {
+			rows, _ = stmt.QueryContext(ctx, params...)
+		} else {
+			rows, _ = stmt.Query(params...)
+		}
 		cols, _ := rows.Columns()
 		var data []map[string]interface{}
 		for rows.Next() {
@@ -1380,7 +1395,11 @@ func (adapter *postgres) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 	}
 	var result sql.Result
 	var rowsAffected int64
-	result, err = stmt.Exec(params...)
+	if ctx != nil {
+		result, err = stmt.ExecContext(ctx, params...)
+	} else {
+		result, err = stmt.Exec(params...)
+	}
 	if err != nil {
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
@@ -1404,28 +1423,28 @@ func (adapter *postgres) delete(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 func (adapter *postgres) Update(SQL string, params ...interface{}) (sc adapters.Scanner) {
 	db, err := adapter.conn.Get()
 	if err != nil {
-		slog.Error("log details", "err", err)
+		slog.Error("log details", "err", logsafe.Error(err))
 		return &scanner.PrestScanner{Error: err}
 	}
-	return adapter.update(db, nil, SQL, params...)
+	return adapter.update(nil, db, nil, SQL, params...)
 }
 
 // Update execute update sql into a table
 func (adapter *postgres) UpdateCtx(ctx context.Context, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	db, err := adapter.dbFromCtx(ctx)
 	if err != nil {
-		slog.Error("log details", "err", err)
+		slog.Error("log details", "err", logsafe.Error(err))
 		return &scanner.PrestScanner{Error: err}
 	}
-	return adapter.update(db, nil, SQL, params...)
+	return adapter.update(ctx, db, nil, SQL, params...)
 }
 
 // UpdateWithTransaction execute update sql into a table
 func (adapter *postgres) UpdateWithTransaction(tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
-	return adapter.update(nil, tx, SQL, params...)
+	return adapter.update(nil, nil, tx, SQL, params...)
 }
 
-func (adapter *postgres) update(db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
+func (adapter *postgres) update(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
 	var stmt *sql.Stmt
 	var err error
 	if tx != nil {
@@ -1439,7 +1458,12 @@ func (adapter *postgres) update(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 	}
 	slog.Debug("generated SQL", "sql", SQL, "parameters", params)
 	if strings.Contains(SQL, "RETURNING") {
-		rows, _ := stmt.Query(params...)
+		var rows *sql.Rows
+		if ctx != nil {
+			rows, _ = stmt.QueryContext(ctx, params...)
+		} else {
+			rows, _ = stmt.Query(params...)
+		}
 		cols, _ := rows.Columns()
 		var data []map[string]interface{}
 		for rows.Next() {
@@ -1472,7 +1496,11 @@ func (adapter *postgres) update(db *sqlx.DB, tx *sql.Tx, SQL string, params ...i
 	}
 	var result sql.Result
 	var rowsAffected int64
-	result, err = stmt.Exec(params...)
+	if ctx != nil {
+		result, err = stmt.ExecContext(ctx, params...)
+	} else {
+		result, err = stmt.Exec(params...)
+	}
 	if err != nil {
 		slog.Error("could not execute sql", "sql", SQL, "err", err)
 		return &scanner.PrestScanner{Error: err}

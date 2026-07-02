@@ -7,6 +7,7 @@ import (
 
 	"github.com/prest/prest/v2/app"
 	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/internal/logsafe"
 
 	"log/slog"
 
@@ -15,7 +16,6 @@ import (
 
 var (
 	prestCfg *config.Prest
-	prestApp *app.App
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -24,8 +24,9 @@ var RootCmd = &cobra.Command{
 	Short: "Serve a RESTful API from any PostgreSQL database",
 	Long:  `prestd (PostgreSQL REST), simplify and accelerate development, ⚡ instant, realtime, high-performance on any Postgres application, existing or new`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if prestApp == nil {
-			slog.Error("HTTP app not initialized")
+		prestApp, err := app.New(prestCfg)
+		if err != nil {
+			slog.Error("initializing app", "err", logsafe.Error(err))
 			os.Exit(1)
 		}
 		startServer(prestCfg, prestApp)
@@ -33,9 +34,8 @@ var RootCmd = &cobra.Command{
 }
 
 // Execute adds all child commands to the root command sets flags appropriately.
-func Execute(cfg *config.Prest, a *app.App) {
+func Execute(cfg *config.Prest) {
 	prestCfg = cfg
-	prestApp = a
 
 	upCmd.AddCommand(authUpCmd)
 	downCmd.AddCommand(authDownCmd)

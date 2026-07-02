@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/prest/prest/v2/adapters"
@@ -24,19 +25,16 @@ type App struct {
 
 // New wires postgres, handlers, middlewares, router, and plugins.
 func New(cfg *config.Prest) (*App, error) {
-	pg := postgres.New(cfg)
-	if err := postgres.Connect(pg); err != nil {
-		return nil, err
+	if cfg.Adapter == nil {
+		pg := postgres.New(cfg)
+		if err := postgres.Connect(pg); err != nil {
+			return nil, err
+		}
+		cfg.Adapter = pg
 	}
-	cfg.Adapter = pg
 
 	deps := controllers.NewDepsFromConfig(cfg)
 	h := controllers.NewHandlers(deps)
-	if pinger, ok := pg.(adapters.DatabasePinger); ok {
-		h.Health = controllers.NewHealthHandler(controllers.CheckList{
-			controllers.CheckDBHealth(pinger.Ping),
-		})
-	}
 
 	plg := plugins.New(cfg)
 	crud := middlewares.NewCRUDStack(cfg, plg)
@@ -46,7 +44,7 @@ func New(cfg *config.Prest) (*App, error) {
 
 	n := middlewares.New(cfg)
 	n.UseHandler(mux)
-	return &App{Config: cfg, Handler: n, pg: pg}, nil
+	return &App{Config: cfg, Handler: n, pg: cfg.Adapter}, nil
 }
 
 // EnsureAdapter connects the postgres adapter when cfg.Adapter is nil.
@@ -69,7 +67,10 @@ func PostgresDB(cfg *config.Prest) (*sqlx.DB, error) {
 	}
 	db, err := postgres.DB(cfg.Adapter)
 	if err != nil {
-		return nil, ErrAdapterNotPostgres
+		if errors.Is(err, postgres.ErrNotPostgresAdapter) {
+			return nil, ErrAdapterNotPostgres
+		}
+		return nil, err
 	}
 	return db, nil
 }

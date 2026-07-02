@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-// DefaultCheckList is empty; health checks are wired in app.New.
+// DefaultCheckList is used when the adapter does not implement DatabasePinger.
 var DefaultCheckList = CheckList{}
 
 // CheckDBHealth verifies the database connection is alive.

@@ -16,5 +16,7 @@ func (m *Manager) ResetPoolForTest() {
 	p.Mtx.Lock()
 	p.DB = make(map[string]*sqlx.DB)
 	p.Mtx.Unlock()
+	m.mu.Lock()
 	m.currDatabase = ""
+	m.mu.Unlock()
 }

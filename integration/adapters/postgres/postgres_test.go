@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -29,17 +30,48 @@ func TestMain(m *testing.M) {
 
 var testCfg *config.Prest
 
+func cloneAccessConf(ac config.AccessConf) config.AccessConf {
+	cloned := ac
+	cloned.IgnoreTable = slices.Clone(ac.IgnoreTable)
+	cloned.Tables = cloneTablesConfs(ac.Tables)
+	cloned.Users = make([]config.UsersConf, len(ac.Users))
+	for i, user := range ac.Users {
+		cloned.Users[i] = config.UsersConf{
+			Name:   user.Name,
+			Tables: cloneTablesConfs(user.Tables),
+		}
+	}
+	return cloned
+}
+
+func cloneTablesConfs(tables []config.TablesConf) []config.TablesConf {
+	cloned := make([]config.TablesConf, len(tables))
+	for i, table := range tables {
+		cloned[i] = config.TablesConf{
+			Name:        table.Name,
+			Permissions: slices.Clone(table.Permissions),
+			Fields:      slices.Clone(table.Fields),
+		}
+	}
+	return cloned
+}
+
 func setupTestDB(t *testing.T) {
 	t.Helper()
-	testCfg = helpers.LoadTestConfig(t)
+	base := helpers.LoadTestConfig(t)
+	cfg := *base
+	cfg.AccessConf = cloneAccessConf(base.AccessConf)
+	pg := postgres.New(&cfg)
+	if err := postgres.Connect(pg); err != nil {
+		t.Fatalf("connect test database: %v", err)
+	}
+	cfg.Adapter = pg
+	testCfg = &cfg
 }
 
 func testAdapter(t *testing.T) adapters.Adapter {
 	t.Helper()
 	setupTestDB(t)
-	if testCfg.Adapter == nil {
-		t.Fatal("expected adapter")
-	}
 	return testCfg.Adapter
 }
 
@@ -2715,6 +2747,7 @@ func newScannerMock(t *testing.T) (sc adapters.Scanner) {
 
 func TestFieldsByPermission(t *testing.T) {
 	setupTestDB(t)
+	baseCfg := *testCfg
 	t.Parallel()
 
 	tests := []struct {
@@ -2815,10 +2848,11 @@ func TestFieldsByPermission(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			testCfg.AccessConf.Tables = tt.tablesConf
-			testCfg.AccessConf.Users = tt.usersConf
+			cfg := baseCfg
+			cfg.AccessConf.Tables = tt.tablesConf
+			cfg.AccessConf.Users = tt.usersConf
 
-			gotFields := postgres.FieldsByPermissionExported(testAdapter(t), tt.table, tt.op, tt.userName)
+			gotFields := postgres.FieldsByPermissionExported(postgres.New(&cfg), tt.table, tt.op, tt.userName)
 			if !reflect.DeepEqual(gotFields, tt.wantFields) {
 				t.Errorf("postgres.FieldsByPermissionExported() = %v, want %v", gotFields, tt.wantFields)
 			}

@@ -61,11 +61,12 @@ func TestAddDatabaseToPool_singleflightDedup(t *testing.T) {
 	uri := m.GetURI("otherdb")
 
 	var connectCalls int32
+	var capturedDriver, capturedDSN string
 	origConnect := dbConnect
 	dbConnect = func(driverName, dataSourceName string) (*sqlx.DB, error) {
-		require.Equal(t, "postgres", driverName)
-		require.Equal(t, uri, dataSourceName)
 		atomic.AddInt32(&connectCalls, 1)
+		capturedDriver = driverName
+		capturedDSN = dataSourceName
 		time.Sleep(25 * time.Millisecond)
 		mockDB, _, err := sqlmock.New()
 		if err != nil {
@@ -89,6 +90,8 @@ func TestAddDatabaseToPool_singleflightDedup(t *testing.T) {
 	}
 	wg.Wait()
 
+	require.Equal(t, "postgres", capturedDriver)
+	require.Equal(t, uri, capturedDSN)
 	require.Equal(t, int32(1), connectCalls)
 	for i := range workers {
 		require.NoError(t, errs[i])

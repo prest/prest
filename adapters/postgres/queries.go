@@ -142,7 +142,7 @@ func (adapter *postgres) WriteSQLCtx(ctx context.Context, sql string, values []i
 		valuesAux = append(valuesAux, values[i])
 	}
 
-	result, err := stmt.Exec(valuesAux...)
+	result, err := stmt.ExecContext(ctx, valuesAux...)
 	if err != nil {
 		log.Printf("sql = %v\n", sql)
 		err = fmt.Errorf("could not peform sql: %v", err)

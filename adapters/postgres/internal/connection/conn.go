@@ -24,6 +24,7 @@ type Pool struct {
 // Manager holds connection pool state for a single config instance.
 type Manager struct {
 	cfg          *config.Prest
+	mu           sync.RWMutex
 	pool         *Pool
 	currDatabase string
 	addDB        singleflight.Group
@@ -40,6 +41,16 @@ func NewManager(cfg *config.Prest) *Manager {
 }
 
 func (m *Manager) getPool() *Pool {
+	m.mu.RLock()
+	if m.pool != nil {
+		pool := m.pool
+		m.mu.RUnlock()
+		return pool
+	}
+	m.mu.RUnlock()
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.pool == nil {
 		m.pool = &Pool{
 			Mtx: &sync.RWMutex{},
@@ -162,18 +173,23 @@ func (m *Manager) MustGet() *sqlx.DB {
 
 	DB, err = m.Get()
 	if err != nil {
-		slog.Error("Unable to connect to database", "error", logsafe.Error(err))
-		panic(err)
+		safeErr := logsafe.Error(err)
+		slog.Error("Unable to connect to database", "error", safeErr)
+		panic(safeErr)
 	}
 	return DB
 }
 
 // SetDatabase set current database in use
 func (m *Manager) SetDatabase(name string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.currDatabase = name
 }
 
 // GetDatabase get current database in use
 func (m *Manager) GetDatabase() string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.currDatabase
 }
