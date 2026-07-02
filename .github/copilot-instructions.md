@@ -17,6 +17,7 @@ These instructions guide AI-generated changes in this repository.
 - Favor readability and maintainability over clever abstractions.
 - Do not introduce breaking changes to command flags, config keys, routes, or plugin behavior without explicit request.
 - Apply SOLID when designing packages, ports, handlers, and adapters (see **SOLID Principles for Go** below).
+- Keep the runtime stateless: no shared mutable application state between commands or requests (see **Go Style and Implementation Rules**).
 
 ## SOLID Principles for Go
 
@@ -139,7 +140,7 @@ func NewCRUDHandler(cfg *config.Prest) *CRUDHandler {
 - Reuse existing dependencies already present in `go.mod` where suitable.
 - Return wrapped errors with context using `%w` when propagating errors.
 - Keep functions cohesive and reasonably short.
-- Avoid global mutable states.
+- Avoid package-level mutable application state. pREST is stateless; pass config and dependencies via constructors, `Execute`/Cobra command context, or request scope — not globals in `cmd/`, handlers, or adapters. (The postgres test checklist applies the same rule to unit tests.)
 - Add comments only when logic is non-obvious.
 
 ## API and SQL Safety
@@ -221,7 +222,6 @@ Within `package connection` tests, `dbConnect` may be assigned directly (same pa
 
 **Timeout safety net** (guards against regressions, not substitutes for mocking):
 
-- **30s** package wall-clock via `TestMain` in `package postgres` (catches sqlmock deadlocks)
 - **30s** per-package via `make test-unit` (`go test -timeout 30s -parallel $GOMAXPROCS …` for all unit packages)
 
 **Anti-patterns (do not do)**
@@ -365,5 +365,6 @@ Interfaces in `adapters/` are mocked via `make mockgen`, outputting to `adapters
 ## Architecture and Design Guidance
 
 - Prefer extending existing ports and handlers over new top-level abstractions.
+- Keep runtime stateless: config and dependencies flow through constructors and request/command scope, not package globals.
 - When refactoring legacy code, move Postgres coupling behind an existing port rather than introducing parallel access paths.
 - Plugins (`plugins/`) are optional driving/driven adapters loaded at runtime; keep their surface compatible with existing middleware and route conventions.

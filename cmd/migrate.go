@@ -38,10 +38,11 @@ func checkTable(cmd *cobra.Command, args []string) error {
 		return ErrURLNotSet
 	}
 	cmd.SilenceUsage = true
-	if err := app.EnsureAdapter(prestCfg); err != nil {
+	cfg := configFrom(cmd)
+	if err := app.EnsureAdapter(cfg); err != nil {
 		return err
 	}
-	sc := prestCfg.Adapter.ShowTable("public", "schema_migrations")
+	sc := cfg.Adapter.ShowTable("public", "schema_migrations")
 	if err := sc.Err(); err != nil {
 		return err
 	}
@@ -60,7 +61,7 @@ func checkTable(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if index != nil {
-		db, err := app.PostgresDB(prestCfg)
+		db, err := app.PostgresDB(cfg)
 		if err != nil {
 			return err
 		}

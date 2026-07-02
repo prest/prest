@@ -15,15 +15,16 @@ var authUpCmd = &cobra.Command{
 	Short: "Create auth table",
 	Long:  "Create basic table to use on auth endpoint",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := app.EnsureAdapter(prestCfg); err != nil {
+		cfg := configFrom(cmd)
+		if err := app.EnsureAdapter(cfg); err != nil {
 			return err
 		}
-		db, err := app.PostgresDB(prestCfg)
+		db, err := app.PostgresDB(cfg)
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
 			return err
 		}
-		_, err = db.Exec(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s.%s (id serial, name text, username text unique, password text, metadata jsonb)", pq.QuoteIdentifier(prestCfg.AuthSchema), pq.QuoteIdentifier(prestCfg.AuthTable)))
+		_, err = db.Exec(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s.%s (id serial, name text, username text unique, password text, metadata jsonb)", pq.QuoteIdentifier(cfg.AuthSchema), pq.QuoteIdentifier(cfg.AuthTable)))
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
 			return err
@@ -37,16 +38,17 @@ var authDownCmd = &cobra.Command{
 	Short: "Drop auth table",
 	Long:  "Drop basic table used on auth endpoint",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := app.EnsureAdapter(prestCfg); err != nil {
+		cfg := configFrom(cmd)
+		if err := app.EnsureAdapter(cfg); err != nil {
 			return err
 		}
 
-		db, err := app.PostgresDB(prestCfg)
+		db, err := app.PostgresDB(cfg)
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
 			return err
 		}
-		_, err = db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", pq.QuoteIdentifier(prestCfg.AuthSchema), pq.QuoteIdentifier(prestCfg.AuthTable)))
+		_, err = db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", pq.QuoteIdentifier(cfg.AuthSchema), pq.QuoteIdentifier(cfg.AuthTable)))
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
 			return err

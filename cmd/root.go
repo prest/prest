@@ -1,12 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"strconv"
 
 	"github.com/prest/prest/v2/app"
 	"github.com/prest/prest/v2/config"
+	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/internal/logsafe"
 
 	"log/slog"
@@ -14,9 +16,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	prestCfg *config.Prest
-)
+func withConfig(ctx context.Context, cfg *config.Prest) context.Context {
+	return context.WithValue(ctx, pctx.PrestConfigKey, cfg)
+}
+
+func configFrom(cmd *cobra.Command) *config.Prest {
+	cfg, ok := cmd.Root().Context().Value(pctx.PrestConfigKey).(*config.Prest)
+	if !ok || cfg == nil {
+		slog.Error("config not initialized")
+		os.Exit(1)
+	}
+	return cfg
+}
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
@@ -24,19 +35,18 @@ var RootCmd = &cobra.Command{
 	Short: "Serve a RESTful API from any PostgreSQL database",
 	Long:  `prestd (PostgreSQL REST), simplify and accelerate development, ⚡ instant, realtime, high-performance on any Postgres application, existing or new`,
 	Run: func(cmd *cobra.Command, args []string) {
-		prestApp, err := app.New(prestCfg)
+		cfg := configFrom(cmd)
+		prestApp, err := app.New(cfg)
 		if err != nil {
 			slog.Error("initializing app", "err", logsafe.Error(err))
 			os.Exit(1)
 		}
-		startServer(prestCfg, prestApp)
+		startServer(cfg, prestApp)
 	},
 }
 
 // Execute adds all child commands to the root command sets flags appropriately.
 func Execute(cfg *config.Prest) {
-	prestCfg = cfg
-
 	upCmd.AddCommand(authUpCmd)
 	downCmd.AddCommand(authDownCmd)
 	migrateCmd.AddCommand(downCmd)
@@ -50,6 +60,7 @@ func Execute(cfg *config.Prest) {
 	migrateCmd.PersistentFlags().StringVar(&urlConn, "url", driverURL(cfg), "Database driver url")
 	migrateCmd.PersistentFlags().StringVar(&path, "path", cfg.MigrationsPath, "Migrations directory")
 
+	RootCmd.SetContext(withConfig(context.Background(), cfg))
 	if err := RootCmd.Execute(); err != nil {
 		slog.Error("executing root command", "err", logsafe.Error(err))
 		os.Exit(1)
