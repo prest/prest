@@ -39,10 +39,11 @@ func TestConnect_Success(t *testing.T) {
 }
 
 func TestConnect_GetError(t *testing.T) {
-	adapter := New(defaultTestConf()).(*postgres)
+	adapter := withFailingDBConnect(t, "connect failed")
 
 	err := adapter.Connect()
 	require.Error(t, err)
+	require.Contains(t, err.Error(), "connect")
 }
 
 func TestPing_Success(t *testing.T) {

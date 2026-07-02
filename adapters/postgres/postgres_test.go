@@ -1329,7 +1329,10 @@ func Test_postgres_BatchInsertCopy(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name:    "connection error",
+			name: "connection error",
+			setup: func(t *testing.T) *postgres {
+				return withFailingDBConnect(t, "connect failed")
+			},
 			dbname:  defaultMockDB,
 			schema:  "public",
 			table:   "users",
@@ -1484,7 +1487,7 @@ func Test_postgres_BatchInsertCopyCtx(t *testing.T) {
 		{
 			name: "connection error for context database",
 			setup: func(t *testing.T) (*postgres, context.Context) {
-				adapter := New(defaultTestConf()).(*postgres)
+				adapter := withFailingDBConnect(t, "connect failed")
 				ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
 				return adapter, ctx
 			},

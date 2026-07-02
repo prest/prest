@@ -7,10 +7,20 @@ import (
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
+	"github.com/prest/prest/v2/adapters/postgres/internal/connection"
 	"github.com/prest/prest/v2/config"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/stretchr/testify/require"
 )
+
+func withFailingDBConnect(t *testing.T, msg string) *postgres {
+	t.Helper()
+	restore := connection.SetDBConnectForTest(func(_, _ string) (*sqlx.DB, error) {
+		return nil, errors.New(msg)
+	})
+	t.Cleanup(restore)
+	return New(defaultTestConf()).(*postgres)
+}
 
 func withSQLMock(t *testing.T) (*postgres, sqlmock.Sqlmock) {
 	t.Helper()
@@ -495,16 +505,18 @@ func TestBatchInsertValuesCtx_Success(t *testing.T) {
 }
 
 func TestBatchInsertCopy_ConnectionError(t *testing.T) {
-	adapter := New(defaultTestConf()).(*postgres)
+	adapter := withFailingDBConnect(t, "connect failed")
 
 	sc := adapter.BatchInsertCopy(defaultMockDB, "public", "users", []string{"name"}, "alice")
 	require.Error(t, sc.Err())
+	require.Contains(t, sc.Err().Error(), "connect")
 }
 
 func TestBatchInsertCopyCtx_ConnectionError(t *testing.T) {
-	adapter := New(defaultTestConf()).(*postgres)
+	adapter := withFailingDBConnect(t, "connect failed")
 	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
 
 	sc := adapter.BatchInsertCopyCtx(ctx, contextMockDB, "public", "users", []string{"name"}, "alice")
 	require.Error(t, sc.Err())
+	require.Contains(t, sc.Err().Error(), "connect")
 }

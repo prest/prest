@@ -63,6 +63,13 @@ type Stmt struct {
 	pgCache    bool
 }
 
+var (
+	_ adapters.Adapter           = (*postgres)(nil)
+	_ adapters.DatabaseConnector = (*postgres)(nil)
+	_ adapters.DatabaseAccessor  = (*postgres)(nil)
+	_ adapters.DatabasePinger    = (*postgres)(nil)
+)
+
 // New creates a Postgres adapter without connecting.
 func New(cfg *config.Prest) adapters.Adapter {
 	return &postgres{
@@ -225,6 +232,11 @@ func (p *postgres) PrepareContext(ctx context.Context, db *sqlx.DB, SQL string) 
 // PrepareTx statement func
 func (p *postgres) PrepareTx(tx *sql.Tx, SQL string) (stmt *sql.Stmt, err error) {
 	return p.getStmts().Prepare("", nil, tx, SQL)
+}
+
+// PrepareTxContext statement func with context for cancellation/deadline support.
+func (p *postgres) PrepareTxContext(ctx context.Context, tx *sql.Tx, SQL string) (stmt *sql.Stmt, err error) {
+	return p.getStmts().PrepareContext(ctx, "", nil, tx, SQL)
 }
 
 // GetTransaction get transaction
@@ -1200,7 +1212,7 @@ func (adapter *postgres) BatchInsertCopyCtx(ctx context.Context, dbname, schema,
 			}
 		}
 	}
-	stmt, err := tx.Prepare(pq.CopyInSchema(schema, table, keys...))
+	stmt, err := tx.PrepareContext(ctx, pq.CopyInSchema(schema, table, keys...))
 	if err != nil {
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
@@ -1236,7 +1248,7 @@ func (adapter *postgres) BatchInsertValues(SQL string, values ...interface{}) (s
 		slog.Error("log details", "err", logsafe.Error(err))
 		return &scanner.PrestScanner{Error: err}
 	}
-	stmt, err := adapter.fullInsert(db, nil, SQL)
+	stmt, err := adapter.fullInsert(context.Background(), db, nil, SQL)
 	if err != nil {
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
@@ -1279,7 +1291,7 @@ func (adapter *postgres) BatchInsertValuesCtx(ctx context.Context, SQL string, v
 		slog.Error("log details", "err", logsafe.Error(err))
 		return &scanner.PrestScanner{Error: err}
 	}
-	stmt, err := adapter.fullInsert(db, nil, SQL)
+	stmt, err := adapter.fullInsert(ctx, db, nil, SQL)
 	if err != nil {
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
@@ -1315,7 +1327,7 @@ func (adapter *postgres) BatchInsertValuesCtx(ctx context.Context, SQL string, v
 	}
 }
 
-func (adapter *postgres) fullInsert(db *sqlx.DB, tx *sql.Tx, SQL string) (stmt *sql.Stmt, err error) {
+func (adapter *postgres) fullInsert(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQL string) (stmt *sql.Stmt, err error) {
 	tableName := insertTableNameQuotesRegex.FindStringSubmatch(SQL)
 	if len(tableName) < 2 {
 		tableName = insertTableNameRegex.FindStringSubmatch(SQL)
@@ -1326,11 +1338,15 @@ func (adapter *postgres) fullInsert(db *sqlx.DB, tx *sql.Tx, SQL string) (stmt *
 	}
 	SQL = fmt.Sprintf(`%s RETURNING row_to_json("%s")`, SQL, tableName[2])
 	if tx != nil {
-		stmt, err = adapter.PrepareTx(tx, SQL)
-	} else {
-		stmt, err = adapter.Prepare(db, SQL)
+		if ctx != nil {
+			return adapter.PrepareTxContext(ctx, tx, SQL)
+		}
+		return adapter.PrepareTx(tx, SQL)
 	}
-	return
+	if ctx != nil {
+		return adapter.PrepareContext(ctx, db, SQL)
+	}
+	return adapter.Prepare(db, SQL)
 }
 
 // Insert execute insert sql into a table
@@ -1359,7 +1375,7 @@ func (adapter *postgres) InsertWithTransaction(tx *sql.Tx, SQL string, params ..
 }
 
 func (adapter *postgres) insert(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
-	stmt, err := adapter.fullInsert(db, tx, SQL)
+	stmt, err := adapter.fullInsert(ctx, db, tx, SQL)
 	if err != nil {
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
@@ -1407,7 +1423,13 @@ func (adapter *postgres) delete(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQ
 	var stmt *sql.Stmt
 	var err error
 	if tx != nil {
-		stmt, err = adapter.PrepareTx(tx, SQL)
+		if ctx != nil {
+			stmt, err = adapter.PrepareTxContext(ctx, tx, SQL)
+		} else {
+			stmt, err = adapter.PrepareTx(tx, SQL)
+		}
+	} else if ctx != nil {
+		stmt, err = adapter.PrepareContext(ctx, db, SQL)
 	} else {
 		stmt, err = adapter.Prepare(db, SQL)
 	}
@@ -1507,7 +1529,13 @@ func (adapter *postgres) update(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQ
 	var stmt *sql.Stmt
 	var err error
 	if tx != nil {
-		stmt, err = adapter.PrepareTx(tx, SQL)
+		if ctx != nil {
+			stmt, err = adapter.PrepareTxContext(ctx, tx, SQL)
+		} else {
+			stmt, err = adapter.PrepareTx(tx, SQL)
+		}
+	} else if ctx != nil {
+		stmt, err = adapter.PrepareContext(ctx, db, SQL)
 	} else {
 		stmt, err = adapter.Prepare(db, SQL)
 	}

@@ -16,6 +16,114 @@ These instructions guide AI-generated changes in this repository.
 - Keep compatibility with Go 1.26.0.
 - Favor readability and maintainability over clever abstractions.
 - Do not introduce breaking changes to command flags, config keys, routes, or plugin behavior without explicit request.
+- Apply SOLID when designing packages, ports, handlers, and adapters (see **SOLID Principles for Go** below).
+
+## SOLID Principles for Go
+
+Apply these on every change. They complement **Hexagonal Architecture** (below) — hexagonal defines layer boundaries; SOLID defines how types and dependencies inside those layers are shaped.
+
+### S — Single Responsibility
+
+One type or package should have one reason to change.
+
+**pREST mapping:** `AuthHandler` handles authentication only; `CRUDHandler` handles table CRUD; `adapters/postgres/internal/connection` handles pooling only. Cross-cutting concerns (JWT, ACL, cache) belong in `middlewares/`, not inside handlers.
+
+```go
+// GOOD: focused handler
+type AuthHandler struct {
+    executor adapters.QueryExecutor
+    cfg      AuthConfig
+}
+
+// BAD: god handler
+type APIHandler struct {
+    adapter adapters.Adapter // auth, CRUD, catalog, scripts...
+}
+```
+
+### O — Open/Closed
+
+Extend behavior via new types and interfaces, not by editing stable call sites.
+
+**pREST mapping:** Add a new port in `adapters/` (e.g. `PermissionsChecker`), implement in `adapters/postgres/`, inject via `controllers.Deps`. Optional lifecycle (`DatabaseConnector`, `DatabasePinger`) stays outside composite `Adapter` so mocks stay minimal.
+
+```go
+// GOOD: extend via new port + wiring
+type Deps struct {
+    Perms adapters.PermissionsChecker // new concern → new field
+}
+
+// BAD: modify CRUDHandler for every new cross-cutting concern
+func (h *CRUDHandler) handle(w http.ResponseWriter, r *http.Request) {
+    if newFeatureFlag { /* special case */ }
+}
+```
+
+### L — Liskov Substitution
+
+Any implementation of a port must satisfy the full contract callers rely on.
+
+**pREST mapping:** `adapters/mockgen/` and `adapters/postgres/` must be interchangeable for the ports handlers use. Test doubles must not panic or return inconsistent results on methods production code calls.
+
+```go
+// GOOD: mock implements the port handlers actually call
+ctrl := gomock.NewController(t)
+exec := mockgen.NewMockQueryExecutor(ctrl)
+exec.EXPECT().QueryCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
+
+// BAD: partial stub that panics on unimplemented methods
+type brokenExecutor struct{}
+func (brokenExecutor) QueryCtx(...) adapters.Scanner { panic("not implemented") }
+```
+
+### I — Interface Segregation
+
+Depend on the smallest interface that suffices; avoid fat interfaces at call sites.
+
+**pREST mapping:** `NewAuthHandler(executor adapters.QueryExecutor, …)` needs only query execution. `NewTableHandler(executor, db, singleDB)` needs executor + registry, not full `Adapter`. Split ports live in `adapters/*.go`; composite `Adapter` is for the composition root only.
+
+```go
+// GOOD: narrow dependency
+type TableHandler struct {
+    executor adapters.QueryExecutor
+    db       adapters.DatabaseRegistry
+}
+
+// BAD: forces mocks to implement 50+ methods
+type TableHandler struct {
+    adapter adapters.Adapter
+}
+```
+
+### D — Dependency Inversion
+
+High-level modules (`controllers/`, `middlewares/`) depend on abstractions (`adapters/*`), not concretions (`adapters/postgres`).
+
+**pREST mapping:** `controllers.NewDepsFromConfig` maps `p.Adapter` into `Deps` port fields. Concrete postgres wiring happens in `cmd/prestd/` and `router/`, not inside handlers.
+
+```go
+// GOOD: depend on port, inject at edge
+func NewCRUDHandler(deps Deps) *CRUDHandler {
+    return &CRUDHandler{
+        executor: deps.Executor, // adapters.QueryExecutor
+    }
+}
+
+// BAD: construct concrete adapter inside handler
+func NewCRUDHandler(cfg *config.Prest) *CRUDHandler {
+    pg := postgres.New(cfg) // inverted dependency
+}
+```
+
+### Quick reference
+
+| Principle | pREST shorthand | Primary packages |
+|-----------|-----------------|------------------|
+| SRP | One handler/port per concern | `controllers/*`, `adapters/*.go` |
+| OCP | New port + adapter, not `switch` hacks | `adapters/`, `controllers/deps.go` |
+| LSP | mockgen and postgres interchangeable | `adapters/mockgen/`, tests |
+| ISP | Smallest port on handler structs | `controllers/`, `adapters/` |
+| DIP | No `adapters/postgres` outside wiring | `cmd/`, `router/`, `integration/` |
 
 ## Code Organization Conventions
 
@@ -49,17 +157,103 @@ These instructions guide AI-generated changes in this repository.
 - **Integration tests:** only under `integration/`, mirroring package layout; exercise public HTTP/adapter surfaces end-to-end with Docker Postgres.
 - Never add `postgres.Load()` outside `integration/`.
 - Reuse existing test patterns (`testify`, `adapters/mockgen/`, `handlerstest.NewTestHandlers`, `testutils/` for HTTP helpers).
-- Mock **ports** (`adapters/*` interfaces), not `adapters/postgres` types, in unit tests.
+- Mock **ports** (`adapters/*` interfaces), not `adapters/postgres` types, in unit tests outside `adapters/postgres/`.
 - Maintain ≥80% coverage on new code paths (unit + integration combined).
 - Name test files after the source file under test: `<source_file>_test.go` (e.g. `catalog.go` → `catalog_test.go`).
 - Any new change in behavior on the controllers package should introduce a new integration test as well as a unit test.
+- Prefer `t.Parallel()` in unit tests when safe (no shared mutable state, globals, or ordering dependencies). Subtests in table-driven tests can call `t.Parallel()` inside `t.Run`.
+- `make test-unit` is the canonical unit-test entry point: **30s** per-package timeout (`-timeout 30s`), tests within a package run in parallel up to `GOMAXPROCS` (`-parallel`), packages are invoked in batch (also concurrent), and the race detector is enabled (`-race`).
+
+### Postgres adapter unit tests (`adapters/postgres`)
+
+Unit tests under `adapters/postgres/**` must pass with **no Postgres process running**. Real DB usage belongs only in `integration/adapters/postgres/**` (Docker).
+
+| Location | Package | Database | Run via |
+|----------|---------|----------|---------|
+| `adapters/postgres/**` | unit | **Never real** — sqlmock only | `go test ./adapters/postgres/...`, `make test-unit` |
+| `integration/adapters/postgres/**` | integration | Real Postgres (Docker) | `make test-integration` |
+
+**Golden rule:** never call `conn.Get()`, `Connect()`, `DB()`, or `Ping()` in a way that reaches `sqlx.Connect` without a test double in place.
+
+Allowed patterns only:
+
+1. **Happy path / SQL behavior** — `sqlmock` + `InjectDBForTest`
+2. **Connection failure path** — `SetDBConnectForTest` returning an error (no TCP)
+3. **Pure logic** — no adapter DB calls (request parsing, SQL builders, permissions, etc.)
+
+**Standard helpers (`package postgres`)**
+
+| Helper | Use when | What it does |
+|--------|----------|--------------|
+| `defaultTestConf()` | Building config for adapter tests | Returns minimal `*config.Prest`; does **not** imply a live DB |
+| `withSQLMock(t)` | Single-database SQL tests | `sqlmock.New` → `InjectDBForTest` for `defaultMockDB`; registers `t.Cleanup` for pool + stmt cache |
+| `withSQLMocks(t)` | Context DB switching (`pctx.DBNameKey`) | Injects `defaultMockDB` + `contextMockDB` pools |
+| `withSQLMockPing(t)` | `Connect` / `Ping` success paths | Like `withSQLMock` + `MonitorPingsOption` |
+| `withFailingDBConnect(t, msg)` | Connection error paths | Stubs `dbConnect` to return error immediately; no network |
+
+**Connection manager test API (`internal/connection`)**
+
+| API | Purpose |
+|-----|---------|
+| `InjectDBForTest(uri, db)` | Register a `*sqlx.DB` (sqlmock-backed) in the pool |
+| `ResetPoolForTest()` | Clear pool between tests (`t.Cleanup`) |
+| `SetDBConnectForTest(fn)` | Stub `sqlx.Connect` for connection-failure tests from parent package |
+
+Within `package connection` tests, `dbConnect` may be assigned directly (same package).
+
+**Per-test setup checklist** (when a test touches the database layer):
+
+- Use `withSQLMock` / `withSQLMocks` / `withFailingDBConnect` — not bare `New(cfg)` for DB paths
+- Register `t.Cleanup` for pool reset and stmt cache (helpers do this)
+- Do **not** set `PGConnTimeout` hoping TCP fails fast — stub instead
+- Do **not** add package-level test globals; per-test `New(cfg)` + cleanup only
+
+**Test file layout**
+
+| File | Contents |
+|------|----------|
+| `postgres_test.go` | Pure logic, SQL builders, permissions, table-driven `delete`/`update`/`BatchInsertCopy` |
+| `postgres_exec_test.go` | `withSQLMock*` helpers + executor integration with sqlmock |
+| `postgres_conn_test.go` | `Connect`, `Ping`, `DB`, stmt cache |
+| `queries_test.go` | Scripts / `WriteSQL` via sqlmock |
+| `internal/connection/conn_test.go` | Pool, singleflight; stubs `dbConnect` inline |
+| `formatters/formatters_test.go` | No DB |
+
+**Timeout safety net** (guards against regressions, not substitutes for mocking):
+
+- **30s** package wall-clock via `TestMain` in `package postgres` (catches sqlmock deadlocks)
+- **30s** per-package via `make test-unit` (`go test -timeout 30s -parallel $GOMAXPROCS …` for all unit packages)
+
+**Anti-patterns (do not do)**
+
+```go
+// BAD: reaches real sqlx.Connect → TCP hang
+adapter := New(defaultTestConf()).(*postgres)
+adapter.BatchInsertCopy(...)
+
+// BAD: relies on network / PGConnTimeout
+cfg.PGConnTimeout = 1
+adapter.Connect()
+
+// GOOD: connection error without network
+adapter := withFailingDBConnect(t, "connect failed")
+
+// GOOD: SQL path with sqlmock
+adapter, mock := withSQLMock(t)
+mock.ExpectPrepare(...)
+```
 
 Common commands:
 
 ```sh
-# Unit tests (no database, co-located in each package)
+# Unit tests (no database, parallel, 30s timeout per package, race detector)
 make test          # or: make test-unit
-go test $(go list ./... | grep -v /integration)
+# Equivalent to two Makefile steps:
+#   go test -timeout 30s -parallel $GOMAXPROCS -race … ./adapters/postgres/...
+#   go test -timeout 30s -parallel $GOMAXPROCS -race … $(other unit packages)
+
+# Postgres adapter unit tests only (sqlmock, 30s timeout, parallel)
+go test -timeout 30s -parallel 8 ./adapters/postgres/...
 
 # Integration tests (Docker Postgres, integration/ tree only)
 make test-integration
@@ -92,6 +286,7 @@ Before finalizing changes, verify:
 - Relevant tests pass for modified packages.
 - New logic has tests or a clear reason why tests were not added.
 - No accidental breaking change in API, CLI, or config surface.
+- New types respect SOLID (narrow ports, single-purpose handlers, no concrete adapter imports in controllers).
 
 ## Hexagonal Architecture
 
@@ -151,7 +346,7 @@ Handlers should depend on the **smallest port** that suffices (e.g. `CRUDHandler
 **Do**
 
 - Inject dependencies through constructors and `controllers.Deps`.
-- Keep ports small and purpose-specific (interface segregation).
+- See **SOLID Principles for Go** (especially ISP and DIP).
 - Use `context.Context` on port methods that perform I/O (`*Ctx` variants on `QueryExecutor`).
 - Put integration tests under `integration/` mirroring the production package layout.
 
