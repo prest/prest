@@ -1741,9 +1741,10 @@ func TestDisableCache(t *testing.T) {
 	if err := sc.Err(); err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
-	_, ok := postgres.GetStmtExported(pg).PrepareMap[`SELECT jsonb_agg(s) FROM (SELECT * FROM "TestCase") s`]
-	if ok {
-		t.Error("has query in cache")
+	for _, dbMap := range postgres.GetStmtExported(pg).PrepareMap {
+		if _, ok := dbMap[`SELECT jsonb_agg(s) FROM (SELECT * FROM "TestCase") s`]; ok {
+			t.Error("has query in cache")
+		}
 	}
 }
 

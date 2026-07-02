@@ -264,3 +264,25 @@ func TestQuery_WithStatementCache(t *testing.T) {
 	require.NoError(t, sc.Err())
 	require.NoError(t, mock.ExpectationsWereMet())
 }
+
+func TestQuery_WithStatementCachePerDatabase(t *testing.T) {
+	adapter, defaultMock, ctxMock := withSQLMocks(t)
+	adapter.getStmts().pgCache = true
+
+	sql := `SELECT json_agg\(s\) FROM \(SELECT 1\) s`
+	defaultPrep := defaultMock.ExpectPrepare(sql)
+	defaultPrep.ExpectQuery().WillReturnRows(sqlmock.NewRows([]string{"json_agg"}).AddRow([]byte(`[1]`)))
+	ctxPrep := ctxMock.ExpectPrepare(sql)
+	ctxPrep.ExpectQuery().WillReturnRows(sqlmock.NewRows([]string{"json_agg"}).AddRow([]byte(`[2]`)))
+
+	sc := adapter.Query("SELECT 1")
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `[1]`, string(sc.Bytes()))
+
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
+	sc = adapter.QueryCtx(ctx, "SELECT 1")
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `[2]`, string(sc.Bytes()))
+	require.NoError(t, defaultMock.ExpectationsWereMet())
+	require.NoError(t, ctxMock.ExpectationsWereMet())
+}

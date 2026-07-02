@@ -59,7 +59,7 @@ var groupRegex *regexp.Regexp
 // Stmt statement representation
 type Stmt struct {
 	Mtx        *sync.Mutex
-	PrepareMap map[string]*sql.Stmt
+	PrepareMap map[string]map[string]*sql.Stmt
 	pgCache    bool
 }
 
@@ -103,7 +103,7 @@ func (p *postgres) getStmts() *Stmt {
 	if p.stmts == nil {
 		p.stmts = &Stmt{
 			Mtx:        &sync.Mutex{},
-			PrepareMap: make(map[string]*sql.Stmt),
+			PrepareMap: make(map[string]map[string]*sql.Stmt),
 			pgCache:    p.cfg.PGCache,
 		}
 	}
@@ -126,11 +126,13 @@ func (p *postgres) GetStmt() *Stmt {
 // SQL passed here is assembled by the adapter from HTTP requests: identifiers and
 // operators are validated (ident.IsValid, GetQueryOperator) and filter values use
 // $n placeholders. pREST is a PostgREST-style query surface by design.
-func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt, err error) {
+func (s *Stmt) Prepare(dbKey string, db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt, err error) {
 	if s.pgCache && (tx == nil) {
 		var exists bool
 		s.Mtx.Lock()
-		statement, exists = s.PrepareMap[SQL]
+		if dbMap := s.PrepareMap[dbKey]; dbMap != nil {
+			statement, exists = dbMap[SQL]
+		}
 		s.Mtx.Unlock()
 		if exists {
 			return
@@ -148,18 +150,29 @@ func (s *Stmt) Prepare(db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt
 	}
 	if s.pgCache && (tx == nil) {
 		s.Mtx.Lock()
-		s.PrepareMap[SQL] = statement
+		if dbMap := s.PrepareMap[dbKey]; dbMap != nil {
+			if cached, ok := dbMap[SQL]; ok {
+				s.Mtx.Unlock()
+				_ = statement.Close()
+				return cached, nil
+			}
+		} else {
+			s.PrepareMap[dbKey] = make(map[string]*sql.Stmt)
+		}
+		s.PrepareMap[dbKey][SQL] = statement
 		s.Mtx.Unlock()
 	}
 	return
 }
 
 // PrepareContext statement with context for cancellation/deadline support.
-func (s *Stmt) PrepareContext(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt, err error) {
+func (s *Stmt) PrepareContext(ctx context.Context, dbKey string, db *sqlx.DB, tx *sql.Tx, SQL string) (statement *sql.Stmt, err error) {
 	if s.pgCache && (tx == nil) {
 		var exists bool
 		s.Mtx.Lock()
-		statement, exists = s.PrepareMap[SQL]
+		if dbMap := s.PrepareMap[dbKey]; dbMap != nil {
+			statement, exists = dbMap[SQL]
+		}
 		s.Mtx.Unlock()
 		if exists {
 			return
@@ -177,7 +190,16 @@ func (s *Stmt) PrepareContext(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQL 
 	}
 	if s.pgCache && (tx == nil) {
 		s.Mtx.Lock()
-		s.PrepareMap[SQL] = statement
+		if dbMap := s.PrepareMap[dbKey]; dbMap != nil {
+			if cached, ok := dbMap[SQL]; ok {
+				s.Mtx.Unlock()
+				_ = statement.Close()
+				return cached, nil
+			}
+		} else {
+			s.PrepareMap[dbKey] = make(map[string]*sql.Stmt)
+		}
+		s.PrepareMap[dbKey][SQL] = statement
 		s.Mtx.Unlock()
 	}
 	return
@@ -192,17 +214,17 @@ func init() {
 
 // Prepare statement func
 func (p *postgres) Prepare(db *sqlx.DB, SQL string) (stmt *sql.Stmt, err error) {
-	return p.getStmts().Prepare(db, nil, SQL)
+	return p.getStmts().Prepare(p.conn.CacheKeyForDB(db), db, nil, SQL)
 }
 
 // PrepareContext statement func
 func (p *postgres) PrepareContext(ctx context.Context, db *sqlx.DB, SQL string) (stmt *sql.Stmt, err error) {
-	return p.getStmts().PrepareContext(ctx, db, nil, SQL)
+	return p.getStmts().PrepareContext(ctx, p.conn.CacheKeyForDB(db), db, nil, SQL)
 }
 
 // PrepareTx statement func
 func (p *postgres) PrepareTx(tx *sql.Tx, SQL string) (stmt *sql.Stmt, err error) {
-	return p.getStmts().Prepare(nil, tx, SQL)
+	return p.getStmts().Prepare("", nil, tx, SQL)
 }
 
 // GetTransaction get transaction

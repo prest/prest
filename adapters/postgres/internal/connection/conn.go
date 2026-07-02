@@ -193,3 +193,19 @@ func (m *Manager) GetDatabase() string {
 	defer m.mu.RUnlock()
 	return m.currDatabase
 }
+
+// CacheKeyForDB returns a stable cache key for the given pool connection.
+func (m *Manager) CacheKeyForDB(db *sqlx.DB) string {
+	if db == nil {
+		return ""
+	}
+	p := m.getPool()
+	p.Mtx.RLock()
+	defer p.Mtx.RUnlock()
+	for uri, poolDB := range p.DB {
+		if poolDB == db {
+			return uri
+		}
+	}
+	return fmt.Sprintf("%p", db)
+}
