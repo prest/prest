@@ -121,14 +121,34 @@ type Prest struct {
 
 const defaultCfgFile = "./prest.toml"
 
-// Load configuration
+// Load reads pREST configuration from the TOML file named by PREST_CONF, or
+// ./prest.toml when that variable is unset. Environment variables with the
+// PREST_ prefix override file values (keys use underscores instead of dots).
+//
+// It populates a Prest via Parse, creates the queries directory when missing,
+// and when cache is enabled creates the cache storage directory when missing.
+// On success it configures cfg.Logger and the process-wide default logger via
+// setupLogger (level debug, overridable with PREST_LOG_LEVEL).
+//
+// If the config file is missing, Parse logs a warning and falls back to viper
+// defaults. Other Parse failures (unreadable file, unmarshal errors) are
+// returned. Load also returns an error when os.Stat or os.MkdirAll fails for
+// the queries path, or for the cache storage path when cache is enabled.
+//
+// Returns the populated *Prest and nil on success.
 func Load() (*Prest, error) {
 	v, configPath := viperCfg()
 	cfg := &Prest{}
-	Parse(v, cfg, configPath)
-	if _, err := os.Stat(cfg.QueriesPath); os.IsNotExist(err) {
-		if err = os.MkdirAll(cfg.QueriesPath, 0700); err != nil {
-			return nil, fmt.Errorf("create queries directory %q: %w", cfg.QueriesPath, err)
+	if err := Parse(v, cfg, configPath); err != nil {
+		return nil, err
+	}
+	if _, err := os.Stat(cfg.QueriesPath); err != nil {
+		if os.IsNotExist(err) {
+			if err = os.MkdirAll(cfg.QueriesPath, 0700); err != nil {
+				return nil, fmt.Errorf("create queries directory %q: %w", cfg.QueriesPath, err)
+			}
+		} else {
+			return nil, err
 		}
 	}
 
@@ -137,9 +157,13 @@ func Load() (*Prest, error) {
 		return setupLogger(cfg)
 	}
 
-	if _, err := os.Stat(cfg.Cache.StoragePath); os.IsNotExist(err) {
-		if err = os.MkdirAll(cfg.Cache.StoragePath, 0700); err != nil {
-			return nil, fmt.Errorf("create cache directory %q: %w", cfg.Cache.StoragePath, err)
+	if _, err := os.Stat(cfg.Cache.StoragePath); err != nil {
+		if os.IsNotExist(err) {
+			if err = os.MkdirAll(cfg.Cache.StoragePath, 0700); err != nil {
+				return nil, fmt.Errorf("create cache directory %q: %w", cfg.Cache.StoragePath, err)
+			}
+		} else {
+			return nil, err
 		}
 	}
 
@@ -237,6 +261,7 @@ func viperCfg() (*viper.Viper, string) {
 	hDir, err := homedir.Dir()
 	if err != nil {
 		slog.Error("could not find homedir", "err", err)
+		v.SetDefault("queries.location", filepath.Join(".", "queries"))
 	} else {
 		v.SetDefault("queries.location", filepath.Join(hDir, "queries"))
 	}
@@ -252,14 +277,15 @@ func getPrestConfFile(prestConf string) string {
 
 // Parse pREST config
 // todo: split config onto methods to simplify this
-func Parse(v *viper.Viper, cfg *Prest, configPath string) {
+func Parse(v *viper.Viper, cfg *Prest, configPath string) error {
 	err := v.ReadInConfig()
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			slog.Warn("file not found, falling back to default settings", "file", configPath)
 			cfg.PGSSLMode = "disable"
+		} else {
+			return fmt.Errorf("read config file %q: %w", configPath, err)
 		}
-		slog.Warn("read env config error", "err", err)
 	}
 
 	parseAuthConfig(v, cfg)
@@ -302,26 +328,24 @@ func Parse(v *viper.Viper, cfg *Prest, configPath string) {
 
 	// table access config
 	var tablesconf []TablesConf
-	err = v.UnmarshalKey("access.tables", &tablesconf)
-	if err != nil {
-		slog.Error("could not unmarshal access tables", "err", err)
+	if err = v.UnmarshalKey("access.tables", &tablesconf); err != nil {
+		return fmt.Errorf("unmarshal access.tables: %w", err)
 	}
 	cfg.AccessConf.Tables = tablesconf
 
 	var usersconf []UsersConf
-	err = v.UnmarshalKey("access.users", &usersconf)
-	if err != nil {
-		slog.Error("could not unmarshal access users", "err", err)
+	if err = v.UnmarshalKey("access.users", &usersconf); err != nil {
+		return fmt.Errorf("unmarshal access.users: %w", err)
 	}
 	cfg.AccessConf.Users = usersconf
 
 	// plugin middleware list config
 	var pluginMiddlewareConfig []PluginMiddleware
-	err = v.UnmarshalKey("pluginmiddlewarelist", &pluginMiddlewareConfig)
-	if err != nil {
-		slog.Error("could not unmarshal access plugin middleware list", "err", err)
+	if err = v.UnmarshalKey("pluginmiddlewarelist", &pluginMiddlewareConfig); err != nil {
+		return fmt.Errorf("unmarshal pluginmiddlewarelist: %w", err)
 	}
 	cfg.PluginMiddlewareList = pluginMiddlewareConfig
+	return nil
 }
 
 // parseDatabaseURL tries to get from URL the DB configs

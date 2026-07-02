@@ -4,10 +4,17 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
+
+func requireParse(t *testing.T, v *viper.Viper, cfg *Prest, configPath string) {
+	t.Helper()
+	require.NoError(t, Parse(v, cfg, configPath))
+}
 
 func TestLoad(t *testing.T) {
 	t.Setenv("PREST_CONF", "../testdata/prest.toml")
@@ -24,6 +31,63 @@ func TestLoad(t *testing.T) {
 	require.Equal(t, 60, cfg.HTTPTimeout)
 }
 
+func TestLoadMalformedConfig(t *testing.T) {
+	badConfig := filepath.Join(t.TempDir(), "prest.toml")
+	require.NoError(t, os.WriteFile(badConfig, []byte("this is not valid [[[toml"), 0600))
+
+	t.Setenv("PREST_CONF", badConfig)
+	_, err := Load()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "read config file")
+}
+
+func TestParseMalformedConfig(t *testing.T) {
+	badConfig := filepath.Join(t.TempDir(), "prest.toml")
+	require.NoError(t, os.WriteFile(badConfig, []byte("this is not valid [[[toml"), 0600))
+
+	t.Setenv("PREST_CONF", badConfig)
+	v, configPath := viperCfg()
+	cfg := &Prest{}
+	err := Parse(v, cfg, configPath)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "read config file")
+}
+
+func TestLoadStatErrors(t *testing.T) {
+	inaccessiblePath := func(t *testing.T) string {
+		t.Helper()
+		base := t.TempDir()
+		restricted := filepath.Join(base, "restricted")
+		require.NoError(t, os.Mkdir(restricted, 0700))
+		target := filepath.Join(restricted, "target")
+		require.NoError(t, os.Chmod(restricted, 0000))
+		t.Cleanup(func() { _ = os.Chmod(restricted, 0700) })
+		return target
+	}
+
+	t.Run("queries path permission denied", func(t *testing.T) {
+		t.Setenv("PREST_CONF", "../notfound.toml")
+		t.Setenv("PREST_QUERIES_LOCATION", inaccessiblePath(t))
+		t.Setenv("PREST_CACHE_ENABLED", "false")
+
+		_, err := Load()
+		require.Error(t, err)
+		require.ErrorIs(t, err, os.ErrPermission)
+	})
+
+	t.Run("cache storage path permission denied", func(t *testing.T) {
+		queriesDir := t.TempDir()
+		t.Setenv("PREST_CONF", "../notfound.toml")
+		t.Setenv("PREST_QUERIES_LOCATION", queriesDir)
+		t.Setenv("PREST_CACHE_ENABLED", "true")
+		t.Setenv("PREST_CACHE_STORAGEPATH", inaccessiblePath(t))
+
+		_, err := Load()
+		require.Error(t, err)
+		require.ErrorIs(t, err, os.ErrPermission)
+	})
+}
+
 func TestParse(t *testing.T) {
 	t.Run("no envs", func(t *testing.T) {
 		t.Setenv("PREST_CONF", "../notfound.toml")
@@ -33,7 +97,7 @@ func TestParse(t *testing.T) {
 		unsetEnvForTest(t, "PREST_PG_PASS")
 		cf := &Prest{}
 		v, configPath := viperCfg()
-		Parse(v, cf, configPath)
+		requireParse(t, v, cf, configPath)
 		require.Equal(t, 3000, cf.HTTPPort)
 		require.Equal(t, "prest", cf.PGDatabase)
 		require.Equal(t, "127.0.0.1", cf.PGHost)
@@ -51,7 +115,7 @@ func TestParse(t *testing.T) {
 		unsetEnvForTest(t, "PREST_PG_DATABASE")
 		v, configPath := viperCfg()
 		cfg := &Prest{}
-		Parse(v, cfg, configPath)
+		requireParse(t, v, cfg, configPath)
 		require.Equal(t, 3000, cfg.HTTPPort)
 		require.True(t, cfg.AccessConf.Restrict)
 		require.True(t, cfg.Cache.Enabled)
@@ -63,7 +127,7 @@ func TestParse(t *testing.T) {
 		os.Unsetenv("PREST_JWT_DEFAULT")
 		v, configPath := viperCfg()
 		cfg := &Prest{}
-		Parse(v, cfg, configPath)
+		requireParse(t, v, cfg, configPath)
 		require.Equal(t, 4000, cfg.HTTPPort)
 		require.True(t, cfg.EnableDefaultJWT)
 	})
@@ -73,7 +137,7 @@ func TestParse(t *testing.T) {
 		t.Setenv("PREST_JWT_DEFAULT", "false")
 		v, configPath := viperCfg()
 		cfg := &Prest{}
-		Parse(v, cfg, configPath)
+		requireParse(t, v, cfg, configPath)
 		require.Equal(t, 3000, cfg.HTTPPort)
 		require.False(t, cfg.EnableDefaultJWT)
 	})
@@ -82,7 +146,7 @@ func TestParse(t *testing.T) {
 		t.Setenv("PREST_CONF", "")
 		v, configPath := viperCfg()
 		cfg := &Prest{}
-		Parse(v, cfg, configPath)
+		requireParse(t, v, cfg, configPath)
 		require.Equal(t, 3000, cfg.HTTPPort)
 	})
 
@@ -90,7 +154,7 @@ func TestParse(t *testing.T) {
 		t.Setenv("PREST_JWT_KEY", "s3cr3t")
 		v, configPath := viperCfg()
 		cfg := &Prest{}
-		Parse(v, cfg, configPath)
+		requireParse(t, v, cfg, configPath)
 		require.Equal(t, "s3cr3t", cfg.JWTKey)
 		require.Equal(t, "HS256", cfg.JWTAlgo)
 	})
@@ -99,7 +163,7 @@ func TestParse(t *testing.T) {
 		t.Setenv("PREST_JWT_ALGO", "HS512")
 		v, configPath := viperCfg()
 		cfg := &Prest{}
-		Parse(v, cfg, configPath)
+		requireParse(t, v, cfg, configPath)
 		require.Equal(t, "HS512", cfg.JWTAlgo)
 	})
 
@@ -124,7 +188,7 @@ func TestParse(t *testing.T) {
 		t.Setenv("PREST_JWT_WELLKNOWNURL", serverWellKnown.URL)
 		v, configPath := viperCfg()
 		cfg := &Prest{}
-		Parse(v, cfg, configPath)
+		requireParse(t, v, cfg, configPath)
 		require.Equal(t, serverWellKnown.URL, cfg.JWTWellKnownURL)
 	})
 
@@ -132,7 +196,7 @@ func TestParse(t *testing.T) {
 		t.Setenv("PREST_JWT_JWKS", `{"keys":[{"kid":"lmjNOucrGdRiN7XlpWJbQRIzSeKBS7OD-92xrhch6kw","kty":"RSA","alg":"RS256","use":"sig","n":"9GPbUNJ_7dgq8k0eTbcCZtFMn-oTVpFHjzIi7nuyMm9TvIZNyu0q0O3buSIVTUWWhlakSgTp7hrRbldvxLmA4RSSs8oUw2Pm64q9oCdr0eXcnhL6mnfHASwpVed-aKMbM1Zlh1buDjPU0Ah_6D8sZaxqfOtMfrhT9LySbi91k2Hu16YJ6QK_RTj5BNjLZZSs2ns8-JdZKA-oL0RQwkEqO_QJrRvTWUhwguzpx4zACWc5zAQSWvDImbynH3N9L-rt2KoK3p2Zd0YZlCnZzK0iyYUHkVtTVixTFkYc-itceyZD64Z49q8vu478gIvu4dI8m3GIYeisZkKWBE5sjczvvw","e":"AQAB","x5c":["MIICmzCCAYMCBgGOLghSADANBgkqhkiG9w0BAQsFADARMQ8wDQYDVQQDDAZtYXN0ZXIwHhcNMjQwMzExMTQ1OTQxWhcNMzQwMzExMTUwMTIxWjARMQ8wDQYDVQQDDAZtYXN0ZXIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQD0Y9tQ0n/t2CryTR5NtwJm0Uyf6hNWkUePMiLue7Iyb1O8hk3K7SrQ7du5IhVNRZaGVqRKBOnuGtFuV2/EuYDhFJKzyhTDY+brir2gJ2vR5dyeEvqad8cBLClV535ooxszVmWHVu4OM9TQCH/oPyxlrGp860x+uFP0vJJuL3WTYe7XpgnpAr9FOPkE2MtllKzaezz4l1koD6gvRFDCQSo79AmtG9NZSHCC7OnHjMAJZznMBBJa8MiZvKcfc30v6u3YqgrenZl3RhmUKdnMrSLJhQeRW1NWLFMWRhz6K1x7JkPrhnj2ry+7jvyAi+7h0jybcYhh6KxmQpYETmyNzO+/AgMBAAEwDQYJKoZIhvcNAQELBQADggEBAAIDB54QwrWSQPou8UlGkpA8D3/Ws0ZGNiFutyIAQU0bzhzSB99AMsPl/4OJm5CGqpZMVyuLFgQHlMaArzeQJK7/8qN6piDZPP6A2lSRYuMJ/a8ciIVvjnepSUF+xx7PqeAnoarH8lxbdwhloBswnxn4iNcWTTMnxo73Ak9jpabj1m1a4e9+li6S8xCyA1AHxFXbjjAp5GxRvcUV2o3rMsDqdjM0IoU/+NNuCGtKApdTZNpFuk71AoKpM2/oxjuexEpOggyF30Pk5IdAgNtFMfD+pwcqzvSACbtKvk6VnSx4UtsFPWuizhWefWIkuV+7ml60NFMyD3eo28U9BQs2veU="],"x5t":"tUcTw0bM8ciXw9zIMlalEfyxdd8","x5t#S256":"eF-XsrHWa6gw8qC4W8RXJgA49xvac_7V-Tz7fdpS7ZM"},{"kid":"V3rRzf_j1beZjEmQnDeT8r8ZVnXpjW1Gk3635CTCEGk","kty":"RSA","alg":"RSA-OAEP","use":"enc","n":"1q1Iz-eyhnCWCBRKgq0xKm6cF2zHAi_a-L99OdwgnUgoGfut5bBTU2hGx9R1IGKn0loDjICtU64DVFpOaT7jY7oIG4BsQN3Et5H6O3XlVim5NQgMYVC6hKAreqnnVylUk-XfVvrQOotVkGfMFdARuBaLx1ubFxIHUONi2Mjgl2nZ8mmKg_GCsd5uKfJJ965zqSQu1CFn26YccTPp2doih4rykTGPVJdL5PVp3z4t9rTlahHbgCvv3E50yVK7LCNgtS9nmcZbD0meLqIZi3MoV0dBB_9C-qrEsevAIlPuXUmwtcbyDXOb1m7Xq_MPV_EASzoPYYjmk3k09zJ_p1EUTQ","e":"AQAB","x5c":["MIICmzCCAYMCBgGOLghSlzANBgkqhkiG9w0BAQsFADARMQ8wDQYDVQQDDAZtYXN0ZXIwHhcNMjQwMzExMTQ1OTQxWhcNMzQwMzExMTUwMTIxWjARMQ8wDQYDVQQDDAZtYXN0ZXIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDWrUjP57KGcJYIFEqCrTEqbpwXbMcCL9r4v3053CCdSCgZ+63lsFNTaEbH1HUgYqfSWgOMgK1TrgNUWk5pPuNjuggbgGxA3cS3kfo7deVWKbk1CAxhULqEoCt6qedXKVST5d9W+tA6i1WQZ8wV0BG4FovHW5sXEgdQ42LYyOCXadnyaYqD8YKx3m4p8kn3rnOpJC7UIWfbphxxM+nZ2iKHivKRMY9Ul0vk9WnfPi32tOVqEduAK+/cTnTJUrssI2C1L2eZxlsPSZ4uohmLcyhXR0EH/0L6qsSx68AiU+5dSbC1xvINc5vWbter8w9X8QBLOg9hiOaTeTT3Mn+nURRNAgMBAAEwDQYJKoZIhvcNAQELBQADggEBAIKBZNe4GmyfqRW6Ee8ai1umbstAmyK3W1kP2i0xxINTlvY2rwblV8UCrdyi3laD7zvZy1midZmpKqtZqWpiNigeZ5aUt76paYvdSl5TAuvZGDGoEAhmmECbnDSQKLp36rCn7NlrgiTDfZZ2PvIKZ3cXClzqXLF/iC6uGiKOgY5yOFOa5QgsfItpJmmxHtTzrRF70RVsbZCexB1Lt4bcId6Y3x2w7JNUjKIhf1RZ3QZx8+3xBM4cJ83h2J4nE0+IlFeAJL3VLGdeOk+z+FGMu2mYkxJwkxd9Wl2ubqrRcNy0t61Bgp3s40BgD10pzvawTXl7lEgabc/jzN2R0lcXmLo="],"x5t":"n5Y_Obidr330txi13j50zHzVbfg","x5t#S256":"f-Hrw_t_qUq86Ux0J2EckWVycuM3L_IjdOK6DW0DFoc"}]}`)
 		v, configPath := viperCfg()
 		cfg := &Prest{}
-		Parse(v, cfg, configPath)
+		requireParse(t, v, cfg, configPath)
 		require.Equal(t, `{"keys":[{"kid":"lmjNOucrGdRiN7XlpWJbQRIzSeKBS7OD-92xrhch6kw","kty":"RSA","alg":"RS256","use":"sig","n":"9GPbUNJ_7dgq8k0eTbcCZtFMn-oTVpFHjzIi7nuyMm9TvIZNyu0q0O3buSIVTUWWhlakSgTp7hrRbldvxLmA4RSSs8oUw2Pm64q9oCdr0eXcnhL6mnfHASwpVed-aKMbM1Zlh1buDjPU0Ah_6D8sZaxqfOtMfrhT9LySbi91k2Hu16YJ6QK_RTj5BNjLZZSs2ns8-JdZKA-oL0RQwkEqO_QJrRvTWUhwguzpx4zACWc5zAQSWvDImbynH3N9L-rt2KoK3p2Zd0YZlCnZzK0iyYUHkVtTVixTFkYc-itceyZD64Z49q8vu478gIvu4dI8m3GIYeisZkKWBE5sjczvvw","e":"AQAB","x5c":["MIICmzCCAYMCBgGOLghSADANBgkqhkiG9w0BAQsFADARMQ8wDQYDVQQDDAZtYXN0ZXIwHhcNMjQwMzExMTQ1OTQxWhcNMzQwMzExMTUwMTIxWjARMQ8wDQYDVQQDDAZtYXN0ZXIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQD0Y9tQ0n/t2CryTR5NtwJm0Uyf6hNWkUePMiLue7Iyb1O8hk3K7SrQ7du5IhVNRZaGVqRKBOnuGtFuV2/EuYDhFJKzyhTDY+brir2gJ2vR5dyeEvqad8cBLClV535ooxszVmWHVu4OM9TQCH/oPyxlrGp860x+uFP0vJJuL3WTYe7XpgnpAr9FOPkE2MtllKzaezz4l1koD6gvRFDCQSo79AmtG9NZSHCC7OnHjMAJZznMBBJa8MiZvKcfc30v6u3YqgrenZl3RhmUKdnMrSLJhQeRW1NWLFMWRhz6K1x7JkPrhnj2ry+7jvyAi+7h0jybcYhh6KxmQpYETmyNzO+/AgMBAAEwDQYJKoZIhvcNAQELBQADggEBAAIDB54QwrWSQPou8UlGkpA8D3/Ws0ZGNiFutyIAQU0bzhzSB99AMsPl/4OJm5CGqpZMVyuLFgQHlMaArzeQJK7/8qN6piDZPP6A2lSRYuMJ/a8ciIVvjnepSUF+xx7PqeAnoarH8lxbdwhloBswnxn4iNcWTTMnxo73Ak9jpabj1m1a4e9+li6S8xCyA1AHxFXbjjAp5GxRvcUV2o3rMsDqdjM0IoU/+NNuCGtKApdTZNpFuk71AoKpM2/oxjuexEpOggyF30Pk5IdAgNtFMfD+pwcqzvSACbtKvk6VnSx4UtsFPWuizhWefWIkuV+7ml60NFMyD3eo28U9BQs2veU="],"x5t":"tUcTw0bM8ciXw9zIMlalEfyxdd8","x5t#S256":"eF-XsrHWa6gw8qC4W8RXJgA49xvac_7V-Tz7fdpS7ZM"},{"kid":"V3rRzf_j1beZjEmQnDeT8r8ZVnXpjW1Gk3635CTCEGk","kty":"RSA","alg":"RSA-OAEP","use":"enc","n":"1q1Iz-eyhnCWCBRKgq0xKm6cF2zHAi_a-L99OdwgnUgoGfut5bBTU2hGx9R1IGKn0loDjICtU64DVFpOaT7jY7oIG4BsQN3Et5H6O3XlVim5NQgMYVC6hKAreqnnVylUk-XfVvrQOotVkGfMFdARuBaLx1ubFxIHUONi2Mjgl2nZ8mmKg_GCsd5uKfJJ965zqSQu1CFn26YccTPp2doih4rykTGPVJdL5PVp3z4t9rTlahHbgCvv3E50yVK7LCNgtS9nmcZbD0meLqIZi3MoV0dBB_9C-qrEsevAIlPuXUmwtcbyDXOb1m7Xq_MPV_EASzoPYYjmk3k09zJ_p1EUTQ","e":"AQAB","x5c":["MIICmzCCAYMCBgGOLghSlzANBgkqhkiG9w0BAQsFADARMQ8wDQYDVQQDDAZtYXN0ZXIwHhcNMjQwMzExMTQ1OTQxWhcNMzQwMzExMTUwMTIxWjARMQ8wDQYDVQQDDAZtYXN0ZXIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDWrUjP57KGcJYIFEqCrTEqbpwXbMcCL9r4v3053CCdSCgZ+63lsFNTaEbH1HUgYqfSWgOMgK1TrgNUWk5pPuNjuggbgGxA3cS3kfo7deVWKbk1CAxhULqEoCt6qedXKVST5d9W+tA6i1WQZ8wV0BG4FovHW5sXEgdQ42LYyOCXadnyaYqD8YKx3m4p8kn3rnOpJC7UIWfbphxxM+nZ2iKHivKRMY9Ul0vk9WnfPi32tOVqEduAK+/cTnTJUrssI2C1L2eZxlsPSZ4uohmLcyhXR0EH/0L6qsSx68AiU+5dSbC1xvINc5vWbter8w9X8QBLOg9hiOaTeTT3Mn+nURRNAgMBAAEwDQYJKoZIhvcNAQELBQADggEBAIKBZNe4GmyfqRW6Ee8ai1umbstAmyK3W1kP2i0xxINTlvY2rwblV8UCrdyi3laD7zvZy1midZmpKqtZqWpiNigeZ5aUt76paYvdSl5TAuvZGDGoEAhmmECbnDSQKLp36rCn7NlrgiTDfZZ2PvIKZ3cXClzqXLF/iC6uGiKOgY5yOFOa5QgsfItpJmmxHtTzrRF70RVsbZCexB1Lt4bcId6Y3x2w7JNUjKIhf1RZ3QZx8+3xBM4cJ83h2J4nE0+IlFeAJL3VLGdeOk+z+FGMu2mYkxJwkxd9Wl2ubqrRcNy0t61Bgp3s40BgD10pzvawTXl7lEgabc/jzN2R0lcXmLo="],"x5t":"n5Y_Obidr330txi13j50zHzVbfg","x5t#S256":"f-Hrw_t_qUq86Ux0J2EckWVycuM3L_IjdOK6DW0DFoc"}]}`, cfg.JWTJWKS)
 	})
 
@@ -140,7 +204,7 @@ func TestParse(t *testing.T) {
 		t.Setenv("PREST_JSON_AGG_TYPE", "invalid")
 		v, configPath := viperCfg()
 		cfg := &Prest{}
-		Parse(v, cfg, configPath)
+		requireParse(t, v, cfg, configPath)
 		require.Equal(t, jsonAggDefault, cfg.JSONAggType)
 	})
 
@@ -148,7 +212,7 @@ func TestParse(t *testing.T) {
 		t.Setenv("PREST_JSON_AGG_TYPE", jsonAgg)
 		v, configPath := viperCfg()
 		cfg := &Prest{}
-		Parse(v, cfg, configPath)
+		requireParse(t, v, cfg, configPath)
 		require.Equal(t, jsonAgg, cfg.JSONAggType)
 	})
 
@@ -156,7 +220,7 @@ func TestParse(t *testing.T) {
 		t.Setenv("PREST_JSON_AGG_TYPE", jsonAggDefault)
 		v, configPath := viperCfg()
 		cfg := &Prest{}
-		Parse(v, cfg, configPath)
+		requireParse(t, v, cfg, configPath)
 		require.Equal(t, jsonAggDefault, cfg.JSONAggType)
 	})
 }
@@ -237,7 +301,7 @@ func TestDatabaseURL(t *testing.T) {
 		t.Setenv("PREST_PG_URL", "postgresql://user:pass@localhost:1234/mydatabase/?sslmode=disable")
 		v, configPath := viperCfg()
 		cfg := &Prest{}
-		Parse(v, cfg, configPath)
+		requireParse(t, v, cfg, configPath)
 		require.Equal(t, "mydatabase", cfg.PGDatabase)
 		require.Equal(t, "localhost", cfg.PGHost)
 		require.Equal(t, 1234, cfg.PGPort)
@@ -250,7 +314,7 @@ func TestDatabaseURL(t *testing.T) {
 		t.Setenv("DATABASE_URL", "postgresql://cloud:cloudPass@localhost:5432/CloudDatabase/?sslmode=disable")
 		v, configPath := viperCfg()
 		cfg := &Prest{}
-		Parse(v, cfg, configPath)
+		requireParse(t, v, cfg, configPath)
 		require.Equal(t, "CloudDatabase", cfg.PGDatabase)
 		require.Equal(t, 5432, cfg.PGPort)
 		require.Equal(t, "cloud", cfg.PGUser)
@@ -266,7 +330,7 @@ func TestHTTPPort(t *testing.T) {
 		t.Setenv("PORT", "8080")
 		v, configPath := viperCfg()
 		cfg := &Prest{}
-		Parse(v, cfg, configPath)
+		requireParse(t, v, cfg, configPath)
 		require.Equal(t, 8080, cfg.HTTPPort)
 	})
 
@@ -277,7 +341,7 @@ func TestHTTPPort(t *testing.T) {
 		t.Setenv("PREST_HTTP_PORT", "3030")
 		v, configPath := viperCfg()
 		cfg := &Prest{}
-		Parse(v, cfg, configPath)
+		requireParse(t, v, cfg, configPath)
 		require.Equal(t, 3030, cfg.HTTPPort)
 	})
 
@@ -289,7 +353,7 @@ func TestHTTPPort(t *testing.T) {
 		t.Setenv("PREST_HTTP_PORT", "3000")
 		v, configPath := viperCfg()
 		cfg := &Prest{}
-		Parse(v, cfg, configPath)
+		requireParse(t, v, cfg, configPath)
 		require.Equal(t, 8080, cfg.HTTPPort)
 	})
 }
@@ -358,7 +422,7 @@ func Test_Auth(t *testing.T) {
 
 	v, configPath := viperCfg()
 	cfg := &Prest{}
-	Parse(v, cfg, configPath)
+	requireParse(t, v, cfg, configPath)
 	require.Equal(t, false, cfg.AuthEnabled)
 	require.Equal(t, "public", cfg.AuthSchema)
 	require.Equal(t, "prest_users", cfg.AuthTable)
@@ -379,7 +443,7 @@ func Test_ExposeDataConfig(t *testing.T) {
 
 	v, configPath := viperCfg()
 	cfg := &Prest{}
-	Parse(v, cfg, configPath)
+	requireParse(t, v, cfg, configPath)
 	require.Equal(t, true, cfg.ExposeConf.Enabled)
 	require.Equal(t, false, cfg.ExposeConf.DatabaseListing)
 	require.Equal(t, false, cfg.ExposeConf.SchemaListing)
