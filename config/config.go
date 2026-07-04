@@ -158,10 +158,12 @@ func Load() (*Prest, error) {
 	return setupLogger(cfg)
 }
 
-// ensureDir creates a directory if it does not exist
-// it also tests if the directory is writable by writing a test file and removing it
+// ensureDir ensures path exists as a writable directory.
+// It creates missing directories, rejects non-directory paths, and verifies
+// writability with a temporary test file.
 func ensureDir(path string) error {
-	if _, err := os.Stat(path); err != nil {
+	info, err := os.Stat(path)
+	if err != nil {
 		if os.IsNotExist(err) {
 			if err = os.MkdirAll(path, 0700); err != nil {
 				return fmt.Errorf("create directory %q: %w", path, err)
@@ -169,17 +171,22 @@ func ensureDir(path string) error {
 		} else {
 			return err
 		}
+	} else if !info.IsDir() {
+		return fmt.Errorf("path %q is not a directory", path)
+	}
+
+	testFile := filepath.Join(path, ".prest-write-test")
+	if err := os.WriteFile(testFile, []byte("test"), 0600); err != nil {
+		return fmt.Errorf("directory %q is not writable: %w", path, err)
+	}
+	if err := os.Remove(testFile); err != nil {
+		return fmt.Errorf("directory %q is not writable: %w", path, err)
 	}
 	return nil
 }
 
-// ensureCacheStorage ensures that the cache storage directory exists and is writable
-// if it does not exist, it creates it
-// if it is not writable, it logs a warning and disables cache
-// if it is writable, it writes a test file to the directory and removes it
-// if the test file is not writable, it logs a warning and disables cache
-// if the test file is writable, it returns
-// if the test file is not writable, it logs a warning and disables cache
+// ensureCacheStorage ensures the cache storage directory exists and is writable.
+// On failure it tries the default path, then disables cache.
 func ensureCacheStorage(cfg *Prest) {
 	configuredPath := cfg.Cache.StoragePath
 	err := ensureDir(configuredPath)
@@ -577,12 +584,7 @@ func loadCacheConfig(v *viper.Viper, cfg *Prest) {
 	cfg.Cache.StoragePath = v.GetString("cache.storagepath")
 	cfg.Cache.SufixFile = v.GetString("cache.sufixfile")
 
-	// cache endpoints config
-	var cacheendpoints = []cache.Endpoint{}
-	if err := v.UnmarshalKey("cache.endpoints", &cacheendpoints); err != nil {
-		slog.Warn("config key invalid, using default", "key", "cache.endpoints", "err", err)
-	}
-	cfg.Cache.Endpoints = cacheendpoints
+	cfg.Cache.Endpoints = unmarshalKeyOrZero[[]cache.Endpoint](v, "cache.endpoints")
 }
 
 func parseAuthConfig(v *viper.Viper, cfg *Prest) {
