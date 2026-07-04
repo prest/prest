@@ -68,6 +68,7 @@ var (
 	_ adapters.DatabaseConnector = (*postgres)(nil)
 	_ adapters.DatabaseAccessor  = (*postgres)(nil)
 	_ adapters.DatabasePinger    = (*postgres)(nil)
+	_ adapters.ReadinessChecker  = (*postgres)(nil)
 )
 
 // New creates a Postgres adapter without connecting.
@@ -102,6 +103,46 @@ func (p *postgres) Ping(ctx context.Context) error {
 		return err
 	}
 	return db.PingContext(ctx)
+}
+
+// PingAll verifies the default and all registered database connections are alive.
+func (p *postgres) PingAll(ctx context.Context) error {
+	if err := p.Ping(ctx); err != nil {
+		return err
+	}
+	if !config.HasDatabaseRegistry(p.cfg) {
+		return nil
+	}
+	for _, dbConf := range p.cfg.Databases {
+		conn, err := p.conn.AddDatabaseToPool(dbConf.Alias)
+		if err != nil {
+			return err
+		}
+		if err := conn.PingContext(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// IsRegistered reports whether alias is a configured database registry entry.
+func (p *postgres) IsRegistered(alias string) bool {
+	if !config.HasDatabaseRegistry(p.cfg) {
+		return true
+	}
+	_, ok := config.ProfileByAlias(p.cfg, alias)
+	return ok
+}
+
+// PhysicalName resolves a registry alias to its physical database name.
+func (p *postgres) PhysicalName(alias string) string {
+	if conf, ok := config.ProfileByAlias(p.cfg, alias); ok && conf.Database != "" {
+		return conf.Database
+	}
+	if alias == "" {
+		return p.cfg.PGDatabase
+	}
+	return alias
 }
 
 func (p *postgres) getStmts() *Stmt {
@@ -1670,43 +1711,35 @@ func GetQueryOperator(op string) (string, error) {
 }
 
 // TablePermissions get tables permissions based in prest configuration
-func (adapter *postgres) TablePermissions(table string, op string, userName string) (access bool) {
+func (adapter *postgres) TablePermissions(database, schema, table, op, userName string) (access bool) {
 	restrict := adapter.cfg.AccessConf.Restrict
 	if !restrict {
 		return true
 	}
 
-	// ignore table loop
 	for _, ignoreT := range adapter.cfg.AccessConf.IgnoreTable {
 		if ignoreT == table {
 			return true
 		}
 	}
 
-	tables := adapter.cfg.AccessConf.Tables
-	access = false
-	for _, t := range tables {
-		if t.Name == table {
-			access = slices.Contains(t.Permissions, op)
-			break
-		}
+	if t, ok := matchTableConf(adapter.cfg.AccessConf.Tables, database, schema, table); ok {
+		access = slices.Contains(t.Permissions, op)
+	} else {
+		access = false
 	}
 
 	if userName == "" {
 		return access
 	}
 
-	// currently, access is granted to all users based on the table settings.
-	// if it is later discovered that there are specific permission settings for an individual user,
-	// then the latter settings should be applied.
 	users := adapter.cfg.AccessConf.Users
 	for _, u := range users {
-		if u.Name == userName {
-			for _, t := range u.Tables {
-				if t.Name == table {
-					return slices.Contains(t.Permissions, op)
-				}
-			}
+		if u.Name != userName {
+			continue
+		}
+		if t, ok := matchTableConf(u.Tables, database, schema, table); ok {
+			return slices.Contains(t.Permissions, op)
 		}
 	}
 	return access
@@ -1751,16 +1784,13 @@ func matchTableConf(tables []config.TablesConf, database, schema, table string) 
 // Returns:
 //   - fields: A slice of strings representing the fields the user is allowed to access.
 //     If no specific permissions are found, it defaults to returning all fields ("*").
-func (adapter *postgres) fieldsByPermission(table, operation, userName string) (fields []string) {
+func (adapter *postgres) fieldsByPermission(database, schema, table, operation, userName string) (fields []string) {
 	fields = []string{"*"}
-	confTables := adapter.cfg.AccessConf.Tables
 
-	for _, cfgTable := range confTables {
-		if cfgTable.Name == table {
-			for _, perm := range cfgTable.Permissions {
-				if perm == operation {
-					fields = cfgTable.Fields
-				}
+	if t, ok := matchTableConf(adapter.cfg.AccessConf.Tables, database, schema, table); ok {
+		for _, perm := range t.Permissions {
+			if perm == operation {
+				fields = t.Fields
 			}
 		}
 	}
@@ -1769,16 +1799,14 @@ func (adapter *postgres) fieldsByPermission(table, operation, userName string) (
 		return
 	}
 
-	// individual user
 	users := adapter.cfg.AccessConf.Users
 	for _, u := range users {
-		if u.Name == userName {
-			for _, t := range u.Tables {
-				if t.Name == table &&
-					slices.Contains(t.Permissions, operation) {
-					fields = t.Fields
-				}
-			}
+		if u.Name != userName {
+			continue
+		}
+		if t, ok := matchTableConf(u.Tables, database, schema, table); ok &&
+			slices.Contains(t.Permissions, operation) {
+			fields = t.Fields
 		}
 	}
 
@@ -1805,7 +1833,7 @@ func intersection(set, other []string) (intersection []string) {
 }
 
 // FieldsPermissions get fields permissions based in prest configuration
-func (adapter *postgres) FieldsPermissions(r *http.Request, table string, op string, userName string) (fields []string, err error) {
+func (adapter *postgres) FieldsPermissions(r *http.Request, database, schema, table, op, userName string) (fields []string, err error) {
 	cols, err := columnsByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("error on parse columns from request: %s", err)
@@ -1820,7 +1848,7 @@ func (adapter *postgres) FieldsPermissions(r *http.Request, table string, op str
 		fields = []string{"*"}
 		return
 	}
-	allowedFields := adapter.fieldsByPermission(table, op, userName)
+	allowedFields := adapter.fieldsByPermission(database, schema, table, op, userName)
 	if containsAsterisk(allowedFields) {
 		fields = []string{"*"}
 		if len(cols) > 0 {

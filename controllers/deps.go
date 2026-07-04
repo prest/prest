@@ -85,10 +85,7 @@ type Handlers struct {
 
 // NewHandlers constructs handlers from dependencies.
 func NewHandlers(deps Deps) *Handlers {
-	checks := DefaultCheckList
-	if pinger, ok := deps.Executor.(adapters.DatabasePinger); ok {
-		checks = CheckList{CheckDBHealth(pinger.Ping)}
-	}
+	checks := DefaultCheckList(deps.Pinger)
 	return &Handlers{
 		Auth:    NewAuthHandler(deps.Executor, deps.Auth),
 		Catalog: NewCatalogHandler(deps),

@@ -1448,7 +1448,7 @@ func TestTablePermissions(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		p := testCfg.Adapter.TablePermissions(tc.table, tc.permission, tc.userName)
+		p := testCfg.Adapter.TablePermissions("", "public", tc.table, tc.permission, tc.userName)
 		if p != tc.out {
 			t.Errorf("expected %v, got %v", tc.out, p)
 		}
@@ -1476,7 +1476,7 @@ func TestRestrictFalse(t *testing.T) {
 		t.Errorf("expected no errors on NewRequest, but got: %v", err)
 	}
 
-	fields, err := testCfg.Adapter.FieldsPermissions(r, "test_list_only_id", "read", "")
+	fields, err := testCfg.Adapter.FieldsPermissions(r, "", "public", "test_list_only_id", "read", "")
 	if err != nil {
 		t.Errorf("expected no errors, but got %v", err)
 	}
@@ -1485,7 +1485,7 @@ func TestRestrictFalse(t *testing.T) {
 	}
 
 	t.Log("Restrict disabled")
-	p := testCfg.Adapter.TablePermissions("test_readonly_access", "delete", "")
+	p := testCfg.Adapter.TablePermissions("", "public", "test_readonly_access", "delete", "")
 	if !p {
 		t.Errorf("expected %v, got: %v", p, !p)
 	}
@@ -2854,7 +2854,7 @@ func TestFieldsByPermission(t *testing.T) {
 			cfg.AccessConf.Tables = tt.tablesConf
 			cfg.AccessConf.Users = tt.usersConf
 
-			gotFields := postgres.FieldsByPermissionExported(postgres.New(&cfg), tt.table, tt.op, tt.userName)
+			gotFields := postgres.FieldsByPermissionExported(postgres.New(&cfg), "", "public", tt.table, tt.op, tt.userName)
 			if !reflect.DeepEqual(gotFields, tt.wantFields) {
 				t.Errorf("postgres.FieldsByPermissionExported() = %v, want %v", gotFields, tt.wantFields)
 			}

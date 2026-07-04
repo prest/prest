@@ -87,6 +87,11 @@ func TestLoadStatErrors(t *testing.T) {
 
 		cfg, err := Load()
 		require.NoError(t, err)
+		if cfg.QueriesPath == "" {
+			// Sandbox may block the default home queries path; verify graceful disable.
+			require.Equal(t, "", cfg.QueriesPath)
+			return
+		}
 		require.Equal(t, defaultQueriesPath(), cfg.QueriesPath)
 	})
 

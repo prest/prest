@@ -809,14 +809,13 @@ func TestSelectInsertDeleteUpdateSQL(t *testing.T) {
 }
 
 func TestPhysicalNameWithRegistry(t *testing.T) {
-	withPrestConf(t, &config.Prest{
+	adapter := testAdapter(&config.Prest{
 		PGDatabase: "legacy-db",
 		Databases: []config.DatabaseConf{
 			{Alias: "tenant-a", Database: "app_a"},
 			{Alias: "tenant-b", Database: "app_b", URL: "postgres://u:p@host:5432/app_b"},
 		},
 	})
-	adapter := testAdapter()
 
 	require.Equal(t, "app_a", adapter.PhysicalName("tenant-a"))
 	require.Equal(t, "app_b", adapter.PhysicalName("tenant-b"))
@@ -825,31 +824,29 @@ func TestPhysicalNameWithRegistry(t *testing.T) {
 }
 
 func TestSelectSQLUsesPhysicalName(t *testing.T) {
-	withPrestConf(t, &config.Prest{
+	adapter := testAdapter(&config.Prest{
 		Databases: []config.DatabaseConf{
 			{Alias: "tenant-a", Database: "app_a"},
 		},
 	})
-	adapter := testAdapter()
 	sql := adapter.SelectSQL("SELECT", "tenant-a", "public", "users")
 	require.Contains(t, sql, `"public"."users"`)
 	require.NotContains(t, sql, `"app_a"`)
 }
 
 func TestIsRegistered(t *testing.T) {
-	withPrestConf(t, &config.Prest{
+	adapter := testAdapter(&config.Prest{
 		Databases: []config.DatabaseConf{{Alias: "tenant-a", Database: "app_a"}},
 	})
-	adapter := testAdapter()
 	require.True(t, adapter.IsRegistered("tenant-a"))
 	require.False(t, adapter.IsRegistered("unknown"))
 
-	withPrestConf(t, defaultTestConf())
-	require.True(t, adapter.IsRegistered("anything"))
+	legacyAdapter := testAdapter(defaultTestConf())
+	require.True(t, legacyAdapter.IsRegistered("anything"))
 }
 
 func TestTablePermissionsTenantPrecedence(t *testing.T) {
-	withPrestConf(t, &config.Prest{
+	adapter := testAdapter(&config.Prest{
 		AccessConf: config.AccessConf{
 			Restrict: true,
 			Tables: []config.TablesConf{
@@ -859,7 +856,6 @@ func TestTablePermissionsTenantPrecedence(t *testing.T) {
 			},
 		},
 	})
-	adapter := testAdapter()
 
 	require.True(t, adapter.TablePermissions("tenant-a", "public", "users", "delete", ""))
 	require.False(t, adapter.TablePermissions("tenant-a", "public", "users", "read", ""))
@@ -900,7 +896,7 @@ func TestTablePermissionsUnrestrict(t *testing.T) {
 	cfg.AccessConf.Restrict = false
 	adapter := testAdapter(cfg)
 
-	got := adapter.TablePermissions("any_table", "read", "")
+	got := adapter.TablePermissions("", "", "any_table", "read", "")
 	require.True(t, got)
 }
 
@@ -927,25 +923,25 @@ func TestFieldsPermissions(t *testing.T) {
 
 	req, err = http.NewRequest(http.MethodGet, "/public/test?_select=name", nil)
 	require.NoError(t, err)
-	fields, err = adapter.FieldsPermissions(req, "test_readonly_access", "read", "")
+	fields, err = adapter.FieldsPermissions(req, "", "public", "test_readonly_access", "read", "")
 	require.NoError(t, err)
 	require.Equal(t, []string{"name"}, fields)
 
 	req, err = http.NewRequest(http.MethodGet, "/public/test", nil)
 	require.NoError(t, err)
-	fields, err = adapter.FieldsPermissions(req, "test_readonly_access", "read", "")
+	fields, err = adapter.FieldsPermissions(req, "", "public", "test_readonly_access", "read", "")
 	require.NoError(t, err)
 	require.Equal(t, []string{"*"}, fields)
 
 	req, err = http.NewRequest(http.MethodGet, "/public/test?_select=max:age&_groupby=status", nil)
 	require.NoError(t, err)
-	fields, err = adapter.FieldsPermissions(req, "test_readonly_access", "read", "")
+	fields, err = adapter.FieldsPermissions(req, "", "public", "test_readonly_access", "read", "")
 	require.NoError(t, err)
 	require.Equal(t, []string{`MAX("age")`}, fields)
 
 	req, err = http.NewRequest(http.MethodGet, "/public/test", nil)
 	require.NoError(t, err)
-	fields, err = adapter.FieldsPermissions(req, "no_user_write_table", "write", "foo_read")
+	fields, err = adapter.FieldsPermissions(req, "", "public", "no_user_write_table", "write", "foo_read")
 	require.NoError(t, err)
 	require.Equal(t, []string{"name"}, fields)
 }
@@ -953,13 +949,13 @@ func TestFieldsPermissions(t *testing.T) {
 func TestFieldsByPermission(t *testing.T) {
 	adapter := testAdapter(permissionTestConf())
 
-	fields := adapter.fieldsByPermission("test_fields_access", "read", "")
+	fields := adapter.fieldsByPermission("", "public", "test_fields_access", "read", "")
 	require.Equal(t, []string{"name", "surname"}, fields)
 
-	fields = adapter.fieldsByPermission("test_write_and_delete_access", "read", "foo_read")
+	fields = adapter.fieldsByPermission("", "public", "test_write_and_delete_access", "read", "foo_read")
 	require.Equal(t, []string{"*"}, fields)
 
-	fields = adapter.fieldsByPermission("no_user_write_table", "write", "foo_read")
+	fields = adapter.fieldsByPermission("", "public", "no_user_write_table", "write", "foo_read")
 	require.Equal(t, []string{"name"}, fields)
 }
 

@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers"
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/testutils"
@@ -18,10 +17,10 @@ func TestMultiClusterSelect(t *testing.T) {
 		t.Skip("secondary postgres cluster not configured")
 	}
 
-	helpers.LoadMultiClusterConfig(t)
+	cfg := helpers.LoadMultiClusterConfig(t)
 	defer func() { helpers.LoadTestConfig(t) }()
 
-	h := controllers.NewHandlersFromConfig(config.PrestConf)
+	h := controllers.NewHandlersFromConfig(cfg)
 	router := mux.NewRouter()
 	router.HandleFunc("/{database}/{schema}/{table}", helpers.WithHTTPTimeout(h.CRUD.Select)).Methods("GET")
 	server := httptest.NewServer(router)

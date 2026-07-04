@@ -76,11 +76,19 @@ func SecondaryClusterHost() string {
 }
 
 // LoadMultiClusterConfig loads the multi-cluster test configuration.
-func LoadMultiClusterConfig(t *testing.T) {
+func LoadMultiClusterConfig(t *testing.T) *config.Prest {
 	t.Helper()
 	t.Setenv("PREST_CONF", filepath.Join(TestdataDir(), "prest_multicluster.toml"))
-	config.Load()
-	postgres.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("load multi-cluster config: %v", err)
+	}
+	pg := postgres.New(cfg)
+	if err := postgres.Connect(pg); err != nil {
+		t.Fatalf("connect multi-cluster config: %v", err)
+	}
+	cfg.Adapter = pg
+	return cfg
 }
 
 // LoadTestConfig loads application config and connects to the test database.

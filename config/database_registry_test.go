@@ -27,7 +27,7 @@ func TestParseDatabaseRegistry_EnvIndexed(t *testing.T) {
 	t.Setenv("DATABASE_URL_2", "postgres://user:pass@cluster-b.example.com:5432/app_b?sslmode=disable")
 
 	cfg := &Prest{}
-	parseDBConfig(cfg)
+	parseDBConfig(viper.GetViper(), cfg)
 	err := parseDatabaseRegistry(cfg)
 	require.NoError(t, err)
 	require.Len(t, cfg.Databases, 2)
@@ -46,7 +46,7 @@ func TestParseDatabaseRegistry_ManifestEnv(t *testing.T) {
 	t.Setenv("PREST_DATABASE_TENANT_B_URL", "postgres://user:pass@host-b:5432/app_b?sslmode=disable")
 
 	cfg := &Prest{}
-	parseDBConfig(cfg)
+	parseDBConfig(viper.GetViper(), cfg)
 	err := parseDatabaseRegistry(cfg)
 	require.NoError(t, err)
 	require.Len(t, cfg.Databases, 2)
@@ -66,10 +66,11 @@ func TestParseDatabaseRegistry_EnvOverridesTOML(t *testing.T) {
 	t.Setenv("DATABASE_ALIAS_1", "tenant-a")
 	t.Setenv("DATABASE_URL_1", "postgres://override:override@override-host:5432/override_db?sslmode=require")
 
-	viperCfg()
-	require.NoError(t, viper.ReadInConfig())
+	v, _ := viperCfg()
+	require.NoError(t, v.ReadInConfig())
+	viper.Set("databases", v.Get("databases"))
 	cfg := &Prest{}
-	parseDBConfig(cfg)
+	parseDBConfig(v, cfg)
 	err := parseDatabaseRegistry(cfg)
 	require.NoError(t, err)
 	require.Len(t, cfg.Databases, 2)
@@ -87,7 +88,7 @@ func TestParseDatabaseRegistry_LegacyUnchanged(t *testing.T) {
 
 	t.Setenv("DATABASE_URL", "postgresql://cloud:cloudPass@localhost:5432/CloudDatabase/?sslmode=disable")
 	cfg := &Prest{}
-	parseDBConfig(cfg)
+	parseDBConfig(viper.GetViper(), cfg)
 	err := parseDatabaseRegistry(cfg)
 	require.NoError(t, err)
 	require.Empty(t, cfg.Databases)
@@ -101,7 +102,7 @@ func TestParseDatabaseRegistry_MissingURL(t *testing.T) {
 	unsetEnvForTest(t, "DATABASE_URL_1")
 
 	cfg := &Prest{}
-	parseDBConfig(cfg)
+	parseDBConfig(viper.GetViper(), cfg)
 	err := parseDatabaseRegistry(cfg)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "DATABASE_URL_1")
@@ -116,7 +117,7 @@ func TestParseDatabaseRegistry_DuplicateAlias(t *testing.T) {
 	t.Setenv("DATABASE_URL_2", "postgres://user:pass@host:5432/app_b?sslmode=disable")
 
 	cfg := &Prest{}
-	parseDBConfig(cfg)
+	parseDBConfig(viper.GetViper(), cfg)
 	err := parseDatabaseRegistry(cfg)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "duplicate")
