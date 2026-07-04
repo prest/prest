@@ -8,7 +8,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/v2/integration/helpers"
-	"github.com/prest/prest/v2/testutils"
+	"github.com/prest/prest/v2/integration/testutils"
 )
 
 func TestExecuteScriptQuery(t *testing.T) {

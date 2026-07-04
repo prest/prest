@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/v2/testutils"
+	"github.com/stretchr/testify/require"
 )
 
 func healthyDB(context.Context) error   { return nil }
@@ -29,7 +29,11 @@ func TestHealthStatus(t *testing.T) {
 		router.HandleFunc("/_health", h.Handler()).Methods("GET")
 		server := httptest.NewServer(router)
 		defer server.Close()
-		testutils.DoRequest(t, server.URL+"/_health", nil, "GET", tc.expected, "")
+
+		resp, err := http.Get(server.URL + "/_health")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, tc.expected, resp.StatusCode)
 	}
 }
 
@@ -47,6 +51,10 @@ func TestReadyStatus(t *testing.T) {
 		router.HandleFunc("/_ready", h.Handler()).Methods("GET")
 		server := httptest.NewServer(router)
 		defer server.Close()
-		testutils.DoRequest(t, server.URL+"/_ready", nil, "GET", tc.want, tc.desc)
+
+		resp, err := http.Get(server.URL + "/_ready")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, tc.want, resp.StatusCode)
 	}
 }
