@@ -119,55 +119,157 @@ type Prest struct {
 	Logger               *slog.Logger
 }
 
-const defaultCfgFile = "./prest.toml"
+const (
+	defaultCfgFile          = "./prest.toml"
+	defaultCacheStoragePath = "./"
+)
 
 // Load reads pREST configuration from the TOML file named by PREST_CONF, or
 // ./prest.toml when that variable is unset. Environment variables with the
 // PREST_ prefix override file values (keys use underscores instead of dots).
 //
-// It populates a Prest via Parse, creates the queries directory when missing,
-// and when cache is enabled creates the cache storage directory when missing.
+// It populates a Prest via Parse, ensures the queries directory when possible,
+// and when cache is enabled ensures the cache storage directory exists.
 // On success it configures cfg.Logger and the process-wide default logger via
 // setupLogger (level debug, overridable with PREST_LOG_LEVEL).
 //
-// If the config file is missing, Parse logs a warning and falls back to viper
-// defaults. Other Parse failures (unreadable file, unmarshal errors) are
-// returned. Load also returns an error when os.Stat or os.MkdirAll fails for
-// the queries path, or for the cache storage path when cache is enabled.
+// Parse logs warnings and falls back to viper defaults when the config file
+// is missing, unreadable, malformed, or contains invalid structured keys.
+// Load never returns an error for queries or cache storage path issues: it
+// retries default paths and disables the feature when both configured and
+// fallback paths are unavailable. Unsafe JWT/auth settings (enabled without
+// verification material) are auto-disabled with warnings via ensureJWTConfig.
 //
 // Returns the populated *Prest and nil on success.
 func Load() (*Prest, error) {
 	v, configPath := viperCfg()
 	cfg := &Prest{}
-	if err := Parse(v, cfg, configPath); err != nil {
-		return nil, err
-	}
-	if _, err := os.Stat(cfg.QueriesPath); err != nil {
-		if os.IsNotExist(err) {
-			if err = os.MkdirAll(cfg.QueriesPath, 0700); err != nil {
-				return nil, fmt.Errorf("create queries directory %q: %w", cfg.QueriesPath, err)
-			}
-		} else {
-			return nil, err
-		}
-	}
+	Parse(v, cfg, configPath)
 
-	// Cache storage is optional when cache is disabled.
+	ensureJWTConfig(cfg)
+	ensureQueriesPath(cfg)
+
 	if !cfg.Cache.Enabled {
 		return setupLogger(cfg)
 	}
 
-	if _, err := os.Stat(cfg.Cache.StoragePath); err != nil {
-		if os.IsNotExist(err) {
-			if err = os.MkdirAll(cfg.Cache.StoragePath, 0700); err != nil {
-				return nil, fmt.Errorf("create cache directory %q: %w", cfg.Cache.StoragePath, err)
-			}
-		} else {
-			return nil, err
-		}
-	}
+	ensureCacheStorage(cfg)
 
 	return setupLogger(cfg)
+}
+
+// ensureDir ensures path exists as a writable directory.
+// It creates missing directories, rejects non-directory paths, and verifies
+// writability with a temporary test file.
+func ensureDir(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if err = os.MkdirAll(path, 0700); err != nil {
+				return fmt.Errorf("create directory %q: %w", path, err)
+			}
+		} else {
+			return err
+		}
+	} else if !info.IsDir() {
+		return fmt.Errorf("path %q is not a directory", path)
+	}
+
+	testFile := filepath.Join(path, ".prest-write-test")
+	if err := os.WriteFile(testFile, []byte("test"), 0600); err != nil {
+		return fmt.Errorf("directory %q is not writable: %w", path, err)
+	}
+	if err := os.Remove(testFile); err != nil {
+		return fmt.Errorf("directory %q is not writable: %w", path, err)
+	}
+	return nil
+}
+
+// ensureCacheStorage ensures the cache storage directory exists and is writable.
+// On failure it tries the default path, then disables cache.
+func ensureCacheStorage(cfg *Prest) {
+	configuredPath := cfg.Cache.StoragePath
+	err := ensureDir(configuredPath)
+	if err == nil {
+		return
+	}
+
+	slog.Warn("cache storage path unavailable, trying fallback", "path", configuredPath, "err", err)
+
+	if configuredPath == defaultCacheStoragePath {
+		slog.Warn("cache disabled: default storage path unavailable", "path", configuredPath, "err", err)
+		cfg.Cache.Enabled = false
+		return
+	}
+
+	if err = ensureDir(defaultCacheStoragePath); err == nil {
+		cfg.Cache.StoragePath = defaultCacheStoragePath
+		return
+	}
+
+	slog.Warn("cache disabled: fallback storage path unavailable", "path", defaultCacheStoragePath, "err", err)
+	cfg.Cache.Enabled = false
+}
+
+func ensureJWTConfig(cfg *Prest) {
+	if cfg.AuthEnabled && cfg.JWTKey == "" {
+		slog.Error("auth disabled: jwt.key is empty", "err", ErrAuthEnabledNoJWTKey)
+		cfg.AuthEnabled = false
+	}
+	if !cfg.EnableDefaultJWT || cfg.Debug {
+		return
+	}
+	if cfg.JWTKey != "" || cfg.JWTJWKS != "" || cfg.JWTWellKnownURL != "" {
+		return
+	}
+	slog.Error(
+		"default JWT middleware disabled: no verification material",
+		"err", ErrJWTDefaultEnabledNoKey)
+	cfg.EnableDefaultJWT = false
+}
+
+func defaultQueriesPath() string {
+	hDir, err := homedir.Dir()
+	if err != nil {
+		slog.Error("could not find homedir", "err", err)
+		return filepath.Join(".", "queries")
+	}
+	return filepath.Join(hDir, "queries")
+}
+
+func ensureQueriesPath(cfg *Prest) {
+	configuredPath := cfg.QueriesPath
+	err := ensureDir(configuredPath)
+	if err == nil {
+		return
+	}
+
+	slog.Warn("queries path unavailable, trying fallback", "path", configuredPath, "err", err)
+
+	fallback := defaultQueriesPath()
+	if configuredPath == fallback {
+		slog.Warn("queries disabled: default queries path unavailable", "path", configuredPath, "err", err)
+		cfg.QueriesPath = ""
+		return
+	}
+
+	if err = ensureDir(fallback); err == nil {
+		cfg.QueriesPath = fallback
+		return
+	}
+
+	slog.Warn("queries disabled: fallback queries path unavailable", "path", fallback, "err", err)
+	cfg.QueriesPath = ""
+}
+
+func unmarshalKeyOrZero[T any](v *viper.Viper, key string) T {
+	var out T
+	if err := v.UnmarshalKey(key, &out); err != nil {
+		slog.Warn("config key invalid, using default", "key", key, "err", err)
+		var zero T
+		return zero
+	}
+	return out
 }
 
 func setupLogger(cfg *Prest) (*Prest, error) {
@@ -226,7 +328,7 @@ func viperCfg() (*viper.Viper, string) {
 	// https://github.com/jackc/pgx/blob/47d631e34be7128997a0aa89b75885cc4ad4c82e/pgconn/config.go#L218
 	v.SetDefault("pg.ssl.mode", "disable")
 
-	v.SetDefault("jwt.default", true)
+	v.SetDefault("jwt.default", false)
 	v.SetDefault("jwt.algo", "HS256")
 	v.SetDefault("jwt.wellknownurl", "")
 	v.SetDefault("jwt.jwks", "")
@@ -245,7 +347,7 @@ func viperCfg() (*viper.Viper, string) {
 
 	v.SetDefault("cache.enabled", false)
 	v.SetDefault("cache.time", 10)
-	v.SetDefault("cache.storagepath", "./")
+	v.SetDefault("cache.storagepath", defaultCacheStoragePath)
 	v.SetDefault("cache.sufixfile", ".cache.prestd.db")
 
 	v.SetDefault("version", 1)
@@ -258,13 +360,7 @@ func viperCfg() (*viper.Viper, string) {
 	v.SetDefault("expose.schemas", true)
 	v.SetDefault("expose.databases", true)
 
-	hDir, err := homedir.Dir()
-	if err != nil {
-		slog.Error("could not find homedir", "err", err)
-		v.SetDefault("queries.location", filepath.Join(".", "queries"))
-	} else {
-		v.SetDefault("queries.location", filepath.Join(hDir, "queries"))
-	}
+	v.SetDefault("queries.location", defaultQueriesPath())
 	return v, configPath
 }
 
@@ -275,17 +371,13 @@ func getPrestConfFile(prestConf string) string {
 	return defaultCfgFile
 }
 
-// Parse pREST config
-// todo: split config onto methods to simplify this
-func Parse(v *viper.Viper, cfg *Prest, configPath string) error {
-	err := v.ReadInConfig()
-	if err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			slog.Warn("file not found, falling back to default settings", "file", configPath)
-			cfg.PGSSLMode = "disable"
-		} else {
-			return fmt.Errorf("read config file %q: %w", configPath, err)
-		}
+// Parse pREST config. Invalid or missing config files log warnings and fall
+// back to viper defaults and environment overrides; structured keys that fail
+// to unmarshal use zero values. Parse does not fail startup for config content.
+func Parse(v *viper.Viper, cfg *Prest, configPath string) {
+	if err := v.ReadInConfig(); err != nil {
+		slog.Warn("config file unavailable, falling back to default settings", "file", configPath, "err", err)
+		cfg.PGSSLMode = "disable"
 	}
 
 	parseAuthConfig(v, cfg)
@@ -326,26 +418,9 @@ func Parse(v *viper.Viper, cfg *Prest, configPath string) error {
 	cfg.ExposeConf.SchemaListing = v.GetBool("expose.schemas")
 	cfg.ExposeConf.DatabaseListing = v.GetBool("expose.databases")
 
-	// table access config
-	var tablesconf []TablesConf
-	if err = v.UnmarshalKey("access.tables", &tablesconf); err != nil {
-		return fmt.Errorf("unmarshal access.tables: %w", err)
-	}
-	cfg.AccessConf.Tables = tablesconf
-
-	var usersconf []UsersConf
-	if err = v.UnmarshalKey("access.users", &usersconf); err != nil {
-		return fmt.Errorf("unmarshal access.users: %w", err)
-	}
-	cfg.AccessConf.Users = usersconf
-
-	// plugin middleware list config
-	var pluginMiddlewareConfig []PluginMiddleware
-	if err = v.UnmarshalKey("pluginmiddlewarelist", &pluginMiddlewareConfig); err != nil {
-		return fmt.Errorf("unmarshal pluginmiddlewarelist: %w", err)
-	}
-	cfg.PluginMiddlewareList = pluginMiddlewareConfig
-	return nil
+	cfg.AccessConf.Tables = unmarshalKeyOrZero[[]TablesConf](v, "access.tables")
+	cfg.AccessConf.Users = unmarshalKeyOrZero[[]UsersConf](v, "access.users")
+	cfg.PluginMiddlewareList = unmarshalKeyOrZero[[]PluginMiddleware](v, "pluginmiddlewarelist")
 }
 
 // parseDatabaseURL tries to get from URL the DB configs
@@ -394,37 +469,6 @@ var ErrJWTDefaultEnabledNoKey = errors.New(
 // middleware. See GHSA-fj7v-859r-2fm4.
 var ErrAuthEnabledNoJWTKey = errors.New(
 	"auth.enabled is true but jwt.key is empty (required to verify HS256 tokens)")
-
-// ValidateJWTConfig fails fast when either of the JWT-validating middlewares
-// would be installed without any verification material:
-//
-//   - The default JWT middleware (jwt.default = true) requires jwt.key, a
-//     JWKS, or a .well-known URL.
-//   - AuthMiddleware (auth.enabled = true) verifies HS256 tokens with
-//     jwt.key, so an empty key is unsafe.
-//
-// The default JWT path also bypasses when Debug is true, so we mirror that
-// rule here to avoid blocking debug-mode startups.
-//
-// Call this from binary entrypoints before serving requests; tests that
-// exercise Load() without setting JWT material rely on the middleware-level
-// guards (middlewares.JwtMiddleware, middlewares.AuthMiddleware) to fail
-// closed at request time.
-func ValidateJWTConfig(cfg *Prest) error {
-	if cfg.AuthEnabled && cfg.JWTKey == "" {
-		return ErrAuthEnabledNoJWTKey
-	}
-	if !cfg.EnableDefaultJWT {
-		return nil
-	}
-	if cfg.Debug {
-		return nil
-	}
-	if cfg.JWTKey != "" || cfg.JWTJWKS != "" || cfg.JWTWellKnownURL != "" {
-		return nil
-	}
-	return ErrJWTDefaultEnabledNoKey
-}
 
 // fetchJWKS tries to get the JWKS from the URL in the config
 func fetchJWKS(cfg *Prest) {
@@ -540,13 +584,7 @@ func loadCacheConfig(v *viper.Viper, cfg *Prest) {
 	cfg.Cache.StoragePath = v.GetString("cache.storagepath")
 	cfg.Cache.SufixFile = v.GetString("cache.sufixfile")
 
-	// cache endpoints config
-	var cacheendpoints = []cache.Endpoint{}
-	err := v.UnmarshalKey("cache.endpoints", &cacheendpoints)
-	if err != nil {
-		slog.Error("could not unmarshal cache endpoints", "err", err)
-	}
-	cfg.Cache.Endpoints = cacheendpoints
+	cfg.Cache.Endpoints = unmarshalKeyOrZero[[]cache.Endpoint](v, "cache.endpoints")
 }
 
 func parseAuthConfig(v *viper.Viper, cfg *Prest) {

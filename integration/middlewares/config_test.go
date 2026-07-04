@@ -144,6 +144,7 @@ func TestEnableDefaultJWT(t *testing.T) {
 func TestJWTIsRequired(t *testing.T) {
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
+	t.Setenv("PREST_JWT_KEY", "s3cr3t")
 	nd := appTestWithJwt(t)
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()

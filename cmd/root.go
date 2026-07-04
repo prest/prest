@@ -69,11 +69,6 @@ func Execute(ctx context.Context, cfg *config.Prest) {
 
 // startServer starts the server
 func startServer(cfg *config.Prest, a *app.App) {
-	if err := config.ValidateJWTConfig(cfg); err != nil {
-		slog.Error("invalid JWT configuration", "err", err)
-		os.Exit(1)
-	}
-
 	http.Handle(cfg.ContextPath, a.Handler)
 
 	if !cfg.AccessConf.Restrict {

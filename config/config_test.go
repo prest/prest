@@ -13,7 +13,7 @@ import (
 
 func requireParse(t *testing.T, v *viper.Viper, cfg *Prest, configPath string) {
 	t.Helper()
-	require.NoError(t, Parse(v, cfg, configPath))
+	Parse(v, cfg, configPath)
 }
 
 func TestLoad(t *testing.T) {
@@ -36,9 +36,11 @@ func TestLoadMalformedConfig(t *testing.T) {
 	require.NoError(t, os.WriteFile(badConfig, []byte("this is not valid [[[toml"), 0600))
 
 	t.Setenv("PREST_CONF", badConfig)
-	_, err := Load()
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "read config file")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, 3000, cfg.HTTPPort)
+	require.Equal(t, "disable", cfg.PGSSLMode)
+	require.Empty(t, cfg.AccessConf.Tables)
 }
 
 func TestParseMalformedConfig(t *testing.T) {
@@ -48,9 +50,22 @@ func TestParseMalformedConfig(t *testing.T) {
 	t.Setenv("PREST_CONF", badConfig)
 	v, configPath := viperCfg()
 	cfg := &Prest{}
-	err := Parse(v, cfg, configPath)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "read config file")
+	Parse(v, cfg, configPath)
+	require.Equal(t, 3000, cfg.HTTPPort)
+	require.Equal(t, "disable", cfg.PGSSLMode)
+}
+
+func TestLoadInvalidStructuredConfig(t *testing.T) {
+	badConfig := filepath.Join(t.TempDir(), "prest.toml")
+	require.NoError(t, os.WriteFile(badConfig, []byte(`access.tables = "not-an-array"
+pluginmiddlewarelist = 123
+`), 0600))
+
+	t.Setenv("PREST_CONF", badConfig)
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Empty(t, cfg.AccessConf.Tables)
+	require.Empty(t, cfg.PluginMiddlewareList)
 }
 
 func TestLoadStatErrors(t *testing.T) {
@@ -70,9 +85,9 @@ func TestLoadStatErrors(t *testing.T) {
 		t.Setenv("PREST_QUERIES_LOCATION", inaccessiblePath(t))
 		t.Setenv("PREST_CACHE_ENABLED", "false")
 
-		_, err := Load()
-		require.Error(t, err)
-		require.ErrorIs(t, err, os.ErrPermission)
+		cfg, err := Load()
+		require.NoError(t, err)
+		require.Equal(t, defaultQueriesPath(), cfg.QueriesPath)
 	})
 
 	t.Run("cache storage path permission denied", func(t *testing.T) {
@@ -82,9 +97,28 @@ func TestLoadStatErrors(t *testing.T) {
 		t.Setenv("PREST_CACHE_ENABLED", "true")
 		t.Setenv("PREST_CACHE_STORAGEPATH", inaccessiblePath(t))
 
-		_, err := Load()
-		require.Error(t, err)
-		require.ErrorIs(t, err, os.ErrPermission)
+		cfg, err := Load()
+		require.NoError(t, err)
+		require.True(t, cfg.Cache.Enabled)
+		require.Equal(t, defaultCacheStoragePath, cfg.Cache.StoragePath)
+	})
+
+	t.Run("cache disabled when configured and fallback paths fail", func(t *testing.T) {
+		tempDir := t.TempDir()
+		queriesDir := t.TempDir()
+		t.Chdir(tempDir)
+		t.Cleanup(func() { _ = os.Chmod(tempDir, 0700) })
+
+		require.NoError(t, os.Chmod(tempDir, 0000))
+
+		t.Setenv("PREST_CONF", "../notfound.toml")
+		t.Setenv("PREST_QUERIES_LOCATION", queriesDir)
+		t.Setenv("PREST_CACHE_ENABLED", "true")
+		t.Setenv("PREST_CACHE_STORAGEPATH", inaccessiblePath(t))
+
+		cfg, err := Load()
+		require.NoError(t, err)
+		require.False(t, cfg.Cache.Enabled)
 	})
 }
 
@@ -129,7 +163,7 @@ func TestParse(t *testing.T) {
 		cfg := &Prest{}
 		requireParse(t, v, cfg, configPath)
 		require.Equal(t, 4000, cfg.HTTPPort)
-		require.True(t, cfg.EnableDefaultJWT)
+		require.False(t, cfg.EnableDefaultJWT)
 	})
 
 	t.Run("empty PREST_CONF and falsey PREST_JWT_DEFAULT", func(t *testing.T) {
@@ -226,57 +260,77 @@ func TestParse(t *testing.T) {
 }
 
 // Regression coverage for GHSA-fj7v-859r-2fm4: when default JWT enforcement is
-// enabled but no verification material is configured, the default HMAC key is
-// the empty string and any forged HS256 token would validate. Startup callers
-// (binary entrypoints) must use ValidateJWTConfig to fail closed.
-func TestValidateJWTConfig(t *testing.T) {
+// enabled but no verification material is configured, ensureJWTConfig disables
+// the middleware instead of leaving an empty HMAC key active.
+func TestEnsureJWTConfig(t *testing.T) {
 	cases := []struct {
-		name    string
-		cfg     *Prest
-		wantErr error
+		name              string
+		cfg               Prest
+		wantAuthEnabled   bool
+		wantDefaultJWT    bool
 	}{
 		{
-			name:    "default JWT on, no key, no JWKS, no well-known → reject",
-			cfg:     &Prest{EnableDefaultJWT: true},
-			wantErr: ErrJWTDefaultEnabledNoKey,
+			name:            "default JWT on, no material → disabled",
+			cfg:             Prest{EnableDefaultJWT: true},
+			wantDefaultJWT:  false,
 		},
 		{
-			name:    "default JWT on, HMAC key set → ok",
-			cfg:     &Prest{EnableDefaultJWT: true, JWTKey: "s3cr3t"},
-			wantErr: nil,
+			name:            "default JWT on, HMAC key set → unchanged",
+			cfg:             Prest{EnableDefaultJWT: true, JWTKey: "s3cr3t"},
+			wantDefaultJWT:  true,
 		},
 		{
-			name:    "default JWT on, JWKS set → ok",
-			cfg:     &Prest{EnableDefaultJWT: true, JWTJWKS: `{"keys":[]}`},
-			wantErr: nil,
+			name:            "default JWT on, JWKS set → unchanged",
+			cfg:             Prest{EnableDefaultJWT: true, JWTJWKS: `{"keys":[]}`},
+			wantDefaultJWT:  true,
 		},
 		{
-			name:    "default JWT on, well-known URL set → ok",
-			cfg:     &Prest{EnableDefaultJWT: true, JWTWellKnownURL: "http://example.test/.well-known"},
-			wantErr: nil,
+			name:            "default JWT on, well-known URL set → unchanged",
+			cfg:             Prest{EnableDefaultJWT: true, JWTWellKnownURL: "http://example.test/.well-known"},
+			wantDefaultJWT:  true,
 		},
 		{
-			name:    "default JWT off → ok regardless of empty key",
-			cfg:     &Prest{EnableDefaultJWT: false},
-			wantErr: nil,
+			name:            "default JWT off → unchanged",
+			cfg:             Prest{EnableDefaultJWT: false},
+			wantDefaultJWT:  false,
 		},
 		{
-			name:    "debug bypass mirrors middleware/config.go → ok",
-			cfg:     &Prest{EnableDefaultJWT: true, Debug: true},
-			wantErr: nil,
+			name:            "debug bypass mirrors middleware/config.go → unchanged",
+			cfg:             Prest{EnableDefaultJWT: true, Debug: true},
+			wantDefaultJWT:  true,
+		},
+		{
+			name:            "auth enabled, empty key → auth disabled",
+			cfg:             Prest{AuthEnabled: true},
+			wantAuthEnabled: false,
+		},
+		{
+			name:            "auth enabled, key set → unchanged",
+			cfg:             Prest{AuthEnabled: true, JWTKey: "s3cr3t"},
+			wantAuthEnabled: true,
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := ValidateJWTConfig(tc.cfg)
-			if tc.wantErr == nil {
-				require.NoError(t, err)
-				return
-			}
-			require.ErrorIs(t, err, tc.wantErr)
+			cfg := tc.cfg
+			ensureJWTConfig(&cfg)
+			require.Equal(t, tc.wantAuthEnabled, cfg.AuthEnabled)
+			require.Equal(t, tc.wantDefaultJWT, cfg.EnableDefaultJWT)
 		})
 	}
+}
+
+func TestLoadUnsafeJWTConfig(t *testing.T) {
+	t.Setenv("PREST_CONF", "../notfound.toml")
+	t.Setenv("PREST_JWT_DEFAULT", "true")
+	unsetEnvForTest(t, "PREST_JWT_KEY")
+	unsetEnvForTest(t, "PREST_JWT_JWKS")
+	unsetEnvForTest(t, "PREST_JWT_WELLKNOWNURL")
+
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.False(t, cfg.EnableDefaultJWT)
 }
 
 func Test_getPrestConfFile(t *testing.T) {
