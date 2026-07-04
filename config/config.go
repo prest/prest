@@ -119,55 +119,131 @@ type Prest struct {
 	Logger               *slog.Logger
 }
 
-const defaultCfgFile = "./prest.toml"
+const (
+	defaultCfgFile          = "./prest.toml"
+	defaultCacheStoragePath = "./"
+)
 
 // Load reads pREST configuration from the TOML file named by PREST_CONF, or
 // ./prest.toml when that variable is unset. Environment variables with the
 // PREST_ prefix override file values (keys use underscores instead of dots).
 //
-// It populates a Prest via Parse, creates the queries directory when missing,
-// and when cache is enabled creates the cache storage directory when missing.
+// It populates a Prest via Parse, ensures the queries directory when possible,
+// and when cache is enabled ensures the cache storage directory exists.
 // On success it configures cfg.Logger and the process-wide default logger via
 // setupLogger (level debug, overridable with PREST_LOG_LEVEL).
 //
-// If the config file is missing, Parse logs a warning and falls back to viper
-// defaults. Other Parse failures (unreadable file, unmarshal errors) are
-// returned. Load also returns an error when os.Stat or os.MkdirAll fails for
-// the queries path, or for the cache storage path when cache is enabled.
+// Parse logs warnings and falls back to viper defaults when the config file
+// is missing, unreadable, malformed, or contains invalid structured keys.
+// Load never returns an error for queries or cache storage path issues: it
+// retries default paths and disables the feature when both configured and
+// fallback paths are unavailable.
 //
 // Returns the populated *Prest and nil on success.
 func Load() (*Prest, error) {
 	v, configPath := viperCfg()
 	cfg := &Prest{}
-	if err := Parse(v, cfg, configPath); err != nil {
-		return nil, err
-	}
-	if _, err := os.Stat(cfg.QueriesPath); err != nil {
-		if os.IsNotExist(err) {
-			if err = os.MkdirAll(cfg.QueriesPath, 0700); err != nil {
-				return nil, fmt.Errorf("create queries directory %q: %w", cfg.QueriesPath, err)
-			}
-		} else {
-			return nil, err
-		}
-	}
+	Parse(v, cfg, configPath)
 
-	// Cache storage is optional when cache is disabled.
+	ensureQueriesPath(cfg)
+
 	if !cfg.Cache.Enabled {
 		return setupLogger(cfg)
 	}
 
-	if _, err := os.Stat(cfg.Cache.StoragePath); err != nil {
-		if os.IsNotExist(err) {
-			if err = os.MkdirAll(cfg.Cache.StoragePath, 0700); err != nil {
-				return nil, fmt.Errorf("create cache directory %q: %w", cfg.Cache.StoragePath, err)
-			}
-		} else {
-			return nil, err
-		}
-	}
+	ensureCacheStorage(cfg)
 
 	return setupLogger(cfg)
+}
+
+// ensureDir creates a directory if it does not exist
+// it also tests if the directory is writable by writing a test file and removing it
+func ensureDir(path string) error {
+	if _, err := os.Stat(path); err != nil {
+		if os.IsNotExist(err) {
+			if err = os.MkdirAll(path, 0700); err != nil {
+				return fmt.Errorf("create directory %q: %w", path, err)
+			}
+		} else {
+			return err
+		}
+	}
+	return nil
+}
+
+// ensureCacheStorage ensures that the cache storage directory exists and is writable
+// if it does not exist, it creates it
+// if it is not writable, it logs a warning and disables cache
+// if it is writable, it writes a test file to the directory and removes it
+// if the test file is not writable, it logs a warning and disables cache
+// if the test file is writable, it returns
+// if the test file is not writable, it logs a warning and disables cache
+func ensureCacheStorage(cfg *Prest) {
+	configuredPath := cfg.Cache.StoragePath
+	err := ensureDir(configuredPath)
+	if err == nil {
+		return
+	}
+
+	slog.Warn("cache storage path unavailable, trying fallback", "path", configuredPath, "err", err)
+
+	if configuredPath == defaultCacheStoragePath {
+		slog.Warn("cache disabled: default storage path unavailable", "path", configuredPath, "err", err)
+		cfg.Cache.Enabled = false
+		return
+	}
+
+	if err = ensureDir(defaultCacheStoragePath); err == nil {
+		cfg.Cache.StoragePath = defaultCacheStoragePath
+		return
+	}
+
+	slog.Warn("cache disabled: fallback storage path unavailable", "path", defaultCacheStoragePath, "err", err)
+	cfg.Cache.Enabled = false
+}
+
+func defaultQueriesPath() string {
+	hDir, err := homedir.Dir()
+	if err != nil {
+		slog.Error("could not find homedir", "err", err)
+		return filepath.Join(".", "queries")
+	}
+	return filepath.Join(hDir, "queries")
+}
+
+func ensureQueriesPath(cfg *Prest) {
+	configuredPath := cfg.QueriesPath
+	err := ensureDir(configuredPath)
+	if err == nil {
+		return
+	}
+
+	slog.Warn("queries path unavailable, trying fallback", "path", configuredPath, "err", err)
+
+	fallback := defaultQueriesPath()
+	if configuredPath == fallback {
+		slog.Warn("queries disabled: default queries path unavailable", "path", configuredPath, "err", err)
+		cfg.QueriesPath = ""
+		return
+	}
+
+	if err = ensureDir(fallback); err == nil {
+		cfg.QueriesPath = fallback
+		return
+	}
+
+	slog.Warn("queries disabled: fallback queries path unavailable", "path", fallback, "err", err)
+	cfg.QueriesPath = ""
+}
+
+func unmarshalKeyOrZero[T any](v *viper.Viper, key string) T {
+	var out T
+	if err := v.UnmarshalKey(key, &out); err != nil {
+		slog.Warn("config key invalid, using default", "key", key, "err", err)
+		var zero T
+		return zero
+	}
+	return out
 }
 
 func setupLogger(cfg *Prest) (*Prest, error) {
@@ -245,7 +321,7 @@ func viperCfg() (*viper.Viper, string) {
 
 	v.SetDefault("cache.enabled", false)
 	v.SetDefault("cache.time", 10)
-	v.SetDefault("cache.storagepath", "./")
+	v.SetDefault("cache.storagepath", defaultCacheStoragePath)
 	v.SetDefault("cache.sufixfile", ".cache.prestd.db")
 
 	v.SetDefault("version", 1)
@@ -258,13 +334,7 @@ func viperCfg() (*viper.Viper, string) {
 	v.SetDefault("expose.schemas", true)
 	v.SetDefault("expose.databases", true)
 
-	hDir, err := homedir.Dir()
-	if err != nil {
-		slog.Error("could not find homedir", "err", err)
-		v.SetDefault("queries.location", filepath.Join(".", "queries"))
-	} else {
-		v.SetDefault("queries.location", filepath.Join(hDir, "queries"))
-	}
+	v.SetDefault("queries.location", defaultQueriesPath())
 	return v, configPath
 }
 
@@ -275,17 +345,13 @@ func getPrestConfFile(prestConf string) string {
 	return defaultCfgFile
 }
 
-// Parse pREST config
-// todo: split config onto methods to simplify this
-func Parse(v *viper.Viper, cfg *Prest, configPath string) error {
-	err := v.ReadInConfig()
-	if err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			slog.Warn("file not found, falling back to default settings", "file", configPath)
-			cfg.PGSSLMode = "disable"
-		} else {
-			return fmt.Errorf("read config file %q: %w", configPath, err)
-		}
+// Parse pREST config. Invalid or missing config files log warnings and fall
+// back to viper defaults and environment overrides; structured keys that fail
+// to unmarshal use zero values. Parse does not fail startup for config content.
+func Parse(v *viper.Viper, cfg *Prest, configPath string) {
+	if err := v.ReadInConfig(); err != nil {
+		slog.Warn("config file unavailable, falling back to default settings", "file", configPath, "err", err)
+		cfg.PGSSLMode = "disable"
 	}
 
 	parseAuthConfig(v, cfg)
@@ -326,26 +392,9 @@ func Parse(v *viper.Viper, cfg *Prest, configPath string) error {
 	cfg.ExposeConf.SchemaListing = v.GetBool("expose.schemas")
 	cfg.ExposeConf.DatabaseListing = v.GetBool("expose.databases")
 
-	// table access config
-	var tablesconf []TablesConf
-	if err = v.UnmarshalKey("access.tables", &tablesconf); err != nil {
-		return fmt.Errorf("unmarshal access.tables: %w", err)
-	}
-	cfg.AccessConf.Tables = tablesconf
-
-	var usersconf []UsersConf
-	if err = v.UnmarshalKey("access.users", &usersconf); err != nil {
-		return fmt.Errorf("unmarshal access.users: %w", err)
-	}
-	cfg.AccessConf.Users = usersconf
-
-	// plugin middleware list config
-	var pluginMiddlewareConfig []PluginMiddleware
-	if err = v.UnmarshalKey("pluginmiddlewarelist", &pluginMiddlewareConfig); err != nil {
-		return fmt.Errorf("unmarshal pluginmiddlewarelist: %w", err)
-	}
-	cfg.PluginMiddlewareList = pluginMiddlewareConfig
-	return nil
+	cfg.AccessConf.Tables = unmarshalKeyOrZero[[]TablesConf](v, "access.tables")
+	cfg.AccessConf.Users = unmarshalKeyOrZero[[]UsersConf](v, "access.users")
+	cfg.PluginMiddlewareList = unmarshalKeyOrZero[[]PluginMiddleware](v, "pluginmiddlewarelist")
 }
 
 // parseDatabaseURL tries to get from URL the DB configs
@@ -542,9 +591,8 @@ func loadCacheConfig(v *viper.Viper, cfg *Prest) {
 
 	// cache endpoints config
 	var cacheendpoints = []cache.Endpoint{}
-	err := v.UnmarshalKey("cache.endpoints", &cacheendpoints)
-	if err != nil {
-		slog.Error("could not unmarshal cache endpoints", "err", err)
+	if err := v.UnmarshalKey("cache.endpoints", &cacheendpoints); err != nil {
+		slog.Warn("config key invalid, using default", "key", "cache.endpoints", "err", err)
 	}
 	cfg.Cache.Endpoints = cacheendpoints
 }

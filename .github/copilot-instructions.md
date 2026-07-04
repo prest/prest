@@ -266,6 +266,30 @@ go test ./integration/...
 - For CLI updates, follow existing Cobra command patterns in `cmd/`.
 - Avoid renaming/removing existing flags or commands unless explicitly requested.
 
+### Config resilience policy
+
+Wrong or partial configuration must **not** block API startup. Log `slog.Warn`, fall back to viper defaults or safe zero values, and continue. Reference implementations live in `config/config.go`: `ensureCacheStorage`, `ensureQueriesPath`, `unmarshalKeyOrZero`, and `getJSONAgg`.
+
+**Patterns when adding config keys**
+
+| Kind | On invalid/missing | Helper |
+|------|-------------------|--------|
+| Scalar | Use `viper.SetDefault` + `Get*` | viper defaults |
+| Slice/struct TOML key | Warn + zero value | `unmarshalKeyOrZero` |
+| Optional filesystem path | Configured → default → disable feature | `ensure*Path` (cache, queries) |
+| Enum-like value | Warn + default | `getJSONAgg` pattern |
+
+**Intentional fail-closed exceptions** (do not soften at config load):
+
+- `ValidateJWTConfig` at serve time in `cmd/root.go` — empty JWT key with auth or default JWT enabled is an auth-bypass risk (GHSA-fj7v-859r-2fm4).
+- SQL/auth validation in middleware — unchanged.
+
+**Parse / Load behavior**
+
+- Missing, unreadable, or malformed TOML: warn and use viper defaults + `PREST_*` env overrides.
+- Invalid `access.tables`, `access.users`, `pluginmiddlewarelist`, `cache.endpoints`: warn and use empty slices.
+- Queries or cache storage path unavailable: warn, retry default path, disable feature if both fail.
+
 ## Performance and Reliability
 
 - Avoid unnecessary allocations and repeated DB work in hot paths.
@@ -354,7 +378,7 @@ Handlers should depend on the **smallest port** that suffices (e.g. `CRUDHandler
 
 - Import `adapters/postgres` from `controllers/`, `middlewares/`, or `router/`.
 - Call `postgres.Load()` or open DB connections outside `integration/` and startup (`cmd/`).
-- Add business logic to `router/` or `config/` beyond wiring and validation.
+- Add business logic to `router/` or `config/` beyond wiring, validation, and graceful degradation.
 - Make handlers depend on the composite `Adapter` when a narrower port is enough.
 - Leak `http.Request` or `mux.Vars` into `adapters/postgres`.
 

@@ -13,7 +13,7 @@ import (
 
 func requireParse(t *testing.T, v *viper.Viper, cfg *Prest, configPath string) {
 	t.Helper()
-	require.NoError(t, Parse(v, cfg, configPath))
+	Parse(v, cfg, configPath)
 }
 
 func TestLoad(t *testing.T) {
@@ -36,9 +36,11 @@ func TestLoadMalformedConfig(t *testing.T) {
 	require.NoError(t, os.WriteFile(badConfig, []byte("this is not valid [[[toml"), 0600))
 
 	t.Setenv("PREST_CONF", badConfig)
-	_, err := Load()
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "read config file")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, 3000, cfg.HTTPPort)
+	require.Equal(t, "disable", cfg.PGSSLMode)
+	require.Empty(t, cfg.AccessConf.Tables)
 }
 
 func TestParseMalformedConfig(t *testing.T) {
@@ -48,9 +50,22 @@ func TestParseMalformedConfig(t *testing.T) {
 	t.Setenv("PREST_CONF", badConfig)
 	v, configPath := viperCfg()
 	cfg := &Prest{}
-	err := Parse(v, cfg, configPath)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "read config file")
+	Parse(v, cfg, configPath)
+	require.Equal(t, 3000, cfg.HTTPPort)
+	require.Equal(t, "disable", cfg.PGSSLMode)
+}
+
+func TestLoadInvalidStructuredConfig(t *testing.T) {
+	badConfig := filepath.Join(t.TempDir(), "prest.toml")
+	require.NoError(t, os.WriteFile(badConfig, []byte(`access.tables = "not-an-array"
+pluginmiddlewarelist = 123
+`), 0600))
+
+	t.Setenv("PREST_CONF", badConfig)
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Empty(t, cfg.AccessConf.Tables)
+	require.Empty(t, cfg.PluginMiddlewareList)
 }
 
 func TestLoadStatErrors(t *testing.T) {
@@ -70,9 +85,9 @@ func TestLoadStatErrors(t *testing.T) {
 		t.Setenv("PREST_QUERIES_LOCATION", inaccessiblePath(t))
 		t.Setenv("PREST_CACHE_ENABLED", "false")
 
-		_, err := Load()
-		require.Error(t, err)
-		require.ErrorIs(t, err, os.ErrPermission)
+		cfg, err := Load()
+		require.NoError(t, err)
+		require.Equal(t, defaultQueriesPath(), cfg.QueriesPath)
 	})
 
 	t.Run("cache storage path permission denied", func(t *testing.T) {
@@ -82,9 +97,28 @@ func TestLoadStatErrors(t *testing.T) {
 		t.Setenv("PREST_CACHE_ENABLED", "true")
 		t.Setenv("PREST_CACHE_STORAGEPATH", inaccessiblePath(t))
 
-		_, err := Load()
-		require.Error(t, err)
-		require.ErrorIs(t, err, os.ErrPermission)
+		cfg, err := Load()
+		require.NoError(t, err)
+		require.True(t, cfg.Cache.Enabled)
+		require.Equal(t, defaultCacheStoragePath, cfg.Cache.StoragePath)
+	})
+
+	t.Run("cache disabled when configured and fallback paths fail", func(t *testing.T) {
+		tempDir := t.TempDir()
+		queriesDir := t.TempDir()
+		t.Chdir(tempDir)
+		t.Cleanup(func() { _ = os.Chmod(tempDir, 0700) })
+
+		require.NoError(t, os.Chmod(tempDir, 0000))
+
+		t.Setenv("PREST_CONF", "../notfound.toml")
+		t.Setenv("PREST_QUERIES_LOCATION", queriesDir)
+		t.Setenv("PREST_CACHE_ENABLED", "true")
+		t.Setenv("PREST_CACHE_STORAGEPATH", inaccessiblePath(t))
+
+		cfg, err := Load()
+		require.NoError(t, err)
+		require.False(t, cfg.Cache.Enabled)
 	})
 }
 
