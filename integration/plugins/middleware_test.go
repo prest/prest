@@ -12,19 +12,20 @@ import (
 	"github.com/urfave/negroni/v3"
 )
 
-func initMiddlewarePluginTestRouter() *negroni.Negroni {
+func initMiddlewarePluginTestRouter(cfg *config.Prest) *negroni.Negroni {
+	cfg.PluginPath = helpers.PluginLibDir()
+	cfg.PluginMiddlewareList = []config.PluginMiddleware{
+		{File: "hello", Func: "Hello"},
+	}
+	plg := plugins.New(cfg)
 	r := negroni.New()
-	r.Use(plugins.MiddlewarePlugin())
+	r.Use(plg.Middleware())
 	return r
 }
 
 func TestPluginsMiddleware(t *testing.T) {
-	helpers.LoadTestConfig(t)
-	config.PrestConf.PluginPath = helpers.PluginLibDir()
-	config.PrestConf.PluginMiddlewareList = []config.PluginMiddleware{
-		{File: "hello", Func: "Hello"},
-	}
-	server := httptest.NewServer(initMiddlewarePluginTestRouter())
+	cfg := helpers.LoadTestConfig(t)
+	server := httptest.NewServer(initMiddlewarePluginTestRouter(cfg))
 	defer server.Close()
 
 	testutils.DoRequest(t, server.URL+"/", nil, "GET", http.StatusOK, "Plugins")

@@ -7,4 +7,5 @@ const (
 	DBNameKey
 	HTTPTimeoutKey
 	UserInfoKey
+	PrestConfigKey
 )

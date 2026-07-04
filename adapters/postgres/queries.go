@@ -11,16 +11,15 @@ import (
 	gotemplate "text/template"
 
 	"github.com/prest/prest/v2/adapters"
-	"github.com/prest/prest/v2/adapters/postgres/internal/connection"
 	"github.com/prest/prest/v2/adapters/scanner"
-	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/internal/logsafe"
 	"github.com/prest/prest/v2/template"
 
 	"log/slog"
 )
 
 // GetScript get SQL template file
-func (adapter *Postgres) GetScript(verb, folder, scriptName string) (script string, err error) {
+func (adapter *postgres) GetScript(verb, folder, scriptName string) (script string, err error) {
 	verbs := map[string]string{
 		"GET":    ".read.sql",
 		"POST":   ".write.sql",
@@ -35,7 +34,7 @@ func (adapter *Postgres) GetScript(verb, folder, scriptName string) (script stri
 		return
 	}
 
-	base := config.PrestConf.QueriesPath
+	base := adapter.cfg.QueriesPath
 	if env := os.Getenv("PREST_QUERIES_LOCATION"); env != "" {
 		base = env
 	}
@@ -52,7 +51,7 @@ func (adapter *Postgres) GetScript(verb, folder, scriptName string) (script stri
 }
 
 // ParseScript use values sent by users and add on script
-func (adapter *Postgres) ParseScript(scriptPath string, templateData map[string]interface{}) (sqlQuery string, values []interface{}, err error) {
+func (adapter *postgres) ParseScript(scriptPath string, templateData map[string]interface{}) (sqlQuery string, values []interface{}, err error) {
 	_, tplName := filepath.Split(scriptPath)
 
 	funcs := &template.FuncRegistry{TemplateData: templateData}
@@ -78,16 +77,16 @@ func (adapter *Postgres) ParseScript(scriptPath string, templateData map[string]
 }
 
 // WriteSQL perform INSERT's, UPDATE's, DELETE's operations
-func WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
-	db, err := connection.Get()
+func (adapter *postgres) WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
+	db, err := adapter.conn.Get()
 	if err != nil {
-		slog.Error("connection get error", "err", err)
+		slog.Error("connection get error", "err", logsafe.Error(err))
 		sc = &scanner.PrestScanner{Error: fmt.Errorf("connection get error: %w", err)}
 		return
 	}
-	stmt, err := Prepare(db, sql)
+	stmt, err := adapter.Prepare(db, sql)
 	if err != nil {
-		slog.Info("could not prepare sql", "sql", sql, "err", err)
+		slog.Error("could not prepare sql", "sql", sql, "err", err)
 		sc = &scanner.PrestScanner{Error: fmt.Errorf("could not prepare sql: %w", err)}
 		return
 	}
@@ -124,16 +123,16 @@ func WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
 }
 
 // WriteSQLCtx perform INSERT's, UPDATE's, DELETE's operations
-func WriteSQLCtx(ctx context.Context, sql string, values []interface{}) (sc adapters.Scanner) {
-	db, err := getDBFromCtx(ctx)
+func (adapter *postgres) WriteSQLCtx(ctx context.Context, sql string, values []interface{}) (sc adapters.Scanner) {
+	db, err := adapter.dbFromCtx(ctx)
 	if err != nil {
-		slog.Warn("connection get error", "err", err)
+		slog.Error("connection get error", "err", logsafe.Error(err))
 		sc = &scanner.PrestScanner{Error: fmt.Errorf("connection get error: %w", err)}
 		return
 	}
-	stmt, err := Prepare(db, sql)
+	stmt, err := adapter.PrepareContext(ctx, db, sql)
 	if err != nil {
-		slog.Info("could not prepare sql", "sql", sql, "err", err)
+		slog.Error("could not prepare sql", "sql", sql, "err", logsafe.Error(err))
 		sc = &scanner.PrestScanner{Error: fmt.Errorf("could not prepare sql: %w", err)}
 		return
 	}
@@ -143,7 +142,7 @@ func WriteSQLCtx(ctx context.Context, sql string, values []interface{}) (sc adap
 		valuesAux = append(valuesAux, values[i])
 	}
 
-	result, err := stmt.Exec(valuesAux...)
+	result, err := stmt.ExecContext(ctx, valuesAux...)
 	if err != nil {
 		log.Printf("sql = %v\n", sql)
 		err = fmt.Errorf("could not peform sql: %v", err)
@@ -170,23 +169,23 @@ func WriteSQLCtx(ctx context.Context, sql string, values []interface{}) (sc adap
 }
 
 // ExecuteScripts run sql templates created by users
-func (adapter *Postgres) ExecuteScripts(method, sql string, values []interface{}) (sc adapters.Scanner) {
+func (adapter *postgres) ExecuteScripts(method, sql string, values []interface{}) (sc adapters.Scanner) {
 	switch method {
 	case "GET":
 		return adapter.Query(sql, values...)
 	case "POST", "PUT", "PATCH", "DELETE":
-		return WriteSQL(sql, values)
+		return adapter.WriteSQL(sql, values)
 	}
 	return &scanner.PrestScanner{Error: fmt.Errorf("invalid method %s", method)}
 }
 
 // ExecuteScriptsCtx run sql templates created by users
-func (adapter *Postgres) ExecuteScriptsCtx(ctx context.Context, method, sql string, values []interface{}) (sc adapters.Scanner) {
+func (adapter *postgres) ExecuteScriptsCtx(ctx context.Context, method, sql string, values []interface{}) (sc adapters.Scanner) {
 	switch method {
 	case "GET":
 		return adapter.QueryCtx(ctx, sql, values...)
 	case "POST", "PUT", "PATCH", "DELETE":
-		return WriteSQLCtx(ctx, sql, values)
+		return adapter.WriteSQLCtx(ctx, sql, values)
 	}
 	return &scanner.PrestScanner{Error: fmt.Errorf("invalid method %s", method)}
 }

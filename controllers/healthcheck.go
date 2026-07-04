@@ -6,6 +6,7 @@ import (
 	"time"
 
 	pctx "github.com/prest/prest/v2/context"
+	"github.com/prest/prest/v2/internal/logsafe"
 
 	"log/slog"
 )
@@ -33,7 +34,7 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	for _, check := range h.checks {
 		if err := check(ctx); err != nil {
-			slog.Error("could not check DB connection", "err", err)
+			slog.Error("could not check DB connection", "err", logsafe.Error(err))
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}

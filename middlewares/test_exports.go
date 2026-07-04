@@ -4,13 +4,16 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/prest/prest/v2/config"
+
 	"github.com/urfave/negroni/v3"
 )
 
-// SetMiddlewareStackForTest replaces the middleware stack for integration tests.
-func SetMiddlewareStackForTest(stack []negroni.Handler) {
-	MiddlewareStack = stack
-	app = nil
+// NewForTest builds a negroni stack with optional extra handlers for integration tests.
+func NewForTest(cfg *config.Prest, extra ...negroni.Handler) *negroni.Negroni {
+	stack := BaseStack(cfg.HTTPTimeout)
+	stack = append(stack, extra...)
+	return negroni.New(stack...)
 }
 
 // CustomMiddlewareForTest is a JSON response middleware used in integration tests.

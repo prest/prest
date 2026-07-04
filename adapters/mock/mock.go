@@ -16,6 +16,7 @@ import (
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/adapters/scanner"
 	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/internal/logsafe"
 )
 
 // Item mock
@@ -27,10 +28,11 @@ type Item struct {
 
 // Mock adapter
 type Mock struct {
-	mtx   *sync.RWMutex
-	t     *testing.T
-	conns map[string]*mockConn
-	Items []Item
+	mtx        *sync.RWMutex
+	t          *testing.T
+	conns      map[string]*mockConn
+	Items      []Item
+	AccessConf config.AccessConf
 }
 
 var _ adapters.Adapter = (*Mock)(nil) // Verify that Mock implements Adapter.
@@ -60,7 +62,7 @@ func (m *Mock) Open(dsn string) (c driver.Conn, err error) {
 	if !ok {
 		slog.Debug(
 			"mock connection not found",
-			"dsn", dsn,
+			"dsn", logsafe.Error(fmt.Errorf("%s", dsn)).Error(),
 			"available_dsns", maps.Keys(m.conns),
 		)
 		return c, fmt.Errorf("expected a connection to be available, but it is not: conn=%v, available_dsns=%v", c, maps.Keys(m.conns))
@@ -93,12 +95,12 @@ func (m *Mock) perform(query bool) (sc adapters.Scanner) {
 // TablePermissions mock
 func (m *Mock) TablePermissions(table string, op string, userName string) (ok bool) {
 	m.t.Helper()
-	restrict := config.PrestConf.AccessConf.Restrict
+	restrict := m.AccessConf.Restrict
 	if !restrict {
 		return true
 	}
 
-	tables := config.PrestConf.AccessConf.Tables
+	tables := m.AccessConf.Tables
 	access := false
 	for _, t := range tables {
 		if t.Name == table {
@@ -115,7 +117,7 @@ func (m *Mock) TablePermissions(table string, op string, userName string) (ok bo
 	// currently, access is granted to all users based on the table settings.
 	// if it is later discovered that there are specific permission settings for an individual user,
 	// then the latter settings should be applied.
-	users := config.PrestConf.AccessConf.Users
+	users := m.AccessConf.Users
 	for _, u := range users {
 		if u.Name == userName {
 			for _, t := range u.Tables {

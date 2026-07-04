@@ -8,7 +8,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/v2/integration/helpers"
-	"github.com/prest/prest/v2/middlewares"
 	"github.com/prest/prest/v2/testutils"
 )
 
@@ -77,9 +76,9 @@ func TestRenderWithXML(t *testing.T) {
 	}{
 		{"Get schemas with COUNT clause with XML Render", "/schemas?_count=*&_renderer=xml", "GET", 200, "<objects><object><count>4</count></object></objects>"},
 	}
-	t.Setenv("PREST_DEBUG", "true")
+	cfg := helpers.LoadTestConfig(t)
 	h := helpers.NewIntegrationHandlers(t)
-	n := middlewares.GetApp()
+	n := helpers.MiddlewareStack(cfg)
 	r := mux.NewRouter()
 	r.HandleFunc("/schemas", h.Catalog.ListSchemas).Methods("GET")
 	n.UseHandler(r)

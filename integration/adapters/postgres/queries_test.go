@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/prest/prest/v2/adapters/postgres"
-	"github.com/prest/prest/v2/config"
 )
 
 func TestValidGetScript(t *testing.T) {
@@ -29,7 +28,7 @@ func TestValidGetScript(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		_, err := config.PrestConf.Adapter.GetScript(tc.method, tc.path, tc.file)
+		_, err := testCfg.Adapter.GetScript(tc.method, tc.path, tc.file)
 		if err != tc.err {
 			t.Errorf("expected no errors, but got %s", err)
 		}
@@ -51,7 +50,7 @@ func TestInvalidGetScript(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		_, err := config.PrestConf.Adapter.GetScript(tc.method, tc.path, tc.file)
+		_, err := testCfg.Adapter.GetScript(tc.method, tc.path, tc.file)
 		if err == nil {
 			t.Errorf("expected no error, but got %s", err)
 		}
@@ -63,9 +62,9 @@ func TestParseScriptInvalid(t *testing.T) {
 	templateData := map[string]interface{}{}
 	templateData["field1"] = "abc"
 
-	scriptPath := filepath.Join(config.PrestConf.QueriesPath, "fulltable", "%s")
+	scriptPath := filepath.Join(testCfg.QueriesPath, "fulltable", "%s")
 	t.Log("Parse script with get_all file")
-	sql, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "get_all.read.sql"), templateData)
+	sql, _, err := testCfg.Adapter.ParseScript(fmt.Sprintf(scriptPath, "get_all.read.sql"), templateData)
 	if err != nil {
 		t.Errorf("expected no error, but got: %v", err)
 	}
@@ -79,8 +78,8 @@ func TestParseScriptSyntaxInvalid(t *testing.T) {
 	setupTestDB(t)
 	templateData := map[string]interface{}{}
 	templateData["field1"] = 1
-	scriptPath := filepath.Join(config.PrestConf.QueriesPath, "fulltable", "%s")
-	_, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "parse_syntax_invalid.read.sql"), templateData)
+	scriptPath := filepath.Join(testCfg.QueriesPath, "fulltable", "%s")
+	_, _, err := testCfg.Adapter.ParseScript(fmt.Sprintf(scriptPath, "parse_syntax_invalid.read.sql"), templateData)
 	if err == nil {
 		t.Fatal("expected parse error, got nil")
 	}
@@ -94,10 +93,10 @@ func TestParseScript(t *testing.T) {
 	templateData := map[string]interface{}{}
 	templateData["field1"] = []string{"abc", "test"}
 
-	scriptPath := filepath.Join(config.PrestConf.QueriesPath, "fulltable", "%s")
+	scriptPath := filepath.Join(testCfg.QueriesPath, "fulltable", "%s")
 
 	t.Log("Parse script with get_all_slice file")
-	sql, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "get_all_slice.read.sql"), templateData)
+	sql, _, err := testCfg.Adapter.ParseScript(fmt.Sprintf(scriptPath, "get_all_slice.read.sql"), templateData)
 	if err != nil {
 		t.Errorf("expected no error, but got: %v", err)
 	}
@@ -122,7 +121,7 @@ func TestWriteSQL(t *testing.T) {
 	}
 	for _, tc := range testValidCases {
 		t.Log(tc.description)
-		sc := postgres.WriteSQL(tc.sql, tc.values)
+		sc := postgres.WriteSQLExported(testAdapter(t), tc.sql, tc.values)
 		if sc.Err() != nil && tc.pass {
 			t.Errorf("pass true, got: %s", sc.Err())
 		} else if sc.Err() == nil && !tc.pass {
@@ -148,7 +147,7 @@ func TestWriteSQLCtx(t *testing.T) {
 	}
 	for _, tc := range testValidCases {
 		t.Log(tc.description)
-		sc := postgres.WriteSQLCtx(ctx, tc.sql, tc.values)
+		sc := postgres.WriteSQLCtxExported(ctx, testAdapter(t), tc.sql, tc.values)
 		if sc.Err() != nil && tc.pass {
 			t.Errorf("pass true, got: %s", sc.Err())
 		} else if sc.Err() == nil && !tc.pass {
@@ -175,7 +174,7 @@ func TestExecuteScripts(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.ExecuteScripts(tc.method, tc.sql, tc.values)
+		sc := testCfg.Adapter.ExecuteScripts(tc.method, tc.sql, tc.values)
 		if tc.err != sc.Err() {
 			t.Errorf("expected no errors, but got %s", sc.Err())
 		}
@@ -183,7 +182,7 @@ func TestExecuteScripts(t *testing.T) {
 
 	t.Log("Get errors with invalid HTTP Method")
 	values := make([]interface{}, 0)
-	sc := config.PrestConf.Adapter.ExecuteScripts("ANY", "SELECT * FROM test7", values)
+	sc := testCfg.Adapter.ExecuteScripts("ANY", "SELECT * FROM test7", values)
 	if len(sc.Bytes()) > 0 {
 		t.Errorf("expected empty result, but got %s", sc.Bytes())
 	}
@@ -213,7 +212,7 @@ func TestExecuteScriptsCtx(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		sc := config.PrestConf.Adapter.ExecuteScriptsCtx(ctx, tc.method, tc.sql, tc.values)
+		sc := testCfg.Adapter.ExecuteScriptsCtx(ctx, tc.method, tc.sql, tc.values)
 		if tc.err != sc.Err() {
 			t.Errorf("expected no errors, but got %s", sc.Err())
 		}
@@ -221,7 +220,7 @@ func TestExecuteScriptsCtx(t *testing.T) {
 
 	t.Log("Get errors with invalid HTTP Method")
 	values := make([]interface{}, 0)
-	sc := config.PrestConf.Adapter.ExecuteScriptsCtx(ctx, "ANY", "SELECT * FROM test7", values)
+	sc := testCfg.Adapter.ExecuteScriptsCtx(ctx, "ANY", "SELECT * FROM test7", values)
 	if len(sc.Bytes()) > 0 {
 		t.Errorf("expected empty result, but got %s", sc.Bytes())
 	}
@@ -235,10 +234,10 @@ func TestParseFuncLimitOffset(t *testing.T) {
 	setupTestDB(t)
 	templateData := map[string]interface{}{}
 
-	scriptPath := filepath.Join(config.PrestConf.QueriesPath, "fulltable", "%s")
+	scriptPath := filepath.Join(testCfg.QueriesPath, "fulltable", "%s")
 
 	t.Log("Parse script with limitoffset file")
-	sql, _, err := config.PrestConf.Adapter.ParseScript(fmt.Sprintf(scriptPath, "limitoffset.read.sql"), templateData)
+	sql, _, err := testCfg.Adapter.ParseScript(fmt.Sprintf(scriptPath, "limitoffset.read.sql"), templateData)
 	if err != nil {
 		t.Errorf("expected no error, but got: %v", err)
 	}

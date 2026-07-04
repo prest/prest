@@ -173,3 +173,23 @@ func TestExtractQueryParameters(t *testing.T) {
 	require.Equal(t, "bar", data["foo"])
 	require.Equal(t, []string{"a", "b"}, data["tag"])
 }
+
+func TestSanitizeScriptParam(t *testing.T) {
+	require.Equal(t, "abc123", sanitizeScriptParam("abc123"))
+	require.Equal(t, "foo_bar-baz", sanitizeScriptParam("foo_bar-baz"))
+	require.Equal(t, "user@example.com", sanitizeScriptParam("user@example.com"))
+	require.Equal(t, "", sanitizeScriptParam("'; DROP TABLE users; --"))
+	require.Equal(t, "", sanitizeScriptParam(`" OR 1=1`))
+}
+
+func TestExtractQueryParameters_SanitizesUnsafeValues(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/?safe=ok&tag=good&tag=bad%27%3B--", nil)
+	req.URL.RawQuery = "safe=ok&unsafe=%27%3BDROP&tag=good&tag=bad%27%3B--"
+
+	data := map[string]interface{}{}
+	extractQueryParameters(req, data)
+
+	require.Equal(t, "ok", data["safe"])
+	require.Equal(t, "", data["unsafe"])
+	require.Equal(t, []string{"good", ""}, data["tag"])
+}

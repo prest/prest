@@ -1,18 +1,33 @@
 package cmd
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"strconv"
 
-	"github.com/prest/prest/v2/adapters/postgres"
+	"github.com/prest/prest/v2/app"
 	"github.com/prest/prest/v2/config"
-	"github.com/prest/prest/v2/router"
+	pctx "github.com/prest/prest/v2/context"
+	"github.com/prest/prest/v2/internal/logsafe"
 
 	"log/slog"
 
 	"github.com/spf13/cobra"
 )
+
+func withConfig(ctx context.Context, cfg *config.Prest) context.Context {
+	return context.WithValue(ctx, pctx.PrestConfigKey, cfg)
+}
+
+func configFrom(cmd *cobra.Command) *config.Prest {
+	cfg, ok := cmd.Root().Context().Value(pctx.PrestConfigKey).(*config.Prest)
+	if !ok || cfg == nil {
+		slog.Error("config not initialized")
+		os.Exit(1)
+	}
+	return cfg
+}
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
@@ -20,17 +35,18 @@ var RootCmd = &cobra.Command{
 	Short: "Serve a RESTful API from any PostgreSQL database",
 	Long:  `prestd (PostgreSQL REST), simplify and accelerate development, ⚡ instant, realtime, high-performance on any Postgres application, existing or new`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if config.PrestConf.Adapter == nil {
-			slog.Warn("adapter is not set. Using the default (postgres)")
-			postgres.Load()
+		cfg := configFrom(cmd)
+		prestApp, err := app.New(cfg)
+		if err != nil {
+			slog.Error("initializing app", "err", logsafe.Error(err))
+			os.Exit(1)
 		}
-		startServer()
+		startServer(cfg, prestApp)
 	},
 }
 
 // Execute adds all child commands to the root command sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
+func Execute(ctx context.Context, cfg *config.Prest) {
 	upCmd.AddCommand(authUpCmd)
 	downCmd.AddCommand(authDownCmd)
 	migrateCmd.AddCommand(downCmd)
@@ -41,41 +57,38 @@ func Execute() {
 	migrateCmd.AddCommand(resetCmd)
 	RootCmd.AddCommand(versionCmd)
 	RootCmd.AddCommand(migrateCmd)
-	migrateCmd.PersistentFlags().StringVar(&urlConn, "url", driverURL(), "Database driver url")
-	migrateCmd.PersistentFlags().StringVar(&path, "path", config.PrestConf.MigrationsPath, "Migrations directory")
+	migrateCmd.PersistentFlags().StringVar(&urlConn, "url", driverURL(cfg), "Database driver url")
+	migrateCmd.PersistentFlags().StringVar(&path, "path", cfg.MigrationsPath, "Migrations directory")
 
+	RootCmd.SetContext(withConfig(ctx, cfg))
 	if err := RootCmd.Execute(); err != nil {
-		slog.Error("executing root command", "err", err)
+		slog.Error("executing root command", "err", logsafe.Error(err))
 		os.Exit(1)
 	}
 }
 
 // startServer starts the server
-func startServer() {
-	// Fail fast when JWT enforcement is enabled but no verification material
-	// was provided — otherwise the middleware would validate bearer tokens
-	// against an empty HMAC key. Subcommands like `migrate` don't reach here,
-	// so they keep working without JWT material configured.
-	// See GHSA-fj7v-859r-2fm4.
-	if err := config.ValidateJWTConfig(config.PrestConf); err != nil {
+func startServer(cfg *config.Prest, a *app.App) {
+	if err := config.ValidateJWTConfig(cfg); err != nil {
 		slog.Error("invalid JWT configuration", "err", err)
 		os.Exit(1)
 	}
 
-	http.Handle(config.PrestConf.ContextPath, router.Routes())
+	http.Handle(cfg.ContextPath, a.Handler)
 
-	if !config.PrestConf.AccessConf.Restrict {
+	if !cfg.AccessConf.Restrict {
 		slog.Warn("You are running prestd in public mode.")
 	}
 
-	if config.PrestConf.Debug {
+	if cfg.Debug {
 		slog.Warn("You are running prestd in debug mode.")
 	}
-	address := config.PrestConf.HTTPHost + ":" + strconv.Itoa(config.PrestConf.HTTPPort)
-	slog.Info("listening and serving", slog.String("addr", address), slog.String("context", config.PrestConf.ContextPath))
 
-	if config.PrestConf.HTTPSMode {
-		if err := http.ListenAndServeTLS(address, config.PrestConf.HTTPSCert, config.PrestConf.HTTPSKey, nil); err != nil {
+	address := cfg.HTTPHost + ":" + strconv.Itoa(cfg.HTTPPort)
+	slog.Info("listening and serving", slog.String("addr", address), slog.String("context", cfg.ContextPath))
+
+	if cfg.HTTPSMode {
+		if err := http.ListenAndServeTLS(address, cfg.HTTPSCert, cfg.HTTPSKey, nil); err != nil {
 			slog.Error("HTTPS server failed", "err", err)
 			os.Exit(1)
 		}

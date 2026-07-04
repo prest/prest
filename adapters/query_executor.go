@@ -3,6 +3,10 @@ package adapters
 import "context"
 
 // QueryExecutor runs SQL statements against the database.
+//
+// Script writes (POST, PUT, PATCH, DELETE) are executed via ExecuteScripts and
+// ExecuteScriptsCtx. A separate WriteSQL method is not part of this interface;
+// adapters may implement direct writes internally behind those entry points.
 type QueryExecutor interface {
 	Query(SQL string, params ...interface{}) (sc Scanner)
 	QueryCtx(ctx context.Context, SQL string, params ...interface{}) (sc Scanner)

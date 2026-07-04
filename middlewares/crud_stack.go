@@ -14,28 +14,36 @@ type CRUDStack struct {
 }
 
 // NewCRUDStack builds the middleware chain for protected table routes.
-func NewCRUDStack(cfg *config.Prest) *CRUDStack {
+func NewCRUDStack(cfg *config.Prest, plg *plugins.Plugins) *CRUDStack {
 	perms := cfg.Adapter
 	return &CRUDStack{
 		handlers: []negroni.Handler{
-			AuthMiddleware(cfg.JWTAlgo),
+			AuthMiddleware(AuthSettings{
+				Enabled:      cfg.AuthEnabled,
+				JWTKey:       cfg.JWTKey,
+				JWTWhiteList: cfg.JWTWhiteList,
+			}),
 			AccessControl(perms),
-			ExposureMiddleware(),
-			CacheMiddleware(&cfg.Cache),
-			plugins.MiddlewarePlugin(),
+			ExposureMiddleware(cfg.ExposeConf),
+			CacheMiddleware(&cfg.Cache, cfg.JWTWhiteList),
+			plg.Middleware(),
 		},
 	}
 }
 
 // NewCRUDStackWithPerms builds the CRUD middleware chain with an explicit permissions checker.
-func NewCRUDStackWithPerms(cfg *config.Prest, perms adapters.PermissionsChecker) *CRUDStack {
+func NewCRUDStackWithPerms(cfg *config.Prest, plg *plugins.Plugins, perms adapters.PermissionsChecker) *CRUDStack {
 	return &CRUDStack{
 		handlers: []negroni.Handler{
-			AuthMiddleware(cfg.JWTAlgo),
+			AuthMiddleware(AuthSettings{
+				Enabled:      cfg.AuthEnabled,
+				JWTKey:       cfg.JWTKey,
+				JWTWhiteList: cfg.JWTWhiteList,
+			}),
 			AccessControl(perms),
-			ExposureMiddleware(),
-			CacheMiddleware(&cfg.Cache),
-			plugins.MiddlewarePlugin(),
+			ExposureMiddleware(cfg.ExposeConf),
+			CacheMiddleware(&cfg.Cache, cfg.JWTWhiteList),
+			plg.Middleware(),
 		},
 	}
 }

@@ -19,6 +19,11 @@ type LegacyExecutor interface {
 }
 
 // Adapter is the composite interface implemented by database adapters.
+//
+// Connection lifecycle (Connect, DB, Ping) is intentionally not part of Adapter.
+// It lives on DatabaseConnector, DatabaseAccessor, and DatabasePinger so test
+// doubles can implement Adapter without a real database. Production postgres
+// adapters also satisfy those interfaces; use type assertions where needed.
 type Adapter interface {
 	RequestQueryBuilder
 	QueryExecutor

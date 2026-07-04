@@ -80,17 +80,21 @@ type Handlers struct {
 
 // NewHandlers constructs handlers from dependencies.
 func NewHandlers(deps Deps) *Handlers {
+	checks := DefaultCheckList
+	if pinger, ok := deps.Executor.(adapters.DatabasePinger); ok {
+		checks = CheckList{CheckDBHealth(pinger.Ping)}
+	}
 	return &Handlers{
 		Auth:    NewAuthHandler(deps.Executor, deps.Auth),
 		Catalog: NewCatalogHandler(deps),
 		Table:   NewTableHandler(deps.Executor, deps.DB, deps.SingleDB),
 		CRUD:    NewCRUDHandler(deps),
 		Script:  NewScriptHandler(deps),
-		Health:  NewHealthHandler(DefaultCheckList),
+		Health:  NewHealthHandler(checks),
 	}
 }
 
-// NewHandlersFromConfig builds handlers using global config.
+// NewHandlersFromConfig builds handlers from application config.
 func NewHandlersFromConfig(p *config.Prest) *Handlers {
 	return NewHandlers(NewDepsFromConfig(p))
 }
