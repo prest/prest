@@ -137,7 +137,8 @@ const (
 // is missing, unreadable, malformed, or contains invalid structured keys.
 // Load never returns an error for queries or cache storage path issues: it
 // retries default paths and disables the feature when both configured and
-// fallback paths are unavailable.
+// fallback paths are unavailable. Unsafe JWT/auth settings (enabled without
+// verification material) are auto-disabled with warnings via ensureJWTConfig.
 //
 // Returns the populated *Prest and nil on success.
 func Load() (*Prest, error) {
@@ -145,6 +146,7 @@ func Load() (*Prest, error) {
 	cfg := &Prest{}
 	Parse(v, cfg, configPath)
 
+	ensureJWTConfig(cfg)
 	ensureQueriesPath(cfg)
 
 	if !cfg.Cache.Enabled {
@@ -200,6 +202,23 @@ func ensureCacheStorage(cfg *Prest) {
 
 	slog.Warn("cache disabled: fallback storage path unavailable", "path", defaultCacheStoragePath, "err", err)
 	cfg.Cache.Enabled = false
+}
+
+func ensureJWTConfig(cfg *Prest) {
+	if cfg.AuthEnabled && cfg.JWTKey == "" {
+		slog.Error("auth disabled: jwt.key is empty", "err", ErrAuthEnabledNoJWTKey)
+		cfg.AuthEnabled = false
+	}
+	if !cfg.EnableDefaultJWT || cfg.Debug {
+		return
+	}
+	if cfg.JWTKey != "" || cfg.JWTJWKS != "" || cfg.JWTWellKnownURL != "" {
+		return
+	}
+	slog.Error(
+		"default JWT middleware disabled: no verification material",
+		"err", ErrJWTDefaultEnabledNoKey)
+	cfg.EnableDefaultJWT = false
 }
 
 func defaultQueriesPath() string {
@@ -302,7 +321,7 @@ func viperCfg() (*viper.Viper, string) {
 	// https://github.com/jackc/pgx/blob/47d631e34be7128997a0aa89b75885cc4ad4c82e/pgconn/config.go#L218
 	v.SetDefault("pg.ssl.mode", "disable")
 
-	v.SetDefault("jwt.default", true)
+	v.SetDefault("jwt.default", false)
 	v.SetDefault("jwt.algo", "HS256")
 	v.SetDefault("jwt.wellknownurl", "")
 	v.SetDefault("jwt.jwks", "")
@@ -443,37 +462,6 @@ var ErrJWTDefaultEnabledNoKey = errors.New(
 // middleware. See GHSA-fj7v-859r-2fm4.
 var ErrAuthEnabledNoJWTKey = errors.New(
 	"auth.enabled is true but jwt.key is empty (required to verify HS256 tokens)")
-
-// ValidateJWTConfig fails fast when either of the JWT-validating middlewares
-// would be installed without any verification material:
-//
-//   - The default JWT middleware (jwt.default = true) requires jwt.key, a
-//     JWKS, or a .well-known URL.
-//   - AuthMiddleware (auth.enabled = true) verifies HS256 tokens with
-//     jwt.key, so an empty key is unsafe.
-//
-// The default JWT path also bypasses when Debug is true, so we mirror that
-// rule here to avoid blocking debug-mode startups.
-//
-// Call this from binary entrypoints before serving requests; tests that
-// exercise Load() without setting JWT material rely on the middleware-level
-// guards (middlewares.JwtMiddleware, middlewares.AuthMiddleware) to fail
-// closed at request time.
-func ValidateJWTConfig(cfg *Prest) error {
-	if cfg.AuthEnabled && cfg.JWTKey == "" {
-		return ErrAuthEnabledNoJWTKey
-	}
-	if !cfg.EnableDefaultJWT {
-		return nil
-	}
-	if cfg.Debug {
-		return nil
-	}
-	if cfg.JWTKey != "" || cfg.JWTJWKS != "" || cfg.JWTWellKnownURL != "" {
-		return nil
-	}
-	return ErrJWTDefaultEnabledNoKey
-}
 
 // fetchJWKS tries to get the JWKS from the URL in the config
 func fetchJWKS(cfg *Prest) {

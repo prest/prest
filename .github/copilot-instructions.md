@@ -268,7 +268,7 @@ go test ./integration/...
 
 ### Config resilience policy
 
-Wrong or partial configuration must **not** block API startup. Log `slog.Warn`, fall back to viper defaults or safe zero values, and continue. Reference implementations live in `config/config.go`: `ensureCacheStorage`, `ensureQueriesPath`, `unmarshalKeyOrZero`, and `getJSONAgg`.
+Wrong or partial configuration must **not** block API startup. Log `slog.Warn`, fall back to viper defaults or safe zero values, and continue. Reference implementations live in `config/config.go`: `ensureCacheStorage`, `ensureQueriesPath`, `ensureJWTConfig`, `unmarshalKeyOrZero`, and `getJSONAgg`.
 
 **Patterns when adding config keys**
 
@@ -277,11 +277,12 @@ Wrong or partial configuration must **not** block API startup. Log `slog.Warn`, 
 | Scalar | Use `viper.SetDefault` + `Get*` | viper defaults |
 | Slice/struct TOML key | Warn + zero value | `unmarshalKeyOrZero` |
 | Optional filesystem path | Configured → default → disable feature | `ensure*Path` (cache, queries) |
+| Auth/JWT misconfiguration | Warn + disable feature | `ensureJWTConfig` |
 | Enum-like value | Warn + default | `getJSONAgg` pattern |
 
-**Intentional fail-closed exceptions** (do not soften at config load):
+**Defense-in-depth at request time** (unchanged):
 
-- `ValidateJWTConfig` at serve time in `cmd/root.go` — empty JWT key with auth or default JWT enabled is an auth-bypass risk (GHSA-fj7v-859r-2fm4).
+- Middleware empty-key guards in `middlewares/` — refuse tokens when verification material is missing (GHSA-fj7v-859r-2fm4).
 - SQL/auth validation in middleware — unchanged.
 
 **Parse / Load behavior**
@@ -289,6 +290,7 @@ Wrong or partial configuration must **not** block API startup. Log `slog.Warn`, 
 - Missing, unreadable, or malformed TOML: warn and use viper defaults + `PREST_*` env overrides.
 - Invalid `access.tables`, `access.users`, `pluginmiddlewarelist`, `cache.endpoints`: warn and use empty slices.
 - Queries or cache storage path unavailable: warn, retry default path, disable feature if both fail.
+- Auth enabled without `jwt.key`, or `jwt.default` enabled without verification material: warn and disable the feature (`jwt.default` defaults to `false`).
 
 ## Performance and Reliability
 
