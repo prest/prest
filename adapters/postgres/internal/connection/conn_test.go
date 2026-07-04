@@ -103,6 +103,7 @@ func TestAddDatabaseToPool_appliesPoolLimits(t *testing.T) {
 
 	db, err := m.AddDatabaseToPool("tenant-a")
 	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
 	require.Equal(t, 25, db.Stats().MaxOpenConnections)
 }
 

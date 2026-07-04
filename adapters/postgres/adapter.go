@@ -26,16 +26,7 @@ func Close(a adapters.Adapter) {
 	if !ok {
 		return
 	}
-	pool := p.GetPool()
-	if pool == nil {
-		return
-	}
-	pool.Mtx.Lock()
-	for _, db := range pool.DB {
-		_ = db.Close()
-	}
-	pool.Mtx.Unlock()
-	p.ConnManager().ResetPoolForTest()
+	p.ConnManager().CloseAllAndResetPool()
 }
 
 // DB returns the default sqlx connection from a postgres adapter.

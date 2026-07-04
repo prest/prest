@@ -177,6 +177,20 @@ func (m *Manager) GetPool() *Pool {
 	return m.getPool()
 }
 
+// CloseAllAndResetPool closes all pooled connections and clears the pool atomically.
+func (m *Manager) CloseAllAndResetPool() {
+	p := m.getPool()
+	p.Mtx.Lock()
+	for _, db := range p.DB {
+		_ = db.Close()
+	}
+	p.DB = make(map[string]*sqlx.DB)
+	p.Mtx.Unlock()
+	m.mu.Lock()
+	m.currDatabase = ""
+	m.mu.Unlock()
+}
+
 // poolLimitsFor returns the maximum number of idle and open connections for
 // a given database. It uses the global limits if the database is not found in
 // the registry.
