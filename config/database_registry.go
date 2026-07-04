@@ -39,7 +39,7 @@ func HasDatabaseRegistry(cfg *Prest) bool {
 	return cfg != nil && len(cfg.Databases) > 0
 }
 
-func parseDatabaseRegistry(cfg *Prest) error {
+func parseDatabaseRegistry(v *viper.Viper, cfg *Prest) error {
 	merged := make(map[string]DatabaseConf)
 
 	indexed, err := parseDatabaseRegistryFromEnv()
@@ -52,28 +52,10 @@ func parseDatabaseRegistry(cfg *Prest) error {
 		}
 	}
 
-	manifest, err := parseDatabaseRegistryFromManifestEnv()
-	if err != nil {
-		return err
-	}
-	for _, db := range manifest {
-		if existing, ok := merged[db.Alias]; ok {
-			if db.URL != "" {
-				existing.URL = db.URL
-				applyURLToDatabaseConf(&existing)
-				merged[db.Alias] = existing
-			}
-			continue
-		}
-		if err := addDatabaseConf(merged, db); err != nil {
-			return err
-		}
-	}
-
 	var tomlDBs []DatabaseConf
-	if raw := viper.Get("databases"); raw != nil {
+	if raw := v.Get("databases"); raw != nil {
 		if _, isString := raw.(string); !isString {
-			if err := viper.UnmarshalKey("databases", &tomlDBs); err != nil {
+			if err := v.UnmarshalKey("databases", &tomlDBs); err != nil {
 				return fmt.Errorf("unmarshal databases: %w", err)
 			}
 		}
@@ -90,22 +72,6 @@ func parseDatabaseRegistry(cfg *Prest) error {
 			if err := addDatabaseConf(merged, db); err != nil {
 				return err
 			}
-		}
-	}
-
-	// Manifest aliases without URL can be completed from TOML.
-	for alias, db := range merged {
-		if db.URL != "" || hasConnectionFields(db) {
-			continue
-		}
-		for _, t := range tomlDBs {
-			if t.Alias == alias {
-				merged[alias] = mergeDatabaseConf(t, db)
-				break
-			}
-		}
-		if merged[alias].URL == "" && !hasConnectionFields(merged[alias]) {
-			return fmt.Errorf("database %q has no connection URL or host settings", alias)
 		}
 	}
 
@@ -163,36 +129,6 @@ func parseDatabaseRegistryFromEnv() ([]DatabaseConf, error) {
 		dbs = append(dbs, conf)
 	}
 	return dbs, nil
-}
-
-func parseDatabaseRegistryFromManifestEnv() ([]DatabaseConf, error) {
-	manifest := strings.TrimSpace(os.Getenv("PREST_DATABASES"))
-	if manifest == "" {
-		return nil, nil
-	}
-
-	var dbs []DatabaseConf
-	for _, raw := range strings.Split(manifest, ",") {
-		alias := strings.TrimSpace(raw)
-		if alias == "" {
-			continue
-		}
-		if !ident.IsSafeSegment(alias) {
-			return nil, fmt.Errorf("invalid database alias %q in PREST_DATABASES", alias)
-		}
-		envKey := "PREST_DATABASE_" + manifestAliasEnvKey(alias) + "_URL"
-		connURL := os.Getenv(envKey)
-		conf := DatabaseConf{Alias: alias, URL: connURL}
-		if connURL != "" {
-			applyURLToDatabaseConf(&conf)
-		}
-		dbs = append(dbs, conf)
-	}
-	return dbs, nil
-}
-
-func manifestAliasEnvKey(alias string) string {
-	return strings.ToUpper(strings.ReplaceAll(alias, "-", "_"))
 }
 
 func envFirst(keys ...string) string {
@@ -268,20 +204,6 @@ func fillDatabaseDefaults(db *DatabaseConf, cfg *Prest) {
 	if db.MaxIdleConn == 0 {
 		db.MaxIdleConn = cfg.PGMaxIdleConn
 	}
-}
-
-func hasConnectionFields(db DatabaseConf) bool {
-	return db.Host != "" || db.URL != ""
-}
-
-func mergeDatabaseConf(toml, existing DatabaseConf) DatabaseConf {
-	out := toml
-	out.Alias = existing.Alias
-	if existing.URL != "" {
-		out.URL = existing.URL
-		applyURLToDatabaseConf(&out)
-	}
-	return out
 }
 
 func sortedDatabaseConfs(merged map[string]DatabaseConf) []DatabaseConf {

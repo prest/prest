@@ -2028,24 +2028,34 @@ func NormalizeGroupFunction(paramValue string) (groupFuncSQL string, err error) 
 	}
 }
 
+// tableReference returns a quoted table identifier for SQL generation.
+// With a database registry, the connection is already scoped to the physical
+// database so only schema.table is qualified. Legacy mode uses database.schema.table.
+func (adapter *postgres) tableReference(database, schema, table string) string {
+	if config.HasDatabaseRegistry(adapter.cfg) {
+		return fmt.Sprintf(`"%s"."%s"`, schema, table)
+	}
+	return fmt.Sprintf(`"%s"."%s"."%s"`, database, schema, table)
+}
+
 // SelectSQL generate select sql
 func (adapter *postgres) SelectSQL(selectStr string, database string, schema string, table string) string {
-	return fmt.Sprintf(`%s "%s"."%s"."%s"`, selectStr, database, schema, table)
+	return fmt.Sprintf(`%s %s`, selectStr, adapter.tableReference(database, schema, table))
 }
 
 // InsertSQL generate insert sql
 func (adapter *postgres) InsertSQL(database string, schema string, table string, names string, placeholders string) string {
-	return fmt.Sprintf(statements.InsertQuery, database, schema, table, names, placeholders)
+	return fmt.Sprintf(`INSERT INTO %s(%s) VALUES%s`, adapter.tableReference(database, schema, table), names, placeholders)
 }
 
 // DeleteSQL generate delete sql
 func (adapter *postgres) DeleteSQL(database string, schema string, table string) string {
-	return fmt.Sprintf(statements.DeleteQuery, database, schema, table)
+	return fmt.Sprintf(`DELETE FROM %s`, adapter.tableReference(database, schema, table))
 }
 
 // UpdateSQL generate update sql
 func (adapter *postgres) UpdateSQL(database string, schema string, table string, setSyntax string) string {
-	return fmt.Sprintf(statements.UpdateQuery, database, schema, table, setSyntax)
+	return fmt.Sprintf(`UPDATE %s SET %s`, adapter.tableReference(database, schema, table), setSyntax)
 }
 
 // DatabaseWhere generate database where syntax

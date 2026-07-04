@@ -142,12 +142,18 @@ const (
 // retries default paths and disables the feature when both configured and
 // fallback paths are unavailable. Unsafe JWT/auth settings (enabled without
 // verification material) are auto-disabled with warnings via ensureJWTConfig.
+// Invalid database registry configuration (duplicate aliases, missing URLs)
+// returns an error.
 //
 // Returns the populated *Prest and nil on success.
 func Load() (*Prest, error) {
 	v, configPath := viperCfg()
 	cfg := &Prest{}
 	Parse(v, cfg, configPath)
+
+	if err := parseDatabaseRegistry(v, cfg); err != nil {
+		return nil, err
+	}
 
 	ensureJWTConfig(cfg)
 	ensureQueriesPath(cfg)
