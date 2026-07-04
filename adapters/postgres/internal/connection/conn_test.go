@@ -491,18 +491,23 @@ func TestManager_GetDatabase(t *testing.T) {
 		var wg sync.WaitGroup
 		wg.Add(setters + 1)
 
+		ready := make(chan struct{})
+		var readyOnce sync.Once
+
 		// Writers
 		for i := range setters {
 			go func(idx int) {
 				defer wg.Done()
 				m.SetDatabase(fmt.Sprintf("db-%d", idx))
+				readyOnce.Do(func() { close(ready) })
 			}(i)
 		}
 
-		// Concurrent reader - just verify we get valid results without race
+		// Concurrent reader - wait for at least one write, then verify valid results without race
 		results := make([]string, 100)
 		go func() {
 			defer wg.Done()
+			<-ready
 			for i := range 100 {
 				results[i] = m.GetDatabase()
 			}
@@ -513,7 +518,7 @@ func TestManager_GetDatabase(t *testing.T) {
 		// All read values should be valid database names set by one of the writers
 		for _, val := range results {
 			require.NotEmpty(t, val)
-			require.True(t, len(val) > 0, "database name should not be empty")
+			require.Regexp(t, `^db-\d+$`, val)
 		}
 	})
 }
