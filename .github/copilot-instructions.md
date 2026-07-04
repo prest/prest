@@ -155,7 +155,7 @@ func NewCRUDHandler(cfg *config.Prest) *CRUDHandler {
 
 - Add or update tests for behavior changes.
 - **Unit tests:** co-located `*_test.go` in the source package; use gomock of narrow adapter interfaces; never call `postgres.Load()` or hit a real database.
-- **Integration tests:** only under `integration/`, mirroring package layout; exercise public HTTP/adapter surfaces end-to-end with Docker Postgres.
+- **Integration tests:** only under `integration/`, mirroring package layout; exercise public HTTP/adapter surfaces end-to-end with Docker Postgres and **deployed prestd processes** over the network (see **Network integration tests** below).
 - Never add `postgres.Load()` outside `integration/`.
 - Reuse existing test patterns (`testify`, `adapters/mockgen/`, `handlerstest.NewTestHandlers`, `testutils/` for HTTP helpers).
 - Mock **ports** (`adapters/*` interfaces), not `adapters/postgres` types, in unit tests outside `adapters/postgres/`.
@@ -173,6 +173,28 @@ Unit tests under `adapters/postgres/**` must pass with **no Postgres process run
 |----------|---------|----------|---------|
 | `adapters/postgres/**` | unit | **Never real** — sqlmock only | `go test ./adapters/postgres/...`, `make test-unit` |
 | `integration/adapters/postgres/**` | integration | Real Postgres (Docker) | `make test-integration` |
+
+### Network integration tests
+
+`make test-integration` (`docker-compose-test.yml`) provisions Postgres, seeds data via `testdata/db-init.sh`, starts **real prestd servers**, then runs tests in the `tests` container.
+
+| Service | URL env (in tests container) | Config |
+|---------|------------------------------|--------|
+| `prestd` | `PREST_TEST_URL=http://prestd:3000` | `testdata/prest.toml`, debug on, JWT off |
+| `prestd-multicluster` | `PREST_MULTICLUSTER_TEST_URL=http://prestd-multicluster:3001` | `testdata/prest_multicluster.toml` |
+| `prestd-auth` | `PREST_AUTH_TEST_URL=http://prestd-auth:3002` | auth enabled |
+
+Standard-stack HTTP tests use [`integration/helpers/server.go`](integration/helpers/server.go):
+
+- `helpers.ServerURL(t)` — default prestd; `t.Skip` when env unset
+- `helpers.MultiClusterServerURL(t)` — multi-cluster prestd
+- `helpers.AuthServerURL(t)` — auth-enabled prestd
+
+Call deployed servers with `testutils.DoRequest(t, base+path, ...)`. Do **not** use `httptest.NewServer(helpers.IntegrationHandler(...))` for controller/router tests unless the test needs a **custom negroni stack** or per-test config mutation (e.g. `integration/middlewares/`, `integration/plugins/`, `TestSilentErrorsOnQuery`).
+
+Keep [`helpers.IntegrationHandler`](integration/helpers/setup.go) for custom-stack tests only. Adapter-level tests under `integration/adapters/` may still call the adapter directly.
+
+Local `go test ./integration/...` without compose skips network tests (no `PREST_*_TEST_URL`).
 
 **Golden rule:** never call `conn.Get()`, `Connect()`, `DB()`, or `Ping()` in a way that reaches `sqlx.Connect` without a test double in place.
 

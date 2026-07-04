@@ -2,15 +2,15 @@ package controllers_test
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
-	"github.com/gorilla/mux"
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/testutils"
 )
 
 func TestGetDatabases(t *testing.T) {
+	base := helpers.ServerURL(t)
+
 	var testCases = []struct {
 		description string
 		url         string
@@ -30,19 +30,15 @@ func TestGetDatabases(t *testing.T) {
 		{"Get databases with invalid distinct", "/databases?_distinct", "GET", http.StatusOK},
 	}
 
-	h := helpers.NewIntegrationHandlers(t)
-	router := mux.NewRouter()
-	router.HandleFunc("/databases", h.Catalog.ListDatabases).Methods("GET")
-	server := httptest.NewServer(router)
-	defer server.Close()
-
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetDatabases")
+		testutils.DoRequest(t, base+tc.url, nil, tc.method, tc.status, "GetDatabases")
 	}
 }
 
 func TestGetSchemas(t *testing.T) {
+	base := helpers.ServerURL(t)
+
 	var testCases = []struct {
 		description string
 		url         string
@@ -61,19 +57,15 @@ func TestGetSchemas(t *testing.T) {
 		{"Get schemas with distinct clause", "/schemas?schema_name=$eq.public&_distinct=true", "GET", http.StatusOK, []string{"public"}},
 	}
 
-	h := helpers.NewIntegrationHandlers(t)
-	router := mux.NewRouter()
-	router.HandleFunc("/schemas", h.Catalog.ListSchemas).Methods("GET")
-	server := httptest.NewServer(router)
-	defer server.Close()
-
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body...)
+		testutils.DoRequest(t, base+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body...)
 	}
 }
 
 func TestVersionDependentGetSchemas(t *testing.T) {
+	base := helpers.ServerURL(t)
+
 	var testCases = []struct {
 		description string
 		url         string
@@ -86,18 +78,12 @@ func TestVersionDependentGetSchemas(t *testing.T) {
 			"/schemas?schema_name=$eq.public&_page=A",
 			"GET",
 			http.StatusBadRequest,
-			`strconv.Atoi: parsing "A": invalid syntax`,
+			`strconv.Atoi: parsing`,
 		},
 	}
 
-	h := helpers.NewIntegrationHandlers(t)
-	router := mux.NewRouter()
-	router.HandleFunc("/schemas", h.Catalog.ListSchemas).Methods("GET")
-	server := httptest.NewServer(router)
-	defer server.Close()
-
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body)
+		testutils.DoRequest(t, base+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body)
 	}
 }

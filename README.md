@@ -166,20 +166,29 @@ make test-integration
 
 ## Testing
 
-Run the test suite inside Docker (no local Postgres required):
+Run unit tests locally:
 
 ```bash
-make test
+make test-unit
+```
+
+Run the full integration suite inside Docker (Postgres, deployed prestd servers, no local setup required):
+
+```bash
+make test-integration
 ```
 
 Or directly with Docker Compose:
 
 ```bash
-docker compose -f docker-compose-test.yml up --abort-on-container-exit --exit-code-from tests
+docker compose -f docker-compose-test.yml up -d --wait postgres postgres-b db-init prestd prestd-multicluster prestd-auth
+docker compose -f docker-compose-test.yml run --rm --no-deps tests
 docker compose -f docker-compose-test.yml down -v --remove-orphans
 ```
 
-The `tests` service runs `./testdata/runtest.sh`, provisioning databases and executing Go tests.
+Compose starts `postgres`, `postgres-b`, a one-shot `db-init` job (`testdata/db-init.sh`), three **prestd** services (`prestd`, `prestd-multicluster`, `prestd-auth`), then runs `go test ./integration/...` in the `tests` container. Standard HTTP integration tests call those servers via `PREST_TEST_URL`, `PREST_MULTICLUSTER_TEST_URL`, and `PREST_AUTH_TEST_URL`.
+
+Running `go test ./integration/...` outside compose skips network tests when those URLs are unset.
 
 ## Example: Docker Build
 

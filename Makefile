@@ -11,7 +11,8 @@ test-unit:
 	go test -timeout 30s -tags prest_test_hooks -race -count=1 -covermode=atomic -coverprofile=coverage.out $(UNIT_PKGS)
 
 test-integration:
-	docker compose -f docker-compose-test.yml up --abort-on-container-exit --exit-code-from tests; \
+	docker compose -f docker-compose-test.yml up -d --wait postgres postgres-b db-init prestd prestd-multicluster prestd-auth && \
+	docker compose -f docker-compose-test.yml run --rm --no-deps tests; \
 	status=$$?; \
 	docker compose -f docker-compose-test.yml down -v --remove-orphans; \
 	exit $$status

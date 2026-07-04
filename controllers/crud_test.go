@@ -10,8 +10,8 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/v2/adapters/mockgen"
-	"github.com/prest/prest/v2/controllers/auth"
 	pctx "github.com/prest/prest/v2/context"
+	"github.com/prest/prest/v2/controllers/auth"
 	"github.com/stretchr/testify/require"
 )
 

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -61,6 +62,7 @@ func setupTestDB(t *testing.T) {
 	base := helpers.LoadTestConfig(t)
 	cfg := *base
 	cfg.AccessConf = cloneAccessConf(base.AccessConf)
+	cfg.QueriesPath = filepath.Join(helpers.TestdataDir(), "queries")
 	pg := postgres.New(&cfg)
 	if err := postgres.Connect(pg); err != nil {
 		t.Fatalf("connect test database: %v", err)
