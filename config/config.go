@@ -142,8 +142,8 @@ const (
 // retries default paths and disables the feature when both configured and
 // fallback paths are unavailable. Unsafe JWT/auth settings (enabled without
 // verification material) are auto-disabled with warnings via ensureJWTConfig.
-// Invalid database registry configuration (duplicate aliases, missing URLs)
-// returns an error.
+// Invalid database registry entries (duplicate aliases, missing URLs, invalid
+// aliases) are logged and skipped; Load never fails for registry content.
 //
 // Returns the populated *Prest and nil on success.
 func Load() (*Prest, error) {
@@ -151,9 +151,7 @@ func Load() (*Prest, error) {
 	cfg := &Prest{}
 	Parse(v, cfg, configPath)
 
-	if err := parseDatabaseRegistry(v, cfg); err != nil {
-		return nil, err
-	}
+	parseDatabaseRegistry(v, cfg)
 
 	ensureJWTConfig(cfg)
 	ensureQueriesPath(cfg)

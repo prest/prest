@@ -177,6 +177,23 @@ func (m *Manager) GetPool() *Pool {
 	return m.getPool()
 }
 
+// poolLimitsFor returns the maximum number of idle and open connections for
+// a given database. It uses the global limits if the database is not found in
+// the registry.
+func (m *Manager) poolLimitsFor(name string) (maxIdle, maxOpen int) {
+	maxIdle = m.cfg.PGMaxIdleConn
+	maxOpen = m.cfg.PGMaxOpenConn
+	if conf, ok := config.ProfileByAlias(m.cfg, name); ok {
+		if conf.MaxIdleConn != 0 {
+			maxIdle = conf.MaxIdleConn
+		}
+		if conf.MaxOpenConn != 0 {
+			maxOpen = conf.MaxOpenConn
+		}
+	}
+	return maxIdle, maxOpen
+}
+
 func (m *Manager) getDatabaseFromPool(name string) *sqlx.DB {
 	uri := m.GetURI(name)
 	p := m.getPool()
@@ -204,8 +221,9 @@ func (m *Manager) AddDatabaseToPool(name string) (*sqlx.DB, error) {
 		if err != nil {
 			return nil, err
 		}
-		DB.SetMaxIdleConns(m.cfg.PGMaxIdleConn)
-		DB.SetMaxOpenConns(m.cfg.PGMaxOpenConn)
+		maxIdle, maxOpen := m.poolLimitsFor(name)
+		DB.SetMaxIdleConns(maxIdle)
+		DB.SetMaxOpenConns(maxOpen)
 
 		p := m.getPool()
 		p.Mtx.Lock()

@@ -20,6 +20,24 @@ func Connect(a adapters.Adapter) error {
 	return c.Connect()
 }
 
+// Close shuts down all pooled connections for a postgres adapter.
+func Close(a adapters.Adapter) {
+	p, ok := a.(*postgres)
+	if !ok {
+		return
+	}
+	pool := p.GetPool()
+	if pool == nil {
+		return
+	}
+	pool.Mtx.Lock()
+	for _, db := range pool.DB {
+		_ = db.Close()
+	}
+	pool.Mtx.Unlock()
+	p.ConnManager().ResetPoolForTest()
+}
+
 // DB returns the default sqlx connection from a postgres adapter.
 func DB(a adapters.Adapter) (*sqlx.DB, error) {
 	d, ok := a.(adapters.DatabaseAccessor)

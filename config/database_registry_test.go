@@ -28,8 +28,7 @@ func TestParseDatabaseRegistry_EnvIndexed(t *testing.T) {
 	v := viper.New()
 	cfg := &Prest{}
 	parseDBConfig(v, cfg)
-	err := parseDatabaseRegistry(v, cfg)
-	require.NoError(t, err)
+	parseDatabaseRegistry(v, cfg)
 	require.Len(t, cfg.Databases, 2)
 	require.Equal(t, "tenant-a", cfg.Databases[0].Alias)
 	require.Equal(t, "app_a", cfg.Databases[0].Database)
@@ -51,8 +50,7 @@ func TestParseDatabaseRegistry_EnvOverridesTOML(t *testing.T) {
 	require.NoError(t, v.ReadInConfig())
 	cfg := &Prest{}
 	parseDBConfig(v, cfg)
-	err := parseDatabaseRegistry(v, cfg)
-	require.NoError(t, err)
+	parseDatabaseRegistry(v, cfg)
 	require.Len(t, cfg.Databases, 2)
 	require.Equal(t, "override-host", cfg.Databases[0].Host)
 	require.Equal(t, "override_db", cfg.Databases[0].Database)
@@ -69,8 +67,7 @@ func TestParseDatabaseRegistry_LegacyUnchanged(t *testing.T) {
 	v := viper.New()
 	cfg := &Prest{}
 	parseDBConfig(v, cfg)
-	err := parseDatabaseRegistry(v, cfg)
-	require.NoError(t, err)
+	parseDatabaseRegistry(v, cfg)
 	require.Empty(t, cfg.Databases)
 	require.Equal(t, "CloudDatabase", cfg.PGDatabase)
 }
@@ -83,9 +80,8 @@ func TestParseDatabaseRegistry_MissingURL(t *testing.T) {
 	v := viper.New()
 	cfg := &Prest{}
 	parseDBConfig(v, cfg)
-	err := parseDatabaseRegistry(v, cfg)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "DATABASE_URL_1")
+	parseDatabaseRegistry(v, cfg)
+	require.Empty(t, cfg.Databases)
 }
 
 func TestParseDatabaseRegistry_DuplicateAlias(t *testing.T) {
@@ -98,9 +94,10 @@ func TestParseDatabaseRegistry_DuplicateAlias(t *testing.T) {
 	v := viper.New()
 	cfg := &Prest{}
 	parseDBConfig(v, cfg)
-	err := parseDatabaseRegistry(v, cfg)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "duplicate")
+	parseDatabaseRegistry(v, cfg)
+	require.Len(t, cfg.Databases, 1)
+	require.Equal(t, "tenant-a", cfg.Databases[0].Alias)
+	require.Equal(t, "app_a", cfg.Databases[0].Database)
 }
 
 func TestHasDatabaseRegistry(t *testing.T) {
@@ -391,6 +388,26 @@ func Test_fillDatabaseDefaults(t *testing.T) {
 			require.Equal(t, tt.expectSSLRootCert, tt.db.SSL.RootCert, "SSL RootCert mismatch")
 		})
 	}
+}
+
+func Test_fillDatabaseDefaults_poolLimits(t *testing.T) {
+	t.Parallel()
+
+	t.Run("zero fills from global defaults", func(t *testing.T) {
+		db := &DatabaseConf{}
+		cfg := &Prest{PGMaxOpenConn: 10, PGMaxIdleConn: 2}
+		fillDatabaseDefaults(db, cfg)
+		require.Equal(t, 10, db.MaxOpenConn)
+		require.Equal(t, 2, db.MaxIdleConn)
+	})
+
+	t.Run("explicit values are preserved", func(t *testing.T) {
+		db := &DatabaseConf{MaxOpenConn: 25, MaxIdleConn: 5}
+		cfg := &Prest{PGMaxOpenConn: 10, PGMaxIdleConn: 2}
+		fillDatabaseDefaults(db, cfg)
+		require.Equal(t, 25, db.MaxOpenConn)
+		require.Equal(t, 5, db.MaxIdleConn)
+	})
 }
 
 func TestProfileByAlias(t *testing.T) {

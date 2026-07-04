@@ -76,6 +76,7 @@ func SecondaryClusterHost() string {
 }
 
 // LoadMultiClusterConfig loads the multi-cluster test configuration.
+// It must not be called from tests that use t.Parallel() because it sets PREST_CONF via t.Setenv.
 func LoadMultiClusterConfig(t *testing.T) *config.Prest {
 	t.Helper()
 	t.Setenv("PREST_CONF", filepath.Join(TestdataDir(), "prest_multicluster.toml"))
@@ -87,6 +88,7 @@ func LoadMultiClusterConfig(t *testing.T) *config.Prest {
 	if err := postgres.Connect(pg); err != nil {
 		t.Fatalf("connect multi-cluster config: %v", err)
 	}
+	t.Cleanup(func() { postgres.Close(pg) })
 	cfg.Adapter = pg
 	return cfg
 }

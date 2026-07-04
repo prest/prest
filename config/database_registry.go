@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"sort"
@@ -39,69 +40,72 @@ func HasDatabaseRegistry(cfg *Prest) bool {
 	return cfg != nil && len(cfg.Databases) > 0
 }
 
-func parseDatabaseRegistry(v *viper.Viper, cfg *Prest) error {
+// parseDatabaseRegistry parses the database registry from the environment and
+// the configuration file. It merges the entries and fills in defaults.
+func parseDatabaseRegistry(v *viper.Viper, cfg *Prest) {
 	merged := make(map[string]DatabaseConf)
 
-	indexed, err := parseDatabaseRegistryFromEnv()
-	if err != nil {
-		return err
+	for _, db := range parseDatabaseRegistryFromEnv() {
+		addDatabaseConf(merged, db)
 	}
-	for _, db := range indexed {
-		if err := addDatabaseConf(merged, db); err != nil {
-			return err
-		}
+	envAliases := make(map[string]struct{}, len(merged))
+	for alias := range merged {
+		envAliases[alias] = struct{}{}
 	}
 
 	var tomlDBs []DatabaseConf
 	if raw := v.Get("databases"); raw != nil {
 		if _, isString := raw.(string); !isString {
 			if err := v.UnmarshalKey("databases", &tomlDBs); err != nil {
-				return fmt.Errorf("unmarshal databases: %w", err)
+				slog.Warn("config key invalid, using default", "key", "databases", "err", err)
+				tomlDBs = nil
 			}
 		}
 	}
 	for _, db := range tomlDBs {
 		if db.Alias == "" {
-			return fmt.Errorf("database entry missing alias")
+			slog.Warn("database registry entry skipped: missing alias")
+			continue
 		}
 		if !ident.IsSafeSegment(db.Alias) {
-			return fmt.Errorf("invalid database alias %q", db.Alias)
+			slog.Warn("database registry entry skipped: invalid alias", "alias", db.Alias)
+			continue
 		}
 		fillDatabaseDefaults(&db, cfg)
-		if _, ok := merged[db.Alias]; !ok {
-			if err := addDatabaseConf(merged, db); err != nil {
-				return err
-			}
+		if _, ok := envAliases[db.Alias]; ok {
+			continue
 		}
+		addDatabaseConf(merged, db)
 	}
 
 	if len(merged) == 0 {
 		cfg.Databases = nil
-		return nil
+		return
 	}
 
 	cfg.Databases = sortedDatabaseConfs(merged)
-	return nil
 }
 
-func addDatabaseConf(merged map[string]DatabaseConf, db DatabaseConf) error {
+func addDatabaseConf(merged map[string]DatabaseConf, db DatabaseConf) {
 	if db.Alias == "" {
-		return fmt.Errorf("database entry missing alias")
+		slog.Warn("database registry entry skipped: missing alias")
+		return
 	}
 	if !ident.IsSafeSegment(db.Alias) {
-		return fmt.Errorf("invalid database alias %q", db.Alias)
+		slog.Warn("database registry entry skipped: invalid alias", "alias", db.Alias)
+		return
 	}
 	if _, exists := merged[db.Alias]; exists {
-		return fmt.Errorf("duplicate database alias %q", db.Alias)
+		slog.Warn("database registry entry skipped: duplicate alias", "alias", db.Alias)
+		return
 	}
 	if db.URL != "" {
 		applyURLToDatabaseConf(&db)
 	}
 	merged[db.Alias] = db
-	return nil
 }
 
-func parseDatabaseRegistryFromEnv() ([]DatabaseConf, error) {
+func parseDatabaseRegistryFromEnv() []DatabaseConf {
 	var dbs []DatabaseConf
 	for i := 1; ; i++ {
 		alias := envFirst(
@@ -116,19 +120,31 @@ func parseDatabaseRegistryFromEnv() ([]DatabaseConf, error) {
 			break
 		}
 		if alias == "" {
-			return nil, fmt.Errorf("DATABASE_URL_%d set without DATABASE_ALIAS_%d", i, i)
+			slog.Warn(
+				"database registry entry skipped: URL without alias",
+				"index", i,
+				"env", fmt.Sprintf("DATABASE_URL_%d", i),
+			)
+			continue
 		}
 		if connURL == "" {
-			return nil, fmt.Errorf("DATABASE_ALIAS_%d set without DATABASE_URL_%d", i, i)
+			slog.Warn(
+				"database registry entry skipped: alias without URL",
+				"alias", alias,
+				"index", i,
+				"env", fmt.Sprintf("DATABASE_ALIAS_%d", i),
+			)
+			continue
 		}
 		if !ident.IsSafeSegment(alias) {
-			return nil, fmt.Errorf("invalid database alias %q at index %d", alias, i)
+			slog.Warn("database registry entry skipped: invalid alias", "alias", alias, "index", i)
+			continue
 		}
 		conf := DatabaseConf{Alias: alias, URL: connURL}
 		applyURLToDatabaseConf(&conf)
 		dbs = append(dbs, conf)
 	}
-	return dbs, nil
+	return dbs
 }
 
 func envFirst(keys ...string) string {
@@ -146,6 +162,12 @@ func applyURLToDatabaseConf(db *DatabaseConf) {
 	}
 	u, err := url.Parse(db.URL)
 	if err != nil {
+		slog.Warn(
+			"database URL invalid, using defaults for connection fields",
+			"alias", db.Alias,
+			"url", db.URL,
+			"err", err,
+		)
 		return
 	}
 	if u.Hostname() != "" {

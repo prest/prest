@@ -1735,8 +1735,6 @@ func TestMock_Open(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
 			m := New(t)
 			gotConn, err := m.Open(tt.dsn)
 			if (err != nil) != tt.wantErr {

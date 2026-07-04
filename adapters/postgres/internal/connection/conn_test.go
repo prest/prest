@@ -25,6 +25,87 @@ func testManager(t *testing.T) *Manager {
 	})
 }
 
+func TestManager_poolLimitsFor(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		cfg           *config.Prest
+		dbName        string
+		wantMaxIdle   int
+		wantMaxOpen   int
+	}{
+		{
+			name: "legacy mode uses global limits",
+			cfg: &config.Prest{
+				PGMaxIdleConn: 2,
+				PGMaxOpenConn: 10,
+			},
+			dbName:      "legacydb",
+			wantMaxIdle: 2,
+			wantMaxOpen: 10,
+		},
+		{
+			name: "registry alias uses per-database limits",
+			cfg: &config.Prest{
+				PGMaxIdleConn: 2,
+				PGMaxOpenConn: 10,
+				Databases: []config.DatabaseConf{
+					{Alias: "tenant-a", MaxIdleConn: 5, MaxOpenConn: 25},
+				},
+			},
+			dbName:      "tenant-a",
+			wantMaxIdle: 5,
+			wantMaxOpen: 25,
+		},
+		{
+			name: "unknown alias falls back to global limits",
+			cfg: &config.Prest{
+				PGMaxIdleConn: 2,
+				PGMaxOpenConn: 10,
+				Databases: []config.DatabaseConf{
+					{Alias: "tenant-a", MaxIdleConn: 5, MaxOpenConn: 25},
+				},
+			},
+			dbName:      "otherdb",
+			wantMaxIdle: 2,
+			wantMaxOpen: 10,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := NewManager(tt.cfg)
+			gotIdle, gotOpen := m.poolLimitsFor(tt.dbName)
+			require.Equal(t, tt.wantMaxIdle, gotIdle)
+			require.Equal(t, tt.wantMaxOpen, gotOpen)
+		})
+	}
+}
+
+func TestAddDatabaseToPool_appliesPoolLimits(t *testing.T) {
+	m := NewManager(&config.Prest{
+		PGMaxIdleConn: 2,
+		PGMaxOpenConn: 10,
+		Databases: []config.DatabaseConf{
+			{Alias: "tenant-a", MaxIdleConn: 5, MaxOpenConn: 25},
+		},
+	})
+
+	origConnect := dbConnect
+	dbConnect = func(driverName, dataSourceName string) (*sqlx.DB, error) {
+		mockDB, _, err := sqlmock.New()
+		if err != nil {
+			return nil, err
+		}
+		return sqlx.NewDb(mockDB, "sqlmock"), nil
+	}
+	t.Cleanup(func() { dbConnect = origConnect })
+
+	db, err := m.AddDatabaseToPool("tenant-a")
+	require.NoError(t, err)
+	require.Equal(t, 25, db.Stats().MaxOpenConnections)
+}
+
 func TestGetFromPool_returnsInjectedDB(t *testing.T) {
 	t.Parallel()
 
