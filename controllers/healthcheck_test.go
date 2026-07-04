@@ -15,6 +15,8 @@ func healthyDB(context.Context) error   { return nil }
 func unhealthyDB(context.Context) error { return errors.New("could not connect to the database") }
 
 func TestHealthStatus(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range []struct {
 		checkDBHealth func(context.Context) error
 		desc          string
@@ -38,6 +40,8 @@ func TestHealthStatus(t *testing.T) {
 }
 
 func TestReadyStatus(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range []struct {
 		check func(context.Context) error
 		want  int

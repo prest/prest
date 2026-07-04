@@ -9,6 +9,8 @@ import (
 )
 
 func Test_getVars(t *testing.T) {
+	t.Parallel()
+
 	if got := getVars("foo/bar"); got != nil {
 		t.Errorf("expected nil, got %v", got)
 	}
@@ -27,6 +29,8 @@ func Test_getVars(t *testing.T) {
 }
 
 func Test_permissionByMethod(t *testing.T) {
+	t.Parallel()
+
 	permission := permissionByMethod("GET")
 	if permission != statements.READ {
 		t.Errorf("expected %x, got :%x", statements.READ, permission)
@@ -59,6 +63,8 @@ func Test_permissionByMethod(t *testing.T) {
 }
 
 func Test_checkCors(t *testing.T) {
+	t.Parallel()
+
 	allowed := checkCors(&http.Request{Method: http.MethodPost}, []string{"*"})
 	if !allowed {
 		t.Error("expected true, got false")
@@ -71,6 +77,8 @@ func Test_checkCors(t *testing.T) {
 }
 
 func TestMatchURL(t *testing.T) {
+	t.Parallel()
+
 	test := []struct {
 		Label        string
 		URL          string

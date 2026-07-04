@@ -31,6 +31,8 @@ func serveCRUDStack(t *testing.T, stack *CRUDStack, req *http.Request) (*httptes
 }
 
 func TestNewCRUDStack(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -54,6 +56,8 @@ func TestNewCRUDStack(t *testing.T) {
 }
 
 func TestNewCRUDStackWithPerms(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 

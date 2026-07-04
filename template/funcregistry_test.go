@@ -7,6 +7,8 @@ import (
 )
 
 func TestIsSet(t *testing.T) {
+	t.Parallel()
+
 	data := make(map[string]interface{})
 	data["test"] = "testValue"
 	funcs := &FuncRegistry{TemplateData: data}
@@ -21,6 +23,8 @@ func TestIsSet(t *testing.T) {
 }
 
 func TestDefaultOrValue(t *testing.T) {
+	t.Parallel()
+
 	data := make(map[string]interface{})
 	data["test"] = "testValue"
 	funcs := &FuncRegistry{TemplateData: data}
@@ -35,6 +39,8 @@ func TestDefaultOrValue(t *testing.T) {
 }
 
 func TestInFormat(t *testing.T) {
+	t.Parallel()
+
 	data := make(map[string]interface{})
 	data["test"] = []string{"test1", "test2"}
 	funcs := &FuncRegistry{TemplateData: data}
@@ -51,6 +57,8 @@ func TestInFormat(t *testing.T) {
 }
 
 func TestSplit(t *testing.T) {
+	t.Parallel()
+
 	data := make(map[string]interface{})
 	list3itens := "test1,test2,test3"
 	data["list3itens"] = list3itens
@@ -66,6 +74,8 @@ func TestSplit(t *testing.T) {
 }
 
 func TestRegistryAllFuncs(t *testing.T) {
+	t.Parallel()
+
 	data := make(map[string]interface{})
 	data["test"] = "testValue"
 	funcs := &FuncRegistry{TemplateData: data}
@@ -90,6 +100,8 @@ func TestRegistryAllFuncs(t *testing.T) {
 }
 
 func TestUnEscape(t *testing.T) {
+	t.Parallel()
+
 	data := make(map[string]interface{})
 	uri := "test1%20test2%20test3"
 	data["test"] = uri
@@ -101,6 +113,8 @@ func TestUnEscape(t *testing.T) {
 }
 
 func TestLimitOffset(t *testing.T) {
+	t.Parallel()
+
 	data := make(map[string]interface{})
 	pageNumber := 1
 	pageSize := 10

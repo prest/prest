@@ -8,8 +8,10 @@ import (
 )
 
 func TestBuntGetDoesntExist(t *testing.T) {
+	t.Parallel()
+
 	w := httptest.NewRecorder()
 
-	cache := cfg.BuntGet("test", w)
+	cache := testConfig().BuntGet("test", w)
 	require.False(t, cache)
 }

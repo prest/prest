@@ -13,6 +13,8 @@ import (
 )
 
 func TestScriptHandler_Execute_Success(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -42,6 +44,8 @@ func TestScriptHandler_Execute_Success(t *testing.T) {
 }
 
 func TestScriptHandler_Execute_DefaultDatabase(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -71,6 +75,8 @@ func TestScriptHandler_Execute_DefaultDatabase(t *testing.T) {
 }
 
 func TestScriptHandler_Execute_WithCache(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -103,6 +109,8 @@ func TestScriptHandler_Execute_WithCache(t *testing.T) {
 }
 
 func TestScriptHandler_ExecuteScriptQuery_GetScriptError(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -120,6 +128,8 @@ func TestScriptHandler_ExecuteScriptQuery_GetScriptError(t *testing.T) {
 }
 
 func TestScriptHandler_ExecuteScriptQuery_ExecuteError(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -145,6 +155,8 @@ func TestScriptHandler_ExecuteScriptQuery_ExecuteError(t *testing.T) {
 }
 
 func TestExtractHeaders(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("X-Single", "one")
 	req.Header.Add("X-Multi", "a")
@@ -159,6 +171,8 @@ func TestExtractHeaders(t *testing.T) {
 }
 
 func TestExtractQueryParameters(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/?foo=bar&tag=a&tag=b", nil)
 
 	data := map[string]interface{}{}
@@ -169,6 +183,8 @@ func TestExtractQueryParameters(t *testing.T) {
 }
 
 func TestSanitizeScriptParam(t *testing.T) {
+	t.Parallel()
+
 	require.Equal(t, "abc123", sanitizeScriptParam("abc123"))
 	require.Equal(t, "foo_bar-baz", sanitizeScriptParam("foo_bar-baz"))
 	require.Equal(t, "user@example.com", sanitizeScriptParam("user@example.com"))
@@ -177,6 +193,8 @@ func TestSanitizeScriptParam(t *testing.T) {
 }
 
 func TestExtractQueryParameters_SanitizesUnsafeValues(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/?safe=ok&tag=good&tag=bad%27%3B--", nil)
 	req.URL.RawQuery = "safe=ok&unsafe=%27%3BDROP&tag=good&tag=bad%27%3B--"
 

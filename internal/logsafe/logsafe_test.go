@@ -8,10 +8,14 @@ import (
 )
 
 func TestError_nil(t *testing.T) {
+	t.Parallel()
+
 	require.Nil(t, Error(nil))
 }
 
 func TestError_passwordKV(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		input string
@@ -43,12 +47,16 @@ func TestError_passwordKV(t *testing.T) {
 }
 
 func TestError_postgresURL(t *testing.T) {
+	t.Parallel()
+
 	err := errors.New(`parse "postgresql://admin:supersecret@db.example.com:5432/app": invalid port`)
 	redacted := Error(err)
 	require.Equal(t, `parse "postgres://admin:***@db.example.com:5432/app": invalid port`, redacted.Error())
 }
 
 func TestError_unchanged(t *testing.T) {
+	t.Parallel()
+
 	err := errors.New("connection refused")
 	require.Same(t, err, Error(err))
 }

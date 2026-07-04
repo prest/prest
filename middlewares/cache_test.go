@@ -10,6 +10,8 @@ import (
 )
 
 func TestCacheMiddleware_Disabled(t *testing.T) {
+	t.Parallel()
+
 	cfg := &cache.Config{Enabled: false}
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	rec, called := serveMiddleware(CacheMiddleware(cfg, nil), req)
@@ -19,6 +21,8 @@ func TestCacheMiddleware_Disabled(t *testing.T) {
 }
 
 func TestCacheMiddleware_NonGETPassesThrough(t *testing.T) {
+	t.Parallel()
+
 	cfg := &cache.Config{Enabled: true}
 	req := httptest.NewRequest(http.MethodPost, "/prest/public/test", nil)
 	rec, called := serveMiddleware(CacheMiddleware(cfg, nil), req)
@@ -28,6 +32,8 @@ func TestCacheMiddleware_NonGETPassesThrough(t *testing.T) {
 }
 
 func TestCacheMiddleware_WhitelistedURL(t *testing.T) {
+	t.Parallel()
+
 	cfg := &cache.Config{Enabled: true}
 	req := httptest.NewRequest(http.MethodGet, "/auth", nil)
 	rec, called := serveMiddleware(CacheMiddleware(cfg, []string{`\/auth`}), req)
@@ -37,6 +43,8 @@ func TestCacheMiddleware_WhitelistedURL(t *testing.T) {
 }
 
 func TestCacheMiddleware_NoEndpointRule(t *testing.T) {
+	t.Parallel()
+
 	cfg := &cache.Config{
 		Enabled: true,
 		Endpoints: []cache.Endpoint{
@@ -51,6 +59,8 @@ func TestCacheMiddleware_NoEndpointRule(t *testing.T) {
 }
 
 func TestCacheMiddleware_MatchURLError(t *testing.T) {
+	t.Parallel()
+
 	cfg := &cache.Config{Enabled: true}
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	rec, called := serveMiddleware(CacheMiddleware(cfg, []string{"[invalid"}), req)
@@ -60,6 +70,8 @@ func TestCacheMiddleware_MatchURLError(t *testing.T) {
 }
 
 func TestCacheMiddleware_CacheLookup(t *testing.T) {
+	t.Parallel()
+
 	const path = "/prest/public/test"
 	newCfg := func(t *testing.T) *cache.Config {
 		t.Helper()

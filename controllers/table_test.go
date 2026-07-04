@@ -12,6 +12,8 @@ import (
 )
 
 func TestTableHandler_Show_Success(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -36,6 +38,8 @@ func TestTableHandler_Show_Success(t *testing.T) {
 }
 
 func TestTableHandler_Show_InvalidPath(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -53,6 +57,8 @@ func TestTableHandler_Show_InvalidPath(t *testing.T) {
 }
 
 func TestTableHandler_Show_QueryError(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 

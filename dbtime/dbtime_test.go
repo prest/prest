@@ -12,6 +12,8 @@ type testTime struct {
 }
 
 func TestUnmarshalJSON(t *testing.T) {
+	t.Parallel()
+
 	var p testTime
 	j := []byte(`{"date":"2017-05-10T11:00:00.000001"}`)
 
@@ -36,6 +38,8 @@ func TestUnmarshalJSON(t *testing.T) {
 }
 
 func TestMarshalJSON(t *testing.T) {
+	t.Parallel()
+
 	var p testTime
 	var tAux time.Time
 	var err error

@@ -30,6 +30,8 @@ func withSQLMockPing(t *testing.T) (*postgres, sqlmock.Sqlmock) {
 }
 
 func TestConnect_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMockPing(t)
 
 	mock.ExpectPing()
@@ -47,6 +49,8 @@ func TestConnect_GetError(t *testing.T) {
 }
 
 func TestPing_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMockPing(t)
 
 	mock.ExpectPing()
@@ -56,6 +60,8 @@ func TestPing_Success(t *testing.T) {
 }
 
 func TestPing_Error(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMockPing(t)
 
 	mock.ExpectPing().WillReturnError(errors.New("ping failed"))
@@ -65,6 +71,8 @@ func TestPing_Error(t *testing.T) {
 }
 
 func TestDB_ReturnsInjectedConnection(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	db, err := adapter.DB()
@@ -74,6 +82,8 @@ func TestDB_ReturnsInjectedConnection(t *testing.T) {
 }
 
 func TestStmt_Prepare_CacheHit(t *testing.T) {
+	t.Parallel()
+
 	cfg := &config.Prest{
 		PGDatabase:  defaultMockDB,
 		JSONAggType: "json_agg",
@@ -107,6 +117,8 @@ func TestStmt_Prepare_CacheHit(t *testing.T) {
 }
 
 func TestStmt_PrepareContext_CacheHit(t *testing.T) {
+	t.Parallel()
+
 	cfg := &config.Prest{
 		PGDatabase:  defaultMockDB,
 		JSONAggType: "json_agg",

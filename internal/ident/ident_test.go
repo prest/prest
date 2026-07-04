@@ -5,6 +5,8 @@ import (
 )
 
 func TestQuote(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		input   string
 		want    string
@@ -106,6 +108,8 @@ func TestQuote(t *testing.T) {
 }
 
 func TestIsSafeSegment(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		input string
 		want  bool
@@ -141,6 +145,8 @@ func TestIsSafeSegment(t *testing.T) {
 }
 
 func TestSplitAndValidateCSV(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		input   string
 		want    []string

@@ -64,6 +64,8 @@ func withSQLMocks(t *testing.T) (*postgres, sqlmock.Sqlmock, sqlmock.Sqlmock) {
 }
 
 func TestQuery_SuccessEmpty(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	mock.ExpectPrepare(`SELECT json_agg\(s\) FROM \(SELECT 1\) s`).
@@ -77,6 +79,8 @@ func TestQuery_SuccessEmpty(t *testing.T) {
 }
 
 func TestQuery_SuccessWithData(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	mock.ExpectPrepare(`SELECT json_agg\(s\) FROM \(SELECT \* FROM users\) s`).
@@ -90,6 +94,8 @@ func TestQuery_SuccessWithData(t *testing.T) {
 }
 
 func TestQuery_PrepareError(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	mock.ExpectPrepare(`SELECT json_agg`).WillReturnError(errors.New("prepare failed"))
@@ -101,6 +107,8 @@ func TestQuery_PrepareError(t *testing.T) {
 }
 
 func TestQuery_ScanError(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	mock.ExpectPrepare(`SELECT json_agg`).
@@ -113,6 +121,8 @@ func TestQuery_ScanError(t *testing.T) {
 }
 
 func TestQueryCtx_WithDBNameKey(t *testing.T) {
+	t.Parallel()
+
 	adapter, defaultMock, ctxMock := withSQLMocks(t)
 
 	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
@@ -128,6 +138,8 @@ func TestQueryCtx_WithDBNameKey(t *testing.T) {
 }
 
 func TestInsert_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	sql := `INSERT INTO "test"."public"."users"("name") VALUES($1)`
@@ -143,6 +155,8 @@ func TestInsert_Success(t *testing.T) {
 }
 
 func TestInsert_PrepareError(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	sql := `INSERT INTO "test"."public"."users"("name") VALUES($1)`
@@ -154,6 +168,8 @@ func TestInsert_PrepareError(t *testing.T) {
 }
 
 func TestInsert_InvalidSQL(t *testing.T) {
+	t.Parallel()
+
 	adapter, _ := withSQLMock(t)
 
 	sc := adapter.Insert("INVALID SQL", "alice")
@@ -162,6 +178,8 @@ func TestInsert_InvalidSQL(t *testing.T) {
 }
 
 func TestDelete_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	sql := `DELETE FROM "test"."public"."users" WHERE "id"=$1`
@@ -177,6 +195,8 @@ func TestDelete_Success(t *testing.T) {
 }
 
 func TestDelete_PrepareError(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	sql := `DELETE FROM "test"."public"."users" WHERE "id"=$1`
@@ -188,6 +208,8 @@ func TestDelete_PrepareError(t *testing.T) {
 }
 
 func TestDelete_ExecError(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	sql := `DELETE FROM "test"."public"."users" WHERE "id"=$1`
@@ -202,6 +224,8 @@ func TestDelete_ExecError(t *testing.T) {
 }
 
 func TestUpdate_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	sql := `UPDATE "test"."public"."users" SET "name"=$1 WHERE "id"=$2`
@@ -217,6 +241,8 @@ func TestUpdate_Success(t *testing.T) {
 }
 
 func TestUpdate_PrepareError(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	sql := `UPDATE "test"."public"."users" SET "name"=$1 WHERE "id"=$2`
@@ -228,6 +254,8 @@ func TestUpdate_PrepareError(t *testing.T) {
 }
 
 func TestShowTable_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	mock.ExpectPrepare(`SELECT json_agg\(s\) FROM \(SELECT table_schema`).
@@ -242,6 +270,8 @@ func TestShowTable_Success(t *testing.T) {
 }
 
 func TestQuery_WithStatementCache(t *testing.T) {
+	t.Parallel()
+
 	cfg := &config.Prest{
 		PGDatabase:  defaultMockDB,
 		JSONAggType: "json_agg",
@@ -276,6 +306,8 @@ func TestQuery_WithStatementCache(t *testing.T) {
 }
 
 func TestQuery_WithStatementCachePerDatabase(t *testing.T) {
+	t.Parallel()
+
 	adapter, defaultMock, ctxMock := withSQLMocks(t)
 	adapter.getStmts().pgCache = true
 
@@ -298,6 +330,8 @@ func TestQuery_WithStatementCachePerDatabase(t *testing.T) {
 }
 
 func TestInsertCtx_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, defaultMock, ctxMock := withSQLMocks(t)
 
 	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
@@ -315,6 +349,8 @@ func TestInsertCtx_Success(t *testing.T) {
 }
 
 func TestDeleteCtx_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, defaultMock, ctxMock := withSQLMocks(t)
 
 	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
@@ -332,6 +368,8 @@ func TestDeleteCtx_Success(t *testing.T) {
 }
 
 func TestUpdateCtx_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, defaultMock, ctxMock := withSQLMocks(t)
 
 	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
@@ -349,6 +387,8 @@ func TestUpdateCtx_Success(t *testing.T) {
 }
 
 func TestQueryCount_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	mock.ExpectPrepare(`SELECT COUNT\(\*\) FROM users`).
@@ -362,6 +402,8 @@ func TestQueryCount_Success(t *testing.T) {
 }
 
 func TestQueryCountCtx_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, defaultMock, ctxMock := withSQLMocks(t)
 
 	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
@@ -377,6 +419,8 @@ func TestQueryCountCtx_Success(t *testing.T) {
 }
 
 func TestShowTableCtx_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, defaultMock, ctxMock := withSQLMocks(t)
 
 	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
@@ -393,6 +437,8 @@ func TestShowTableCtx_Success(t *testing.T) {
 }
 
 func TestGetTransaction_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	mock.ExpectBegin()
@@ -403,6 +449,8 @@ func TestGetTransaction_Success(t *testing.T) {
 }
 
 func TestGetTransactionCtx_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, defaultMock, ctxMock := withSQLMocks(t)
 
 	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
@@ -415,6 +463,8 @@ func TestGetTransactionCtx_Success(t *testing.T) {
 }
 
 func TestInsertWithTransaction_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	sql := `INSERT INTO "test"."public"."users"("name") VALUES($1)`
@@ -433,6 +483,8 @@ func TestInsertWithTransaction_Success(t *testing.T) {
 }
 
 func TestDeleteWithTransaction_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	sql := `DELETE FROM "test"."public"."users" WHERE "id"=$1`
@@ -451,6 +503,8 @@ func TestDeleteWithTransaction_Success(t *testing.T) {
 }
 
 func TestUpdateWithTransaction_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	sql := `UPDATE "test"."public"."users" SET "name"=$1 WHERE "id"=$2`
@@ -469,6 +523,8 @@ func TestUpdateWithTransaction_Success(t *testing.T) {
 }
 
 func TestBatchInsertValues_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	sql := `INSERT INTO "test"."public"."users"("name","age") VALUES($1,$2),($3,$4)`
@@ -486,6 +542,8 @@ func TestBatchInsertValues_Success(t *testing.T) {
 }
 
 func TestBatchInsertValuesCtx_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, defaultMock, ctxMock := withSQLMocks(t)
 
 	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)

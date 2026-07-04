@@ -268,6 +268,8 @@ func TestParse(t *testing.T) {
 // enabled but no verification material is configured, ensureJWTConfig disables
 // the middleware instead of leaving an empty HMAC key active.
 func TestEnsureJWTConfig(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		name              string
 		cfg               Prest
@@ -339,6 +341,8 @@ func TestLoadUnsafeJWTConfig(t *testing.T) {
 }
 
 func Test_getPrestConfFile(t *testing.T) {
+	t.Parallel()
+
 	testCases := []struct {
 		name      string
 		prestConf string
@@ -418,6 +422,8 @@ func TestHTTPPort(t *testing.T) {
 }
 
 func Test_parseDatabaseURL(t *testing.T) {
+	t.Parallel()
+
 	c := &Prest{PGURL: "postgresql://user:pass@localhost:5432/mydatabase/?sslmode=require"}
 	parseDatabaseURL(c)
 	require.Equal(t, "mydatabase", c.PGDatabase)
@@ -439,6 +445,8 @@ func Test_parseDatabaseURL(t *testing.T) {
 }
 
 func Test_fetchJWKS(t *testing.T) {
+	t.Parallel()
+
 	serverJWKS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")

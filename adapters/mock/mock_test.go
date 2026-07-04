@@ -29,7 +29,10 @@ func TestMock_validate(t *testing.T) {
 		{"validate", fields{&sync.RWMutex{}, t, []Item{{}}}},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx:   tt.fields.mtx,
 				t:     tt.fields.t,
@@ -71,7 +74,10 @@ func TestMock_perform(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -570,7 +576,10 @@ func TestMock_TablePermissions(t *testing.T) {
 		{"try foo_read_write_delete delete no_user_read_write_delete_table", "no_user_read_write_delete_table", "delete", true, "foo_read_write_delete", true},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -597,7 +606,10 @@ func TestMock_DatabaseClause(t *testing.T) {
 		{"is not count", Item{IsCount: false}, false},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -620,7 +632,10 @@ func TestMock_SchemaClause(t *testing.T) {
 		{"is not count", Item{IsCount: false}, false},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -647,7 +662,10 @@ func TestMock_AddItem(t *testing.T) {
 		{"add item", args{body: []byte(`[]`), err: nil, isCount: false}, 1},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -687,7 +705,10 @@ func TestMock_Insert(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -729,7 +750,10 @@ func TestMock_BatchInsertValues(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -769,7 +793,10 @@ func TestMock_Delete(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -809,7 +836,10 @@ func TestMock_Update(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -849,7 +879,10 @@ func TestMock_QueryCount(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -891,7 +924,10 @@ func TestMock_Query(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -918,7 +954,10 @@ func TestMock_GetTransaction(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := New(t)
 			gotTx, err := m.GetTransaction()
 			errMactches := (err != nil) != tt.wantErr
@@ -1181,7 +1220,10 @@ func TestMock_QueryCtx(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -1215,7 +1257,10 @@ func TestMock_QueryCountCtx(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -1249,7 +1294,10 @@ func TestMock_InsertCtx(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -1283,7 +1331,10 @@ func TestMock_DeleteCtx(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -1317,7 +1368,10 @@ func TestMock_UpdateCtx(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -1351,7 +1405,10 @@ func TestMock_BatchInsertValuesCtx(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -1385,7 +1442,10 @@ func TestMock_BatchInsertCopyCtx(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -1408,7 +1468,10 @@ func TestMock_GetTransactionCtx(t *testing.T) {
 		{"get transaction ctx success", false},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := New(t)
 			ctx := context.Background()
 			gotTx, err := m.GetTransactionCtx(ctx)
@@ -1436,7 +1499,10 @@ func TestMock_ExecuteScriptsCtx(t *testing.T) {
 		{"execute scripts ctx WRITE", "WRITE", "INSERT INTO test VALUES ($1)", []interface{}{"val1"}},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -1460,7 +1526,10 @@ func TestMock_SetDatabase(t *testing.T) {
 		{"set database empty", ""},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -1493,7 +1562,10 @@ func TestMock_IsRegistered(t *testing.T) {
 		{"is registered empty", "", true},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -1516,7 +1588,10 @@ func TestMock_PhysicalName(t *testing.T) {
 		{"physical name empty", "", ""},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -1570,7 +1645,10 @@ func TestMock_ShowTable(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -1602,7 +1680,10 @@ func TestMock_ShowTableCtx(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -1652,7 +1733,10 @@ func TestMock_Open(t *testing.T) {
 		{"open unknown connection", "unknown", true},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := New(t)
 			gotConn, err := m.Open(tt.dsn)
 			if (err != nil) != tt.wantErr {
@@ -1725,7 +1809,10 @@ func TestMock_PermissionsEdgeCases(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := m.TablePermissions("", "", tt.table, tt.op, tt.userName)
 			if got != tt.want {
 				t.Errorf("TablePermissions() = %v, want %v", got, tt.want)

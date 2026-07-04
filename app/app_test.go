@@ -10,6 +10,8 @@ import (
 )
 
 func TestPostgresDB_ErrAdapterNotPostgres(t *testing.T) {
+	t.Parallel()
+
 	cfg := &config.Prest{
 		Adapter: &mock.Mock{},
 	}
@@ -18,6 +20,8 @@ func TestPostgresDB_ErrAdapterNotPostgres(t *testing.T) {
 }
 
 func TestPostgresDB_EnsureAdapterConnects(t *testing.T) {
+	t.Parallel()
+
 	cfg := &config.Prest{
 		PGHost:     "invalid-host",
 		PGPort:     1,
@@ -59,7 +63,9 @@ func TestNew(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cfg := tt.setup(t)
 			adapterBefore := cfg.Adapter
 

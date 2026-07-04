@@ -9,6 +9,8 @@ import (
 )
 
 func TestValidateType(t *testing.T) {
+	t.Parallel()
+
 	var tmap map[string]interface{}
 	var tint int
 	var testCases = []struct {
@@ -31,6 +33,8 @@ func TestValidateType(t *testing.T) {
 }
 
 func TestPrestScanQuery(t *testing.T) {
+	t.Parallel()
+
 	type ComplexType struct {
 		Name string `json:"name,omitempty"`
 	}
@@ -76,6 +80,8 @@ func TestPrestScanQuery(t *testing.T) {
 }
 
 func TestPrestScanNotQuery(t *testing.T) {
+	t.Parallel()
+
 	type ComplexType struct {
 		Name string `json:"name,omitempty"`
 	}
@@ -122,6 +128,8 @@ func TestPrestScanNotQuery(t *testing.T) {
 }
 
 func TestPrestScan(t *testing.T) {
+	t.Parallel()
+
 	type ComplexType struct {
 		Name string `json:"name,omitempty"`
 	}

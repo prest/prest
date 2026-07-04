@@ -14,6 +14,8 @@ import (
 )
 
 func TestCatalogHandler_ListDatabases_BuilderError(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -35,6 +37,8 @@ func TestCatalogHandler_ListDatabases_BuilderError(t *testing.T) {
 }
 
 func TestCatalogHandler_ListDatabases_Success(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -70,6 +74,8 @@ func TestCatalogHandler_ListDatabases_Success(t *testing.T) {
 }
 
 func TestCatalogHandler_ListDatabases_QueryError(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -97,6 +103,8 @@ func TestCatalogHandler_ListDatabases_QueryError(t *testing.T) {
 }
 
 func TestCatalogHandler_ListSchemas_Success(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -124,6 +132,8 @@ func TestCatalogHandler_ListSchemas_Success(t *testing.T) {
 }
 
 func TestCatalogHandler_ListTables_Success(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -152,6 +162,8 @@ func TestCatalogHandler_ListTables_Success(t *testing.T) {
 }
 
 func TestCatalogHandler_ListTablesByDatabaseAndSchema_InvalidPath(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -173,6 +185,8 @@ func TestCatalogHandler_ListTablesByDatabaseAndSchema_InvalidPath(t *testing.T) 
 }
 
 func TestCatalogHandler_ListTablesByDatabaseAndSchema_Success(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -202,6 +216,8 @@ func TestCatalogHandler_ListTablesByDatabaseAndSchema_Success(t *testing.T) {
 }
 
 func TestCatalogHandler_ListTablesByDatabaseAndSchema_UnregisteredDatabase(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 

@@ -104,12 +104,16 @@ func TestParseDatabaseRegistry_DuplicateAlias(t *testing.T) {
 }
 
 func TestHasDatabaseRegistry(t *testing.T) {
+	t.Parallel()
+
 	require.False(t, HasDatabaseRegistry(nil))
 	require.False(t, HasDatabaseRegistry(&Prest{}))
 	require.True(t, HasDatabaseRegistry(&Prest{Databases: []DatabaseConf{{Alias: "a"}}}))
 }
 
 func Test_fillDatabaseDefaults(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name              string
 		db                *DatabaseConf
@@ -390,6 +394,8 @@ func Test_fillDatabaseDefaults(t *testing.T) {
 }
 
 func TestProfileByAlias(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string // description of this test case
 		// Named input parameters for target function.

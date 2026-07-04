@@ -9,6 +9,8 @@ import (
 )
 
 func TestValidateDatabase_SingleDBMatch(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -21,6 +23,8 @@ func TestValidateDatabase_SingleDBMatch(t *testing.T) {
 }
 
 func TestValidateDatabase_SingleDBMismatch(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -34,6 +38,8 @@ func TestValidateDatabase_SingleDBMismatch(t *testing.T) {
 }
 
 func TestValidateDatabase_MultiDB(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -45,6 +51,8 @@ func TestValidateDatabase_MultiDB(t *testing.T) {
 }
 
 func TestValidateDatabase_RegistryUnknown(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -57,6 +65,8 @@ func TestValidateDatabase_RegistryUnknown(t *testing.T) {
 }
 
 func TestValidatePathSegments(t *testing.T) {
+	t.Parallel()
+
 	require.True(t, validatePathSegments("public", "users"))
 	require.False(t, validatePathSegments("bad@schema"))
 	require.False(t, validatePathSegments("public", "bad-table;drop"))

@@ -70,6 +70,9 @@ func permissionTestConf() *config.Prest {
 
 func TestGetQueryOperator(t *testing.T) {
 
+	t.Parallel()
+
+
 	testCases := []struct {
 		in  string
 		out string
@@ -117,6 +120,9 @@ func TestGetQueryOperator(t *testing.T) {
 
 func TestChkInvalidIdentifier(t *testing.T) {
 
+	t.Parallel()
+
+
 	testCases := []struct {
 		in  string
 		out bool
@@ -142,6 +148,9 @@ func TestChkInvalidIdentifier(t *testing.T) {
 }
 
 func TestNormalizeGroupFunction(t *testing.T) {
+
+	t.Parallel()
+
 
 	testCases := []struct {
 		urlValue    string
@@ -169,6 +178,9 @@ func TestNormalizeGroupFunction(t *testing.T) {
 }
 
 func TestWhereByRequest(t *testing.T) {
+
+	t.Parallel()
+
 
 	adapter := testAdapter()
 
@@ -291,6 +303,9 @@ func TestWhereByRequest(t *testing.T) {
 
 func TestSetByRequest(t *testing.T) {
 
+	t.Parallel()
+
+
 	adapter := testAdapter()
 
 	m := map[string]interface{}{"name": "prest"}
@@ -347,6 +362,9 @@ func TestSetByRequest(t *testing.T) {
 }
 
 func TestParseInsertRequest(t *testing.T) {
+
+	t.Parallel()
+
 
 	adapter := testAdapter()
 
@@ -405,6 +423,9 @@ func TestParseInsertRequest(t *testing.T) {
 
 func TestParseBatchInsertRequest(t *testing.T) {
 
+	t.Parallel()
+
+
 	adapter := testAdapter()
 
 	body := []map[string]interface{}{
@@ -426,6 +447,9 @@ func TestParseBatchInsertRequest(t *testing.T) {
 
 func TestReturningByRequest(t *testing.T) {
 
+	t.Parallel()
+
+
 	adapter := testAdapter()
 
 	req, err := http.NewRequest(http.MethodPost, "/?_returning=id&_returning=name", nil)
@@ -445,6 +469,9 @@ func TestReturningByRequest(t *testing.T) {
 
 func TestDistinctClause(t *testing.T) {
 
+	t.Parallel()
+
+
 	adapter := testAdapter()
 
 	req, err := http.NewRequest(http.MethodGet, "/?_distinct=true", nil)
@@ -461,6 +488,9 @@ func TestDistinctClause(t *testing.T) {
 }
 
 func TestGroupByClause(t *testing.T) {
+
+	t.Parallel()
+
 
 	adapter := testAdapter()
 
@@ -510,6 +540,9 @@ func TestGroupByClause(t *testing.T) {
 
 func TestJoinByRequest(t *testing.T) {
 
+	t.Parallel()
+
+
 	adapter := testAdapter()
 
 	req, err := http.NewRequest(http.MethodGet, "/public/test?_join=inner:test2:test2.name:$eq:test.name", nil)
@@ -527,6 +560,9 @@ func TestJoinByRequest(t *testing.T) {
 }
 
 func TestOrderByRequest(t *testing.T) {
+
+	t.Parallel()
+
 
 	adapter := testAdapter()
 
@@ -546,6 +582,9 @@ func TestOrderByRequest(t *testing.T) {
 
 func TestSelectFields(t *testing.T) {
 
+	t.Parallel()
+
+
 	adapter := testAdapter()
 
 	sql, err := adapter.SelectFields([]string{"name", "age"})
@@ -559,6 +598,9 @@ func TestSelectFields(t *testing.T) {
 
 func TestCountByRequest(t *testing.T) {
 
+	t.Parallel()
+
+
 	adapter := testAdapter()
 
 	req, err := http.NewRequest(http.MethodGet, "/public/test?_count=true", nil)
@@ -569,6 +611,9 @@ func TestCountByRequest(t *testing.T) {
 }
 
 func TestPaginateIfPossible(t *testing.T) {
+
+	t.Parallel()
+
 
 	adapter := testAdapter()
 
@@ -629,6 +674,8 @@ func TestPaginateIfPossible(t *testing.T) {
 }
 
 func TestCatalogSQLBuilders(t *testing.T) {
+	t.Parallel()
+
 	adapter := testAdapter()
 
 	testCases := []struct {
@@ -736,6 +783,8 @@ func TestCatalogSQLBuilders(t *testing.T) {
 }
 
 func TestNormalizeColumn(t *testing.T) {
+	t.Parallel()
+
 	got, err := normalizeColumn("name")
 	require.NoError(t, err)
 	require.Equal(t, "name", got)
@@ -749,6 +798,8 @@ func TestNormalizeColumn(t *testing.T) {
 }
 
 func TestNormalizeAll(t *testing.T) {
+	t.Parallel()
+
 	cols, err := normalizeAll([]string{"name", "max:age"})
 	require.NoError(t, err)
 	require.Equal(t, []string{"name", `MAX("age")`}, cols)
@@ -758,6 +809,9 @@ func TestNormalizeAll(t *testing.T) {
 }
 
 func TestDatabaseClause(t *testing.T) {
+
+	t.Parallel()
+
 
 	adapter := testAdapter()
 
@@ -775,6 +829,9 @@ func TestDatabaseClause(t *testing.T) {
 
 func TestSchemaClause(t *testing.T) {
 
+	t.Parallel()
+
+
 	adapter := testAdapter()
 
 	req, err := http.NewRequest(http.MethodGet, "/schemas", nil)
@@ -790,6 +847,9 @@ func TestSchemaClause(t *testing.T) {
 }
 
 func TestSelectInsertDeleteUpdateSQL(t *testing.T) {
+
+	t.Parallel()
+
 
 	adapter := testAdapter()
 
@@ -809,6 +869,8 @@ func TestSelectInsertDeleteUpdateSQL(t *testing.T) {
 }
 
 func TestPhysicalNameWithRegistry(t *testing.T) {
+	t.Parallel()
+
 	adapter := testAdapter(&config.Prest{
 		PGDatabase: "legacy-db",
 		Databases: []config.DatabaseConf{
@@ -824,6 +886,8 @@ func TestPhysicalNameWithRegistry(t *testing.T) {
 }
 
 func TestSelectSQLUsesPhysicalName(t *testing.T) {
+	t.Parallel()
+
 	adapter := testAdapter(&config.Prest{
 		Databases: []config.DatabaseConf{
 			{Alias: "tenant-a", Database: "app_a"},
@@ -835,6 +899,8 @@ func TestSelectSQLUsesPhysicalName(t *testing.T) {
 }
 
 func TestIsRegistered(t *testing.T) {
+	t.Parallel()
+
 	adapter := testAdapter(&config.Prest{
 		Databases: []config.DatabaseConf{{Alias: "tenant-a", Database: "app_a"}},
 	})
@@ -846,6 +912,8 @@ func TestIsRegistered(t *testing.T) {
 }
 
 func TestTablePermissionsTenantPrecedence(t *testing.T) {
+	t.Parallel()
+
 	adapter := testAdapter(&config.Prest{
 		AccessConf: config.AccessConf{
 			Restrict: true,
@@ -864,6 +932,8 @@ func TestTablePermissionsTenantPrecedence(t *testing.T) {
 }
 
 func TestTablePermissions(t *testing.T) {
+	t.Parallel()
+
 	adapter := testAdapter(permissionTestConf())
 
 	testCases := []struct {
@@ -892,6 +962,8 @@ func TestTablePermissions(t *testing.T) {
 }
 
 func TestTablePermissionsUnrestrict(t *testing.T) {
+	t.Parallel()
+
 	cfg := permissionTestConf()
 	cfg.AccessConf.Restrict = false
 	adapter := testAdapter(cfg)
@@ -901,6 +973,8 @@ func TestTablePermissionsUnrestrict(t *testing.T) {
 }
 
 func TestFieldsPermissions(t *testing.T) {
+	t.Parallel()
+
 	adapter := testAdapter(permissionTestConf())
 
 	req, err := http.NewRequest(http.MethodGet, "/public/test?_select=name,surname", nil)
@@ -947,6 +1021,8 @@ func TestFieldsPermissions(t *testing.T) {
 }
 
 func TestFieldsByPermission(t *testing.T) {
+	t.Parallel()
+
 	adapter := testAdapter(permissionTestConf())
 
 	fields := adapter.fieldsByPermission("", "public", "test_fields_access", "read", "")
@@ -960,6 +1036,8 @@ func TestFieldsByPermission(t *testing.T) {
 }
 
 func Test_isTopLevelOrSeparator(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		v    string
@@ -1042,6 +1120,8 @@ func Test_isTopLevelOrSeparator(t *testing.T) {
 }
 
 func Test_splitTopLevelOrGroup(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		v    string
@@ -1112,6 +1192,8 @@ func Test_splitTopLevelOrGroup(t *testing.T) {
 }
 
 func Test_postgres_whereKeyAndValue(t *testing.T) {
+	t.Parallel()
+
 	adapter := testAdapter()
 
 	tests := []struct {
@@ -1312,6 +1394,8 @@ func Test_postgres_whereKeyAndValue(t *testing.T) {
 }
 
 func Test_sliceToJSONList(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		ifaceSlice interface{}
@@ -1694,6 +1778,8 @@ func Test_postgres_BatchInsertCopyCtx(t *testing.T) {
 }
 
 func Test_postgres_delete(t *testing.T) {
+	t.Parallel()
+
 	const deleteSQL = `DELETE FROM "test"."public"."users" WHERE "id"=$1`
 
 	tests := []struct {
@@ -1834,6 +1920,8 @@ func Test_postgres_delete(t *testing.T) {
 }
 
 func Test_postgres_update(t *testing.T) {
+	t.Parallel()
+
 	const updateSQL = `UPDATE "test"."public"."users" SET "name"=$1 WHERE "id"=$2`
 
 	tests := []struct {

@@ -26,6 +26,8 @@ func testManager(t *testing.T) *Manager {
 }
 
 func TestGetFromPool_returnsInjectedDB(t *testing.T) {
+	t.Parallel()
+
 	m := testManager(t)
 	uri := m.GetURI("testdb")
 
@@ -42,6 +44,8 @@ func TestGetFromPool_returnsInjectedDB(t *testing.T) {
 }
 
 func TestAddDatabaseToPool_returnsExistingWithoutConnect(t *testing.T) {
+	t.Parallel()
+
 	m := testManager(t)
 	uri := m.GetURI("testdb")
 
@@ -104,6 +108,8 @@ func TestAddDatabaseToPool_singleflightDedup(t *testing.T) {
 }
 
 func TestGetDatabaseFromPool_concurrentReads(t *testing.T) {
+	t.Parallel()
+
 	m := testManager(t)
 	uri := m.GetURI("testdb")
 
@@ -128,6 +134,8 @@ func TestGetDatabaseFromPool_concurrentReads(t *testing.T) {
 }
 
 func TestBuildURI(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string // description of this test case
 		// Named input parameters for target function.
@@ -310,6 +318,8 @@ func TestBuildURI(t *testing.T) {
 }
 
 func TestManager_SetDatabase(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name         string // description of this test case
 		dbName       string // database name to set
@@ -347,6 +357,8 @@ func TestManager_SetDatabase(t *testing.T) {
 }
 
 func TestManager_SetDatabase_concurrent(t *testing.T) {
+	t.Parallel()
+
 	m := testManager(t)
 
 	const writers = 10
@@ -376,6 +388,8 @@ func TestManager_SetDatabase_concurrent(t *testing.T) {
 }
 
 func TestManager_GetDatabase(t *testing.T) {
+	t.Parallel()
+
 	t.Run("returns empty string by default", func(t *testing.T) {
 		m := NewManager(&config.Prest{})
 		got := m.GetDatabase()
@@ -424,6 +438,8 @@ func TestManager_GetDatabase(t *testing.T) {
 }
 
 func TestGetURI(t *testing.T) {
+	t.Parallel()
+
 	t.Run("uses legacy database name when no profile", func(t *testing.T) {
 		m := testManager(t)
 		uri := m.GetURI("customdb")
@@ -530,6 +546,8 @@ func TestManager_Get(t *testing.T) {
 }
 
 func TestManager_GetPool(t *testing.T) {
+	t.Parallel()
+
 	t.Run("returns initialized pool", func(t *testing.T) {
 		m := NewManager(&config.Prest{})
 		pool := m.GetPool()
@@ -582,6 +600,8 @@ func TestManager_MustGet(t *testing.T) {
 }
 
 func TestManager_CacheKeyForDB(t *testing.T) {
+	t.Parallel()
+
 	t.Run("returns empty string for nil db", func(t *testing.T) {
 		m := testManager(t)
 		key := m.CacheKeyForDB(nil)
@@ -646,6 +666,8 @@ func TestManager_CacheKeyForDB(t *testing.T) {
 }
 
 func TestManager_RegisteredAliases(t *testing.T) {
+	t.Parallel()
+
 	t.Run("returns nil when no registry configured", func(t *testing.T) {
 		m := NewManager(&config.Prest{})
 		aliases := m.RegisteredAliases()

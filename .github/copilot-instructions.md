@@ -163,6 +163,7 @@ func NewCRUDHandler(cfg *config.Prest) *CRUDHandler {
 - Name test files after the source file under test: `<source_file>_test.go` (e.g. `catalog.go` → `catalog_test.go`).
 - Any new change in behavior on the controllers package should introduce a new integration test as well as a unit test.
 - Prefer `t.Parallel()` in unit tests when safe (no shared mutable state, globals, or ordering dependencies). Subtests in table-driven tests can call `t.Parallel()` inside `t.Run`.
+- **Do not** call `t.Parallel()` when a test uses `t.Setenv`, `config.Load()` against mutated env, package-global hooks (`SetDBConnectForTest` / `withFailingDBConnect`), shared package-level config vars, or intentional concurrency tests (e.g. plugin serialization). Keep those serial.
 - `make test-unit` is the canonical unit-test entry point: **30s** per-package timeout (`-timeout 30s`), tests within a package run in parallel up to `GOMAXPROCS` (`-parallel`), packages are invoked in batch (also concurrent), and the race detector is enabled (`-race`).
 
 ### Postgres adapter unit tests (`adapters/postgres`)
