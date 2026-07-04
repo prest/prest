@@ -43,6 +43,8 @@ func (c *recordingCacher) BuntSet(key, value string) {
 }
 
 func TestCRUDHandler_Select_PermissionDenied(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -70,6 +72,8 @@ func TestCRUDHandler_Select_PermissionDenied(t *testing.T) {
 }
 
 func TestCRUDHandler_Select_InvalidPath(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -94,6 +98,8 @@ func TestCRUDHandler_Select_InvalidPath(t *testing.T) {
 }
 
 func TestCRUDHandler_Select_Success(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -141,6 +147,8 @@ func TestCRUDHandler_Select_Success(t *testing.T) {
 }
 
 func TestCRUDHandler_Select_WithCache(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -187,6 +195,8 @@ func TestCRUDHandler_Select_WithCache(t *testing.T) {
 }
 
 func TestCRUDHandler_Select_RelationNotFound(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -225,6 +235,8 @@ func TestCRUDHandler_Select_RelationNotFound(t *testing.T) {
 }
 
 func TestCRUDHandler_Select_WithUserContext(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -267,6 +279,8 @@ func TestCRUDHandler_Select_WithUserContext(t *testing.T) {
 }
 
 func TestCRUDHandler_Insert_Success(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -297,6 +311,8 @@ func TestCRUDHandler_Insert_Success(t *testing.T) {
 }
 
 func TestCRUDHandler_Insert_RelationNotFound(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -326,6 +342,8 @@ func TestCRUDHandler_Insert_RelationNotFound(t *testing.T) {
 }
 
 func TestCRUDHandler_Insert_InvalidPath(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -349,6 +367,8 @@ func TestCRUDHandler_Insert_InvalidPath(t *testing.T) {
 }
 
 func TestCRUDHandler_BatchInsert_Values(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -378,6 +398,8 @@ func TestCRUDHandler_BatchInsert_Values(t *testing.T) {
 }
 
 func TestCRUDHandler_BatchInsert_Copy(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -405,6 +427,8 @@ func TestCRUDHandler_BatchInsert_Copy(t *testing.T) {
 }
 
 func TestCRUDHandler_Delete_Success(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -435,6 +459,8 @@ func TestCRUDHandler_Delete_Success(t *testing.T) {
 }
 
 func TestCRUDHandler_Delete_InvalidPath(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -458,6 +484,8 @@ func TestCRUDHandler_Delete_InvalidPath(t *testing.T) {
 }
 
 func TestCRUDHandler_Update_Success(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -489,6 +517,8 @@ func TestCRUDHandler_Update_Success(t *testing.T) {
 }
 
 func TestCRUDHandler_Update_RelationNotFound(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -519,6 +549,8 @@ func TestCRUDHandler_Update_RelationNotFound(t *testing.T) {
 }
 
 func TestCRUDHandler_Update_InvalidPath(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -539,6 +571,153 @@ func TestCRUDHandler_Update_InvalidPath(t *testing.T) {
 
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 	require.Contains(t, rec.Body.String(), "invalid identifier")
+}
+
+func TestCRUDHandler_Select_UnregisteredDB(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	db := mockgen.NewMockDatabaseRegistry(ctrl)
+	db.EXPECT().IsRegistered("invalid").Return(false)
+
+	h := NewCRUDHandler(Deps{DB: db})
+
+	req := crudRequest(http.MethodGet, "/invalid/public/test", map[string]string{
+		"database": "invalid", "schema": "public", "table": "test",
+	})
+	rec := httptest.NewRecorder()
+	h.Select(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestCRUDHandler_Select_PermissionErrorOnFields(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "test", "read", "").Return(nil, errors.New("permission denied"))
+
+	h := NewCRUDHandler(Deps{
+		Perms: perms,
+		DB:    mockDatabaseRegistry(ctrl),
+	})
+
+	req := crudRequest(http.MethodGet, "/prest-test/public/test", map[string]string{
+		"database": "prest-test", "schema": "public", "table": "test",
+	})
+	rec := httptest.NewRecorder()
+	h.Select(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestCRUDHandler_Select_NoPermittedFields(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "test", "read", "").Return([]string{}, nil)
+
+	h := NewCRUDHandler(Deps{
+		Perms: perms,
+		DB:    mockDatabaseRegistry(ctrl),
+	})
+
+	req := crudRequest(http.MethodGet, "/prest-test/public/test", map[string]string{
+		"database": "prest-test", "schema": "public", "table": "test",
+	})
+	rec := httptest.NewRecorder()
+	h.Select(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Contains(t, rec.Body.String(), "don't have permission")
+}
+
+func TestCRUDHandler_Insert_UnregisteredDB(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	db := mockgen.NewMockDatabaseRegistry(ctrl)
+	db.EXPECT().IsRegistered("invalid").Return(false)
+
+	h := NewCRUDHandler(Deps{DB: db})
+
+	req := crudRequest(http.MethodPost, "/invalid/public/test", map[string]string{
+		"database": "invalid", "schema": "public", "table": "test",
+	})
+	rec := httptest.NewRecorder()
+	h.Insert(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestCRUDHandler_Delete_UnregisteredDB(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	db := mockgen.NewMockDatabaseRegistry(ctrl)
+	db.EXPECT().IsRegistered("invalid").Return(false)
+
+	h := NewCRUDHandler(Deps{DB: db})
+
+	req := crudRequest(http.MethodDelete, "/invalid/public/test", map[string]string{
+		"database": "invalid", "schema": "public", "table": "test",
+	})
+	rec := httptest.NewRecorder()
+	h.Delete(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestCRUDHandler_Update_UnregisteredDB(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	db := mockgen.NewMockDatabaseRegistry(ctrl)
+	db.EXPECT().IsRegistered("invalid").Return(false)
+
+	h := NewCRUDHandler(Deps{DB: db})
+
+	req := crudRequest(http.MethodPatch, "/invalid/public/test", map[string]string{
+		"database": "invalid", "schema": "public", "table": "test",
+	})
+	rec := httptest.NewRecorder()
+	h.Update(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestCRUDHandler_BatchInsert_UnregisteredDB(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	db := mockgen.NewMockDatabaseRegistry(ctrl)
+	db.EXPECT().IsRegistered("invalid").Return(false)
+
+	h := NewCRUDHandler(Deps{DB: db})
+
+	req := crudRequest(http.MethodPost, "/invalid/public/test", map[string]string{
+		"database": "invalid", "schema": "public", "table": "test",
+	})
+	rec := httptest.NewRecorder()
+	h.BatchInsert(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
 func withUser(ctx context.Context, user auth.User) context.Context {

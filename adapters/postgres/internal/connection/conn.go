@@ -148,7 +148,7 @@ func BuildURI(conf config.DatabaseConf, defaults *config.Prest) string {
 	return dbURI
 }
 
-// Get get Postgres connection adding it to the pool if needed
+// Get gets a Postgres connection adding it to the pool if needed
 func (m *Manager) Get() (*sqlx.DB, error) {
 	DB := m.getDatabaseFromPool(m.GetDatabase())
 	// Connection is already in the pool
@@ -172,7 +172,7 @@ func (m *Manager) GetFromPool(dbName string) (*sqlx.DB, error) {
 	return DB, nil
 }
 
-// GetPool of connection
+// GetPool gets the connection pool
 func (m *Manager) GetPool() *Pool {
 	return m.getPool()
 }
@@ -237,14 +237,14 @@ func (m *Manager) MustGet() *sqlx.DB {
 	return DB
 }
 
-// SetDatabase set current database in use
+// SetDatabase sets the current database in use
 func (m *Manager) SetDatabase(name string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.currDatabase = name
 }
 
-// GetDatabase get current database in use
+// GetDatabase gets the current database in use
 func (m *Manager) GetDatabase() string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
