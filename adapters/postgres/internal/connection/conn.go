@@ -61,12 +61,12 @@ func (m *Manager) getPool() *Pool {
 }
 
 func (m *Manager) hasRegistry() bool {
-	return config.HasDatabaseRegistry(m.cfg)
+	return m.cfg.HasDatabaseRegistry()
 }
 
 // GetURI postgres connection URI for alias or legacy database name.
 func (m *Manager) GetURI(name string) string {
-	if conf, ok := config.ProfileByAlias(m.cfg, name); ok {
+	if conf, ok := m.cfg.ProfileByAlias(name); ok {
 		return BuildURI(conf, m.cfg)
 	}
 
@@ -197,7 +197,7 @@ func (m *Manager) CloseAllAndResetPool() {
 func (m *Manager) poolLimitsFor(name string) (maxIdle, maxOpen int) {
 	maxIdle = m.cfg.PGMaxIdleConn
 	maxOpen = m.cfg.PGMaxOpenConn
-	if conf, ok := config.ProfileByAlias(m.cfg, name); ok {
+	if conf, ok := m.cfg.ProfileByAlias(name); ok {
 		if conf.MaxIdleConn != 0 {
 			maxIdle = conf.MaxIdleConn
 		}

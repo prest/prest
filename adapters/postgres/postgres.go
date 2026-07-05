@@ -110,7 +110,7 @@ func (p *postgres) PingAll(ctx context.Context) error {
 	if err := p.Ping(ctx); err != nil {
 		return err
 	}
-	if !config.HasDatabaseRegistry(p.cfg) {
+	if !p.cfg.HasDatabaseRegistry() {
 		return nil
 	}
 	for _, dbConf := range p.cfg.Databases {
@@ -127,16 +127,16 @@ func (p *postgres) PingAll(ctx context.Context) error {
 
 // IsRegistered reports whether alias is a configured database registry entry.
 func (p *postgres) IsRegistered(alias string) bool {
-	if !config.HasDatabaseRegistry(p.cfg) {
+	if !p.cfg.HasDatabaseRegistry() {
 		return true
 	}
-	_, ok := config.ProfileByAlias(p.cfg, alias)
+	_, ok := p.cfg.ProfileByAlias(alias)
 	return ok
 }
 
 // PhysicalName resolves a registry alias to its physical database name.
 func (p *postgres) PhysicalName(alias string) string {
-	if conf, ok := config.ProfileByAlias(p.cfg, alias); ok && conf.Database != "" {
+	if conf, ok := p.cfg.ProfileByAlias(alias); ok && conf.Database != "" {
 		return conf.Database
 	}
 	if alias == "" {
@@ -2032,7 +2032,7 @@ func NormalizeGroupFunction(paramValue string) (groupFuncSQL string, err error) 
 // With a database registry, the connection is already scoped to the physical
 // database so only schema.table is qualified. Legacy mode uses database.schema.table.
 func (adapter *postgres) tableReference(database, schema, table string) string {
-	if config.HasDatabaseRegistry(adapter.cfg) {
+	if adapter.cfg.HasDatabaseRegistry() {
 		return fmt.Sprintf(`"%s"."%s"`, schema, table)
 	}
 	return fmt.Sprintf(`"%s"."%s"."%s"`, database, schema, table)

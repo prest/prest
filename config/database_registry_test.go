@@ -103,9 +103,10 @@ func TestParseDatabaseRegistry_DuplicateAlias(t *testing.T) {
 func TestHasDatabaseRegistry(t *testing.T) {
 	t.Parallel()
 
-	require.False(t, HasDatabaseRegistry(nil))
-	require.False(t, HasDatabaseRegistry(&Prest{}))
-	require.True(t, HasDatabaseRegistry(&Prest{Databases: []DatabaseConf{{Alias: "a"}}}))
+	var nilCfg *Prest
+	require.False(t, nilCfg.HasDatabaseRegistry())
+	require.False(t, (&Prest{}).HasDatabaseRegistry())
+	require.True(t, (&Prest{Databases: []DatabaseConf{{Alias: "a"}}}).HasDatabaseRegistry())
 }
 
 func Test_fillDatabaseDefaults(t *testing.T) {
@@ -689,7 +690,7 @@ func TestProfileByAlias(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got2 := ProfileByAlias(tt.cfg, tt.alias)
+			got, got2 := tt.cfg.ProfileByAlias(tt.alias)
 			require.Equal(t, tt.want, got, "ProfileByAlias profile mismatch")
 			require.Equal(t, tt.want2, got2, "ProfileByAlias found mismatch")
 		})

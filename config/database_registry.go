@@ -36,8 +36,8 @@ type DatabaseConf struct {
 }
 
 // HasDatabaseRegistry reports whether a multi-database registry is configured.
-func HasDatabaseRegistry(cfg *Prest) bool {
-	return cfg != nil && len(cfg.Databases) > 0
+func (p *Prest) HasDatabaseRegistry() bool {
+	return p != nil && len(p.Databases) > 0
 }
 
 // parseDatabaseRegistry parses the database registry from the environment and
@@ -242,11 +242,11 @@ func sortedDatabaseConfs(merged map[string]DatabaseConf) []DatabaseConf {
 }
 
 // ProfileByAlias returns the connection profile for alias when a registry is configured.
-func ProfileByAlias(cfg *Prest, alias string) (DatabaseConf, bool) {
-	if !HasDatabaseRegistry(cfg) {
+func (p *Prest) ProfileByAlias(alias string) (DatabaseConf, bool) {
+	if !p.HasDatabaseRegistry() {
 		return DatabaseConf{}, false
 	}
-	for _, db := range cfg.Databases {
+	for _, db := range p.Databases {
 		if db.Alias == alias {
 			return db, true
 		}
