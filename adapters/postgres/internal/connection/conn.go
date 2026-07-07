@@ -60,21 +60,27 @@ func (m *Manager) getPool() *Pool {
 	return m.pool
 }
 
-// GetURI postgres connection URI
-func (m *Manager) GetURI(DBName string) string {
-	var dbURI string
+func (m *Manager) hasRegistry() bool {
+	return m.cfg.HasDatabaseRegistry()
+}
 
-	if DBName == "" {
-		DBName = m.cfg.PGDatabase
+// GetURI postgres connection URI for alias or legacy database name.
+func (m *Manager) GetURI(name string) string {
+	if conf, ok := m.cfg.ProfileByAlias(name); ok {
+		return BuildURI(conf, m.cfg)
 	}
-	dbURI = fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=%v connect_timeout=%d",
+
+	dbName := name
+	if dbName == "" {
+		dbName = m.cfg.PGDatabase
+	}
+	dbURI := fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=%v connect_timeout=%d",
 		m.cfg.PGUser,
-		DBName,
+		dbName,
 		m.cfg.PGHost,
 		m.cfg.PGPort,
 		m.cfg.PGSSLMode,
 		m.cfg.PGConnTimeout)
-
 	if m.cfg.PGPass != "" {
 		dbURI += " password=" + m.cfg.PGPass
 	}
@@ -87,11 +93,62 @@ func (m *Manager) GetURI(DBName string) string {
 	if m.cfg.PGSSLRootCert != "" {
 		dbURI += " sslrootcert=" + m.cfg.PGSSLRootCert
 	}
-
 	return dbURI
 }
 
-// Get get Postgres connection adding it to the pool if needed
+// BuildURI builds a postgres connection URI from a database profile.
+func BuildURI(conf config.DatabaseConf, defaults *config.Prest) string {
+	if conf.URL != "" {
+		return conf.URL
+	}
+
+	dbName := conf.Database
+	if dbName == "" {
+		dbName = defaults.PGDatabase
+	}
+	port := conf.Port
+	if port == 0 {
+		port = defaults.PGPort
+	}
+	sslMode := conf.SSL.Mode
+	if sslMode == "" {
+		sslMode = defaults.PGSSLMode
+	}
+	user := conf.User
+	if user == "" {
+		user = defaults.PGUser
+	}
+	host := conf.Host
+	if host == "" {
+		host = defaults.PGHost
+	}
+
+	dbURI := fmt.Sprintf("user=%s dbname=%s host=%s port=%v sslmode=%v connect_timeout=%d",
+		user,
+		dbName,
+		host,
+		port,
+		sslMode,
+		defaults.PGConnTimeout,
+	)
+	if conf.Pass != "" {
+		dbURI += " password=" + conf.Pass
+	} else if defaults.PGPass != "" {
+		dbURI += " password=" + defaults.PGPass
+	}
+	if conf.SSL.Cert != "" {
+		dbURI += " sslcert=" + conf.SSL.Cert
+	}
+	if conf.SSL.Key != "" {
+		dbURI += " sslkey=" + conf.SSL.Key
+	}
+	if conf.SSL.RootCert != "" {
+		dbURI += " sslrootcert=" + conf.SSL.RootCert
+	}
+	return dbURI
+}
+
+// Get gets a Postgres connection adding it to the pool if needed
 func (m *Manager) Get() (*sqlx.DB, error) {
 	DB := m.getDatabaseFromPool(m.GetDatabase())
 	// Connection is already in the pool
@@ -115,9 +172,40 @@ func (m *Manager) GetFromPool(dbName string) (*sqlx.DB, error) {
 	return DB, nil
 }
 
-// GetPool of connection
+// GetPool gets the connection pool
 func (m *Manager) GetPool() *Pool {
 	return m.getPool()
+}
+
+// CloseAllAndResetPool closes all pooled connections and clears the pool atomically.
+func (m *Manager) CloseAllAndResetPool() {
+	p := m.getPool()
+	p.Mtx.Lock()
+	for _, db := range p.DB {
+		_ = db.Close()
+	}
+	p.DB = make(map[string]*sqlx.DB)
+	p.Mtx.Unlock()
+	m.mu.Lock()
+	m.currDatabase = ""
+	m.mu.Unlock()
+}
+
+// poolLimitsFor returns the maximum number of idle and open connections for
+// a given database. It uses the global limits if the database is not found in
+// the registry.
+func (m *Manager) poolLimitsFor(name string) (maxIdle, maxOpen int) {
+	maxIdle = m.cfg.PGMaxIdleConn
+	maxOpen = m.cfg.PGMaxOpenConn
+	if conf, ok := m.cfg.ProfileByAlias(name); ok {
+		if conf.MaxIdleConn != 0 {
+			maxIdle = conf.MaxIdleConn
+		}
+		if conf.MaxOpenConn != 0 {
+			maxOpen = conf.MaxOpenConn
+		}
+	}
+	return maxIdle, maxOpen
 }
 
 func (m *Manager) getDatabaseFromPool(name string) *sqlx.DB {
@@ -147,8 +235,9 @@ func (m *Manager) AddDatabaseToPool(name string) (*sqlx.DB, error) {
 		if err != nil {
 			return nil, err
 		}
-		DB.SetMaxIdleConns(m.cfg.PGMaxIdleConn)
-		DB.SetMaxOpenConns(m.cfg.PGMaxOpenConn)
+		maxIdle, maxOpen := m.poolLimitsFor(name)
+		DB.SetMaxIdleConns(maxIdle)
+		DB.SetMaxOpenConns(maxOpen)
 
 		p := m.getPool()
 		p.Mtx.Lock()
@@ -180,14 +269,14 @@ func (m *Manager) MustGet() *sqlx.DB {
 	return DB
 }
 
-// SetDatabase set current database in use
+// SetDatabase sets the current database in use
 func (m *Manager) SetDatabase(name string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.currDatabase = name
 }
 
-// GetDatabase get current database in use
+// GetDatabase gets the current database in use
 func (m *Manager) GetDatabase() string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -208,4 +297,16 @@ func (m *Manager) CacheKeyForDB(db *sqlx.DB) string {
 		}
 	}
 	return fmt.Sprintf("%p", db)
+}
+
+// RegisteredAliases returns configured database aliases when a registry is active.
+func (m *Manager) RegisteredAliases() []string {
+	if !m.hasRegistry() {
+		return nil
+	}
+	aliases := make([]string, len(m.cfg.Databases))
+	for i, db := range m.cfg.Databases {
+		aliases[i] = db.Alias
+	}
+	return aliases
 }

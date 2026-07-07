@@ -31,11 +31,13 @@ func serveCRUDStack(t *testing.T, stack *CRUDStack, req *http.Request) (*httptes
 }
 
 func TestNewCRUDStack(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	adapter := mockgen.NewMockAdapter(ctrl)
-	adapter.EXPECT().TablePermissions("test", "read", "").Return(true)
+	adapter.EXPECT().TablePermissions("prest-test", "public", "test", "read", "").Return(true)
 
 	cfg := &config.Prest{
 		Adapter:     adapter,
@@ -54,11 +56,13 @@ func TestNewCRUDStack(t *testing.T) {
 }
 
 func TestNewCRUDStackWithPerms(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	perms := mockgen.NewMockPermissionsChecker(ctrl)
-	perms.EXPECT().TablePermissions("test", "read", "").Return(true)
+	perms.EXPECT().TablePermissions("prest-test", "public", "test", "read", "").Return(true)
 
 	cfg := &config.Prest{
 		AuthEnabled: false,

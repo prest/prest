@@ -93,7 +93,7 @@ func (m *Mock) perform(query bool) (sc adapters.Scanner) {
 }
 
 // TablePermissions mock
-func (m *Mock) TablePermissions(table string, op string, userName string) (ok bool) {
+func (m *Mock) TablePermissions(_ string, _ string, table string, op string, userName string) (ok bool) {
 	m.t.Helper()
 	restrict := m.AccessConf.Restrict
 	if !restrict {
@@ -223,7 +223,7 @@ func (m *Mock) SchemaClause(req *http.Request) (query string, hasCount bool) {
 }
 
 // FieldsPermissions mock
-func (m *Mock) FieldsPermissions(r *http.Request, table string, op string, userName string) (fields []string, err error) {
+func (m *Mock) FieldsPermissions(r *http.Request, _ string, _ string, table string, op string, userName string) (fields []string, err error) {
 	fields = append(fields, "mock")
 	return
 }
@@ -342,6 +342,26 @@ func (m *Mock) DistinctClause(r *http.Request) (distinctQuery string, err error)
 
 // SetDatabase mock
 func (m *Mock) SetDatabase(name string) {
+}
+
+// IsRegistered mock
+func (m *Mock) IsRegistered(alias string) bool {
+	return true
+}
+
+// PhysicalName mock
+func (m *Mock) PhysicalName(alias string) string {
+	return alias
+}
+
+// Ping mock
+func (m *Mock) Ping(ctx context.Context) error {
+	return nil
+}
+
+// PingAll mock
+func (m *Mock) PingAll(ctx context.Context) error {
+	return nil
 }
 
 // SelectSQL mock

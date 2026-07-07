@@ -2,8 +2,10 @@ package mock
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"reflect"
 	"sync"
@@ -27,7 +29,10 @@ func TestMock_validate(t *testing.T) {
 		{"validate", fields{&sync.RWMutex{}, t, []Item{{}}}},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx:   tt.fields.mtx,
 				t:     tt.fields.t,
@@ -69,7 +74,10 @@ func TestMock_perform(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -165,85 +173,85 @@ func TestMock_TablePermissions(t *testing.T) {
 		config.UsersConf{
 			Name: "foo_read",
 			Tables: []config.TablesConf{
-				{"read_table", []string{"read"}, []string{"id", "name", "email"}},
-				{"write_table", []string{"read"}, []string{"id", "name", "email"}},
-				{"delete_table", []string{"read"}, []string{"id", "name", "email"}},
-				{"read_write_table", []string{"read"}, []string{"id", "name", "email"}},
-				{"read_delete_table", []string{"read"}, []string{"id", "name", "email"}},
-				{"write_delete_table", []string{"read"}, []string{"id", "name", "email"}},
-				{"read_write_delete_table", []string{"read"}, []string{"id", "name", "email"}},
+				{Name: "read_table", Permissions: []string{"read"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_table", Permissions: []string{"read"}, Fields: []string{"id", "name", "email"}},
+				{Name: "delete_table", Permissions: []string{"read"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_table", Permissions: []string{"read"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_delete_table", Permissions: []string{"read"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_delete_table", Permissions: []string{"read"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_delete_table", Permissions: []string{"read"}, Fields: []string{"id", "name", "email"}},
 			},
 		},
 		config.UsersConf{
 			Name: "foo_write",
 			Tables: []config.TablesConf{
-				{"read_table", []string{"write"}, []string{"id", "name", "email"}},
-				{"write_table", []string{"write"}, []string{"id", "name", "email"}},
-				{"delete_table", []string{"write"}, []string{"id", "name", "email"}},
-				{"read_write_table", []string{"write"}, []string{"id", "name", "email"}},
-				{"read_delete_table", []string{"write"}, []string{"id", "name", "email"}},
-				{"write_delete_table", []string{"write"}, []string{"id", "name", "email"}},
-				{"read_write_delete_table", []string{"write"}, []string{"id", "name", "email"}},
+				{Name: "read_table", Permissions: []string{"write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_table", Permissions: []string{"write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "delete_table", Permissions: []string{"write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_table", Permissions: []string{"write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_delete_table", Permissions: []string{"write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_delete_table", Permissions: []string{"write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_delete_table", Permissions: []string{"write"}, Fields: []string{"id", "name", "email"}},
 			},
 		},
 		config.UsersConf{
 			Name: "foo_delete",
 			Tables: []config.TablesConf{
-				{"read_table", []string{"delete"}, []string{"id", "name", "email"}},
-				{"write_table", []string{"delete"}, []string{"id", "name", "email"}},
-				{"delete_table", []string{"delete"}, []string{"id", "name", "email"}},
-				{"read_write_table", []string{"delete"}, []string{"id", "name", "email"}},
-				{"read_delete_table", []string{"delete"}, []string{"id", "name", "email"}},
-				{"write_delete_table", []string{"delete"}, []string{"id", "name", "email"}},
-				{"read_write_delete_table", []string{"delete"}, []string{"id", "name", "email"}},
+				{Name: "read_table", Permissions: []string{"delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_table", Permissions: []string{"delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "delete_table", Permissions: []string{"delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_table", Permissions: []string{"delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_delete_table", Permissions: []string{"delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_delete_table", Permissions: []string{"delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_delete_table", Permissions: []string{"delete"}, Fields: []string{"id", "name", "email"}},
 			},
 		},
 		config.UsersConf{
 			Name: "foo_read_write",
 			Tables: []config.TablesConf{
-				{"read_table", []string{"read", "write"}, []string{"id", "name", "email"}},
-				{"write_table", []string{"read", "write"}, []string{"id", "name", "email"}},
-				{"delete_table", []string{"read", "write"}, []string{"id", "name", "email"}},
-				{"read_write_table", []string{"read", "write"}, []string{"id", "name", "email"}},
-				{"read_delete_table", []string{"read", "write"}, []string{"id", "name", "email"}},
-				{"write_delete_table", []string{"read", "write"}, []string{"id", "name", "email"}},
-				{"read_write_delete_table", []string{"read", "write"}, []string{"id", "name", "email"}},
+				{Name: "read_table", Permissions: []string{"read", "write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_table", Permissions: []string{"read", "write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "delete_table", Permissions: []string{"read", "write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_table", Permissions: []string{"read", "write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_delete_table", Permissions: []string{"read", "write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_delete_table", Permissions: []string{"read", "write"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_delete_table", Permissions: []string{"read", "write"}, Fields: []string{"id", "name", "email"}},
 			},
 		},
 		config.UsersConf{
 			Name: "foo_read_delete",
 			Tables: []config.TablesConf{
-				{"read_table", []string{"read", "delete"}, []string{"id", "name", "email"}},
-				{"write_table", []string{"read", "delete"}, []string{"id", "name", "email"}},
-				{"delete_table", []string{"read", "delete"}, []string{"id", "name", "email"}},
-				{"read_write_table", []string{"read", "delete"}, []string{"id", "name", "email"}},
-				{"read_delete_table", []string{"read", "delete"}, []string{"id", "name", "email"}},
-				{"write_delete_table", []string{"read", "delete"}, []string{"id", "name", "email"}},
-				{"read_write_delete_table", []string{"read", "delete"}, []string{"id", "name", "email"}},
+				{Name: "read_table", Permissions: []string{"read", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_table", Permissions: []string{"read", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "delete_table", Permissions: []string{"read", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_table", Permissions: []string{"read", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_delete_table", Permissions: []string{"read", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_delete_table", Permissions: []string{"read", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_delete_table", Permissions: []string{"read", "delete"}, Fields: []string{"id", "name", "email"}},
 			},
 		},
 		config.UsersConf{
 			Name: "foo_write_delete",
 			Tables: []config.TablesConf{
-				{"read_table", []string{"write", "delete"}, []string{"id", "name", "email"}},
-				{"write_table", []string{"write", "delete"}, []string{"id", "name", "email"}},
-				{"delete_table", []string{"write", "delete"}, []string{"id", "name", "email"}},
-				{"read_write_table", []string{"write", "delete"}, []string{"id", "name", "email"}},
-				{"read_delete_table", []string{"write", "delete"}, []string{"id", "name", "email"}},
-				{"write_delete_table", []string{"write", "delete"}, []string{"id", "name", "email"}},
-				{"read_write_delete_table", []string{"write", "delete"}, []string{"id", "name", "email"}},
+				{Name: "read_table", Permissions: []string{"write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_table", Permissions: []string{"write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "delete_table", Permissions: []string{"write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_table", Permissions: []string{"write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_delete_table", Permissions: []string{"write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_delete_table", Permissions: []string{"write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_delete_table", Permissions: []string{"write", "delete"}, Fields: []string{"id", "name", "email"}},
 			},
 		},
 		config.UsersConf{
 			Name: "foo_read_write_delete",
 			Tables: []config.TablesConf{
-				{"read_table", []string{"read", "write", "delete"}, []string{"id", "name", "email"}},
-				{"write_table", []string{"read", "write", "delete"}, []string{"id", "name", "email"}},
-				{"delete_table", []string{"read", "write", "delete"}, []string{"id", "name", "email"}},
-				{"read_write_table", []string{"read", "write", "delete"}, []string{"id", "name", "email"}},
-				{"read_delete_table", []string{"read", "write", "delete"}, []string{"id", "name", "email"}},
-				{"write_delete_table", []string{"read", "write", "delete"}, []string{"id", "name", "email"}},
-				{"read_write_delete_table", []string{"read", "write", "delete"}, []string{"id", "name", "email"}},
+				{Name: "read_table", Permissions: []string{"read", "write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_table", Permissions: []string{"read", "write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "delete_table", Permissions: []string{"read", "write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_table", Permissions: []string{"read", "write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_delete_table", Permissions: []string{"read", "write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "write_delete_table", Permissions: []string{"read", "write", "delete"}, Fields: []string{"id", "name", "email"}},
+				{Name: "read_write_delete_table", Permissions: []string{"read", "write", "delete"}, Fields: []string{"id", "name", "email"}},
 			},
 		},
 	}
@@ -568,7 +576,10 @@ func TestMock_TablePermissions(t *testing.T) {
 		{"try foo_read_write_delete delete no_user_read_write_delete_table", "no_user_read_write_delete_table", "delete", true, "foo_read_write_delete", true},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -578,7 +589,7 @@ func TestMock_TablePermissions(t *testing.T) {
 					Users:    users,
 				},
 			}
-			if gotOk := m.TablePermissions(tt.table, tt.op, tt.userName); gotOk != tt.wantOk {
+			if gotOk := m.TablePermissions("", "", tt.table, tt.op, tt.userName); gotOk != tt.wantOk {
 				t.Errorf("Mock.TablePermissions() = %v, want %v", gotOk, tt.wantOk)
 			}
 		})
@@ -595,7 +606,10 @@ func TestMock_DatabaseClause(t *testing.T) {
 		{"is not count", Item{IsCount: false}, false},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -618,7 +632,10 @@ func TestMock_SchemaClause(t *testing.T) {
 		{"is not count", Item{IsCount: false}, false},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -645,7 +662,10 @@ func TestMock_AddItem(t *testing.T) {
 		{"add item", args{body: []byte(`[]`), err: nil, isCount: false}, 1},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -685,7 +705,10 @@ func TestMock_Insert(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -727,7 +750,10 @@ func TestMock_BatchInsertValues(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -767,7 +793,10 @@ func TestMock_Delete(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -807,7 +836,10 @@ func TestMock_Update(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -847,7 +879,10 @@ func TestMock_QueryCount(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -889,7 +924,10 @@ func TestMock_Query(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := &Mock{
 				mtx: &sync.RWMutex{},
 				t:   t,
@@ -916,7 +954,10 @@ func TestMock_GetTransaction(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := New(t)
 			gotTx, err := m.GetTransaction()
 			errMactches := (err != nil) != tt.wantErr
@@ -992,7 +1033,7 @@ func TestMockEmptyMethods(t *testing.T) {
 	}
 
 	// FieldsPermissions
-	fields, err := mock.FieldsPermissions(&http.Request{}, "test", "select", "")
+	fields, err := mock.FieldsPermissions(&http.Request{}, "", "public", "test", "select", "")
 	if err != nil {
 		t.Errorf("expected empty return, got: %s", err)
 	}
@@ -1154,5 +1195,626 @@ func TestMockEmptyMethods(t *testing.T) {
 	sc = mock.BatchInsertCopy("prest", "public", "test1", []string{"key1", "key2", "key3"}, "val1", "val2", "val3")
 	if sc == nil {
 		t.Errorf("expected empty return, got: %x", sc)
+	}
+}
+
+func TestMock_QueryCtx(t *testing.T) {
+	tests := []struct {
+		name    string
+		item    Item
+		isQuery bool
+	}{
+		{
+			"query ctx with body",
+			Item{
+				Body: []byte(`[{"test":"test"}]`),
+			},
+			true,
+		},
+		{
+			"query ctx with error",
+			Item{
+				Error: errors.New("test error"),
+			},
+			true,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m := &Mock{
+				mtx: &sync.RWMutex{},
+				t:   t,
+			}
+			m.AddItem(tt.item.Body, tt.item.Error, tt.item.IsCount)
+			ctx := context.Background()
+			gotSc := m.QueryCtx(ctx, "SELECT * FROM test", "param1")
+			if gotSc == nil {
+				t.Errorf("QueryCtx() returned nil, want Scanner")
+			}
+		})
+	}
+}
+
+func TestMock_QueryCountCtx(t *testing.T) {
+	tests := []struct {
+		name string
+		item Item
+	}{
+		{
+			"query count ctx with body",
+			Item{
+				Body: []byte(`[{"count":10}]`),
+			},
+		},
+		{
+			"query count ctx with error",
+			Item{
+				Error: errors.New("count error"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m := &Mock{
+				mtx: &sync.RWMutex{},
+				t:   t,
+			}
+			m.AddItem(tt.item.Body, tt.item.Error, false)
+			ctx := context.Background()
+			gotSc := m.QueryCountCtx(ctx, "SELECT COUNT(*) FROM test")
+			if gotSc == nil {
+				t.Errorf("QueryCountCtx() returned nil, want Scanner")
+			}
+		})
+	}
+}
+
+func TestMock_InsertCtx(t *testing.T) {
+	tests := []struct {
+		name string
+		item Item
+	}{
+		{
+			"insert ctx with success",
+			Item{
+				Body: []byte(`{"id":1}`),
+			},
+		},
+		{
+			"insert ctx with error",
+			Item{
+				Error: errors.New("insert failed"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m := &Mock{
+				mtx: &sync.RWMutex{},
+				t:   t,
+			}
+			m.AddItem(tt.item.Body, tt.item.Error, false)
+			ctx := context.Background()
+			gotSc := m.InsertCtx(ctx, "INSERT INTO test VALUES ($1)", "value1")
+			if gotSc == nil {
+				t.Errorf("InsertCtx() returned nil, want Scanner")
+			}
+		})
+	}
+}
+
+func TestMock_DeleteCtx(t *testing.T) {
+	tests := []struct {
+		name string
+		item Item
+	}{
+		{
+			"delete ctx with success",
+			Item{
+				Body: []byte(`{"affected":1}`),
+			},
+		},
+		{
+			"delete ctx with error",
+			Item{
+				Error: errors.New("delete failed"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m := &Mock{
+				mtx: &sync.RWMutex{},
+				t:   t,
+			}
+			m.AddItem(tt.item.Body, tt.item.Error, false)
+			ctx := context.Background()
+			gotSc := m.DeleteCtx(ctx, "DELETE FROM test WHERE id=$1", 1)
+			if gotSc == nil {
+				t.Errorf("DeleteCtx() returned nil, want Scanner")
+			}
+		})
+	}
+}
+
+func TestMock_UpdateCtx(t *testing.T) {
+	tests := []struct {
+		name string
+		item Item
+	}{
+		{
+			"update ctx with success",
+			Item{
+				Body: []byte(`{"affected":1}`),
+			},
+		},
+		{
+			"update ctx with error",
+			Item{
+				Error: errors.New("update failed"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m := &Mock{
+				mtx: &sync.RWMutex{},
+				t:   t,
+			}
+			m.AddItem(tt.item.Body, tt.item.Error, false)
+			ctx := context.Background()
+			gotSc := m.UpdateCtx(ctx, "UPDATE test SET name=$1 WHERE id=$2", "newname", 1)
+			if gotSc == nil {
+				t.Errorf("UpdateCtx() returned nil, want Scanner")
+			}
+		})
+	}
+}
+
+func TestMock_BatchInsertValuesCtx(t *testing.T) {
+	tests := []struct {
+		name string
+		item Item
+	}{
+		{
+			"batch insert values ctx with success",
+			Item{
+				Body: []byte(`[{"id":1},{"id":2}]`),
+			},
+		},
+		{
+			"batch insert values ctx with error",
+			Item{
+				Error: errors.New("batch insert failed"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m := &Mock{
+				mtx: &sync.RWMutex{},
+				t:   t,
+			}
+			m.AddItem(tt.item.Body, tt.item.Error, false)
+			ctx := context.Background()
+			gotSc := m.BatchInsertValuesCtx(ctx, "INSERT INTO test VALUES ($1), ($2)", "val1", "val2")
+			if gotSc == nil {
+				t.Errorf("BatchInsertValuesCtx() returned nil, want Scanner")
+			}
+		})
+	}
+}
+
+func TestMock_BatchInsertCopyCtx(t *testing.T) {
+	tests := []struct {
+		name string
+		item Item
+	}{
+		{
+			"batch insert copy ctx with success",
+			Item{
+				Body: []byte(`{"rows":2}`),
+			},
+		},
+		{
+			"batch insert copy ctx with error",
+			Item{
+				Error: errors.New("copy failed"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m := &Mock{
+				mtx: &sync.RWMutex{},
+				t:   t,
+			}
+			m.AddItem(tt.item.Body, tt.item.Error, false)
+			ctx := context.Background()
+			gotSc := m.BatchInsertCopyCtx(ctx, "prest", "public", "test", []string{"col1", "col2"}, "val1", "val2")
+			if gotSc == nil {
+				t.Errorf("BatchInsertCopyCtx() returned nil, want Scanner")
+			}
+		})
+	}
+}
+
+func TestMock_GetTransactionCtx(t *testing.T) {
+	tests := []struct {
+		name    string
+		wantErr bool
+	}{
+		{"get transaction ctx success", false},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m := New(t)
+			ctx := context.Background()
+			gotTx, err := m.GetTransactionCtx(ctx)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Mock.GetTransactionCtx() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if gotTx == nil && !tt.wantErr {
+				t.Error("expected not nil, got nil")
+			}
+			if gotTx != nil {
+				_ = gotTx.Commit()
+			}
+		})
+	}
+}
+
+func TestMock_ExecuteScriptsCtx(t *testing.T) {
+	tests := []struct {
+		name   string
+		method string
+		sql    string
+		values []interface{}
+	}{
+		{"execute scripts ctx READ", "READ", "SELECT * FROM test", []interface{}{}},
+		{"execute scripts ctx WRITE", "WRITE", "INSERT INTO test VALUES ($1)", []interface{}{"val1"}},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m := &Mock{
+				mtx: &sync.RWMutex{},
+				t:   t,
+			}
+			ctx := context.Background()
+			gotSc := m.ExecuteScriptsCtx(ctx, tt.method, tt.sql, tt.values)
+			if gotSc != nil {
+				t.Errorf("ExecuteScriptsCtx() expected nil, got %v", gotSc)
+			}
+		})
+	}
+}
+
+func TestMock_SetDatabase(t *testing.T) {
+	tests := []struct {
+		name   string
+		dbName string
+	}{
+		{"set database prest", "prest"},
+		{"set database testdb", "testdb"},
+		{"set database empty", ""},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m := &Mock{
+				mtx: &sync.RWMutex{},
+				t:   t,
+			}
+			m.SetDatabase(tt.dbName)
+			// SetDatabase is a no-op stub, just verify it doesn't panic
+		})
+	}
+}
+
+func TestMock_GetDatabase(t *testing.T) {
+	m := &Mock{
+		mtx: &sync.RWMutex{},
+		t:   t,
+	}
+	db := m.GetDatabase()
+	if db != "" {
+		t.Errorf("GetDatabase() expected empty string, got %q", db)
+	}
+}
+
+func TestMock_IsRegistered(t *testing.T) {
+	tests := []struct {
+		name  string
+		alias string
+		want  bool
+	}{
+		{"is registered prest", "prest", true},
+		{"is registered unknown", "unknown", true},
+		{"is registered empty", "", true},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m := &Mock{
+				mtx: &sync.RWMutex{},
+				t:   t,
+			}
+			if got := m.IsRegistered(tt.alias); got != tt.want {
+				t.Errorf("IsRegistered(%q) = %v, want %v", tt.alias, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMock_PhysicalName(t *testing.T) {
+	tests := []struct {
+		name  string
+		alias string
+		want  string
+	}{
+		{"physical name prest", "prest", "prest"},
+		{"physical name testdb", "testdb", "testdb"},
+		{"physical name empty", "", ""},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m := &Mock{
+				mtx: &sync.RWMutex{},
+				t:   t,
+			}
+			if got := m.PhysicalName(tt.alias); got != tt.want {
+				t.Errorf("PhysicalName(%q) = %q, want %q", tt.alias, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMock_Ping(t *testing.T) {
+	m := &Mock{
+		mtx: &sync.RWMutex{},
+		t:   t,
+	}
+	ctx := context.Background()
+	err := m.Ping(ctx)
+	if err != nil {
+		t.Errorf("Ping() expected nil, got %v", err)
+	}
+}
+
+func TestMock_PingAll(t *testing.T) {
+	m := &Mock{
+		mtx: &sync.RWMutex{},
+		t:   t,
+	}
+	ctx := context.Background()
+	err := m.PingAll(ctx)
+	if err != nil {
+		t.Errorf("PingAll() expected nil, got %v", err)
+	}
+}
+
+func TestMock_ShowTable(t *testing.T) {
+	tests := []struct {
+		name   string
+		schema string
+		table  string
+	}{
+		{
+			"show table public users",
+			"public",
+			"users",
+		},
+		{
+			"show table nonexistent",
+			"public",
+			"nonexistent",
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m := &Mock{
+				mtx: &sync.RWMutex{},
+				t:   t,
+			}
+			// ShowTable is a stub that returns nil
+			gotSc := m.ShowTable(tt.schema, tt.table)
+			if gotSc != nil {
+				t.Errorf("ShowTable() expected nil, got %v", gotSc)
+			}
+		})
+	}
+}
+
+func TestMock_ShowTableCtx(t *testing.T) {
+	tests := []struct {
+		name   string
+		schema string
+		table  string
+	}{
+		{
+			"show table ctx public users",
+			"public",
+			"users",
+		},
+		{
+			"show table ctx nonexistent",
+			"public",
+			"nonexistent",
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m := &Mock{
+				mtx: &sync.RWMutex{},
+				t:   t,
+			}
+			ctx := context.Background()
+			// ShowTableCtx is a stub that returns nil
+			gotSc := m.ShowTableCtx(ctx, tt.schema, tt.table)
+			if gotSc != nil {
+				t.Errorf("ShowTableCtx() expected nil, got %v", gotSc)
+			}
+		})
+	}
+}
+
+func TestMock_New(t *testing.T) {
+	m := New(t)
+	if m == nil {
+		t.Error("New() returned nil, want *Mock")
+	}
+	if m.mtx == nil {
+		t.Error("New() mutex is nil")
+	}
+	if m.t == nil {
+		t.Error("New() testing.T is nil")
+	}
+	// Verify driver is registered
+	drivers := sql.Drivers()
+	found := false
+	for _, d := range drivers {
+		if d == "mock" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("mock driver not registered after New()")
+	}
+}
+
+func TestMock_Open(t *testing.T) {
+	tests := []struct {
+		name    string
+		dsn     string
+		wantErr bool
+	}{
+		{"open prest connection", "prest", false},
+		{"open unknown connection", "unknown", true},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			m := New(t)
+			gotConn, err := m.Open(tt.dsn)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Open(%q) error = %v, wantErr %v", tt.dsn, err, tt.wantErr)
+			}
+			if !tt.wantErr && gotConn == nil {
+				t.Error("Open() returned nil connection")
+			}
+		})
+	}
+}
+
+// Additional integration-style tests for better coverage
+
+func TestMock_ConcurrentAddItem(t *testing.T) {
+	m := New(t)
+	done := make(chan bool)
+
+	for i := 0; i < 10; i++ {
+		go func(idx int) {
+			body := []byte(`[{"id":` + fmt.Sprintf("%d", idx) + `}]`)
+			m.AddItem(body, nil, false)
+			done <- true
+		}(i)
+	}
+
+	for i := 0; i < 10; i++ {
+		<-done
+	}
+
+	if len(m.Items) < 10 {
+		t.Errorf("expected at least 10 items, got %d", len(m.Items))
+	}
+}
+
+func TestMock_PermissionsEdgeCases(t *testing.T) {
+	m := New(t)
+	m.AccessConf = config.AccessConf{
+		Restrict: true,
+		Tables: []config.TablesConf{
+			{
+				Name:        "restricted_table",
+				Permissions: []string{"read"},
+			},
+		},
+		Users: []config.UsersConf{
+			{
+				Name: "readonly_user",
+				Tables: []config.TablesConf{
+					{
+						Name:        "restricted_table",
+						Permissions: []string{"read"},
+					},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name     string
+		table    string
+		op       string
+		userName string
+		want     bool
+	}{
+		{"restricted table, allowed op, allowed user", "restricted_table", "read", "readonly_user", true},
+		{"restricted table, disallowed op, allowed user", "restricted_table", "write", "readonly_user", false},
+		{"restricted table, allowed op, no user", "restricted_table", "read", "", true},
+		{"restricted table, disallowed op, no user", "restricted_table", "write", "", false},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := m.TablePermissions("", "", tt.table, tt.op, tt.userName)
+			if got != tt.want {
+				t.Errorf("TablePermissions() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

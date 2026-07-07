@@ -19,12 +19,12 @@ func ColumnsByRequestExported(r *http.Request) ([]string, error) {
 }
 
 // FieldsByPermissionExported exposes fieldsByPermission for integration tests.
-func FieldsByPermissionExported(a adapters.Adapter, table, operation, userName string) []string {
+func FieldsByPermissionExported(a adapters.Adapter, database, schema, table, operation, userName string) []string {
 	p, ok := a.(*postgres)
 	if !ok {
 		return nil
 	}
-	return p.fieldsByPermission(table, operation, userName)
+	return p.fieldsByPermission(database, schema, table, operation, userName)
 }
 
 // ClearStmtExported clears the prepared statement cache for integration tests.

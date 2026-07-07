@@ -1,0 +1,31 @@
+[http]
+port = 3000
+
+[pg]
+host = "postgres"
+port = 5432
+user = "postgres"
+pass = "postgres"
+database = "prest-test"
+single = false
+
+[[databases]]
+alias = "prest-test"
+host = "postgres"
+port = 5432
+database = "prest-test"
+user = "postgres"
+pass = "postgres"
+ssl.mode = "disable"
+
+[[databases]]
+alias = "secondary-db"
+host = "postgres-b"
+port = 5432
+database = "secondary-cluster"
+user = "postgres"
+pass = "postgres"
+ssl.mode = "disable"
+
+[access]
+restrict = false

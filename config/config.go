@@ -33,6 +33,8 @@ const (
 // TablesConf informations
 
 type TablesConf struct {
+	Database    string   `mapstructure:"database"`
+	Schema      string   `mapstructure:"schema"`
 	Name        string   `mapstructure:"name"`
 	Permissions []string `mapstructure:"permissions"`
 	Fields      []string `mapstructure:"fields"`
@@ -110,6 +112,7 @@ type Prest struct {
 	Adapter              adapters.Adapter
 	EnableDefaultJWT     bool
 	SingleDB             bool
+	Databases            []DatabaseConf
 	HTTPSMode            bool
 	HTTPSCert            string
 	HTTPSKey             string
@@ -139,12 +142,16 @@ const (
 // retries default paths and disables the feature when both configured and
 // fallback paths are unavailable. Unsafe JWT/auth settings (enabled without
 // verification material) are auto-disabled with warnings via ensureJWTConfig.
+// Invalid database registry entries (duplicate aliases, missing URLs, invalid
+// aliases) are logged and skipped; Load never fails for registry content.
 //
 // Returns the populated *Prest and nil on success.
 func Load() (*Prest, error) {
 	v, configPath := viperCfg()
 	cfg := &Prest{}
 	Parse(v, cfg, configPath)
+
+	parseDatabaseRegistry(v, cfg)
 
 	ensureJWTConfig(cfg)
 	ensureQueriesPath(cfg)

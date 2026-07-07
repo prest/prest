@@ -12,6 +12,8 @@ import (
 )
 
 func TestAssignPluginHTTPVars(t *testing.T) {
+	t.Parallel()
+
 	t.Run("valid symbol", func(t *testing.T) {
 		vars := make(map[string]string)
 		err := assignPluginHTTPVars(&vars, map[string]string{"file": "hello", "func": "Hello"})
@@ -28,6 +30,8 @@ func TestAssignPluginHTTPVars(t *testing.T) {
 }
 
 func TestAssignPluginURLQuery(t *testing.T) {
+	t.Parallel()
+
 	t.Run("valid symbol", func(t *testing.T) {
 		query := make(map[string][]string)
 		err := assignPluginURLQuery(&query, map[string][]string{"q": {"test"}})
@@ -43,6 +47,8 @@ func TestAssignPluginURLQuery(t *testing.T) {
 }
 
 func TestInvokePluginHandler(t *testing.T) {
+	t.Parallel()
+
 	t.Run("func() string handler", func(t *testing.T) {
 		ret, err := invokePluginHandler(func() string { return `{"ok":true}` }, "GETHelloHandler")
 		require.NoError(t, err)
@@ -65,6 +71,8 @@ func TestInvokePluginHandler(t *testing.T) {
 }
 
 func TestPluginInvokeMutexReturnsSameMutexForPath(t *testing.T) {
+	t.Parallel()
+
 	mu1 := pluginInvokeMutex("/lib/hello.so")
 	mu2 := pluginInvokeMutex("/lib/hello.so")
 	mu3 := pluginInvokeMutex("/lib/other.so")
@@ -142,6 +150,8 @@ func TestLoadedFuncCacheConcurrency(t *testing.T) {
 }
 
 func TestLoadedMiddlewareCacheConcurrency(t *testing.T) {
+	t.Parallel()
+
 	const libPath = "/test/concurrent-middleware.so"
 
 	t.Cleanup(func() {

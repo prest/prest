@@ -13,6 +13,8 @@ import (
 )
 
 func TestScriptHandler_Execute_Success(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -28,7 +30,6 @@ func TestScriptHandler_Execute_Success(t *testing.T) {
 	executor.EXPECT().ExecuteScriptsCtx(gomock.Any(), http.MethodGet, `SELECT 1`, gomock.Any()).Return(scanner)
 
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().SetDatabase("prest-test")
 
 	h := NewScriptHandler(Deps{Scripts: scripts, Executor: executor, DB: db, PGDatabase: "prest-test"})
 	req := httptest.NewRequest(http.MethodGet, "/queries/list", nil)
@@ -43,6 +44,8 @@ func TestScriptHandler_Execute_Success(t *testing.T) {
 }
 
 func TestScriptHandler_Execute_DefaultDatabase(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -58,7 +61,6 @@ func TestScriptHandler_Execute_DefaultDatabase(t *testing.T) {
 	executor.EXPECT().ExecuteScriptsCtx(gomock.Any(), http.MethodGet, `SELECT 1`, gomock.Any()).Return(scanner)
 
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().SetDatabase("prest-test")
 	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
 
 	h := NewScriptHandler(Deps{Scripts: scripts, Executor: executor, DB: db, PGDatabase: "prest-test"})
@@ -73,6 +75,8 @@ func TestScriptHandler_Execute_DefaultDatabase(t *testing.T) {
 }
 
 func TestScriptHandler_Execute_WithCache(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -88,8 +92,6 @@ func TestScriptHandler_Execute_WithCache(t *testing.T) {
 	executor.EXPECT().ExecuteScriptsCtx(gomock.Any(), http.MethodGet, `SELECT 1`, gomock.Any()).Return(scanner)
 
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().SetDatabase("prest-test")
-
 	cacher := &recordingCacher{}
 	h := NewScriptHandler(Deps{Scripts: scripts, Executor: executor, DB: db, PGDatabase: "prest-test", Cache: cacher})
 
@@ -107,6 +109,8 @@ func TestScriptHandler_Execute_WithCache(t *testing.T) {
 }
 
 func TestScriptHandler_ExecuteScriptQuery_GetScriptError(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -114,7 +118,6 @@ func TestScriptHandler_ExecuteScriptQuery_GetScriptError(t *testing.T) {
 	scripts.EXPECT().GetScript(http.MethodGet, "queries", "missing").Return("", errors.New("not found"))
 
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().SetDatabase("prest-test")
 
 	h := NewScriptHandler(Deps{Scripts: scripts, Executor: mockgen.NewMockQueryExecutor(ctrl), DB: db, PGDatabase: "prest-test"})
 	req := httptest.NewRequest(http.MethodGet, "/queries/missing", nil)
@@ -125,6 +128,8 @@ func TestScriptHandler_ExecuteScriptQuery_GetScriptError(t *testing.T) {
 }
 
 func TestScriptHandler_ExecuteScriptQuery_ExecuteError(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -139,7 +144,6 @@ func TestScriptHandler_ExecuteScriptQuery_ExecuteError(t *testing.T) {
 	executor.EXPECT().ExecuteScriptsCtx(gomock.Any(), http.MethodGet, `SELECT bad`, gomock.Any()).Return(scanner)
 
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().SetDatabase("prest-test")
 
 	h := NewScriptHandler(Deps{Scripts: scripts, Executor: executor, DB: db, PGDatabase: "prest-test"})
 	req := httptest.NewRequest(http.MethodGet, "/queries/bad", nil)
@@ -151,6 +155,8 @@ func TestScriptHandler_ExecuteScriptQuery_ExecuteError(t *testing.T) {
 }
 
 func TestExtractHeaders(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("X-Single", "one")
 	req.Header.Add("X-Multi", "a")
@@ -165,6 +171,8 @@ func TestExtractHeaders(t *testing.T) {
 }
 
 func TestExtractQueryParameters(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/?foo=bar&tag=a&tag=b", nil)
 
 	data := map[string]interface{}{}
@@ -175,6 +183,8 @@ func TestExtractQueryParameters(t *testing.T) {
 }
 
 func TestSanitizeScriptParam(t *testing.T) {
+	t.Parallel()
+
 	require.Equal(t, "abc123", sanitizeScriptParam("abc123"))
 	require.Equal(t, "foo_bar-baz", sanitizeScriptParam("foo_bar-baz"))
 	require.Equal(t, "user@example.com", sanitizeScriptParam("user@example.com"))
@@ -183,6 +193,8 @@ func TestSanitizeScriptParam(t *testing.T) {
 }
 
 func TestExtractQueryParameters_SanitizesUnsafeValues(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/?safe=ok&tag=good&tag=bad%27%3B--", nil)
 	req.URL.RawQuery = "safe=ok&unsafe=%27%3BDROP&tag=good&tag=bad%27%3B--"
 

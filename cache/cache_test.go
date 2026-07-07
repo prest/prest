@@ -6,16 +6,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	cfg = &Config{
+func testConfig() *Config {
+	return &Config{
 		Enabled:     true,
 		Time:        10,
 		Endpoints:   []Endpoint{},
 		StoragePath: "./",
 	}
-)
+}
 
 func TestEndpointRulesEnable(t *testing.T) {
+	t.Parallel()
+
+	cfg := testConfig()
 	cfg.Endpoints = append(cfg.Endpoints, Endpoint{
 		Time:     5,
 		Endpoint: "/prest/public/test",
@@ -24,10 +27,12 @@ func TestEndpointRulesEnable(t *testing.T) {
 	cacheEnable, cacheTime := cfg.EndpointRules("/prest/public/test")
 	require.True(t, cacheEnable)
 	require.Equal(t, 5, cacheTime)
-	cfg.ClearEndpoints()
 }
 
 func TestEndpointRulesNotExist(t *testing.T) {
+	t.Parallel()
+
+	cfg := testConfig()
 	cfg.Endpoints = append(cfg.Endpoints, Endpoint{
 		Time:     5,
 		Endpoint: "/prest/public/something",
@@ -35,17 +40,21 @@ func TestEndpointRulesNotExist(t *testing.T) {
 	})
 	cacheEnable, _ := cfg.EndpointRules("/prest/public/test-notexist")
 	require.False(t, cacheEnable)
-	cfg.ClearEndpoints()
 }
 
 func TestEndpointRulesNotExistWithoutEndpoints(t *testing.T) {
+	t.Parallel()
+
+	cfg := testConfig()
 	cacheEnable, cacheTime := cfg.EndpointRules("/prest/public/test-notexist")
 	require.True(t, cacheEnable)
 	require.Equal(t, 10, cacheTime)
-	cfg.ClearEndpoints()
 }
 
 func TestEndpointRulesDisable(t *testing.T) {
+	t.Parallel()
+
+	cfg := testConfig()
 	cfg.Endpoints = append(cfg.Endpoints, Endpoint{
 		Endpoint: "/prest/public/test-disable",
 		Enabled:  false,
@@ -53,5 +62,4 @@ func TestEndpointRulesDisable(t *testing.T) {
 	cacheEnable, cacheTime := cfg.EndpointRules("/prest/public/test-diable")
 	require.False(t, cacheEnable)
 	require.Equal(t, 10, cacheTime)
-	cfg.ClearEndpoints()
 }

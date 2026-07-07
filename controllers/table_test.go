@@ -12,6 +12,8 @@ import (
 )
 
 func TestTableHandler_Show_Success(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -22,8 +24,7 @@ func TestTableHandler_Show_Success(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(scanner)
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	h := NewTableHandler(executor, db, false)
 	req := crudRequest(http.MethodGet, "/prest-test/public/users", map[string]string{
@@ -37,11 +38,12 @@ func TestTableHandler_Show_Success(t *testing.T) {
 }
 
 func TestTableHandler_Show_InvalidPath(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	h := NewTableHandler(mockgen.NewMockQueryExecutor(ctrl), db, false)
 	req := crudRequest(http.MethodGet, "/prest-test/bad@schema/users", map[string]string{
@@ -55,6 +57,8 @@ func TestTableHandler_Show_InvalidPath(t *testing.T) {
 }
 
 func TestTableHandler_Show_QueryError(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -64,8 +68,7 @@ func TestTableHandler_Show_QueryError(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(scanner)
 
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db := mockDatabaseRegistry(ctrl)
 
 	h := NewTableHandler(executor, db, false)
 	req := crudRequest(http.MethodGet, "/prest-test/public/users", map[string]string{

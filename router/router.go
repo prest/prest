@@ -22,12 +22,14 @@ func RegisterRoutes(router *mux.Router, cfg *config.Prest, h *controllers.Handle
 	router.HandleFunc("/schemas", h.Catalog.ListSchemas).Methods("GET")
 	router.HandleFunc("/tables", h.Catalog.ListTables).Methods("GET")
 	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", h.Script.Execute)
+	router.HandleFunc("/_QUERIES/{database}/{queriesLocation}/{script}", h.Script.Execute)
 	if runtime.GOOS != "windows" {
 		router.HandleFunc("/_PLUGIN/{file}/{func}", plg.Handler())
 	}
 	router.HandleFunc("/{database}/{schema}", h.Catalog.ListTablesByDatabaseAndSchema).Methods("GET")
 	router.HandleFunc("/show/{database}/{schema}/{table}", h.Table.Show).Methods("GET")
 	router.HandleFunc("/_health", h.Health.Handler()).Methods("GET")
+	router.HandleFunc("/_ready", h.Ready.Handler()).Methods("GET")
 
 	router.Handle("/{database}/{schema}/{table}", crudRoute(crudStack, h.CRUD.Select)).Methods("GET")
 	router.Handle("/{database}/{schema}/{table}", crudRoute(crudStack, h.CRUD.Insert)).Methods("POST")

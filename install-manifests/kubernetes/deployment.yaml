@@ -22,15 +22,41 @@ spec:
           imagePullPolicy: IfNotPresent
           name: prest
           env:
-            - name: DATABASE_URL
-              value: postgres://username:password@hostname:port/dbname
-            # Enable debugging mode. It should be disabled in production.
+            # Multi-cluster registry (env-first). Pair each alias with its URL secret.
+            - name: DATABASE_ALIAS_1
+              value: tenant-a
+            - name: DATABASE_URL_1
+              valueFrom:
+                secretKeyRef:
+                  name: tenant-a-db
+                  key: url
+            - name: DATABASE_ALIAS_2
+              value: tenant-b
+            - name: DATABASE_URL_2
+              valueFrom:
+                secretKeyRef:
+                  name: tenant-b-db
+                  key: url
+            # Legacy single-DB fallback when no registry env vars are set:
+            # - name: DATABASE_URL
+            #   value: postgres://username:password@hostname:port/dbname
             - name: PREST_DEBUG
               value: "true"
-            # Disabled JWT token. It should be disabled in production.
             - name: PREST_JWT_DEFAULT
               value: "true"
           ports:
             - containerPort: 3000
               protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /_health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /_ready
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources: {}

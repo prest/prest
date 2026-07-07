@@ -32,6 +32,8 @@ type Adapter interface {
 	PermissionsChecker
 	ScriptRunner
 	DatabaseRegistry
+	DatabasePinger
+	ReadinessChecker
 	TransactionManager
 	LegacyExecutor
 }

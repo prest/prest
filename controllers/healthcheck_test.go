@@ -8,13 +8,15 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/v2/testutils"
+	"github.com/stretchr/testify/require"
 )
 
 func healthyDB(context.Context) error   { return nil }
 func unhealthyDB(context.Context) error { return errors.New("could not connect to the database") }
 
 func TestHealthStatus(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range []struct {
 		checkDBHealth func(context.Context) error
 		desc          string
@@ -29,6 +31,34 @@ func TestHealthStatus(t *testing.T) {
 		router.HandleFunc("/_health", h.Handler()).Methods("GET")
 		server := httptest.NewServer(router)
 		defer server.Close()
-		testutils.DoRequest(t, server.URL+"/_health", nil, "GET", tc.expected, "")
+
+		resp, err := http.Get(server.URL + "/_health")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, tc.expected, resp.StatusCode)
+	}
+}
+
+func TestReadyStatus(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		check func(context.Context) error
+		want  int
+		desc  string
+	}{
+		{healthyDB, http.StatusOK, "all databases ready"},
+		{unhealthyDB, http.StatusServiceUnavailable, "database unavailable"},
+	} {
+		h := NewHealthHandler(CheckList{tc.check})
+		router := mux.NewRouter()
+		router.HandleFunc("/_ready", h.Handler()).Methods("GET")
+		server := httptest.NewServer(router)
+		defer server.Close()
+
+		resp, err := http.Get(server.URL + "/_ready")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, tc.want, resp.StatusCode)
 	}
 }

@@ -6,18 +6,15 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
-	"github.com/gorilla/mux"
-	"github.com/prest/prest/v2/controllers"
 	"github.com/prest/prest/v2/integration/helpers"
-	"github.com/prest/prest/v2/testutils"
+	"github.com/prest/prest/v2/integration/testutils"
 )
 
-
-
 func TestGetTables(t *testing.T) {
+	base := helpers.ServerURL(t)
+
 	var testCases = []struct {
 		description string
 		url         string
@@ -35,21 +32,15 @@ func TestGetTables(t *testing.T) {
 		{"Get tables with noexistent column", "/tables?c.rolooo=$eq.test", "GET", http.StatusBadRequest},
 	}
 
-	h := helpers.NewIntegrationHandlers(t)
-	router := mux.NewRouter()
-	router.HandleFunc("/tables", helpers.WithHTTPTimeout(h.Catalog.ListTables)).
-		Methods("GET")
-	server := httptest.NewServer(router)
-	defer server.Close()
-
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetTables")
+		testutils.DoRequest(t, base+tc.url, nil, tc.method, tc.status, "GetTables")
 	}
 }
 
 func TestGetTablesByDatabaseAndSchema(t *testing.T) {
-	helpers.LoadTestConfig(t)
+	base := helpers.ServerURL(t)
+
 	var testCases = []struct {
 		description string
 		url         string
@@ -61,7 +52,6 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 		{"Get tables by database and schema with order clause", "/%s/public?t.tablename=$eq.test&_order=t.tablename", "GET", http.StatusOK},
 		{"Get tables by database and schema with custom where clause and pagination", "/%s/public?t.tablename=$eq.test&_page=1&_page_size=20", "GET", http.StatusOK},
 		{"Get tables by database and schema with distinct clause", "/%s/public?_distinct=true", "GET", http.StatusOK},
-		// errors
 		{"Get tables by database and schema with custom where invalid clause", "/%s/public?0t.tablename=$eq.test", "GET", http.StatusBadRequest},
 		{"Get tables by databases and schema with custom where and pagination invalid", "/%s/public?t.tablename=$eq.test&_page=A&_page_size=20", "GET", http.StatusBadRequest},
 		{"Get tables by databases and schema with ORDER BY and column invalid", "/%s/public?_order=0t.tablename", "GET", http.StatusBadRequest},
@@ -69,39 +59,16 @@ func TestGetTablesByDatabaseAndSchema(t *testing.T) {
 		{"Get tables by databases with not configured database", "/random/public?t.taababa=$eq.test", "GET", http.StatusBadRequest},
 	}
 
-	helpers.LoadTestConfig(t)
-	// Re-initialize pREST instance under test, mostly to revert `config` changes below
-	defer func() { helpers.LoadTestConfig(t) }()
-
-	cfg := helpers.LoadTestConfig(t)
-	cfg.SingleDB = false
-	h := controllers.NewHandlersFromConfig(cfg)
-
 	for _, db := range helpers.Databases() {
-		router := mux.NewRouter()
-		router.HandleFunc("/{database}/{schema}", helpers.WithHTTPTimeout(h.Catalog.ListTablesByDatabaseAndSchema)).
-			Methods("GET")
-		server := httptest.NewServer(router)
-		defer server.Close()
 		for _, tc := range testCases {
 			t.Log(fmt.Sprintf("(DB: %s) %s", db, tc.description))
-			testutils.DoRequest(t, fmt.Sprintf(server.URL+tc.url, db), nil, tc.method, tc.status, "GetTablesByDatabaseAndSchema")
+			testutils.DoRequest(t, fmt.Sprintf(base+tc.url, db), nil, tc.method, tc.status, "GetTablesByDatabaseAndSchema")
 		}
 	}
 }
 
 func TestSelectFromTables(t *testing.T) {
-	helpers.LoadTestConfig(t)
-	defer func() { helpers.LoadTestConfig(t) }()
-
-	cfg := helpers.LoadTestConfig(t)
-	cfg.SingleDB = false
-	h := controllers.NewHandlersFromConfig(cfg)
-	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}/{table}", helpers.WithHTTPTimeout(h.CRUD.Select)).
-		Methods("GET")
-	server := httptest.NewServer(router)
-	defer server.Close()
+	base := helpers.ServerURL(t)
 
 	var testCases = []struct {
 		description string
@@ -122,10 +89,8 @@ func TestSelectFromTables(t *testing.T) {
 		{"execute select in a table with select fields", "/%s/public/test5?_select=celphone,name", "GET", http.StatusOK, ""},
 		{"execute select in a table with select *", "/%s/public/test5?_select=*", "GET", http.StatusOK, ""},
 		{"execute select in a table with select * and distinct", "/%s/public/test5?_select=*&_distinct=true", "GET", http.StatusOK, ""},
-
 		{"execute select in a table with group by clause", "/%s/public/test_group_by_table?_select=age,sum:salary&_groupby=age", "GET", http.StatusOK, ""},
 		{"execute select in a table with group by and having clause", "/%s/public/test_group_by_table?_select=age,sum:salary&_groupby=age->>having:sum:salary:$gt:3000", "GET", http.StatusOK, "[{\"age\": 19, \"sum\": 7997}]"},
-
 		{"execute select in a view without custom where clause", "/%s/public/view_test", "GET", http.StatusOK, ""},
 		{"execute select in a view with count all fields *", "/%s/public/view_test?_count=*", "GET", http.StatusOK, ""},
 		{"execute select in a view with count function", "/%s/public/view_test?_count=player", "GET", http.StatusOK, ""},
@@ -136,24 +101,20 @@ func TestSelectFromTables(t *testing.T) {
 		{"execute select in a view with custom join clause", "/%s/public/view_test?_join=inner:test2:test2.name:eq:view_test.player", "GET", http.StatusOK, ""},
 		{"execute select in a view with custom where clause and pagination", "/%s/public/view_test?player=$eq.gopher&_page=1&_page_size=20", "GET", http.StatusOK, ""},
 		{"execute select in a view with select fields", "/%s/public/view_test?_select=player", "GET", http.StatusOK, ""},
-
 		{"execute select in a table with invalid join clause", "/%s/public/test?_join=inner:test2:test2.name", "GET", http.StatusBadRequest, ""},
 		{"execute select in a table with invalid where clause", "/%s/public/test?0name=$eq.test", "GET", http.StatusBadRequest, ""},
 		{"execute select in a table with order clause and column invalid", "/%s/public/test?_order=0name", "GET", http.StatusBadRequest, ""},
 		{"execute select in a table with invalid pagination clause", "/%s/public/test?name=$eq.test&_page=A", "GET", http.StatusBadRequest, ""},
-		{"execute select in a table with invalid where clause", "/%s/public/test?0name=$eq.test", "GET", http.StatusBadRequest, ""},
 		{"execute select in a table with invalid count clause", "/%s/public/test?_count=0name", "GET", http.StatusBadRequest, ""},
 		{"execute select in a table with invalid order clause", "/%s/public/test?_order=0name", "GET", http.StatusBadRequest, ""},
 		{"execute select in a table with invalid fields using group by clause", "/%s/public/test_group_by_table?_select=pa,sum:pum&_groupby=pa", "GET", http.StatusBadRequest, ""},
 		{"execute select in a table with invalid fields using group by and having clause", "/%s/public/test_group_by_table?_select=pa,sum:pum&_groupby=pa->>having:sum:pmu:$eq:150", "GET", http.StatusBadRequest, ""},
-
 		{"execute select in a view with an other column", "/%s/public/view_test?_select=celphone", "GET", http.StatusBadRequest, ""},
 		{"execute select in a view with where and column invalid", "/%s/public/view_test?0celphone=$eq.888888", "GET", http.StatusBadRequest, ""},
 		{"execute select in a view with custom join clause invalid", "/%s/public/view_test?_join=inner:test2.name:eq:view_test.player", "GET", http.StatusBadRequest, ""},
 		{"execute select in a view with custom where clause and pagination invalid", "/%s/public/view_test?player=$eq.gopher&_page=A&_page_size=20", "GET", http.StatusBadRequest, ""},
 		{"execute select in a view with order by and column invalid", "/%s/public/view_test?_order=0celphone", "GET", http.StatusBadRequest, ""},
 		{"execute select in a view with count column invalid", "/%s/public/view_test?_count=0celphone", "GET", http.StatusBadRequest, ""},
-
 		{"execute select in a db that does not exist", "/invalid/public/view_test?_count=0celphone", "GET", http.StatusBadRequest, ""},
 	}
 	for _, db := range helpers.Databases() {
@@ -161,15 +122,17 @@ func TestSelectFromTables(t *testing.T) {
 			t.Log(fmt.Sprintf("(DB: %s) %s", db, tc.description))
 
 			if tc.body != "" {
-				testutils.DoRequest(t, fmt.Sprintf(server.URL+tc.url, db), nil, tc.method, tc.status, "SelectFromTables", tc.body)
+				testutils.DoRequest(t, fmt.Sprintf(base+tc.url, db), nil, tc.method, tc.status, "SelectFromTables", tc.body)
 				continue
 			}
-			testutils.DoRequest(t, fmt.Sprintf(server.URL+tc.url, db), nil, tc.method, tc.status, "SelectFromTables")
+			testutils.DoRequest(t, fmt.Sprintf(base+tc.url, db), nil, tc.method, tc.status, "SelectFromTables")
 		}
 	}
 }
 
 func TestInsertInTables(t *testing.T) {
+	base := helpers.ServerURL(t)
+
 	m := make(map[string]interface{})
 	m["name"] = "prest-test"
 
@@ -179,13 +142,6 @@ func TestInsertInTables(t *testing.T) {
 
 	mARRAY := make(map[string]interface{})
 	mARRAY["data"] = []string{"value 1", "value 2", "value 3"}
-
-	h := helpers.NewIntegrationHandlers(t)
-	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}/{table}", helpers.WithHTTPTimeout(h.CRUD.Insert)).
-		Methods("POST")
-	server := httptest.NewServer(router)
-	defer server.Close()
 
 	var testCases = []struct {
 		description string
@@ -200,17 +156,18 @@ func TestInsertInTables(t *testing.T) {
 		{"execute insert in a table with invalid schema", "/prest-test/0public/test", m, http.StatusNotFound},
 		{"execute insert in a table with invalid table", "/prest-test/public/0test", m, http.StatusNotFound},
 		{"execute insert in a table with invalid body", "/prest-test/public/test", nil, http.StatusBadRequest},
-
 		{"execute insert in a database that does not exist", "/invalid/public/0test", m, http.StatusBadRequest},
 	}
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		testutils.DoRequest(t, server.URL+tc.url, tc.request, "POST", tc.status, "InsertInTables")
+		testutils.DoRequest(t, base+tc.url, tc.request, "POST", tc.status, "InsertInTables")
 	}
 }
 
 func TestBatchInsertInTables(t *testing.T) {
+	base := helpers.ServerURL(t)
+
 	m := make([]map[string]interface{}, 0)
 	m = append(m, map[string]interface{}{"name": "bprest"}, map[string]interface{}{"name": "aprest"})
 
@@ -219,13 +176,6 @@ func TestBatchInsertInTables(t *testing.T) {
 
 	mARRAY := make([]map[string]interface{}, 0)
 	mARRAY = append(mARRAY, map[string]interface{}{"data": []string{"1", "2"}}, map[string]interface{}{"data": []string{"1", "2", "3"}})
-
-	h := helpers.NewIntegrationHandlers(t)
-	router := mux.NewRouter()
-	router.HandleFunc("/batch/{database}/{schema}/{table}", helpers.WithHTTPTimeout(h.CRUD.BatchInsert)).
-		Methods("POST")
-	server := httptest.NewServer(router)
-	defer server.Close()
 
 	var testCases = []struct {
 		description string
@@ -243,7 +193,6 @@ func TestBatchInsertInTables(t *testing.T) {
 		{"execute insert in a table with invalid body", "/batch/prest-test/public/test", nil, http.StatusBadRequest, false},
 		{"execute insert in a table with array field with copy", "/batch/prest-test/public/testarray", mARRAY, http.StatusCreated, true},
 		{"execute insert in a table with jsonb field with copy", "/batch/prest-test/public/testjson", mJSON, http.StatusCreated, true},
-
 		{"execute insert in a db that does not exist", "/batch/invalid/public/test", nil, http.StatusBadRequest, false},
 	}
 
@@ -253,7 +202,7 @@ func TestBatchInsertInTables(t *testing.T) {
 			if err != nil {
 				t.Error("error on json marshal", err)
 			}
-			req, err := http.NewRequest(http.MethodPost, server.URL+tc.url, bytes.NewReader(byt))
+			req, err := http.NewRequest(http.MethodPost, base+tc.url, bytes.NewReader(byt))
 			if err != nil {
 				t.Error("error on New Request", err)
 			}
@@ -280,12 +229,7 @@ func TestBatchInsertInTables(t *testing.T) {
 }
 
 func TestDeleteFromTable(t *testing.T) {
-	h := helpers.NewIntegrationHandlers(t)
-	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}/{table}", helpers.WithHTTPTimeout(h.CRUD.Delete)).
-		Methods("DELETE")
-	server := httptest.NewServer(router)
-	defer server.Close()
+	base := helpers.ServerURL(t)
 
 	var testCases = []struct {
 		description string
@@ -299,23 +243,17 @@ func TestDeleteFromTable(t *testing.T) {
 		{"execute delete in a table with invalid schema", "/prest-test/0public/test", nil, http.StatusNotFound},
 		{"execute delete in a table with invalid table", "/prest-test/public/0test", nil, http.StatusNotFound},
 		{"execute delete in a table with invalid where clause", "/prest-test/public/test?0name=$eq.nuveo", nil, http.StatusBadRequest},
-
 		{"execute delete in a invalid db", "/invalid/public/0test", nil, http.StatusBadRequest},
 	}
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		testutils.DoRequest(t, server.URL+tc.url, tc.request, "DELETE", tc.status, "DeleteFromTable")
+		testutils.DoRequest(t, base+tc.url, tc.request, "DELETE", tc.status, "DeleteFromTable")
 	}
 }
 
 func TestUpdateFromTable(t *testing.T) {
-	h := helpers.NewIntegrationHandlers(t)
-	router := mux.NewRouter()
-	router.HandleFunc("/{database}/{schema}/{table}", helpers.WithHTTPTimeout(h.CRUD.Update)).
-		Methods("PUT", "PATCH")
-	server := httptest.NewServer(router)
-	defer server.Close()
+	base := helpers.ServerURL(t)
 
 	m := make(map[string]interface{})
 	m["name"] = "prest"
@@ -335,25 +273,19 @@ func TestUpdateFromTable(t *testing.T) {
 		{"execute update in a table with invalid table", "/prest-test/public/0test", m, http.StatusNotFound},
 		{"execute update in a table with invalid where clause", "/prest-test/public/test?0name=$eq.nuveo", m, http.StatusBadRequest},
 		{"execute update in a table with invalid body", "/prest-test/public/test?name=$eq.nuveo", nil, http.StatusBadRequest},
-
 		{"execute update in a invalid db", "/invalid/public/test", m, http.StatusBadRequest},
 	}
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
 
-		testutils.DoRequest(t, server.URL+tc.url, tc.request, "PUT", tc.status, "UpdateTable")
-		testutils.DoRequest(t, server.URL+tc.url, tc.request, "PATCH", tc.status, "UpdateTable")
+		testutils.DoRequest(t, base+tc.url, tc.request, "PUT", tc.status, "UpdateTable")
+		testutils.DoRequest(t, base+tc.url, tc.request, "PATCH", tc.status, "UpdateTable")
 	}
 }
 
 func TestShowTable(t *testing.T) {
-	h := helpers.NewIntegrationHandlers(t)
-	router := mux.NewRouter()
-	router.HandleFunc("/show/{database}/{schema}/{table}", helpers.WithHTTPTimeout(h.Table.Show)).
-		Methods("GET")
-	server := httptest.NewServer(router)
-	defer server.Close()
+	base := helpers.ServerURL(t)
 
 	var testCases = []struct {
 		description string
@@ -368,6 +300,6 @@ func TestShowTable(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "ShowTable")
+		testutils.DoRequest(t, base+tc.url, nil, tc.method, tc.status, "ShowTable")
 	}
 }

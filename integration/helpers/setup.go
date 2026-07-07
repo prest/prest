@@ -12,10 +12,10 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/v2/adapters/postgres"
 	"github.com/prest/prest/v2/config"
+	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers"
 	"github.com/prest/prest/v2/middlewares"
 	"github.com/prest/prest/v2/plugins"
-	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/router"
 	"github.com/urfave/negroni/v3"
 )
@@ -69,6 +69,29 @@ var (
 	loadedCfg *config.Prest // initialized once; callers receive shallow copies
 	loadErr   error
 )
+
+// SecondaryClusterHost returns the host for the second Postgres cluster in integration tests.
+func SecondaryClusterHost() string {
+	return os.Getenv("PREST_PG_HOST_B")
+}
+
+// LoadMultiClusterConfig loads the multi-cluster test configuration.
+// It must not be called from tests that use t.Parallel() because it sets PREST_CONF via t.Setenv.
+func LoadMultiClusterConfig(t *testing.T) *config.Prest {
+	t.Helper()
+	t.Setenv("PREST_CONF", filepath.Join(TestdataDir(), "prest_multicluster.toml"))
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("load multi-cluster config: %v", err)
+	}
+	pg := postgres.New(cfg)
+	if err := postgres.Connect(pg); err != nil {
+		t.Fatalf("connect multi-cluster config: %v", err)
+	}
+	t.Cleanup(func() { postgres.Close(pg) })
+	cfg.Adapter = pg
+	return cfg
+}
 
 // LoadTestConfig loads application config and connects to the test database.
 // Config and DB connection are initialized once; each call returns a fresh

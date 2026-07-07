@@ -46,6 +46,8 @@ func md5Hex(s string) string {
 }
 
 func Test_getSelectQuery(t *testing.T) {
+	t.Parallel()
+
 	expected := "SELECT * FROM public.prest_users WHERE username=$1 AND password=$2 LIMIT 1"
 	query := testAuthHandler().selectQuery()
 
@@ -55,6 +57,8 @@ func Test_getSelectQuery(t *testing.T) {
 }
 
 func Test_legacyDigest(t *testing.T) {
+	t.Parallel()
+
 	h := testAuthHandler()
 	pwd := "123456"
 	enc, err := h.legacyDigest(pwd)
@@ -76,6 +80,8 @@ func Test_legacyDigest(t *testing.T) {
 }
 
 func Test_legacyDigest_unknownAlgorithm(t *testing.T) {
+	t.Parallel()
+
 	h := testAuthHandler()
 	h.cfg.Encrypt = "PLAINTEXT"
 	_, err := h.legacyDigest("secret")
@@ -83,12 +89,16 @@ func Test_legacyDigest_unknownAlgorithm(t *testing.T) {
 }
 
 func TestHashPassword(t *testing.T) {
+	t.Parallel()
+
 	hash, err := HashPassword("secret")
 	require.NoError(t, err)
 	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(hash), []byte("secret")))
 }
 
 func TestAuthHandler_Login_BodySuccess(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -129,6 +139,8 @@ func TestAuthHandler_Login_BodySuccess(t *testing.T) {
 }
 
 func TestAuthHandler_Login_BodyUserNotFound(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -153,6 +165,8 @@ func TestAuthHandler_Login_BodyUserNotFound(t *testing.T) {
 }
 
 func TestAuthHandler_Login_BodyQueryError(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -174,6 +188,8 @@ func TestAuthHandler_Login_BodyQueryError(t *testing.T) {
 }
 
 func TestAuthHandler_Login_BasicMissingCredentials(t *testing.T) {
+	t.Parallel()
+
 	h := NewAuthHandler(nil, AuthConfig{AuthType: "basic"})
 	req := httptest.NewRequest(http.MethodPost, "/auth", nil)
 	rec := httptest.NewRecorder()
@@ -185,6 +201,8 @@ func TestAuthHandler_Login_BasicMissingCredentials(t *testing.T) {
 }
 
 func TestAuthHandler_Login_BasicSuccess(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -219,6 +237,8 @@ func TestAuthHandler_Login_BasicSuccess(t *testing.T) {
 }
 
 func TestAuthHandler_token(t *testing.T) {
+	t.Parallel()
+
 	h := NewAuthHandler(nil, AuthConfig{JWTKey: "signing-key"})
 	user := auth.User{ID: 9, Username: "jwt-user", Name: "JWT User"}
 
@@ -242,6 +262,8 @@ func TestAuthHandler_token(t *testing.T) {
 }
 
 func Test_getSelectQueryByUsername(t *testing.T) {
+	t.Parallel()
+
 	expected := "SELECT * FROM public.prest_users WHERE username=$1 LIMIT 1"
 	query := testAuthHandler()
 	query.cfg.Encrypt = "bcrypt"
@@ -249,6 +271,8 @@ func Test_getSelectQueryByUsername(t *testing.T) {
 }
 
 func TestAuthHandler_basicPasswordCheck_bcryptLegacyMD5Stored(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -274,6 +298,8 @@ func TestAuthHandler_basicPasswordCheck_bcryptLegacyMD5Stored(t *testing.T) {
 }
 
 func TestAuthHandler_basicPasswordCheck_bcryptLegacySHA1Stored(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -300,6 +326,8 @@ func TestAuthHandler_basicPasswordCheck_bcryptLegacySHA1Stored(t *testing.T) {
 }
 
 func TestAuthHandler_basicPasswordCheck_bcrypt(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -328,6 +356,8 @@ func TestAuthHandler_basicPasswordCheck_bcrypt(t *testing.T) {
 }
 
 func TestAuthHandler_basicPasswordCheck_bcryptWrongPassword(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -355,12 +385,16 @@ func TestAuthHandler_basicPasswordCheck_bcryptWrongPassword(t *testing.T) {
 }
 
 func TestAuthHandler_basicPasswordCheck_unknownAlgorithm(t *testing.T) {
+	t.Parallel()
+
 	h := NewAuthHandler(nil, AuthConfig{Encrypt: "PLAINTEXT"})
 	_, err := h.basicPasswordCheck("carol", "pw")
 	require.ErrorIs(t, err, ErrUnknownEncryptAlgorithm)
 }
 
 func TestAuthHandler_basicPasswordCheck(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -384,6 +418,8 @@ func TestAuthHandler_basicPasswordCheck(t *testing.T) {
 }
 
 func TestToken(t *testing.T) {
+	t.Parallel()
+
 	user := auth.User{ID: 7, Username: "legacy"}
 	token, err := Token(user, "legacy-key")
 	require.NoError(t, err)

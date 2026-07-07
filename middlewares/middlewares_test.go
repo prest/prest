@@ -53,6 +53,8 @@ func serveMiddleware(h negroni.Handler, req *http.Request) (*httptest.ResponseRe
 }
 
 func TestHandlerSet_JSONResponse(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
@@ -67,6 +69,8 @@ func TestHandlerSet_JSONResponse(t *testing.T) {
 }
 
 func TestHandlerSet_ErrorJSON(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
@@ -79,6 +83,8 @@ func TestHandlerSet_ErrorJSON(t *testing.T) {
 }
 
 func TestHandlerSet_XMLRenderer(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/?_renderer=xml", nil)
 	rec := httptest.NewRecorder()
 
@@ -94,6 +100,8 @@ func TestHandlerSet_XMLRenderer(t *testing.T) {
 }
 
 func TestSetTimeoutToContext(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	var timeout int
 	SetTimeoutToContext(42).ServeHTTP(httptest.NewRecorder(), req, func(_ http.ResponseWriter, r *http.Request) {
@@ -104,6 +112,8 @@ func TestSetTimeoutToContext(t *testing.T) {
 }
 
 func TestSetTimeoutToContext_DefaultZero(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	var ctx context.Context
 	SetTimeoutToContext(0).ServeHTTP(httptest.NewRecorder(), req, func(_ http.ResponseWriter, r *http.Request) {
@@ -115,6 +125,8 @@ func TestSetTimeoutToContext_DefaultZero(t *testing.T) {
 }
 
 func TestAuthMiddleware_AuthDisabled(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	rec, called := serveMiddleware(AuthMiddleware(AuthSettings{Enabled: false}), req)
 
@@ -123,6 +135,8 @@ func TestAuthMiddleware_AuthDisabled(t *testing.T) {
 }
 
 func TestAuthMiddleware_WhitelistedURL(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/auth", nil)
 	rec, called := serveMiddleware(AuthMiddleware(AuthSettings{
 		Enabled:      true,
@@ -134,6 +148,8 @@ func TestAuthMiddleware_WhitelistedURL(t *testing.T) {
 }
 
 func TestAuthMiddleware_EmptyToken(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	rec, called := serveMiddleware(AuthMiddleware(AuthSettings{Enabled: true}), req)
 
@@ -143,6 +159,8 @@ func TestAuthMiddleware_EmptyToken(t *testing.T) {
 }
 
 func TestAuthMiddleware_ValidToken(t *testing.T) {
+	t.Parallel()
+
 	token := signTestJWT(t, "secret", validClaims())
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -160,6 +178,8 @@ func TestAuthMiddleware_ValidToken(t *testing.T) {
 }
 
 func TestAuthMiddleware_EmptyKeyRejected(t *testing.T) {
+	t.Parallel()
+
 	token := signTestJWT(t, "", validClaims())
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -172,6 +192,8 @@ func TestAuthMiddleware_EmptyKeyRejected(t *testing.T) {
 }
 
 func TestAuthMiddleware_ExpiredToken(t *testing.T) {
+	t.Parallel()
+
 	claims := auth.Claims{
 		NotBefore: jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
 		Expiry:    jwt.NewNumericDate(time.Now().Add(-time.Hour)),
@@ -188,6 +210,8 @@ func TestAuthMiddleware_ExpiredToken(t *testing.T) {
 }
 
 func TestAuthMiddleware_InvalidToken(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer not-a-jwt")
 
@@ -199,6 +223,8 @@ func TestAuthMiddleware_InvalidToken(t *testing.T) {
 }
 
 func TestAuthMiddleware_WrongSigningKey(t *testing.T) {
+	t.Parallel()
+
 	token := signTestJWT(t, "other", validClaims())
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -210,6 +236,8 @@ func TestAuthMiddleware_WrongSigningKey(t *testing.T) {
 }
 
 func TestJwtAlgo(t *testing.T) {
+	t.Parallel()
+
 	require.Equal(t, jose.HS256, jwtAlgo("HS256"))
 	require.Equal(t, jose.HS512, jwtAlgo("HS512"))
 	require.Equal(t, jose.RS256, jwtAlgo("RS256"))
@@ -218,11 +246,13 @@ func TestJwtAlgo(t *testing.T) {
 }
 
 func TestAccessControl_Denied(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	perms := mockgen.NewMockPermissionsChecker(ctrl)
-	perms.EXPECT().TablePermissions("test", "read", "").Return(false)
+	perms.EXPECT().TablePermissions("prest-test", "public", "test", "read", "").Return(false)
 
 	called := false
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -240,11 +270,13 @@ func TestAccessControl_Denied(t *testing.T) {
 }
 
 func TestAccessControl_Allowed(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	perms := mockgen.NewMockPermissionsChecker(ctrl)
-	perms.EXPECT().TablePermissions("test", "read", "").Return(true)
+	perms.EXPECT().TablePermissions("prest-test", "public", "test", "read", "").Return(true)
 
 	called := false
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -262,6 +294,8 @@ func TestAccessControl_Allowed(t *testing.T) {
 }
 
 func TestAccessControl_SkipsNonPermissionMethods(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -281,11 +315,13 @@ func TestAccessControl_SkipsNonPermissionMethods(t *testing.T) {
 }
 
 func TestAccessControl_PassesUsername(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	perms := mockgen.NewMockPermissionsChecker(ctrl)
-	perms.EXPECT().TablePermissions("test", "read", "bob").Return(true)
+	perms.EXPECT().TablePermissions("prest-test", "public", "test", "read", "bob").Return(true)
 
 	handler := AccessControl(perms)
 	req := httptest.NewRequest(http.MethodGet, "/prest-test/public/test", nil)
@@ -305,6 +341,8 @@ func withUser(ctx context.Context, user auth.User) context.Context {
 }
 
 func TestAccessControl_SkipsNonTablePaths(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -324,6 +362,8 @@ func TestAccessControl_SkipsNonTablePaths(t *testing.T) {
 }
 
 func TestJwtMiddleware_WhitelistedURL(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/auth", nil)
 	rec, called := serveMiddleware(JwtMiddleware("secret", "", "HS256", []string{`\/auth`}), req)
 
@@ -332,6 +372,8 @@ func TestJwtMiddleware_WhitelistedURL(t *testing.T) {
 }
 
 func TestJwtMiddleware_ValidHMACKey(t *testing.T) {
+	t.Parallel()
+
 	token := signTestJWT(t, "secret", validClaims())
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -343,6 +385,8 @@ func TestJwtMiddleware_ValidHMACKey(t *testing.T) {
 }
 
 func TestJwtMiddleware_EmptyToken(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	rec, called := serveMiddleware(JwtMiddleware("secret", "", "HS256", nil), req)
 
@@ -352,6 +396,8 @@ func TestJwtMiddleware_EmptyToken(t *testing.T) {
 }
 
 func TestJwtMiddleware_InvalidToken(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer bad-token")
 
@@ -363,6 +409,8 @@ func TestJwtMiddleware_InvalidToken(t *testing.T) {
 }
 
 func TestJwtMiddleware_ExpiredClaims(t *testing.T) {
+	t.Parallel()
+
 	claims := auth.Claims{
 		NotBefore: jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
 		Expiry:    jwt.NewNumericDate(time.Now().Add(-time.Hour)),
@@ -379,6 +427,8 @@ func TestJwtMiddleware_ExpiredClaims(t *testing.T) {
 }
 
 func TestJwtMiddleware_WrongKey(t *testing.T) {
+	t.Parallel()
+
 	token := signTestJWT(t, "other", validClaims())
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -391,6 +441,8 @@ func TestJwtMiddleware_WrongKey(t *testing.T) {
 }
 
 func TestCors_PreflightAllowed(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodOptions, "/", nil)
 	req.Header.Set("Access-Control-Request-Method", "POST")
 	req.Header.Set("Origin", "https://example.com")
@@ -406,6 +458,8 @@ func TestCors_PreflightAllowed(t *testing.T) {
 }
 
 func TestCors_PreflightForbiddenOrigin(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodOptions, "/", nil)
 	req.Header.Set("Access-Control-Request-Method", "POST")
 	req.Header.Set("Origin", "https://evil.com")
@@ -419,6 +473,8 @@ func TestCors_PreflightForbiddenOrigin(t *testing.T) {
 }
 
 func TestCors_RegularRequestPassesThrough(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec, called := serveMiddleware(Cors([]string{"*"}, nil), req)
 
@@ -428,6 +484,8 @@ func TestCors_RegularRequestPassesThrough(t *testing.T) {
 }
 
 func TestExposureMiddleware_DatabasesDenied(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/databases", nil)
 	rec, called := serveMiddleware(ExposureMiddleware(config.ExposeConf{DatabaseListing: false}), req)
 
@@ -437,6 +495,8 @@ func TestExposureMiddleware_DatabasesDenied(t *testing.T) {
 }
 
 func TestExposureMiddleware_SchemasDenied(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/schemas", nil)
 	rec, called := serveMiddleware(ExposureMiddleware(config.ExposeConf{SchemaListing: false}), req)
 
@@ -445,6 +505,8 @@ func TestExposureMiddleware_SchemasDenied(t *testing.T) {
 }
 
 func TestExposureMiddleware_TablesDenied(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/tables", nil)
 	rec, called := serveMiddleware(ExposureMiddleware(config.ExposeConf{TableListing: false}), req)
 
@@ -453,6 +515,8 @@ func TestExposureMiddleware_TablesDenied(t *testing.T) {
 }
 
 func TestExposureMiddleware_Allowed(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/databases", nil)
 	rec, called := serveMiddleware(ExposureMiddleware(config.ExposeConf{
 		DatabaseListing: true,
@@ -465,6 +529,8 @@ func TestExposureMiddleware_Allowed(t *testing.T) {
 }
 
 func TestExposureMiddleware_NonListingPath(t *testing.T) {
+	t.Parallel()
+
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	rec, called := serveMiddleware(ExposureMiddleware(config.ExposeConf{}), req)
 
@@ -473,6 +539,8 @@ func TestExposureMiddleware_NonListingPath(t *testing.T) {
 }
 
 func TestNewForTest_CustomMiddleware(t *testing.T) {
+	t.Parallel()
+
 	cfg := &config.Prest{}
 	n := NewForTest(cfg, negroni.Handler(negroni.HandlerFunc(CustomMiddlewareForTest)))
 
@@ -698,6 +766,8 @@ func TestJWKSetRSANoKey(t *testing.T) {
 // `tok.Claims([]byte(""), &out)` which jose's HMAC implementation accepts,
 // granting access to any caller able to forge `HMAC-SHA256("", header.payload)`.
 func TestJWTEmptyKeyRejectsForgedToken(t *testing.T) {
+	t.Parallel()
+
 	mw := JwtMiddleware("", "", "HS256", nil)
 
 	// Forge a token signed with the empty secret. NotBefore/Expiry are valid,
@@ -732,6 +802,8 @@ func TestJWTEmptyKeyRejectsForgedToken(t *testing.T) {
 // silently fell through to verifying with []byte(""), which is the same
 // auth-bypass shape as GHSA-fj7v-859r-2fm4.
 func TestJWTJWKSWithoutMatchingKidRejected(t *testing.T) {
+	t.Parallel()
+
 	// Minimal JWKS containing one RSA key with kid="other".
 	raw, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)

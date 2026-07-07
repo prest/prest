@@ -33,7 +33,9 @@ func TestFormatArray(t *testing.T) {
 	testCases[4].in = values
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			ret := FormatArray(tc.in)
 			if ret != tc.ret {
 				t.Errorf("expected %v, but got %v", tc.ret, ret)

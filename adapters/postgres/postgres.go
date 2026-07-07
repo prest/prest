@@ -68,6 +68,7 @@ var (
 	_ adapters.DatabaseConnector = (*postgres)(nil)
 	_ adapters.DatabaseAccessor  = (*postgres)(nil)
 	_ adapters.DatabasePinger    = (*postgres)(nil)
+	_ adapters.ReadinessChecker  = (*postgres)(nil)
 )
 
 // New creates a Postgres adapter without connecting.
@@ -102,6 +103,46 @@ func (p *postgres) Ping(ctx context.Context) error {
 		return err
 	}
 	return db.PingContext(ctx)
+}
+
+// PingAll verifies the default and all registered database connections are alive.
+func (p *postgres) PingAll(ctx context.Context) error {
+	if err := p.Ping(ctx); err != nil {
+		return err
+	}
+	if !p.cfg.HasDatabaseRegistry() {
+		return nil
+	}
+	for _, dbConf := range p.cfg.Databases {
+		conn, err := p.conn.AddDatabaseToPool(dbConf.Alias)
+		if err != nil {
+			return err
+		}
+		if err := conn.PingContext(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// IsRegistered reports whether alias is a configured database registry entry.
+func (p *postgres) IsRegistered(alias string) bool {
+	if !p.cfg.HasDatabaseRegistry() {
+		return true
+	}
+	_, ok := p.cfg.ProfileByAlias(alias)
+	return ok
+}
+
+// PhysicalName resolves a registry alias to its physical database name.
+func (p *postgres) PhysicalName(alias string) string {
+	if conf, ok := p.cfg.ProfileByAlias(alias); ok && conf.Database != "" {
+		return conf.Database
+	}
+	if alias == "" {
+		return p.cfg.PGDatabase
+	}
+	return alias
 }
 
 func (p *postgres) getStmts() *Stmt {
@@ -1670,47 +1711,66 @@ func GetQueryOperator(op string) (string, error) {
 }
 
 // TablePermissions get tables permissions based in prest configuration
-func (adapter *postgres) TablePermissions(table string, op string, userName string) (access bool) {
+func (adapter *postgres) TablePermissions(database, schema, table, op, userName string) (access bool) {
 	restrict := adapter.cfg.AccessConf.Restrict
 	if !restrict {
 		return true
 	}
 
-	// ignore table loop
 	for _, ignoreT := range adapter.cfg.AccessConf.IgnoreTable {
 		if ignoreT == table {
 			return true
 		}
 	}
 
-	tables := adapter.cfg.AccessConf.Tables
-	access = false
-	for _, t := range tables {
-		if t.Name == table {
-			access = slices.Contains(t.Permissions, op)
-			break
-		}
+	if t, ok := matchTableConf(adapter.cfg.AccessConf.Tables, database, schema, table); ok {
+		access = slices.Contains(t.Permissions, op)
+	} else {
+		access = false
 	}
 
-	// If userName is empty, means use table access.
 	if userName == "" {
 		return access
 	}
 
-	// currently, access is granted to all users based on the table settings.
-	// if it is later discovered that there are specific permission settings for an individual user,
-	// then the latter settings should be applied.
 	users := adapter.cfg.AccessConf.Users
 	for _, u := range users {
-		if u.Name == userName {
-			for _, t := range u.Tables {
-				if t.Name == table {
-					return slices.Contains(t.Permissions, op)
-				}
-			}
+		if u.Name != userName {
+			continue
+		}
+		if t, ok := matchTableConf(u.Tables, database, schema, table); ok {
+			return slices.Contains(t.Permissions, op)
 		}
 	}
 	return access
+}
+
+func matchTableConf(tables []config.TablesConf, database, schema, table string) (config.TablesConf, bool) {
+	var tableOnly, schemaTable, full *config.TablesConf
+	for i := range tables {
+		t := &tables[i]
+		if t.Name != table {
+			continue
+		}
+		switch {
+		case t.Database == database && t.Schema == schema:
+			full = t
+		case t.Database == "" && t.Schema == schema:
+			schemaTable = t
+		case t.Database == "" && t.Schema == "":
+			tableOnly = t
+		}
+	}
+	if full != nil {
+		return *full, true
+	}
+	if schemaTable != nil {
+		return *schemaTable, true
+	}
+	if tableOnly != nil {
+		return *tableOnly, true
+	}
+	return config.TablesConf{}, false
 }
 
 // fieldsByPermission returns a list of fields that a user is allowed to access
@@ -1724,16 +1784,13 @@ func (adapter *postgres) TablePermissions(table string, op string, userName stri
 // Returns:
 //   - fields: A slice of strings representing the fields the user is allowed to access.
 //     If no specific permissions are found, it defaults to returning all fields ("*").
-func (adapter *postgres) fieldsByPermission(table, operation, userName string) (fields []string) {
+func (adapter *postgres) fieldsByPermission(database, schema, table, operation, userName string) (fields []string) {
 	fields = []string{"*"}
-	confTables := adapter.cfg.AccessConf.Tables
 
-	for _, cfgTable := range confTables {
-		if cfgTable.Name == table {
-			for _, perm := range cfgTable.Permissions {
-				if perm == operation {
-					fields = cfgTable.Fields
-				}
+	if t, ok := matchTableConf(adapter.cfg.AccessConf.Tables, database, schema, table); ok {
+		for _, perm := range t.Permissions {
+			if perm == operation {
+				fields = t.Fields
 			}
 		}
 	}
@@ -1742,16 +1799,14 @@ func (adapter *postgres) fieldsByPermission(table, operation, userName string) (
 		return
 	}
 
-	// individual user
 	users := adapter.cfg.AccessConf.Users
 	for _, u := range users {
-		if u.Name == userName {
-			for _, t := range u.Tables {
-				if t.Name == table &&
-					slices.Contains(t.Permissions, operation) {
-					fields = t.Fields
-				}
-			}
+		if u.Name != userName {
+			continue
+		}
+		if t, ok := matchTableConf(u.Tables, database, schema, table); ok &&
+			slices.Contains(t.Permissions, operation) {
+			fields = t.Fields
 		}
 	}
 
@@ -1778,7 +1833,7 @@ func intersection(set, other []string) (intersection []string) {
 }
 
 // FieldsPermissions get fields permissions based in prest configuration
-func (adapter *postgres) FieldsPermissions(r *http.Request, table string, op string, userName string) (fields []string, err error) {
+func (adapter *postgres) FieldsPermissions(r *http.Request, database, schema, table, op, userName string) (fields []string, err error) {
 	cols, err := columnsByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("error on parse columns from request: %s", err)
@@ -1793,7 +1848,7 @@ func (adapter *postgres) FieldsPermissions(r *http.Request, table string, op str
 		fields = []string{"*"}
 		return
 	}
-	allowedFields := adapter.fieldsByPermission(table, op, userName)
+	allowedFields := adapter.fieldsByPermission(database, schema, table, op, userName)
 	if containsAsterisk(allowedFields) {
 		fields = []string{"*"}
 		if len(cols) > 0 {
@@ -1973,24 +2028,34 @@ func NormalizeGroupFunction(paramValue string) (groupFuncSQL string, err error) 
 	}
 }
 
+// tableReference returns a quoted table identifier for SQL generation.
+// With a database registry, the connection is already scoped to the physical
+// database so only schema.table is qualified. Legacy mode uses database.schema.table.
+func (adapter *postgres) tableReference(database, schema, table string) string {
+	if adapter.cfg.HasDatabaseRegistry() {
+		return fmt.Sprintf(`"%s"."%s"`, schema, table)
+	}
+	return fmt.Sprintf(`"%s"."%s"."%s"`, database, schema, table)
+}
+
 // SelectSQL generate select sql
 func (adapter *postgres) SelectSQL(selectStr string, database string, schema string, table string) string {
-	return fmt.Sprintf(`%s "%s"."%s"."%s"`, selectStr, database, schema, table)
+	return fmt.Sprintf(`%s %s`, selectStr, adapter.tableReference(database, schema, table))
 }
 
 // InsertSQL generate insert sql
 func (adapter *postgres) InsertSQL(database string, schema string, table string, names string, placeholders string) string {
-	return fmt.Sprintf(statements.InsertQuery, database, schema, table, names, placeholders)
+	return fmt.Sprintf(`INSERT INTO %s(%s) VALUES%s`, adapter.tableReference(database, schema, table), names, placeholders)
 }
 
 // DeleteSQL generate delete sql
 func (adapter *postgres) DeleteSQL(database string, schema string, table string) string {
-	return fmt.Sprintf(statements.DeleteQuery, database, schema, table)
+	return fmt.Sprintf(`DELETE FROM %s`, adapter.tableReference(database, schema, table))
 }
 
 // UpdateSQL generate update sql
 func (adapter *postgres) UpdateSQL(database string, schema string, table string, setSyntax string) string {
-	return fmt.Sprintf(statements.UpdateQuery, database, schema, table, setSyntax)
+	return fmt.Sprintf(`UPDATE %s SET %s`, adapter.tableReference(database, schema, table), setSyntax)
 }
 
 // DatabaseWhere generate database where syntax

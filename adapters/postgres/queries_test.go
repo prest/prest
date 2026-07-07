@@ -13,6 +13,8 @@ import (
 )
 
 func TestGetScript_InvalidVerb(t *testing.T) {
+	t.Parallel()
+
 	adapter := testAdapter()
 
 	_, err := adapter.GetScript("ANY", "folder", "script")
@@ -21,6 +23,8 @@ func TestGetScript_InvalidVerb(t *testing.T) {
 }
 
 func TestGetScript_MissingFile(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	cfg := defaultTestConf()
 	cfg.QueriesPath = dir
@@ -32,6 +36,8 @@ func TestGetScript_MissingFile(t *testing.T) {
 }
 
 func TestGetScript_Success(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	folder := filepath.Join(dir, "queries")
 	require.NoError(t, os.MkdirAll(folder, 0o755))
@@ -48,6 +54,8 @@ func TestGetScript_Success(t *testing.T) {
 }
 
 func TestParseScript_Template(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	scriptPath := filepath.Join(dir, "query.read.sql")
 	require.NoError(t, os.WriteFile(scriptPath, []byte(`SELECT * FROM users WHERE name = '{{ .field1 }}'`), 0o644))
@@ -61,6 +69,8 @@ func TestParseScript_Template(t *testing.T) {
 }
 
 func TestParseScript_InvalidTemplate(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	scriptPath := filepath.Join(dir, "bad.read.sql")
 	require.NoError(t, os.WriteFile(scriptPath, []byte(`{{ .missing`), 0o644))
@@ -73,6 +83,8 @@ func TestParseScript_InvalidTemplate(t *testing.T) {
 }
 
 func TestExecuteScripts_InvalidMethod(t *testing.T) {
+	t.Parallel()
+
 	adapter := testAdapter()
 
 	sc := adapter.ExecuteScripts("ANY", "SELECT 1", nil)
@@ -82,6 +94,8 @@ func TestExecuteScripts_InvalidMethod(t *testing.T) {
 }
 
 func TestExecuteScripts_GET(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	mock.ExpectPrepare(`SELECT json_agg\(s\) FROM \(SELECT \* FROM users\) s`).
@@ -95,6 +109,8 @@ func TestExecuteScripts_GET(t *testing.T) {
 }
 
 func TestExecuteScripts_POST(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	mock.ExpectPrepare(`INSERT INTO users`).
@@ -108,6 +124,8 @@ func TestExecuteScripts_POST(t *testing.T) {
 }
 
 func TestWriteSQL_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	mock.ExpectPrepare(`UPDATE users`).
@@ -121,6 +139,8 @@ func TestWriteSQL_Success(t *testing.T) {
 }
 
 func TestWriteSQL_PrepareError(t *testing.T) {
+	t.Parallel()
+
 	adapter, mock := withSQLMock(t)
 
 	mock.ExpectPrepare(`DELETE FROM users`).WillReturnError(errors.New("prepare failed"))
@@ -132,6 +152,8 @@ func TestWriteSQL_PrepareError(t *testing.T) {
 }
 
 func TestExecuteScriptsCtx_WithContext(t *testing.T) {
+	t.Parallel()
+
 	adapter, defaultMock, ctxMock := withSQLMocks(t)
 
 	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
@@ -147,6 +169,8 @@ func TestExecuteScriptsCtx_WithContext(t *testing.T) {
 }
 
 func TestWriteSQLCtx_Success(t *testing.T) {
+	t.Parallel()
+
 	adapter, defaultMock, ctxMock := withSQLMocks(t)
 
 	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
@@ -162,6 +186,8 @@ func TestWriteSQLCtx_Success(t *testing.T) {
 }
 
 func TestWriteSQLCtx_PrepareError(t *testing.T) {
+	t.Parallel()
+
 	adapter, defaultMock, ctxMock := withSQLMocks(t)
 
 	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
@@ -175,6 +201,8 @@ func TestWriteSQLCtx_PrepareError(t *testing.T) {
 }
 
 func TestWriteSQLCtx_ExecError(t *testing.T) {
+	t.Parallel()
+
 	adapter, defaultMock, ctxMock := withSQLMocks(t)
 
 	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
@@ -190,6 +218,8 @@ func TestWriteSQLCtx_ExecError(t *testing.T) {
 }
 
 func TestExecuteScriptsCtx_WriteMethods(t *testing.T) {
+	t.Parallel()
+
 	adapter, defaultMock, ctxMock := withSQLMocks(t)
 	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
 

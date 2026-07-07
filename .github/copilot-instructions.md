@@ -155,14 +155,15 @@ func NewCRUDHandler(cfg *config.Prest) *CRUDHandler {
 
 - Add or update tests for behavior changes.
 - **Unit tests:** co-located `*_test.go` in the source package; use gomock of narrow adapter interfaces; never call `postgres.Load()` or hit a real database.
-- **Integration tests:** only under `integration/`, mirroring package layout; exercise public HTTP/adapter surfaces end-to-end with Docker Postgres.
+- **Integration tests:** only under `integration/`, mirroring package layout; exercise public HTTP/adapter surfaces end-to-end with Docker Postgres and **deployed prestd processes** over the network (see **Network integration tests** below).
 - Never add `postgres.Load()` outside `integration/`.
-- Reuse existing test patterns (`testify`, `adapters/mockgen/`, `handlerstest.NewTestHandlers`, `testutils/` for HTTP helpers).
+- Reuse existing test patterns (`testify`, `adapters/mockgen/`, `handlerstest.NewTestHandlers`, `integration/testutils/` for HTTP helpers).
 - Mock **ports** (`adapters/*` interfaces), not `adapters/postgres` types, in unit tests outside `adapters/postgres/`.
 - Maintain ≥80% coverage on new code paths (unit + integration combined).
 - Name test files after the source file under test: `<source_file>_test.go` (e.g. `catalog.go` → `catalog_test.go`).
 - Any new change in behavior on the controllers package should introduce a new integration test as well as a unit test.
 - Prefer `t.Parallel()` in unit tests when safe (no shared mutable state, globals, or ordering dependencies). Subtests in table-driven tests can call `t.Parallel()` inside `t.Run`.
+- **Do not** call `t.Parallel()` when a test uses `t.Setenv`, `config.Load()` against mutated env, package-global hooks (`SetDBConnectForTest` / `withFailingDBConnect`), shared package-level config vars, or intentional concurrency tests (e.g. plugin serialization). Keep those serial.
 - `make test-unit` is the canonical unit-test entry point: **30s** per-package timeout (`-timeout 30s`), tests within a package run in parallel up to `GOMAXPROCS` (`-parallel`), packages are invoked in batch (also concurrent), and the race detector is enabled (`-race`).
 
 ### Postgres adapter unit tests (`adapters/postgres`)
@@ -173,6 +174,28 @@ Unit tests under `adapters/postgres/**` must pass with **no Postgres process run
 |----------|---------|----------|---------|
 | `adapters/postgres/**` | unit | **Never real** — sqlmock only | `go test ./adapters/postgres/...`, `make test-unit` |
 | `integration/adapters/postgres/**` | integration | Real Postgres (Docker) | `make test-integration` |
+
+### Network integration tests
+
+`make test-integration` (`docker-compose-test.yml`) provisions Postgres, seeds data via `testdata/db-init.sh`, starts **real prestd servers**, then runs tests in the `tests` container.
+
+| Service | URL env (in tests container) | Config |
+|---------|------------------------------|--------|
+| `prestd` | `PREST_TEST_URL=http://prestd:3000` | `testdata/prest.toml`, debug on, JWT off |
+| `prestd-multicluster` | `PREST_MULTICLUSTER_TEST_URL=http://prestd-multicluster:3001` | `testdata/prest_multicluster.toml` |
+| `prestd-auth` | `PREST_AUTH_TEST_URL=http://prestd-auth:3002` | auth enabled |
+
+Standard-stack HTTP tests use [`integration/helpers/server.go`](integration/helpers/server.go):
+
+- `helpers.ServerURL(t)` — default prestd; `t.Skip` when env unset
+- `helpers.MultiClusterServerURL(t)` — multi-cluster prestd
+- `helpers.AuthServerURL(t)` — auth-enabled prestd
+
+Call deployed servers with `integration/testutils.DoRequest(t, base+path, ...)`. Do **not** use `httptest.NewServer(helpers.IntegrationHandler(...))` for controller/router tests unless the test needs a **custom negroni stack** or per-test config mutation (e.g. `integration/middlewares/`, `integration/plugins/`, `TestSilentErrorsOnQuery`).
+
+Keep [`helpers.IntegrationHandler`](integration/helpers/setup.go) for custom-stack tests only. Adapter-level tests under `integration/adapters/` may still call the adapter directly.
+
+Local `go test ./integration/...` without compose skips network tests (no `PREST_*_TEST_URL`).
 
 **Golden rule:** never call `conn.Get()`, `Connect()`, `DB()`, or `Ping()` in a way that reaches `sqlx.Connect` without a test double in place.
 

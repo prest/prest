@@ -8,7 +8,7 @@ import (
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/plugins"
-	"github.com/prest/prest/v2/testutils"
+	"github.com/prest/prest/v2/integration/testutils"
 	"github.com/urfave/negroni/v3"
 )
 

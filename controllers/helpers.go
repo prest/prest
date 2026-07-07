@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/prest/prest/v2/adapters"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/internal/ident"
 
@@ -21,16 +22,14 @@ func requestContext(r *http.Request, database string) (context.Context, context.
 	return context.WithTimeout(ctx, time.Second*time.Duration(timeout))
 }
 
-func validateDatabase(database string, registry DatabaseRegistry, singleDB bool) error {
-	if singleDB && registry.GetDatabase() != database {
+func validateDatabase(database string, registry adapters.DatabaseRegistry, singleDB bool) error {
+	if registry != nil && !registry.IsRegistered(database) {
+		return fmt.Errorf("database not registered: %v", database)
+	}
+	if singleDB && registry != nil && registry.GetDatabase() != database {
 		return fmt.Errorf("database not registered: %v", database)
 	}
 	return nil
-}
-
-// DatabaseRegistry is re-exported for handler helpers.
-type DatabaseRegistry interface {
-	GetDatabase() string
 }
 
 func validatePathSegments(segments ...string) bool {

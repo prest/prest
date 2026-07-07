@@ -48,22 +48,147 @@ Deploy to Heroku and instantly get a realtime RESTFul API backed by Heroku Postg
 
 Visit <https://docs.prestd.com/>
 
-## Testing
+## Multi-database
 
-Run the test suite inside Docker (no local Postgres required):
+pREST uses the first URL path segment as the **database selector** for CRUD, catalog, and optional script routes. Two modes are supported:
+
+| Mode | When | `{database}` in URL | Connection target |
+|------|------|---------------------|-------------------|
+| **Legacy multi-DB** | No registry configured | Postgres database name | Same `pg.host`; `dbname` = path segment |
+| **Registry multi-cluster** | `[[databases]]` or env registry set | Registered **alias** | Per-profile host, port, and credentials |
+
+### URL routing
+
+All table operations use `/{database}/{schema}/{table}`:
+
+```http
+GET /tenant-a/public/users
+POST /tenant-a/public/orders
+GET /tenant-a/public
+GET /_QUERIES/tenant-a/myqueries/get_all
+```
+
+Script routes accept an optional database prefix (`/_QUERIES/{database}/{queriesLocation}/{script}`). When omitted, the default database (`pg.database`) is used.
+
+Request flow: validate alias → set connection context → open or reuse pool for that alias → execute query.
+
+### Configuration
+
+Registry sources are merged in priority order: **indexed env pairs → TOML** (env wins on conflict).
+
+#### Environment variables (production / Kubernetes)
+
+Register databases with contiguous 1-based index pairs:
+
+```sh
+DATABASE_ALIAS_1=tenant-a
+DATABASE_URL_1=postgres://user:pass@cluster-a.example.com:5432/app_a?sslmode=require
+DATABASE_ALIAS_2=tenant-b
+DATABASE_URL_2=postgres://user:pass@cluster-b.example.com:5432/app_b?sslmode=require
+```
+
+`PREST_DATABASE_ALIAS_N` and `PREST_DATABASE_URL_N` are accepted as aliases of the above keys.
+
+See [`install-manifests/kubernetes/deployment.yaml`](install-manifests/kubernetes/deployment.yaml) for a multi-secret example with liveness/readiness probes.
+
+#### TOML (local development)
+
+`pg.*` remains the default/fallback profile; registry entries override host, port, and credentials per alias:
+
+```toml
+[pg]
+database = "prest-test"
+single = false
+
+[[databases]]
+alias = "prest-test"
+host = "postgres"
+port = 5432
+database = "prest-test"
+user = "postgres"
+pass = "postgres"
+ssl.mode = "disable"
+
+[[databases]]
+alias = "secondary-db"
+host = "postgres-b"
+port = 5432
+database = "secondary-cluster"
+user = "postgres"
+pass = "postgres"
+ssl.mode = "disable"
+```
+
+When no registry is configured, legacy `DATABASE_URL` / `pg.*` behavior is unchanged.
+
+### Alias vs physical database name
+
+- URLs and access rules use the **alias** (e.g. `tenant-a`).
+- Connection pools use the profile's `database`, `host`, and credentials (e.g. `app_a` on `cluster-a.example.com`).
+- When alias equals the physical database name (legacy mode), behavior matches pre-registry pREST.
+
+### `pg.single`
+
+Set `pg.single = false` to allow routing to multiple databases or aliases. When `true` and a registry is active, only the default database alias is accepted.
+
+### Connection pooling
+
+Pools are keyed by connection URI; aliases that share the same URI share a pool. Connections are opened lazily on first request per alias.
+
+**Connection budgeting:** plan for `replicas × aliases × pg.maxopenconn` connections per cluster. Use PgBouncer or RDS Proxy when many aliases are registered.
+
+### Health checks
+
+| Endpoint | Purpose | Behavior |
+|----------|---------|----------|
+| `GET /_health` | Liveness | Pings the default database |
+| `GET /_ready` | Readiness | Pings the default database and every registered alias |
+
+### Access control
+
+`access.tables` entries support an optional `database` field for per-alias permissions:
+
+```toml
+[[access.tables]]
+database = "tenant-a"
+schema = "public"
+name = "users"
+permissions = ["read"]
+```
+
+### Local testing
+
+Multi-cluster integration tests live in [`integration/controllers/multicluster_test.go`](integration/controllers/multicluster_test.go). They require a second Postgres service (`PREST_PG_HOST_B`) provided by [`docker-compose-test.yml`](docker-compose-test.yml):
 
 ```bash
-make test
+make test-integration
+```
+
+## Testing
+
+Run unit tests locally:
+
+```bash
+make test-unit
+```
+
+Run the full integration suite inside Docker (Postgres, deployed prestd servers, no local setup required):
+
+```bash
+make test-integration
 ```
 
 Or directly with Docker Compose:
 
 ```bash
-docker compose -f docker-compose-test.yml up --abort-on-container-exit --exit-code-from tests
+docker compose -f docker-compose-test.yml up -d --wait postgres postgres-b db-init prestd prestd-multicluster prestd-auth
+docker compose -f docker-compose-test.yml run --rm --no-deps tests
 docker compose -f docker-compose-test.yml down -v --remove-orphans
 ```
 
-The `tests` service runs `./testdata/runtest.sh`, provisioning databases and executing Go tests.
+Compose starts `postgres`, `postgres-b`, a one-shot `db-init` job (`testdata/db-init.sh`), three **prestd** services (`prestd`, `prestd-multicluster`, `prestd-auth`), then runs `go test ./integration/...` in the `tests` container. Standard HTTP integration tests call those servers via `PREST_TEST_URL`, `PREST_MULTICLUSTER_TEST_URL`, and `PREST_AUTH_TEST_URL`.
+
+Running `go test ./integration/...` outside compose skips network tests when those URLs are unset.
 
 ## Example: Docker Build
 

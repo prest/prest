@@ -11,6 +11,8 @@ import (
 )
 
 func TestNewDepsFromConfig(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -42,12 +44,16 @@ func TestNewDepsFromConfig(t *testing.T) {
 }
 
 func TestNewDepsFromConfig_CacheDisabled(t *testing.T) {
+	t.Parallel()
+
 	p := &config.Prest{Cache: cache.Config{Enabled: false}}
 	deps := NewDepsFromConfig(p)
 	require.Nil(t, deps.Cache)
 }
 
 func TestNewHandlers(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -71,6 +77,8 @@ func TestNewHandlers(t *testing.T) {
 }
 
 func TestNewHandlersFromConfig(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 

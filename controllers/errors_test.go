@@ -9,6 +9,8 @@ import (
 )
 
 func TestJsonError(t *testing.T) {
+	t.Parallel()
+
 	rec := httptest.NewRecorder()
 	jsonError(rec, "something failed", http.StatusTeapot)
 

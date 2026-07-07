@@ -8,15 +8,11 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/v2/integration/helpers"
-	"github.com/prest/prest/v2/testutils"
+	"github.com/prest/prest/v2/integration/testutils"
 )
 
 func TestExecuteScriptQuery(t *testing.T) {
-	h := helpers.NewIntegrationHandlers(t)
-	r := mux.NewRouter()
-	r.HandleFunc("/_QUERIES/{queriesLocation}/{script}", helpers.WithHTTPTimeout(h.Script.Execute))
-	ts := httptest.NewServer(r)
-	defer ts.Close()
+	base := helpers.ServerURL(t)
 
 	var testCases = []struct {
 		description string
@@ -30,16 +26,12 @@ func TestExecuteScriptQuery(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		testutils.DoRequest(t, ts.URL+tc.url, nil, tc.method, tc.status, "ExecuteScriptQuery")
+		testutils.DoRequest(t, base+tc.url, nil, tc.method, tc.status, "ExecuteScriptQuery")
 	}
 }
 
 func TestExecuteFromScripts(t *testing.T) {
-	h := helpers.NewIntegrationHandlers(t)
-	router := mux.NewRouter()
-	router.HandleFunc("/_QUERIES/{queriesLocation}/{script}", helpers.WithHTTPTimeout(h.Script.Execute))
-	server := httptest.NewServer(router)
-	defer server.Close()
+	base := helpers.ServerURL(t)
 
 	var testCases = []struct {
 		description string
@@ -54,7 +46,6 @@ func TestExecuteFromScripts(t *testing.T) {
 		{"Get results using scripts by PUT method", "/_QUERIES/fulltable/put_all?field1=trump&field2=pereira", "PUT", http.StatusOK},
 		{"Get results using scripts by PATCH method", "/_QUERIES/fulltable/patch_all?field1=temer&field2=trump", "PATCH", http.StatusOK},
 		{"Get results using scripts by DELETE method", "/_QUERIES/fulltable/delete_all?field1=trump", "DELETE", http.StatusOK},
-		// errors
 		{"Get errors using nonexistent folder", "/_QUERIES/fullnon/delete_all?field1=trump", "DELETE", http.StatusBadRequest},
 		{"Get errors using nonexistent script", "/_QUERIES/fulltable/some_com_all?field1=trump", "DELETE", http.StatusBadRequest},
 		{"Get errors with invalid execution of sql", "/_QUERIES/fulltable/create_table?field1=test7", "POST", http.StatusBadRequest},
@@ -62,11 +53,13 @@ func TestExecuteFromScripts(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "ExecuteFromScripts")
+		testutils.DoRequest(t, base+tc.url, nil, tc.method, tc.status, "ExecuteFromScripts")
 	}
 }
 
 func TestRenderWithXML(t *testing.T) {
+	base := helpers.ServerURL(t)
+
 	var testCases = []struct {
 		description string
 		url         string
@@ -76,18 +69,10 @@ func TestRenderWithXML(t *testing.T) {
 	}{
 		{"Get schemas with COUNT clause with XML Render", "/schemas?_count=*&_renderer=xml", "GET", 200, "<objects><object><count>4</count></object></objects>"},
 	}
-	cfg := helpers.LoadTestConfig(t)
-	h := helpers.NewIntegrationHandlers(t)
-	n := helpers.MiddlewareStack(cfg)
-	r := mux.NewRouter()
-	r.HandleFunc("/schemas", h.Catalog.ListSchemas).Methods("GET")
-	n.UseHandler(r)
-	server := httptest.NewServer(n)
-	defer server.Close()
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
-		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body)
+		testutils.DoRequest(t, base+tc.url, nil, tc.method, tc.status, "GetSchemas", tc.body)
 	}
 }
 
