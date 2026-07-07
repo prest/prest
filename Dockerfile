@@ -34,25 +34,34 @@ RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 ENV CGO_ENABLED=1
 ENV PREST_BUILD_PLUGINS=1
 COPY --from=builder /bin/nc /bin/nc
-COPY --from=builder /workspace/prestd /bin/prestd
+RUN groupadd --system prest \
+&& useradd --system --gid prest --home-dir /app --shell /usr/sbin/nologin prest
+COPY --from=builder /workspace/prestd /app/prestd
 COPY --from=builder /workspace/etc/entrypoint.sh /app/entrypoint.sh
-COPY --from=builder /workspace/lib /app/lib
-COPY --from=builder /workspace/etc/plugin /app/plugin
+COPY --from=builder --chown=prest:prest /workspace/lib /app/lib
+COPY --from=builder /workspace/vendor /app/vendor
+COPY --from=builder --chown=prest:prest /workspace/etc/plugin /app/plugin
+RUN chown prest:prest /app
 WORKDIR /app
+USER prest
 ENTRYPOINT ["sh", "/app/entrypoint.sh"]
 
 # GoReleaser: prebuilt binary + extra_files only (no studio/ in context)
-FROM registry.hub.docker.com/library/golang:1.26 AS release
+FROM registry.hub.docker.com/library/debian:bookworm AS release
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install --no-install-recommends -yq netcat-traditional && \
-    rm -rf /var/lib/apt/lists/*
-ENV CGO_ENABLED=1
-ENV PREST_BUILD_PLUGINS=1
-COPY prestd /bin/prestd
-COPY etc/entrypoint.sh /app/entrypoint.sh
-COPY lib /app/lib
-COPY etc/plugin /app/plugin
+    rm -rf /var/lib/apt/lists/* && \
+    groupadd --system prest && \
+    useradd --system --gid prest --home-dir /app --shell /usr/sbin/nologin prest
+ENV PREST_BUILD_PLUGINS=0
+COPY --from=builder /workspace/prestd /app/prestd
+COPY --from=builder /workspace/etc/entrypoint.sh /app/entrypoint.sh
+COPY --from=builder /workspace/lib /app/lib
+COPY --from=builder /workspace/vendor /app/vendor
+COPY --from=builder /workspace/etc/plugin /app/plugin
+RUN chown -R prest:prest /app/lib /app/plugin
 WORKDIR /app
+USER prest
 ENTRYPOINT ["sh", "/app/entrypoint.sh"]
 
 FROM full
