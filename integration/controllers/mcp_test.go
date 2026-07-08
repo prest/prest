@@ -1,14 +1,11 @@
 package controllers_test
 
 import (
-	"bytes"
-	"encoding/json"
 	"net/http"
 	"testing"
 
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/integration/testutils"
-	"github.com/stretchr/testify/require"
 )
 
 func TestMCPDiscovery(t *testing.T) {
@@ -25,14 +22,13 @@ func TestMCPDiscovery(t *testing.T) {
 
 func TestMCPInitialize(t *testing.T) {
 	base := helpers.ServerURL(t)
-	body, err := json.Marshal(map[string]any{
+	payload := map[string]any{
 		"jsonrpc": "2.0",
 		"id":      1,
 		"method":  "initialize",
-	})
-	require.NoError(t, err)
+	}
 
-	testutils.DoRequest(t, base+"/_mcp", bytes.NewReader(body), http.MethodPost, http.StatusOK, "MCPInitialize",
+	testutils.DoRequest(t, base+"/_mcp", payload, http.MethodPost, http.StatusOK, "MCPInitialize",
 		`"serverInfo"`,
 		`"name":"prest"`,
 		`"instructions"`,
@@ -41,14 +37,13 @@ func TestMCPInitialize(t *testing.T) {
 
 func TestMCPToolsList(t *testing.T) {
 	base := helpers.ServerURL(t)
-	body, err := json.Marshal(map[string]any{
+	payload := map[string]any{
 		"jsonrpc": "2.0",
 		"id":      2,
 		"method":  "tools/list",
-	})
-	require.NoError(t, err)
+	}
 
-	testutils.DoRequest(t, base+"/_mcp", bytes.NewReader(body), http.MethodPost, http.StatusOK, "MCPToolsList",
+	testutils.DoRequest(t, base+"/_mcp", payload, http.MethodPost, http.StatusOK, "MCPToolsList",
 		`"tools"`,
 		`prest.list_databases`,
 		`prest.list_schemas`,
@@ -104,7 +99,7 @@ func TestMCPToolCalls(t *testing.T) {
 				},
 			},
 			status:       http.StatusOK,
-			expectedBody: `"users"`,
+			expectedBody: `"name":"test"`,
 		},
 		{
 			name: "DescribeTable",
@@ -141,26 +136,23 @@ func TestMCPToolCalls(t *testing.T) {
 
 	for _, tc := range toolCalls {
 		t.Run(tc.name, func(t *testing.T) {
-			body, err := json.Marshal(tc.payload)
-			require.NoError(t, err)
-			testutils.DoRequest(t, base+"/_mcp", bytes.NewReader(body), http.MethodPost, tc.status, tc.name, tc.expectedBody)
+			testutils.DoRequest(t, base+"/_mcp", tc.payload, http.MethodPost, tc.status, tc.name, tc.expectedBody)
 		})
 	}
 }
 
 func TestMCPUnsupportedTool(t *testing.T) {
 	base := helpers.ServerURL(t)
-	body, err := json.Marshal(map[string]any{
+	payload := map[string]any{
 		"jsonrpc": "2.0",
 		"id":      8,
 		"method":  "tools/call",
 		"params": map[string]any{
 			"name": "prest.drop_table",
 		},
-	})
-	require.NoError(t, err)
+	}
 
-	testutils.DoRequest(t, base+"/_mcp", bytes.NewReader(body), http.MethodPost, http.StatusBadRequest, "MCPUnsupportedTool",
+	testutils.DoRequest(t, base+"/_mcp", payload, http.MethodPost, http.StatusBadRequest, "MCPUnsupportedTool",
 		`unsupported tool`,
 	)
 }

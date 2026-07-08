@@ -1,14 +1,11 @@
 package router_test
 
 import (
-	"bytes"
-	"encoding/json"
 	"net/http"
 	"testing"
 
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/integration/testutils"
-	"github.com/stretchr/testify/require"
 )
 
 func TestRoutes(t *testing.T) {
@@ -20,13 +17,12 @@ func TestMCPRoute(t *testing.T) {
 	base := helpers.ServerURL(t)
 	testutils.DoRequest(t, base+"/_mcp", nil, "GET", http.StatusOK, "MCPDiscovery")
 
-	body, err := json.Marshal(map[string]any{
+	payload := map[string]any{
 		"jsonrpc": "2.0",
 		"id":      1,
 		"method":  "initialize",
-	})
-	require.NoError(t, err)
-	testutils.DoRequest(t, base+"/_mcp", bytes.NewReader(body), "POST", http.StatusOK, "MCPInitialize")
+	}
+	testutils.DoRequest(t, base+"/_mcp", payload, "POST", http.StatusOK, "MCPInitialize")
 }
 
 func TestDefaultRouters(t *testing.T) {
