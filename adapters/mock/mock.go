@@ -344,6 +344,11 @@ func (m *Mock) DistinctClause(r *http.Request) (distinctQuery string, err error)
 func (m *Mock) SetDatabase(name string) {
 }
 
+// Aliases mock
+func (m *Mock) Aliases() []string {
+	return nil
+}
+
 // IsRegistered mock
 func (m *Mock) IsRegistered(alias string) bool {
 	return true

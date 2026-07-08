@@ -73,7 +73,7 @@ func TestMCPToolCalls(t *testing.T) {
 				},
 			},
 			status:       http.StatusOK,
-			expectedBody: `"prest-test"`,
+			expectedBody: `"physical_name":"prest-test"`,
 		},
 		{
 			name: "ListSchemas",
@@ -127,10 +127,17 @@ func TestMCPToolCalls(t *testing.T) {
 				"method":  "tools/call",
 				"params": map[string]any{
 					"name": "prest.select.prest-test.public.test",
+					"arguments": map[string]any{
+						"columns":  []string{"id", "name"},
+						"filters":  map[string]any{"name": "prest tester"},
+						"order_by": []string{"id"},
+						"limit":    5,
+						"offset":   0,
+					},
 				},
 			},
 			status:       http.StatusOK,
-			expectedBody: `"rows"`,
+			expectedBody: `"prest tester"`,
 		},
 	}
 

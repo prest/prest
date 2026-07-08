@@ -78,6 +78,15 @@ The first implementation is intentionally read-only. It exposes generic discover
 
 The schema-aware `prest.select.{database}.{schema}.{table}` tools are generated from the catalog and give MCP clients a stable, explicit read path for known tables.
 
+Generated table tools now include typed input schemas derived from table metadata. MCP clients can inspect these schemas to discover:
+
+- allowed `columns`
+- allowed `order_by` fields (`field` and `-field` for descending)
+- column-aware `filters`
+- `limit` and `offset`
+
+In multi-database mode, tool generation expands across registered aliases.
+
 Example initialize request:
 
 ```http
@@ -112,12 +121,38 @@ Content-Type: application/json
 }
 ```
 
+Example schema-aware table tool call with projection, filter, and ordering:
+
+```http
+POST /_mcp
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "prest.select.prest-test.public.test",
+    "arguments": {
+      "columns": ["id", "name"],
+      "filters": {
+        "name": "prest tester"
+      },
+      "order_by": ["id"],
+      "limit": 5,
+      "offset": 0
+    }
+  }
+}
+```
+
 ### Safety model
 
 - The MCP endpoint is read-only by design in the current version.
 - Unsupported tools return `400 Bad Request`.
 - Existing pREST database routing and identifier validation still apply.
 - Auth and ACL stay in the HTTP stack instead of being reimplemented in the MCP layer.
+- When auth is enabled, `/_mcp` requires authentication like other protected routes.
 
 ### Tests
 

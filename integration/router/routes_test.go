@@ -58,6 +58,7 @@ func TestAuthRouterActive(t *testing.T) {
 	base := helpers.AuthServerURL(t)
 	testutils.DoRequest(t, base+"/auth", nil, "GET", http.StatusMethodNotAllowed, "AuthEnable")
 	testutils.DoRequest(t, base+"/auth", nil, "POST", http.StatusUnauthorized, "AuthEnable")
+	testutils.DoRequest(t, base+"/_mcp", nil, "GET", http.StatusUnauthorized, "MCPAuthRequired")
 }
 
 func TestMultiClusterRoutes(t *testing.T) {

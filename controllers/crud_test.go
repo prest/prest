@@ -21,8 +21,10 @@ func withTestTimeout(ctx context.Context) context.Context {
 
 func mockDatabaseRegistry(ctrl *gomock.Controller) *mockgen.MockDatabaseRegistry {
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
+	db.EXPECT().Aliases().Return([]string{"prest-test"}).AnyTimes()
 	db.EXPECT().IsRegistered(gomock.Any()).Return(true).AnyTimes()
 	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db.EXPECT().PhysicalName(gomock.Any()).DoAndReturn(func(alias string) string { return alias }).AnyTimes()
 	return db
 }
 

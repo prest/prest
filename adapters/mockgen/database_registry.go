@@ -33,6 +33,20 @@ func (m *MockDatabaseRegistry) EXPECT() *MockDatabaseRegistryMockRecorder {
 	return m.recorder
 }
 
+// Aliases mocks base method.
+func (m *MockDatabaseRegistry) Aliases() []string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Aliases")
+	ret0, _ := ret[0].([]string)
+	return ret0
+}
+
+// Aliases indicates an expected call of Aliases.
+func (mr *MockDatabaseRegistryMockRecorder) Aliases() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Aliases", reflect.TypeOf((*MockDatabaseRegistry)(nil).Aliases))
+}
+
 // GetDatabase mocks base method.
 func (m *MockDatabaseRegistry) GetDatabase() string {
 	m.ctrl.T.Helper()
