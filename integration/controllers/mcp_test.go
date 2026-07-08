@@ -120,13 +120,18 @@ func TestMCPToolCalls(t *testing.T) {
 			expectedBody: `"columns"`,
 		},
 		{
+			// Reply carries a single stable seed row ("prest tester") and is
+			// never mutated by the integration suite, so this assertion stays
+			// reliable even when other packages run concurrently against the
+			// shared database (unlike the "test" table, which is emptied by the
+			// delete CRUD/router tests).
 			name: "SelectTable",
 			payload: map[string]any{
 				"jsonrpc": "2.0",
 				"id":      7,
 				"method":  "tools/call",
 				"params": map[string]any{
-					"name": "prest.select.prest-test.public.test",
+					"name": "prest.select.prest-test.public.Reply",
 					"arguments": map[string]any{
 						"columns":  []string{"id", "name"},
 						"filters":  map[string]any{"name": "prest tester"},
