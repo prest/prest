@@ -1,0 +1,159 @@
+---
+description: pREST agentic develop→validate loop — follow on every coding task
+alwaysApply: true
+---
+
+# pREST Agentic Development Loop
+
+Follow this loop on **every** development task in this repository. For full conventions, architecture, and examples, see **@.github/copilot-instructions.md** (source of truth). This rule distills the workflow; do not duplicate that document.
+
+## The Loop
+
+Repeat until the definition-of-done checklist is green:
+
+```
+Understand → Locate → Plan → Implement → Validate → Self-review → (iterate)
+```
+
+### 1. Understand
+
+- Restate the task goal and constraints (behavior change vs refactor, breaking-change risk).
+- Check `go.mod` for the project's Go version before choosing APIs.
+- Identify affected layers: `controllers/`, `middlewares/`, `router/`, `config/`, `adapters/`, `integration/`.
+
+### 2. Locate
+
+- Find existing code before writing new code. Prefer extending ports/handlers over new top-level packages.
+- Key entrypoints: `cmd/prestd/main.go`, `router/router.go`, `controllers/deps.go`, `config/config.go`, `adapters/postgres/`.
+- For tests: co-located `*_test.go` (unit) or `integration/<package>/` (network/Docker).
+
+### 3. Plan (minimal change)
+
+- Propose the **smallest** diff that solves the task.
+- Map changes to hexagonal layers (ports → adapter → handler → route → tests).
+- Flag if `adapters/` interfaces change → plan `make mockgen`.
+- Flag if `controllers/` behavior changes → plan unit **and** integration tests.
+- Do not weaken auth/SQL safety or introduce breaking CLI/config/route changes unless explicitly requested.
+
+### 4. Implement
+
+Follow repo conventions (details in @.github/copilot-instructions.md):
+
+| Area | Rule |
+|------|------|
+| **Scope** | Small, focused diffs; preserve public behavior unless asked |
+| **Architecture** | Hexagonal: handlers depend on narrow `adapters/*` ports, not `adapters/postgres` |
+| **SOLID** | One concern per handler/port; extend via new ports + wiring, not god handlers |
+| **State** | Stateless runtime — no package-level mutable app state; inject via constructors/`Deps` |
+| **Errors** | Wrap with `%w`; use `slog` for logging |
+| **Config** | **Resilience policy:** invalid/missing config → `slog.Warn`, safe default/zero, continue startup (see `config/config.go` helpers: `unmarshalKeyOrZero`, `ensure*Path`, `ensureJWTConfig`) |
+| **SQL** | Never concatenate untrusted input; keep adapter/query conventions |
+| **Formatting** | `gofmt`; idiomatic Go; comments only for non-obvious logic |
+| **Multi-DB** | Respect `DatabaseRegistry`, context DB switching (`pctx.DBNameKey`), multicluster config |
+
+**Test isolation when writing tests:**
+
+- Unit tests: `t.Parallel()` when safe; **never** parallelize tests using `t.Setenv`, `config.Load()` on mutated env, `SetDBConnectForTest`, or shared globals.
+- `adapters/postgres/**` unit tests: sqlmock only (`withSQLMock`, `withFailingDBConnect`) — **no real Postgres, no `sqlx.Connect`**.
+- Never call `postgres.Load()` outside `integration/` and startup (`cmd/`).
+- Mock ports (`adapters/mockgen/`), not concrete postgres types, outside `adapters/postgres/`.
+
+### 5. Validate
+
+Run commands appropriate to the change scope. **Do not skip validation** — execute them, don't just suggest them.
+
+#### Always (any Go change)
+
+```sh
+go build ./...
+go vet ./...
+gofmt -l .          # fix any output before finishing
+```
+
+#### Unit tests (default for most changes)
+
+```sh
+make test              # alias for make test-unit
+# or targeted:
+go test -timeout 30s -race -count=1 ./path/to/package/...
+```
+
+`make test-unit` runs all non-integration packages with `-race`, `-timeout 30s`, and coverage (`coverage.out`).
+
+#### Postgres adapter unit tests
+
+```sh
+go test -timeout 30s -parallel 8 ./adapters/postgres/...
+```
+
+Must pass with **no Postgres process running** (sqlmock only).
+
+#### Controllers / HTTP behavior changes
+
+```sh
+go test -timeout 30s -race ./controllers/...
+make test-integration   # Docker: real prestd + Postgres (full CI parity)
+```
+
+Integration tests live under `integration/` only; use `integration/helpers` (`ServerURL`, `MultiClusterServerURL`, `AuthServerURL`) and `integration/testutils.DoRequest`. Local `go test ./integration/...` skips network tests when `PREST_*_TEST_URL` is unset.
+
+#### Port interface changes
+
+```sh
+make mockgen
+make test-unit
+```
+
+#### Lint (when available)
+
+```sh
+golangci-lint run --timeout=5m   # CI uses v2.8.0
+```
+
+### 6. Self-review
+
+Before marking done, verify:
+
+- [ ] Diff is minimal — no unrelated formatting or drive-by refactors
+- [ ] No `adapters/postgres` imports in `controllers/`, `middlewares/`, or `router/`
+- [ ] Config additions follow warn-and-continue resilience (not hard-fail on bad TOML slices/paths)
+- [ ] New behavior has tests; controller changes include integration coverage
+- [ ] Postgres unit tests use sqlmock helpers, not live DB
+- [ ] `t.Parallel()` / serial test rules respected
+- [ ] Mocks regenerated if ports changed
+- [ ] No accidental breaking changes to flags, config keys, routes, or plugin surface
+- [ ] Resources closed (`rows.Close`, response bodies) in hot paths
+- [ ] Validation commands above were run and passed
+
+### 7. Iterate
+
+If any validation or checklist item fails: fix, re-run targeted tests, return to self-review. Do not hand off red builds or failing tests.
+
+## Package Quick Map
+
+| Package | Role |
+|---------|------|
+| `cmd/` | Cobra CLI, startup wiring |
+| `controllers/` | HTTP handlers; depend on `adapters/*` ports via `Deps` |
+| `middlewares/` | Auth, ACL, cache, cross-cutting HTTP |
+| `router/` | Route registration, composition |
+| `config/` | TOML/env loading, graceful degradation |
+| `adapters/` | Port interfaces |
+| `adapters/postgres/` | PostgreSQL implementation, pooling, SQL |
+| `integration/` | Docker + network E2E tests |
+| `cache/`, `plugins/` | Driven/driving adapters |
+
+## Definition of Done
+
+A task is **done** only when all apply:
+
+1. Code compiles (`go build ./...`) and passes `go vet ./...`
+2. Relevant unit tests pass (`make test-unit` or scoped `go test` with `-race -timeout 30s`)
+3. All possible controller/HTTP behavior changes are added to `integration/`
+4. Controller/HTTP behavior changes pass `make test-integration` (or documented reason why not run)
+5. New code paths have tests (≥80% coverage target on new paths)
+6. Port changes include regenerated mocks (`make mockgen`)
+7. Self-review checklist (step 6) is satisfied
+8. No scope creep — only files required for the task were changed
+
+When in doubt about conventions, architecture, SOLID mapping, or test patterns, read **@.github/copilot-instructions.md** before implementing.
