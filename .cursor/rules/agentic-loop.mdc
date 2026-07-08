@@ -46,7 +46,7 @@ Follow repo conventions (details in @.github/copilot-instructions.md):
 | **SOLID** | One concern per handler/port; extend via new ports + wiring, not god handlers |
 | **State** | Stateless runtime — no package-level mutable app state; inject via constructors/`Deps` |
 | **Errors** | Wrap with `%w`; use `slog` for logging |
-| **Config** | **Resilience policy:** invalid/missing config → `slog.Warn`, safe default/zero, continue startup (see `config/config.go` helpers: `unmarshalKeyOrZero`, `ensure*Path`, `ensureJWTConfig`) |
+| **Config** | **Non-sensitive** invalid/missing → `slog.Warn`, safe default/zero, continue startup (`unmarshalKeyOrZero`, `ensure*Path`). **Auth/JWT/secrets/ACL/DB credentials** → fail closed (`ensureJWTConfig`, middleware empty-key guards); do not apply warn-and-continue |
 | **SQL** | Never concatenate untrusted input; keep adapter/query conventions |
 | **Formatting** | `gofmt`; idiomatic Go; comments only for non-obvious logic |
 | **Multi-DB** | Respect `DatabaseRegistry`, context DB switching (`pctx.DBNameKey`), multicluster config |
@@ -116,7 +116,7 @@ Before marking done, verify:
 
 - [ ] Diff is minimal — no unrelated formatting or drive-by refactors
 - [ ] No `adapters/postgres` imports in `controllers/`, `middlewares/`, or `router/`
-- [ ] Config additions follow warn-and-continue resilience (not hard-fail on bad TOML slices/paths)
+- [ ] Non-sensitive config uses warn-and-continue; auth/JWT/secrets/ACL/DB-credential settings fail closed (no silent weakening)
 - [ ] New behavior has tests; controller changes include integration coverage
 - [ ] Postgres unit tests use sqlmock helpers, not live DB
 - [ ] `t.Parallel()` / serial test rules respected
