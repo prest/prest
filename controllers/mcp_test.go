@@ -175,6 +175,46 @@ func TestMCPHandler_AccessDeniedFiltersTools(t *testing.T) {
 	}
 }
 
+func TestMCPHandler_ListSchemasDoesNotLeakWhenAllFiltered(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	catalog := mockgen.NewMockCatalogQuerier(ctrl)
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	db := mockDatabaseRegistry(ctrl)
+
+	catalog.EXPECT().SchemaClause(gomock.Any()).Return("SELECT schema", false)
+	catalog.EXPECT().SchemaOrderBy("", false).Return("")
+	catalog.EXPECT().TableClause().Return("SELECT table")
+	catalog.EXPECT().TableWhere("").Return("")
+	catalog.EXPECT().TableOrderBy("").Return("")
+
+	schemaScanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().QueryCtx(gomock.Any(), "SELECT schema ").Return(schemaScanner)
+	schemaScanner.EXPECT().Err().Return(nil)
+	schemaScanner.EXPECT().Bytes().Return([]byte(`[{"schema":"public"},{"schema":"secret"}]`))
+
+	tableScanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().QueryCtx(gomock.Any(), "SELECT table  ").Return(tableScanner)
+	tableScanner.EXPECT().Err().Return(nil)
+	tableScanner.EXPECT().Bytes().Return([]byte(`[{"schema":"public","name":"users","type":"table"}]`))
+
+	showScanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(showScanner)
+	showScanner.EXPECT().Err().Return(nil)
+	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","data_type":"integer","position":1}]`))
+
+	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(false)
+
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	result, err := h.listSchemas(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpListSchemasArgs{Database: "prest-test"})
+	require.NoError(t, err)
+	require.Empty(t, result.([]map[string]any))
+}
+
 func TestMCPHandler_ToolsCallRejectsUnknownTool(t *testing.T) {
 	t.Parallel()
 

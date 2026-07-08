@@ -336,7 +336,7 @@ func (h *MCPHandler) listSchemas(r *http.Request, args mcpListSchemasArgs) (any,
 		if schema == "" {
 			continue
 		}
-		if len(schemas) == 0 || schemas[schema] {
+		if h.perms == nil || schemas[schema] {
 			filtered = append(filtered, row)
 		}
 	}
@@ -482,7 +482,7 @@ func (h *MCPHandler) tools(r *http.Request) ([]mcpTool, error) {
 
 	seen := make(map[string]struct{})
 	for _, database := range aliases {
-		rows, err := h.tableRows(r, database, "")
+		rows, err := h.rawTableRows(r, database, "")
 		if err != nil {
 			continue
 		}
@@ -529,21 +529,25 @@ func (h *MCPHandler) describeColumns(r *http.Request, database, schema, table st
 }
 
 func (h *MCPHandler) tableRows(r *http.Request, database, schema string) ([]map[string]any, error) {
-	if schema != "" {
-		query := fmt.Sprint(h.catalog.SchemaTablesClause(), h.catalog.SchemaTablesWhere(""), h.catalog.SchemaTablesOrderBy(""))
-		result, err := h.queryRows(r, query, database, database, schema)
-		if err != nil {
-			return nil, err
-		}
-		rows, ok := result.([]map[string]any)
-		if !ok {
-			return nil, fmt.Errorf("unexpected table discovery result")
-		}
-		return h.filterAccessibleTables(r, database, rows)
+	rows, err := h.rawTableRows(r, database, schema)
+	if err != nil {
+		return nil, err
 	}
+	return h.filterAccessibleTables(r, database, rows)
+}
 
-	query := fmt.Sprint(h.catalog.TableClause(), " ", h.catalog.TableWhere(""), " ", h.catalog.TableOrderBy(""))
-	result, err := h.queryRows(r, query, database)
+func (h *MCPHandler) rawTableRows(r *http.Request, database, schema string) ([]map[string]any, error) {
+	var (
+		query  string
+		values []interface{}
+	)
+	if schema != "" {
+		query = fmt.Sprint(h.catalog.SchemaTablesClause(), h.catalog.SchemaTablesWhere(""), h.catalog.SchemaTablesOrderBy(""))
+		values = []interface{}{database, schema}
+	} else {
+		query = fmt.Sprint(h.catalog.TableClause(), " ", h.catalog.TableWhere(""), " ", h.catalog.TableOrderBy(""))
+	}
+	result, err := h.queryRows(r, query, database, values...)
 	if err != nil {
 		return nil, err
 	}
@@ -551,7 +555,7 @@ func (h *MCPHandler) tableRows(r *http.Request, database, schema string) ([]map[
 	if !ok {
 		return nil, fmt.Errorf("unexpected table discovery result")
 	}
-	return h.filterAccessibleTables(r, database, rows)
+	return rows, nil
 }
 
 func (h *MCPHandler) queryRows(r *http.Request, query string, database string, values ...interface{}) (any, error) {
