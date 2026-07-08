@@ -18,6 +18,7 @@ func RegisterRoutes(router *mux.Router, cfg *config.Prest, h *controllers.Handle
 	if cfg.AuthEnabled {
 		router.HandleFunc("/auth", h.Auth.Login).Methods("POST")
 	}
+	router.HandleFunc("/_mcp", h.MCP.Handler()).Methods("GET", "POST")
 	router.HandleFunc("/databases", h.Catalog.ListDatabases).Methods("GET")
 	router.HandleFunc("/schemas", h.Catalog.ListSchemas).Methods("GET")
 	router.HandleFunc("/tables", h.Catalog.ListTables).Methods("GET")

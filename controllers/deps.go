@@ -76,6 +76,7 @@ func NewDepsFromConfig(p *config.Prest) Deps {
 type Handlers struct {
 	Auth    *AuthHandler
 	Catalog *CatalogHandler
+	MCP     *MCPHandler
 	Table   *TableHandler
 	CRUD    *CRUDHandler
 	Script  *ScriptHandler
@@ -89,6 +90,7 @@ func NewHandlers(deps Deps) *Handlers {
 	return &Handlers{
 		Auth:    NewAuthHandler(deps.Executor, deps.Auth),
 		Catalog: NewCatalogHandler(deps),
+		MCP:     NewMCPHandler(deps),
 		Table:   NewTableHandler(deps.Executor, deps.DB, deps.SingleDB),
 		CRUD:    NewCRUDHandler(deps),
 		Script:  NewScriptHandler(deps),

@@ -18,22 +18,23 @@ func TestNewDepsFromConfig(t *testing.T) {
 
 	adapter := mockgen.NewMockAdapter(ctrl)
 	p := &config.Prest{
-		Adapter:    adapter,
-		SingleDB:   true,
-		PGDatabase: "prest-test",
-		AuthEnabled: true,
-		AuthType:    "body",
-		JWTKey:      "secret",
-		AuthSchema:  "public",
-		AuthTable:   "users",
+		Adapter:      adapter,
+		SingleDB:     true,
+		PGDatabase:   "prest-test",
+		AuthEnabled:  true,
+		AuthType:     "body",
+		JWTKey:       "secret",
+		AuthSchema:   "public",
+		AuthTable:    "users",
 		AuthUsername: "username",
 		AuthPassword: "password",
 		AuthEncrypt:  "MD5",
-		Cache: cache.Config{Enabled: true},
+		Cache:        cache.Config{Enabled: true},
 	}
 
 	deps := NewDepsFromConfig(p)
 	require.Equal(t, adapter, deps.Catalog)
+	require.Equal(t, adapter, deps.DB)
 	require.Equal(t, adapter, deps.Executor)
 	require.True(t, deps.SingleDB)
 	require.Equal(t, "prest-test", deps.PGDatabase)
@@ -70,6 +71,7 @@ func TestNewHandlers(t *testing.T) {
 
 	require.NotNil(t, h.Auth)
 	require.NotNil(t, h.Catalog)
+	require.NotNil(t, h.MCP)
 	require.NotNil(t, h.Table)
 	require.NotNil(t, h.CRUD)
 	require.NotNil(t, h.Script)

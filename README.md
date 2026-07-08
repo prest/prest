@@ -48,6 +48,81 @@ Deploy to Heroku and instantly get a realtime RESTFul API backed by Heroku Postg
 
 Visit <https://docs.prestd.com/>
 
+## MCP over HTTP
+
+pREST can expose a read-only MCP-style HTTP endpoint at `/_mcp` on the same server that already serves catalog, CRUD, and script routes.
+
+This route is intended to reuse the existing pREST request pipeline rather than introduce a separate process or transport. That means the MCP surface inherits the same deployment model, auth, ACL, and database routing behavior already used by the rest of the API.
+
+### Endpoint shape
+
+- `GET /_mcp` returns a discovery payload with server metadata and available tools.
+- `POST /_mcp` accepts JSON-RPC style requests for MCP operations.
+
+Currently supported methods:
+
+- `initialize`
+- `tools/list`
+- `tools/call`
+
+### Read-only tools
+
+The first implementation is intentionally read-only. It exposes generic discovery tools and schema-aware table tools:
+
+- `prest.list_databases`
+- `prest.list_schemas`
+- `prest.list_tables`
+- `prest.describe_table`
+- `prest.select_table`
+- `prest.select.{database}.{schema}.{table}`
+
+The schema-aware `prest.select.{database}.{schema}.{table}` tools are generated from the catalog and give MCP clients a stable, explicit read path for known tables.
+
+Example initialize request:
+
+```http
+POST /_mcp
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize"
+}
+```
+
+Example tool call:
+
+```http
+POST /_mcp
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "prest.describe_table",
+    "arguments": {
+      "database": "prest-test",
+      "schema": "public",
+      "table": "test"
+    }
+  }
+}
+```
+
+### Safety model
+
+- The MCP endpoint is read-only by design in the current version.
+- Unsupported tools return `400 Bad Request`.
+- Existing pREST database routing and identifier validation still apply.
+- Auth and ACL stay in the HTTP stack instead of being reimplemented in the MCP layer.
+
+### Tests
+
+The MCP route is covered by unit and integration tests, including live HTTP checks under [`integration/controllers/mcp_test.go`](integration/controllers/mcp_test.go) and route coverage in [`integration/router/routes_test.go`](integration/router/routes_test.go).
+
 ## Multi-database
 
 pREST uses the first URL path segment as the **database selector** for CRUD, catalog, and optional script routes. Two modes are supported:
