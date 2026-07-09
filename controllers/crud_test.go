@@ -21,8 +21,10 @@ func withTestTimeout(ctx context.Context) context.Context {
 
 func mockDatabaseRegistry(ctrl *gomock.Controller) *mockgen.MockDatabaseRegistry {
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
+	db.EXPECT().Aliases().Return([]string{"prest-test"}).AnyTimes()
 	db.EXPECT().IsRegistered(gomock.Any()).Return(true).AnyTimes()
 	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+	db.EXPECT().PhysicalName(gomock.Any()).DoAndReturn(func(alias string) string { return alias }).AnyTimes()
 	return db
 }
 
@@ -144,6 +146,91 @@ func TestCRUDHandler_Select_Success(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Contains(t, rec.Body.String(), "prest")
+}
+
+func TestCRUDHandler_Select_WithClauses(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "test", "read", "").Return([]string{"name"}, nil)
+
+	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
+	sqlBuilder.EXPECT().SelectFields([]string{"name"}).Return(`"name"`, nil)
+	sqlBuilder.EXPECT().SelectSQL(`"name"`, "prest-test", "public", "test").Return(`SELECT "name" FROM "prest-test"."public"."test"`)
+
+	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+	builder.EXPECT().DistinctClause(gomock.Any()).Return("DISTINCT ON (name)", nil)
+	builder.EXPECT().CountByRequest(gomock.Any()).Return("", nil)
+	builder.EXPECT().JoinByRequest(gomock.Any()).Return([]string{" JOIN other ON other.id=test.id"}, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("name=$1", []interface{}{"prest"}, nil)
+	builder.EXPECT().GroupByClause(gomock.Any()).Return("GROUP BY name")
+	builder.EXPECT().OrderByRequest(gomock.Any()).Return("ORDER BY name DESC", nil)
+	builder.EXPECT().PaginateIfPossible(gomock.Any()).Return("LIMIT 10", nil)
+
+	scanner := mockgen.NewMockScanner(ctrl)
+	scanner.EXPECT().Err().Return(nil)
+	scanner.EXPECT().Bytes().Return([]byte(`[{"name":"prest"}]`))
+
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any(), "prest").Return(scanner)
+
+	db := mockDatabaseRegistry(ctrl)
+
+	h := NewCRUDHandler(Deps{Perms: perms, SQL: sqlBuilder, Builder: builder, Executor: executor, DB: db})
+	req := crudRequest(http.MethodGet, "/prest-test/public/test?name=$eq.prest", map[string]string{
+		"database": "prest-test", "schema": "public", "table": "test",
+	})
+	rec := httptest.NewRecorder()
+	h.Select(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), "prest")
+}
+
+func TestCRUDHandler_Select_CountFirst(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "test", "read", "").Return([]string{"name"}, nil)
+
+	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
+	sqlBuilder.EXPECT().SelectFields([]string{"name"}).Return(`"name"`, nil)
+	sqlBuilder.EXPECT().SelectSQL(`"name"`, "prest-test", "public", "test").Return(`SELECT "name" FROM "prest-test"."public"."test"`)
+	sqlBuilder.EXPECT().SelectSQL(`SELECT count(*) as count FROM "prest-test"."public"."test"`, "prest-test", "public", "test").Return(`SELECT count(*) as count FROM "prest-test"."public"."test"`)
+
+	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+	builder.EXPECT().DistinctClause(gomock.Any()).Return("", nil)
+	builder.EXPECT().CountByRequest(gomock.Any()).Return(`SELECT count(*) as count FROM "prest-test"."public"."test"`, nil)
+	builder.EXPECT().JoinByRequest(gomock.Any()).Return(nil, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+	builder.EXPECT().GroupByClause(gomock.Any()).Return("")
+	builder.EXPECT().OrderByRequest(gomock.Any()).Return("", nil)
+	builder.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
+
+	countScanner := mockgen.NewMockScanner(ctrl)
+	countScanner.EXPECT().Err().Return(nil)
+	countScanner.EXPECT().Bytes().Return([]byte(`[{"count":1}]`))
+
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	executor.EXPECT().QueryCountCtx(gomock.Any(), gomock.Any()).Return(countScanner)
+
+	db := mockDatabaseRegistry(ctrl)
+
+	h := NewCRUDHandler(Deps{Perms: perms, SQL: sqlBuilder, Builder: builder, Executor: executor, DB: db})
+	req := crudRequest(http.MethodGet, "/prest-test/public/test?_count=*&_count_first=true", map[string]string{
+		"database": "prest-test", "schema": "public", "table": "test",
+	})
+	rec := httptest.NewRecorder()
+	h.Select(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), `"count":1`)
 }
 
 func TestCRUDHandler_Select_WithCache(t *testing.T) {

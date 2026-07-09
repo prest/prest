@@ -13,6 +13,18 @@ func TestRoutes(t *testing.T) {
 	testutils.DoRequest(t, base+"/_health", nil, "GET", http.StatusOK, "Routes")
 }
 
+func TestMCPRoute(t *testing.T) {
+	base := helpers.ServerURL(t)
+	testutils.DoRequest(t, base+"/_mcp", nil, "GET", http.StatusOK, "MCPDiscovery")
+
+	payload := map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "initialize",
+	}
+	testutils.DoRequest(t, base+"/_mcp", payload, "POST", http.StatusOK, "MCPInitialize")
+}
+
 func TestDefaultRouters(t *testing.T) {
 	base := helpers.ServerURL(t)
 
@@ -22,6 +34,7 @@ func TestDefaultRouters(t *testing.T) {
 		status int
 	}{
 		{"/databases", "GET", http.StatusOK},
+		{"/_mcp", "GET", http.StatusOK},
 		{"/schemas", "GET", http.StatusOK},
 		{"/_QUERIES/missing/script", "GET", http.StatusBadRequest},
 		{"/prest-test/public", "GET", http.StatusOK},
@@ -45,6 +58,7 @@ func TestAuthRouterActive(t *testing.T) {
 	base := helpers.AuthServerURL(t)
 	testutils.DoRequest(t, base+"/auth", nil, "GET", http.StatusMethodNotAllowed, "AuthEnable")
 	testutils.DoRequest(t, base+"/auth", nil, "POST", http.StatusUnauthorized, "AuthEnable")
+	testutils.DoRequest(t, base+"/_mcp", nil, "GET", http.StatusUnauthorized, "MCPAuthRequired")
 }
 
 func TestMultiClusterRoutes(t *testing.T) {

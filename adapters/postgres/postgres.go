@@ -125,6 +125,21 @@ func (p *postgres) PingAll(ctx context.Context) error {
 	return nil
 }
 
+// Aliases returns configured database aliases or the default database name.
+func (p *postgres) Aliases() []string {
+	if p.cfg.HasDatabaseRegistry() {
+		aliases := make([]string, 0, len(p.cfg.Databases))
+		for _, dbConf := range p.cfg.Databases {
+			aliases = append(aliases, dbConf.Alias)
+		}
+		return aliases
+	}
+	if p.cfg.PGDatabase == "" {
+		return nil
+	}
+	return []string{p.cfg.PGDatabase}
+}
+
 // IsRegistered reports whether alias is a configured database registry entry.
 func (p *postgres) IsRegistered(alias string) bool {
 	if !p.cfg.HasDatabaseRegistry() {

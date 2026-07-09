@@ -431,3 +431,38 @@ func TestToken(t *testing.T) {
 	require.NoError(t, parsed.Claims([]byte("legacy-key"), &claims))
 	require.Equal(t, user.Username, claims.UserInfo.Username)
 }
+
+func TestAuthHandler_verifyStoredPassword_BcryptSuccessAndFailure(t *testing.T) {
+	t.Parallel()
+
+	h := NewAuthHandler(nil, testAuthConfig())
+	h.cfg.Encrypt = "bcrypt"
+
+	hash, err := HashPassword("secret")
+	require.NoError(t, err)
+
+	require.NoError(t, h.verifyStoredPassword("secret", hash))
+	require.ErrorIs(t, h.verifyStoredPassword("wrong", hash), ErrUserNotFound)
+}
+
+func TestAuthHandler_verifyStoredPassword_LegacyDigestAndInvalid(t *testing.T) {
+	t.Parallel()
+
+	h := NewAuthHandler(nil, testAuthConfig())
+
+	md5Digest, err := h.legacyDigestForAlgorithm("secret", "md5")
+	require.NoError(t, err)
+	require.NoError(t, h.verifyStoredPassword("secret", md5Digest))
+	require.ErrorIs(t, h.verifyStoredPassword("wrong", md5Digest), ErrUserNotFound)
+
+	sha1Digest, err := h.legacyDigestForAlgorithm("secret", "sha1")
+	require.NoError(t, err)
+	require.NoError(t, h.verifyStoredPassword("secret", sha1Digest))
+	require.ErrorIs(t, h.verifyStoredPassword("wrong", sha1Digest), ErrUserNotFound)
+
+	require.Equal(t, "MD5", storedLegacyDigestAlgorithm(md5Digest))
+	require.Equal(t, "SHA1", storedLegacyDigestAlgorithm(sha1Digest))
+	require.Equal(t, "", storedLegacyDigestAlgorithm("not-hex"))
+	require.True(t, isHexDigest(md5Digest))
+	require.False(t, isHexDigest("xyz"))
+}

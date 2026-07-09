@@ -1,0 +1,107 @@
+---
+description: Git commit safety — commits are human-only; AI suggests, never executes
+alwaysApply: true
+---
+
+# Git Commit Practices (pREST)
+
+Commits are a **human action**. The AI must **never** run `git commit`, `git add` (to stage for a commit), or `git commit --amend` — even when the user says "commit this" or "commit your changes."
+
+When commits are in scope, the AI may inspect the repo and **prepare** a commit for the human; the human runs the final git commands locally.
+
+## What the AI Must Never Do
+
+- Run `git commit` or `git commit --amend`
+- Run `git add` to stage files for a commit
+- Create commits to "save progress" or after finishing a task
+- Create empty commits
+- Push to the remote unless the user explicitly asks (see **Push** below)
+
+If the user asks you to commit, **decline the git command** and instead offer a ready-to-run suggestion (message + `git add` / `git commit` commands they can copy).
+
+## What the AI May Do
+
+- Run read-only inspection: `git status`, `git diff`, `git log`
+- Draft a commit message and list which paths to stage
+- Warn about secrets (`.env`, `credentials.json`, tokens, keys) that must not be committed
+- Fix hook/lint issues in code when asked — the human commits after validation
+
+## Git Safety Protocol
+
+When any git write command is in scope (e.g. push, branch ops), still follow:
+
+- **Never** update git config (`git config`, global or local)
+- **Never** run destructive or irreversible commands (`push --force`, `reset --hard`, etc.) unless the user explicitly requests them
+- **Never** skip hooks (`--no-verify`, `--no-gpg-sign`, etc.) unless the user explicitly requests it
+- **Never** force-push to `main` or `master`; warn the user if they ask
+- **Never** use interactive git (`git add -i`, `git rebase -i`)
+
+## Suggesting a Commit (human runs these)
+
+When the user wants to commit, or work is ready to land, follow this sequence.
+
+### 1. Inspect (run in parallel)
+
+```sh
+git status
+git diff          # staged and unstaged
+git log -10 --oneline   # match recent message style
+```
+
+Do not run extra exploration commands beyond these git commands.
+
+### 2. Draft the message
+
+- **1–2 sentences** focused on **why**, not a file list
+- Match repo style from `git log` (see **Message style** below)
+- List only the paths the human should stage; never include secrets
+
+### 3. Hand off to the human
+
+Provide copy-paste commands, for example:
+
+```sh
+git add <relevant paths>
+git commit -m "$(cat <<'EOF'
+Subject line here.
+
+Optional body when multiple distinct changes need context.
+EOF
+)"
+```
+
+Remind them to run `git status` after committing to verify success.
+
+If pre-commit hooks fail when **they** commit, help fix the reported issue in code; do not commit on their behalf.
+
+## Commit Message Style (this repo)
+
+Recent history favors [Conventional Commits](https://www.conventionalcommits.org/) prefixes:
+
+| Prefix | Use for |
+|--------|---------|
+| `feat:` | New behavior or capability |
+| `fix:` | Bug fix |
+| `refactor:` | Internal restructure, no behavior change |
+| `chore:` | Tooling, CI, deps, housekeeping |
+| `fixup:` | Small follow-up on a prior change |
+
+Also seen: scoped subject (`mcp: …`) or imperative sentence without prefix for focused fixes.
+
+**Examples from this repo:**
+
+```
+feat: add pREST agentic development loop guideline
+fix: update .gitignore and refine agentic-loop configuration guidelines
+refactor: enable DI for controllers and split Adapter interface (#968)
+```
+
+- Prefer the prefix that matches the **primary intent** of the change
+- Add a short body (bullets ok) when the subject alone does not convey enough **why**
+- Reference issue/PR numbers when the change is tied to one (`(#973)`)
+
+## Push and Pull Requests
+
+- **Do not push** to the remote unless the user explicitly asks
+- For PR creation, follow the user's PR workflow rule if present; otherwise use `gh` and base-branch diffs before opening
+- After suggesting a commit, do not push unless asked

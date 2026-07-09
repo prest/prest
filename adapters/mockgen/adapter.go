@@ -300,6 +300,20 @@ func (mr *MockAdapterMockRecorder) FieldsPermissions(arg0, arg1, arg2, arg3, arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FieldsPermissions", reflect.TypeOf((*MockAdapter)(nil).FieldsPermissions), arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
+// Aliases mocks base method.
+func (m *MockAdapter) Aliases() []string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Aliases")
+	ret0, _ := ret[0].([]string)
+	return ret0
+}
+
+// Aliases indicates an expected call of Aliases.
+func (mr *MockAdapterMockRecorder) Aliases() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Aliases", reflect.TypeOf((*MockAdapter)(nil).Aliases))
+}
+
 // GetDatabase mocks base method.
 func (m *MockAdapter) GetDatabase() string {
 	m.ctrl.T.Helper()
