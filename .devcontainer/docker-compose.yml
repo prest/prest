@@ -21,10 +21,10 @@ services:
       - PREST_SSL_MODE=disable
 
   postgres:
-    image: postgres:16
+    image: postgres:18
     restart: unless-stopped
     volumes:
-      - "postgres_data:/var/lib/postgresql/data"
+      - "postgres_data:/var/lib/postgresql"
     environment:
       - POSTGRES_USER=prest
       - POSTGRES_DB=prest
