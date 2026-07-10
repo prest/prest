@@ -1,9 +1,9 @@
 version: "3"
 services:
   postgres:
-    image: postgres:16
+    image: postgres:18
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_DB=prest-test

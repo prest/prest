@@ -20,7 +20,7 @@ x-prestd-service: &prestd-service
 
 services:
   postgres:
-    image: postgres:16
+    image: postgres:18
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
@@ -31,10 +31,10 @@ services:
       timeout: 5s
       retries: 20
     tmpfs:
-      - /var/lib/postgresql/data
+      - /var/lib/postgresql
 
   postgres-b:
-    image: postgres:16
+    image: postgres:18
     environment:
       - POSTGRES_DB=secondary-cluster
       - POSTGRES_USER=postgres
@@ -45,7 +45,7 @@ services:
       timeout: 5s
       retries: 20
     tmpfs:
-      - /var/lib/postgresql/data
+      - /var/lib/postgresql
 
   db-init:
     <<: *prestd-service
