@@ -3240,6 +3240,7 @@ func TestQueryCountCtx_PrepareError(t *testing.T) {
 
 	sc := adapter.QueryCountCtx(ctx, `SELECT COUNT(*) FROM users`)
 	require.Error(t, sc.Err())
+	require.NoError(t, ctxMock.ExpectationsWereMet())
 	require.NoError(t, defaultMock.ExpectationsWereMet())
 }
 
