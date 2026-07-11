@@ -46,6 +46,7 @@ func DoRequestWithHeaders(t *testing.T, url string, r interface{}, method string
 		fmt.Printf("error %+v", err)
 		return
 	}
+	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	assert.Nil(t, err, "error on io ReadAll")
@@ -91,6 +92,7 @@ func DoRequestRaw(t *testing.T, url string, body []byte, method string, expected
 		fmt.Printf("error %+v", err)
 		return
 	}
+	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	assert.Nil(t, err, "error on io ReadAll")

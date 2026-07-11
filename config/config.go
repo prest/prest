@@ -250,6 +250,9 @@ func defaultQueriesPath() string {
 func ensureQueriesPath(cfg *Prest) {
 	if cfg.QueriesConf.Storage == QueriesStorageDatabase {
 		// Database mode uses prest_queries at runtime; location is import-only.
+		if !cfg.QueriesConf.ImportOnStartup {
+			return
+		}
 		if cfg.QueriesPath == "" {
 			return
 		}

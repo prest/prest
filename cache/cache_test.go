@@ -15,6 +15,31 @@ func testConfig() *Config {
 	}
 }
 
+func buntCacheConfig(t *testing.T) *Config {
+	t.Helper()
+
+	return &Config{
+		Enabled:     true,
+		Time:        10,
+		StoragePath: t.TempDir(),
+		SufixFile:   ".cache.prestd.db",
+		Endpoints:   []Endpoint{},
+	}
+}
+
+func TestClearEndpoints(t *testing.T) {
+	t.Parallel()
+
+	cfg := testConfig()
+	cfg.Endpoints = []Endpoint{
+		{Enabled: true, Endpoint: "/prest/public/test", Time: 5},
+	}
+
+	cfg.ClearEndpoints()
+
+	require.Empty(t, cfg.Endpoints)
+}
+
 func TestEndpointRulesEnable(t *testing.T) {
 	t.Parallel()
 

@@ -1,6 +1,8 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -36,6 +38,46 @@ func TestParseQueriesConfig_DatabaseImportDefault(t *testing.T) {
 	require.Equal(t, QueriesStorageDatabase, cfg.QueriesConf.Storage)
 	require.True(t, cfg.QueriesConf.ImportOnStartup)
 	require.True(t, cfg.QueriesConf.MigrateOnStartup)
+}
+
+func TestParseQueriesConfig_ScriptsAndUsers(t *testing.T) {
+	t.Parallel()
+
+	t.Run("valid structured keys", func(t *testing.T) {
+		t.Parallel()
+
+		v := viper.New()
+		v.Set("queries.scripts", []map[string]any{
+			{"name": "list_users", "permissions": []string{"read"}},
+		})
+		v.Set("queries.users", []map[string]any{
+			{"name": "alice", "scripts": []map[string]any{
+				{"name": "list_users", "permissions": []string{"read"}},
+			}},
+		})
+		cfg := &Prest{}
+		parseQueriesConfig(v, cfg)
+
+		require.Len(t, cfg.QueriesConf.Scripts, 1)
+		require.Equal(t, "list_users", cfg.QueriesConf.Scripts[0].Name)
+		require.Equal(t, []string{"read"}, cfg.QueriesConf.Scripts[0].Permissions)
+		require.Len(t, cfg.QueriesConf.Users, 1)
+		require.Equal(t, "alice", cfg.QueriesConf.Users[0].Name)
+		require.Len(t, cfg.QueriesConf.Users[0].Scripts, 1)
+	})
+
+	t.Run("invalid keys fall back to zero value", func(t *testing.T) {
+		t.Parallel()
+
+		v := viper.New()
+		v.Set("queries.scripts", "not-an-array")
+		v.Set("queries.users", 123)
+		cfg := &Prest{}
+		parseQueriesConfig(v, cfg)
+
+		require.Empty(t, cfg.QueriesConf.Scripts)
+		require.Empty(t, cfg.QueriesConf.Users)
+	})
 }
 
 func TestParseQueriesConfig_ExplicitMigrateOnStartup(t *testing.T) {
@@ -74,6 +116,42 @@ func TestEnsureQueriesConfig_RestrictDisabledWithoutAuth(t *testing.T) {
 	}
 	ensureQueriesConfig(cfg)
 	require.False(t, cfg.QueriesConf.Restrict)
+}
+
+func TestEnsureQueriesPath_DatabaseModeSkipsWhenImportDisabled(t *testing.T) {
+	t.Parallel()
+
+	importPath := filepath.Join(t.TempDir(), "does-not-exist-yet")
+	cfg := &Prest{
+		QueriesPath: importPath,
+		QueriesConf: QueriesConf{
+			Storage:         QueriesStorageDatabase,
+			ImportOnStartup: false,
+		},
+	}
+	ensureQueriesPath(cfg)
+
+	_, err := os.Stat(importPath)
+	require.True(t, os.IsNotExist(err))
+	require.Equal(t, importPath, cfg.QueriesPath)
+}
+
+func TestEnsureQueriesPath_DatabaseModeProvisionsWhenImportEnabled(t *testing.T) {
+	t.Parallel()
+
+	importPath := filepath.Join(t.TempDir(), "import-queries")
+	cfg := &Prest{
+		QueriesPath: importPath,
+		QueriesConf: QueriesConf{
+			Storage:         QueriesStorageDatabase,
+			ImportOnStartup: true,
+		},
+	}
+	ensureQueriesPath(cfg)
+
+	info, err := os.Stat(importPath)
+	require.NoError(t, err)
+	require.True(t, info.IsDir())
 }
 
 func TestEnsureQueriesConfig_InvalidImportPolicy(t *testing.T) {

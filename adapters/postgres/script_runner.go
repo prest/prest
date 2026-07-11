@@ -99,7 +99,7 @@ func (adapter *postgres) ParseScriptTemplate(name, content string, templateData 
 	var buff bytes.Buffer
 	err = tpl.Execute(&buff, funcs.TemplateData)
 	if err != nil {
-		return "", nil, fmt.Errorf("could not execute template %v", err)
+		return "", nil, fmt.Errorf("could not execute template: %w", err)
 	}
 	return buff.String(), funcs.Args, nil
 }

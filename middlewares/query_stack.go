@@ -94,7 +94,7 @@ func ScriptAccessControl(perms adapters.ScriptPermissionsChecker) negroni.Handle
 			return
 		}
 
-		if perms.ScriptPermissions(database, location, name, permission, userName) {
+		if perms.ScriptPermissions(ctx, database, location, name, permission, userName) {
 			next(rw, rq)
 			return
 		}

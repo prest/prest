@@ -1,15 +1,21 @@
 package middlewares
 
-import "github.com/prest/prest/v2/adapters"
+import (
+	"context"
 
-type allowAllScriptPerms struct{}
+	"github.com/prest/prest/v2/adapters"
+)
 
-func (allowAllScriptPerms) ScriptPermissions(_, _, _, _, _ string) bool { return true }
+type denyAllScriptPerms struct{}
 
-// ScriptPermsFromAdapter returns ScriptPermissionsChecker from the adapter or allow-all when absent.
+func (denyAllScriptPerms) ScriptPermissions(_ context.Context, _, _, _, _, _ string) bool {
+	return false
+}
+
+// ScriptPermsFromAdapter returns ScriptPermissionsChecker from the adapter or deny-all when absent.
 func ScriptPermsFromAdapter(a adapters.Adapter) adapters.ScriptPermissionsChecker {
 	if perms, ok := a.(adapters.ScriptPermissionsChecker); ok {
 		return perms
 	}
-	return allowAllScriptPerms{}
+	return denyAllScriptPerms{}
 }

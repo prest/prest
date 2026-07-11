@@ -81,7 +81,7 @@ func ensureSchemaMigrated(cfg *config.Prest) error {
 
 	db, err := PostgresDB(cfg)
 	if err != nil {
-		return err
+		return fmt.Errorf("acquire database connection for startup migration: %w", err)
 	}
 
 	if needAuth {
@@ -117,7 +117,7 @@ func ensureQueriesImported(cfg *config.Prest) error {
 
 	registry, ok := cfg.Adapter.(adapters.QueryRegistry)
 	if !ok {
-		return nil
+		return ErrAdapterNotQueryRegistry
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -126,7 +126,7 @@ func ensureQueriesImported(cfg *config.Prest) error {
 
 	report, err := registry.ImportFromFilesystem(ctx, queriesPath, qc.ImportPolicy)
 	if err != nil {
-		return err
+		return fmt.Errorf("import query scripts from %s: %w", queriesPath, err)
 	}
 	slog.Info("queries filesystem import complete",
 		"inserted", report.Inserted,

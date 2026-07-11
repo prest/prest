@@ -88,3 +88,50 @@ func TestNewHandlersFromConfig(t *testing.T) {
 	h := NewHandlersFromConfig(&config.Prest{Adapter: adapter})
 	require.NotNil(t, h.CRUD)
 }
+
+func TestNewHandlers_QueryRegistryRequiresAdapter(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	adapter := mockgen.NewMockAdapter(ctrl)
+	cfg := &config.Prest{
+		QueriesConf: config.QueriesConf{
+			RegisterEnabled: true,
+			Storage:         config.QueriesStorageDatabase,
+		},
+	}
+
+	h := NewHandlers(Deps{
+		Catalog:  adapter,
+		Builder:  adapter,
+		Executor: adapter,
+		SQL:      adapter,
+		Perms:    adapter,
+		Scripts:  adapter,
+		DB:       adapter,
+	}, cfg)
+	require.Nil(t, h.QueryRegistry)
+}
+
+func TestNewHandlers_QueryRegistryWithAdapter(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	registry := mockgen.NewMockQueryRegistry(ctrl)
+	cfg := &config.Prest{
+		QueriesConf: config.QueriesConf{
+			RegisterEnabled: true,
+			Storage:         config.QueriesStorageDatabase,
+		},
+	}
+
+	h := NewHandlers(Deps{
+		QueryRegistry: registry,
+		DB:            mockgen.NewMockAdapter(ctrl),
+	}, cfg)
+	require.NotNil(t, h.QueryRegistry)
+}

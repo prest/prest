@@ -36,5 +36,5 @@ type QueryRegistry interface {
 
 // ScriptPermissionsChecker validates custom query execution access.
 type ScriptPermissionsChecker interface {
-	ScriptPermissions(databaseAlias, location, name, op, userName string) bool
+	ScriptPermissions(ctx context.Context, databaseAlias, location, name, op, userName string) bool
 }

@@ -12,7 +12,7 @@ import (
 // EnsureAuthTable creates the configured auth users table when missing.
 func EnsureAuthTable(cfg *config.Prest, db *sqlx.DB) error {
 	_, err := db.Exec(fmt.Sprintf(
-		"CREATE TABLE IF NOT EXISTS %s.%s (id serial, name text, username text unique, password text, metadata jsonb)",
+		"CREATE TABLE IF NOT EXISTS %s.%s (id serial PRIMARY KEY, name text, username text unique, password text, metadata jsonb)",
 		pq.QuoteIdentifier(cfg.AuthSchema),
 		pq.QuoteIdentifier(cfg.AuthTable),
 	))

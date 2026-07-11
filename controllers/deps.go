@@ -110,7 +110,7 @@ func NewHandlers(deps Deps, cfg *config.Prest) *Handlers {
 		Health:  NewHealthHandler(checks),
 		Ready:   NewHealthHandler(DefaultReadyCheckList(deps.Readiness)),
 	}
-	if cfg != nil && cfg.QueriesConf.RegisterEnabled && cfg.QueriesConf.Storage == config.QueriesStorageDatabase {
+	if cfg != nil && deps.QueryRegistry != nil && cfg.QueriesConf.RegisterEnabled && cfg.QueriesConf.Storage == config.QueriesStorageDatabase {
 		h.QueryRegistry = NewQueryRegistryHandler(deps, cfg.QueriesConf)
 	}
 	return h

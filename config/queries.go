@@ -86,14 +86,8 @@ func parseQueriesConfig(v *viper.Viper, cfg *Prest) {
 		q.ImportPolicy = QueriesImportPolicyUpdate
 	}
 
-	if err := v.UnmarshalKey("queries.scripts", &q.Scripts); err != nil {
-		slog.Warn("config key invalid, using default", "key", "queries.scripts", "err", err)
-		q.Scripts = nil
-	}
-	if err := v.UnmarshalKey("queries.users", &q.Users); err != nil {
-		slog.Warn("config key invalid, using default", "key", "queries.users", "err", err)
-		q.Users = nil
-	}
+	q.Scripts = unmarshalKeyOrZero[[]ScriptConf](v, "queries.scripts")
+	q.Users = unmarshalKeyOrZero[[]QueryUsersConf](v, "queries.users")
 }
 
 func ensureQueriesConfig(cfg *Prest) {
@@ -101,18 +95,18 @@ func ensureQueriesConfig(cfg *Prest) {
 
 	if q.RegisterEnabled {
 		if !cfg.AuthEnabled || cfg.JWTKey == "" {
-			slog.Error("query registration disabled: auth.enabled and jwt.key required",
+			slog.Warn("query registration disabled: auth.enabled and jwt.key required",
 				"err", ErrQueryRegisterAuthRequired)
 			q.RegisterEnabled = false
 		} else if len(q.RegisterAdmins) == 0 {
-			slog.Error("query registration disabled: queries.register_admins is empty",
+			slog.Warn("query registration disabled: queries.register_admins is empty",
 				"err", ErrQueryRegisterNoAdmins)
 			q.RegisterEnabled = false
 		}
 	}
 
 	if q.Restrict && !cfg.AuthEnabled {
-		slog.Error("query ACL disabled: queries.restrict requires auth.enabled",
+		slog.Warn("query ACL disabled: queries.restrict requires auth.enabled",
 			"err", ErrQueryRestrictAuthRequired)
 		q.Restrict = false
 	}

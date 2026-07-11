@@ -1,13 +1,15 @@
 package postgres
 
 import (
+	"context"
 	"slices"
 
 	"github.com/prest/prest/v2/config"
 )
 
 // ScriptPermissions checks whether a user may execute a stored query script.
-func (adapter *postgres) ScriptPermissions(databaseAlias, location, name, op, userName string) bool {
+// ctx is reserved for future DB-backed permission checks; the current implementation is config-only.
+func (adapter *postgres) ScriptPermissions(_ context.Context, databaseAlias, location, name, op, userName string) bool {
 	qc := adapter.cfg.QueriesConf
 	if !qc.Restrict {
 		return true

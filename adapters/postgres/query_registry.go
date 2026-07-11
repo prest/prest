@@ -92,7 +92,10 @@ func (adapter *postgres) ListQueries(ctx context.Context, databaseAlias, locatio
 		q.CreatedBy = createdBy.String
 		out = append(out, q)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return out, fmt.Errorf("list queries rows: %w", err)
+	}
+	return out, nil
 }
 
 // GetQuery returns one stored query.
@@ -131,7 +134,7 @@ func (adapter *postgres) GetQuery(ctx context.Context, databaseAlias, location, 
 		lastErr = err
 	}
 	if lastErr != nil {
-		return adapters.StoredQuery{}, fmt.Errorf("query not found")
+		return adapters.StoredQuery{}, fmt.Errorf("query not found: %w", lastErr)
 	}
 	q.ReadSQL = readSQL.String
 	q.WriteSQL = writeSQL.String

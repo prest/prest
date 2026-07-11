@@ -82,8 +82,7 @@ func (h *QueryRegistryHandler) Create(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, q)
+	writeJSONStatus(w, http.StatusCreated, q)
 }
 
 // Update handles PUT /_QUERIES/registry/{location}/{name}.
@@ -145,7 +144,12 @@ func (h *QueryRegistryHandler) decodeBody(w http.ResponseWriter, r *http.Request
 }
 
 func writeJSON(w http.ResponseWriter, v interface{}) {
+	writeJSONStatus(w, http.StatusOK, v)
+}
+
+func writeJSONStatus(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	_ = enc.Encode(v)

@@ -19,11 +19,11 @@ var queriesUpCmd = &cobra.Command{
 		db, err := app.PostgresDB(cfg)
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
-			return err
+			return fmt.Errorf("acquire database connection for queries create: %w", err)
 		}
 		if err := app.EnsureQueriesTable(cfg, db); err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
-			return err
+			return fmt.Errorf("create queries table %s.%s: %w", cfg.QueriesConf.Schema, cfg.QueriesConf.Table, err)
 		}
 		return nil
 	},
@@ -39,7 +39,7 @@ var queriesDownCmd = &cobra.Command{
 		db, err := app.PostgresDB(cfg)
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
-			return err
+			return fmt.Errorf("acquire database connection for queries drop: %w", err)
 		}
 		_, err = db.Exec(fmt.Sprintf(
 			"DROP TABLE IF EXISTS %s.%s",
@@ -48,7 +48,7 @@ var queriesDownCmd = &cobra.Command{
 		))
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
-			return err
+			return fmt.Errorf("drop queries table %s.%s: %w", cfg.QueriesConf.Schema, cfg.QueriesConf.Table, err)
 		}
 		return nil
 	},
