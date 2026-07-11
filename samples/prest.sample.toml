@@ -1,0 +1,219 @@
+# Sample pREST configuration file.
+#
+# This file documents every option accepted by prest.toml, alongside its
+# default value (as set in config/config.go's viperCfg). Every key can also
+# be set via an environment variable: PREST_<SECTION>_<KEY> (with dots
+# replaced by underscores), e.g. `http.port` becomes `PREST_HTTP_PORT`.
+#
+# None of the sections below are required: pREST runs with sane defaults
+# even if this file is missing entirely.
+
+version = 1
+
+# Base path all pREST HTTP routes are served under.
+context = "/"
+
+# Enables verbose debug logging.
+debug = false
+
+# Directory pREST loads .so plugin middlewares from.
+pluginpath = "./lib"
+
+# Directory of .sql migration files.
+# migrations = "./migrations"
+
+# Custom Go plugin middlewares, loaded from `pluginpath`, run before request
+# handling. Each entry maps to a compiled .so file and the exported function
+# name to call.
+#
+# [[pluginmiddlewarelist]]
+# file = "custom_auth"
+# func = "Middleware"
+
+
+# ------------------------------------------------------------------------
+# [http] - the HTTP server pREST itself exposes.
+# ------------------------------------------------------------------------
+[http]
+host = "0.0.0.0"
+port = 3000
+timeout = 60 # seconds
+
+
+# ------------------------------------------------------------------------
+# [https] - TLS for pREST's own HTTP server (the connector clients talk to).
+#
+# This is NOT the same as [pg.ssl] below, which controls how pREST connects
+# to PostgreSQL. If you want to serve pREST itself over HTTPS, configure
+# this section; [pg.ssl] only affects the database connection.
+# ------------------------------------------------------------------------
+[https]
+mode = false
+cert = "/etc/certs/cert.crt"
+key = "/etc/certs/cert.key"
+
+
+# ------------------------------------------------------------------------
+# [pg] - the PostgreSQL connection pREST serves data from.
+# ------------------------------------------------------------------------
+[pg]
+host = "127.0.0.1"
+port = 5432
+user = "postgres"
+pass = "postgres"
+database = "prest"
+# Alternative to host/port/user/pass/database: a single connection URL.
+# When set, it takes precedence and is parsed for the fields above.
+# url = "postgres://user:pass@localhost:5432/prest?sslmode=disable"
+maxidleconn = 0  # 0 avoids DB connections leaking on request timeout
+maxopenconn = 10
+conntimeout = 10 # seconds
+# Whether a single shared DB connection is used (true) or the per-request
+# lifecycle is used (false). Ignored when a `[[databases]]` registry (see
+# below) is configured.
+single = true
+# Enables query result caching against this database (see [cache] below).
+cache = true
+
+# TLS for the connection to PostgreSQL itself. This is unrelated to [https]
+# above, which is about pREST's own HTTP listener.
+[pg.ssl]
+mode = "disable" # disable | require | verify-ca | verify-full
+# cert = "/etc/certs/pg-client.crt"
+# key = "/etc/certs/pg-client.key"
+# rootcert = "/etc/certs/pg-root.crt"
+
+
+# ------------------------------------------------------------------------
+# [[databases]] - optional multi-database registry.
+#
+# When present, pREST serves multiple named PostgreSQL databases instead of
+# the single [pg] connection above; each is reachable under its alias in the
+# URL path. Omit this section entirely to use only the [pg] database.
+# ------------------------------------------------------------------------
+# [[databases]]
+# alias = "app"
+# url = "postgres://user:pass@localhost:5432/app_db?sslmode=disable"
+# maxopenconn = 10
+# maxidleconn = 0
+#
+#   [databases.ssl]
+#   mode = "disable"
+#
+# [[databases]]
+# alias = "reporting"
+# host = "127.0.0.1"
+# port = 5432
+# user = "postgres"
+# pass = "postgres"
+# database = "reporting_db"
+
+
+# ------------------------------------------------------------------------
+# [auth] - basic username/password authentication against a users table.
+# ------------------------------------------------------------------------
+[auth]
+enabled = false
+schema = "public"
+table = "prest_users"
+username = "username"
+password = "password"
+# Password hashing algorithm used when validating the users table.
+encrypt = "bcrypt" # bcrypt | md5
+# Extra columns from the users table to embed as JWT claims.
+metadata = ["first_name", "last_name"]
+# Where credentials are read from on login: request body, basic auth header,
+# etc.
+type = "body"
+
+
+# ------------------------------------------------------------------------
+# [jwt] - JWT verification for authenticated requests.
+# ------------------------------------------------------------------------
+[jwt]
+# Enables a default JWT middleware on all routes. Requires one of key,
+# jwks or wellknownurl below to be set; otherwise it is auto-disabled.
+default = false
+# HMAC secret used to sign/verify HS256 tokens (also used by [auth] above).
+# key = "change-me-to-a-long-random-secret"
+algo = "HS256"
+# Alternative to `key`: a raw JWKS document, or a URL to fetch one from.
+# jwks = ""
+# wellknownurl = ""
+# Route patterns (regex) exempted from JWT verification.
+whitelist = ["^\\/auth$"]
+
+
+# ------------------------------------------------------------------------
+# [access] - restrict which schemas/tables/columns are exposed, optionally
+# per-user.
+# ------------------------------------------------------------------------
+[access]
+# When true, only tables listed in [[access.tables]] below are reachable;
+# everything else returns 401.
+restrict = false
+ignore_table = []
+
+# [[access.tables]]
+# name = "customers"
+# permissions = ["read", "write", "delete"]
+# fields = ["id", "name", "email"]
+#
+# Per-user overrides: if a user has no entry here, the table-level
+# permissions above apply.
+# [[access.users]]
+# name = "readonly_user"
+#   [[access.users.tables]]
+#   name = "customers"
+#   permissions = ["read"]
+
+
+# ------------------------------------------------------------------------
+# [expose] - control discovery/listing endpoints (as opposed to [access],
+# which controls whether data can be read/written).
+# ------------------------------------------------------------------------
+[expose]
+enabled = false
+databases = true
+schemas = true
+tables = true
+
+
+# ------------------------------------------------------------------------
+# [cors]
+# ------------------------------------------------------------------------
+[cors]
+alloworigin = ["*"]
+allowheaders = ["Content-Type"]
+allowmethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"]
+allowcredentials = true
+
+
+# ------------------------------------------------------------------------
+# [cache] - query result caching.
+# ------------------------------------------------------------------------
+[cache]
+enabled = false
+time = 10 # seconds
+storagepath = "./"
+sufixfile = ".cache.prestd.db"
+
+# Per-endpoint overrides of the cache settings above.
+# [[cache.endpoints]]
+# endpoint = "/prest/public/customers"
+# enabled = true
+# time = 60
+
+
+# ------------------------------------------------------------------------
+# [queries] - named, reusable .sql query files.
+# ------------------------------------------------------------------------
+# Directory of named, reusable .sql query files. Defaults to ~/queries.
+# [queries]
+# location = "./queries"
+
+[json]
+[json.agg]
+# jsonb_agg (default) or json_agg; see
+# https://www.postgresql.org/docs/9.5/functions-aggregate.html
+type = "jsonb_agg"
