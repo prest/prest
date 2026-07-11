@@ -67,7 +67,7 @@ func TestNewHandlers(t *testing.T) {
 		Perms:    adapter,
 		Scripts:  adapter,
 		DB:       adapter,
-	})
+	}, nil)
 
 	require.NotNil(t, h.Auth)
 	require.NotNil(t, h.Catalog)

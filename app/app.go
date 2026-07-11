@@ -1,12 +1,18 @@
 package app
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"log/slog"
 	"net/http"
+	"os"
+	"time"
 
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/adapters/postgres"
 	"github.com/prest/prest/v2/config"
+	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers"
 	"github.com/prest/prest/v2/middlewares"
 	"github.com/prest/prest/v2/plugins"
@@ -39,18 +45,95 @@ func New(cfg *config.Prest) (*App, error) {
 		cfg.Adapter = pg
 	}
 
+	if err := ensureSchemaMigrated(cfg); err != nil {
+		return nil, err
+	}
+
+	if err := ensureQueriesImported(cfg); err != nil {
+		return nil, err
+	}
+
 	deps := controllers.NewDepsFromConfig(cfg)
-	h := controllers.NewHandlers(deps)
+	h := controllers.NewHandlers(deps, cfg)
 
 	plg := plugins.New(cfg)
 	crud := middlewares.NewCRUDStack(cfg, plg)
+	queryStack := middlewares.NewQueryStack(cfg, middlewares.ScriptPermsFromAdapter(cfg.Adapter))
+	var adminStack *middlewares.AdminQueryStack
+	if cfg.QueriesConf.RegisterEnabled && cfg.QueriesConf.Storage == config.QueriesStorageDatabase {
+		adminStack = middlewares.NewAdminQueryStack(cfg)
+	}
 
 	mux := mux.NewRouter().StrictSlash(true)
-	router.RegisterRoutes(mux, cfg, h, crud, plg)
+	router.RegisterRoutes(mux, cfg, h, crud, queryStack, adminStack, plg)
 
 	n := middlewares.New(cfg)
 	n.UseHandler(mux)
 	return &App{Config: cfg, Handler: n, pg: cfg.Adapter}, nil
+}
+
+func ensureSchemaMigrated(cfg *config.Prest) error {
+	needAuth := cfg.AuthEnabled && cfg.AuthMigrateOnStartup
+	needQueries := cfg.QueriesConf.Storage == config.QueriesStorageDatabase && cfg.QueriesConf.MigrateOnStartup
+	if !needAuth && !needQueries {
+		return nil
+	}
+
+	db, err := PostgresDB(cfg)
+	if err != nil {
+		return err
+	}
+
+	if needAuth {
+		if err := EnsureAuthTable(cfg, db); err != nil {
+			return fmt.Errorf("migrate auth table %s.%s: %w", cfg.AuthSchema, cfg.AuthTable, err)
+		}
+		slog.Info("auth table migration complete", "schema", cfg.AuthSchema, "table", cfg.AuthTable)
+	}
+
+	if needQueries {
+		qc := cfg.QueriesConf
+		if err := EnsureQueriesTable(cfg, db); err != nil {
+			return fmt.Errorf("migrate queries table %s.%s: %w", qc.Schema, qc.Table, err)
+		}
+		slog.Info("queries table migration complete", "schema", qc.Schema, "table", qc.Table)
+	}
+
+	return nil
+}
+
+func ensureQueriesImported(cfg *config.Prest) error {
+	qc := cfg.QueriesConf
+	if qc.Storage != config.QueriesStorageDatabase || !qc.ImportOnStartup {
+		return nil
+	}
+	queriesPath := cfg.QueriesPath
+	if env := os.Getenv("PREST_QUERIES_LOCATION"); env != "" {
+		queriesPath = env
+	}
+	if queriesPath == "" {
+		return nil
+	}
+
+	registry, ok := cfg.Adapter.(adapters.QueryRegistry)
+	if !ok {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	ctx = context.WithValue(ctx, pctx.DBNameKey, cfg.PGDatabase)
+
+	report, err := registry.ImportFromFilesystem(ctx, queriesPath, qc.ImportPolicy)
+	if err != nil {
+		return err
+	}
+	slog.Info("queries filesystem import complete",
+		"inserted", report.Inserted,
+		"updated", report.Updated,
+		"skipped", report.Skipped,
+		"location", queriesPath)
+	return nil
 }
 
 // EnsureAdapter connects the postgres adapter when cfg.Adapter is nil.

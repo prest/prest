@@ -48,7 +48,9 @@ var RootCmd = &cobra.Command{
 // Execute adds all child commands to the root command sets flags appropriately.
 func Execute(ctx context.Context, cfg *config.Prest) {
 	upCmd.AddCommand(authUpCmd)
+	upCmd.AddCommand(queriesUpCmd)
 	downCmd.AddCommand(authDownCmd)
+	downCmd.AddCommand(queriesDownCmd)
 	migrateCmd.AddCommand(downCmd)
 	migrateCmd.AddCommand(mversionCmd)
 	migrateCmd.AddCommand(nextCmd)

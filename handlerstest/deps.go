@@ -9,5 +9,5 @@ import (
 // NewTestHandlers constructs handlers from injected dependencies for unit tests.
 func NewTestHandlers(t *testing.T, deps controllers.Deps) *controllers.Handlers {
 	t.Helper()
-	return controllers.NewHandlers(deps)
+	return controllers.NewHandlers(deps, nil)
 }

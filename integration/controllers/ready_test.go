@@ -13,6 +13,11 @@ func TestReadyEndpoint(t *testing.T) {
 	testutils.DoRequest(t, base+"/_ready", nil, "GET", http.StatusOK, "ReadyEndpoint")
 }
 
+func TestQueriesServerReady(t *testing.T) {
+	base := helpers.QueriesServerURL(t)
+	testutils.DoRequest(t, base+"/_ready", nil, "GET", http.StatusOK, "QueriesServerReady")
+}
+
 func TestScriptRouteWithDatabase(t *testing.T) {
 	base := helpers.ServerURL(t)
 	testutils.DoRequest(t, base+"/_QUERIES/prest-test/fulltable/get_all?field1=gopher", nil, "GET", http.StatusOK, "ScriptRouteWithDatabase")

@@ -162,8 +162,13 @@ func IntegrationHandler(t *testing.T, cfg *config.Prest) http.Handler {
 	h := controllers.NewHandlersFromConfig(cfg)
 	plg := plugins.New(cfg)
 	crud := middlewares.NewCRUDStack(cfg, plg)
+	queryStack := middlewares.NewQueryStack(cfg, middlewares.ScriptPermsFromAdapter(cfg.Adapter))
+	var adminStack *middlewares.AdminQueryStack
+	if cfg.QueriesConf.RegisterEnabled && cfg.QueriesConf.Storage == config.QueriesStorageDatabase {
+		adminStack = middlewares.NewAdminQueryStack(cfg)
+	}
 	muxRouter := mux.NewRouter().StrictSlash(true)
-	router.RegisterRoutes(muxRouter, cfg, h, crud, plg)
+	router.RegisterRoutes(muxRouter, cfg, h, crud, queryStack, adminStack, plg)
 	n := MiddlewareStack(cfg)
 	n.UseHandler(muxRouter)
 	return n

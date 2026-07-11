@@ -10,10 +10,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var authUpCmd = &cobra.Command{
-	Use:   "auth",
-	Short: "Create auth table",
-	Long:  "Create basic table to use on auth endpoint",
+var queriesUpCmd = &cobra.Command{
+	Use:   "queries",
+	Short: "Create queries table",
+	Long:  "Create table used for database-backed custom SQL scripts",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg := configFrom(cmd)
 		db, err := app.PostgresDB(cfg)
@@ -21,7 +21,7 @@ var authUpCmd = &cobra.Command{
 			fmt.Fprint(os.Stdout, err.Error())
 			return err
 		}
-		if err := app.EnsureAuthTable(cfg, db); err != nil {
+		if err := app.EnsureQueriesTable(cfg, db); err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
 			return err
 		}
@@ -29,10 +29,10 @@ var authUpCmd = &cobra.Command{
 	},
 }
 
-var authDownCmd = &cobra.Command{
-	Use:   "auth",
-	Short: "Drop auth table",
-	Long:  "Drop basic table used on auth endpoint",
+var queriesDownCmd = &cobra.Command{
+	Use:   "queries",
+	Short: "Drop queries table",
+	Long:  "Drop table used for database-backed custom SQL scripts",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg := configFrom(cmd)
 
@@ -41,7 +41,11 @@ var authDownCmd = &cobra.Command{
 			fmt.Fprint(os.Stdout, err.Error())
 			return err
 		}
-		_, err = db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", pq.QuoteIdentifier(cfg.AuthSchema), pq.QuoteIdentifier(cfg.AuthTable)))
+		_, err = db.Exec(fmt.Sprintf(
+			"DROP TABLE IF EXISTS %s.%s",
+			pq.QuoteIdentifier(cfg.QueriesConf.Schema),
+			pq.QuoteIdentifier(cfg.QueriesConf.Table),
+		))
 		if err != nil {
 			fmt.Fprint(os.Stdout, err.Error())
 			return err

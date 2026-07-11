@@ -37,6 +37,20 @@ func (m *MockAdapter) EXPECT() *MockAdapterMockRecorder {
 	return m.recorder
 }
 
+// Aliases mocks base method.
+func (m *MockAdapter) Aliases() []string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Aliases")
+	ret0, _ := ret[0].([]string)
+	return ret0
+}
+
+// Aliases indicates an expected call of Aliases.
+func (mr *MockAdapterMockRecorder) Aliases() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Aliases", reflect.TypeOf((*MockAdapter)(nil).Aliases))
+}
+
 // BatchInsertCopy mocks base method.
 func (m *MockAdapter) BatchInsertCopy(arg0, arg1, arg2 string, arg3 []string, arg4 ...interface{}) adapters.Scanner {
 	m.ctrl.T.Helper()
@@ -300,20 +314,6 @@ func (mr *MockAdapterMockRecorder) FieldsPermissions(arg0, arg1, arg2, arg3, arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FieldsPermissions", reflect.TypeOf((*MockAdapter)(nil).FieldsPermissions), arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
-// Aliases mocks base method.
-func (m *MockAdapter) Aliases() []string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Aliases")
-	ret0, _ := ret[0].([]string)
-	return ret0
-}
-
-// Aliases indicates an expected call of Aliases.
-func (mr *MockAdapterMockRecorder) Aliases() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Aliases", reflect.TypeOf((*MockAdapter)(nil).Aliases))
-}
-
 // GetDatabase mocks base method.
 func (m *MockAdapter) GetDatabase() string {
 	m.ctrl.T.Helper()
@@ -567,6 +567,22 @@ func (mr *MockAdapterMockRecorder) ParseScript(arg0, arg1 interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ParseScript", reflect.TypeOf((*MockAdapter)(nil).ParseScript), arg0, arg1)
 }
 
+// ParseScriptTemplate mocks base method.
+func (m *MockAdapter) ParseScriptTemplate(arg0, arg1 string, arg2 map[string]interface{}) (string, []interface{}, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ParseScriptTemplate", arg0, arg1, arg2)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].([]interface{})
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ParseScriptTemplate indicates an expected call of ParseScriptTemplate.
+func (mr *MockAdapterMockRecorder) ParseScriptTemplate(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ParseScriptTemplate", reflect.TypeOf((*MockAdapter)(nil).ParseScriptTemplate), arg0, arg1, arg2)
+}
+
 // PhysicalName mocks base method.
 func (m *MockAdapter) PhysicalName(arg0 string) string {
 	m.ctrl.T.Helper()
@@ -683,6 +699,21 @@ func (mr *MockAdapterMockRecorder) QueryCtx(arg0, arg1 interface{}, arg2 ...inte
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryCtx", reflect.TypeOf((*MockAdapter)(nil).QueryCtx), varargs...)
+}
+
+// ResolveScript mocks base method.
+func (m *MockAdapter) ResolveScript(arg0 context.Context, arg1, arg2, arg3, arg4 string) (adapters.ScriptSource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResolveScript", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(adapters.ScriptSource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ResolveScript indicates an expected call of ResolveScript.
+func (mr *MockAdapterMockRecorder) ResolveScript(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveScript", reflect.TypeOf((*MockAdapter)(nil).ResolveScript), arg0, arg1, arg2, arg3, arg4)
 }
 
 // ReturningByRequest mocks base method.

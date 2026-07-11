@@ -69,6 +69,7 @@ type PluginMiddleware struct {
 // Prest basic config
 type Prest struct {
 	AuthEnabled          bool
+	AuthMigrateOnStartup bool
 	AuthSchema           string
 	AuthTable            string
 	AuthUsername         string
@@ -102,6 +103,7 @@ type Prest struct {
 	JSONAggType          string
 	MigrationsPath       string
 	QueriesPath          string
+	QueriesConf          QueriesConf
 	AccessConf           AccessConf
 	ExposeConf           ExposeConf
 	CORSAllowOrigin      []string
@@ -155,6 +157,7 @@ func Load() (*Prest, error) {
 
 	ensureJWTConfig(cfg)
 	ensureQueriesPath(cfg)
+	ensureQueriesConfig(cfg)
 
 	if !cfg.Cache.Enabled {
 		return setupLogger(cfg)
@@ -245,6 +248,17 @@ func defaultQueriesPath() string {
 }
 
 func ensureQueriesPath(cfg *Prest) {
+	if cfg.QueriesConf.Storage == QueriesStorageDatabase {
+		// Database mode uses prest_queries at runtime; location is import-only.
+		if cfg.QueriesPath == "" {
+			return
+		}
+		if err := ensureDir(cfg.QueriesPath); err != nil {
+			slog.Warn("queries import path unavailable", "path", cfg.QueriesPath, "err", err)
+		}
+		return
+	}
+
 	configuredPath := cfg.QueriesPath
 	err := ensureDir(configuredPath)
 	if err == nil {
@@ -368,6 +382,12 @@ func viperCfg() (*viper.Viper, string) {
 	v.SetDefault("expose.databases", true)
 
 	v.SetDefault("queries.location", defaultQueriesPath())
+	v.SetDefault("queries.storage", QueriesStorageFilesystem)
+	v.SetDefault("queries.schema", "public")
+	v.SetDefault("queries.table", "prest_queries")
+	v.SetDefault("queries.restrict", false)
+	v.SetDefault("queries.register_enabled", false)
+	v.SetDefault("queries.import_policy", QueriesImportPolicyUpdate)
 	return v, configPath
 }
 
@@ -406,6 +426,7 @@ func Parse(v *viper.Viper, cfg *Prest, configPath string) {
 	cfg.AccessConf.Restrict = v.GetBool("access.restrict")
 	cfg.AccessConf.IgnoreTable = v.GetStringSlice("access.ignore_table")
 	cfg.QueriesPath = v.GetString("queries.location")
+	parseQueriesConfig(v, cfg)
 
 	cfg.CORSAllowOrigin = v.GetStringSlice("cors.alloworigin")
 	cfg.CORSAllowHeaders = v.GetStringSlice("cors.allowheaders")
@@ -596,6 +617,11 @@ func loadCacheConfig(v *viper.Viper, cfg *Prest) {
 
 func parseAuthConfig(v *viper.Viper, cfg *Prest) {
 	cfg.AuthEnabled = v.GetBool("auth.enabled")
+	if v.IsSet("auth.migrate_on_startup") {
+		cfg.AuthMigrateOnStartup = v.GetBool("auth.migrate_on_startup")
+	} else {
+		cfg.AuthMigrateOnStartup = cfg.AuthEnabled
+	}
 	cfg.AuthSchema = v.GetString("auth.schema")
 	cfg.AuthTable = v.GetString("auth.table")
 	cfg.AuthUsername = v.GetString("auth.username")

@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
+	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/adapters/mockgen"
 	"github.com/stretchr/testify/require"
 )
@@ -19,8 +20,10 @@ func TestScriptHandler_Execute_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	scripts := mockgen.NewMockScriptRunner(ctrl)
-	scripts.EXPECT().GetScript(http.MethodGet, "queries", "list").Return("/tmp/list.sql", nil)
-	scripts.EXPECT().ParseScript("/tmp/list.sql", gomock.Any()).Return(`SELECT 1`, nil, nil)
+	scripts.EXPECT().ResolveScript(gomock.Any(), http.MethodGet, "queries", "list", "prest-test").Return(adapters.ScriptSource{
+		Name: "list.read.sql", Content: "SELECT 1",
+	}, nil)
+	scripts.EXPECT().ParseScriptTemplate("list.read.sql", "SELECT 1", gomock.Any()).Return(`SELECT 1`, nil, nil)
 
 	scanner := mockgen.NewMockScanner(ctrl)
 	scanner.EXPECT().Err().Return(nil)
@@ -50,8 +53,10 @@ func TestScriptHandler_Execute_DefaultDatabase(t *testing.T) {
 	defer ctrl.Finish()
 
 	scripts := mockgen.NewMockScriptRunner(ctrl)
-	scripts.EXPECT().GetScript(http.MethodGet, "queries", "ping").Return("/tmp/ping.sql", nil)
-	scripts.EXPECT().ParseScript(gomock.Any(), gomock.Any()).Return(`SELECT 1`, nil, nil)
+	scripts.EXPECT().ResolveScript(gomock.Any(), http.MethodGet, "queries", "ping", "").Return(adapters.ScriptSource{
+		Name: "ping.read.sql", Content: "SELECT 1",
+	}, nil)
+	scripts.EXPECT().ParseScriptTemplate(gomock.Any(), gomock.Any(), gomock.Any()).Return(`SELECT 1`, nil, nil)
 
 	scanner := mockgen.NewMockScanner(ctrl)
 	scanner.EXPECT().Err().Return(nil)
@@ -81,8 +86,10 @@ func TestScriptHandler_Execute_WithCache(t *testing.T) {
 	defer ctrl.Finish()
 
 	scripts := mockgen.NewMockScriptRunner(ctrl)
-	scripts.EXPECT().GetScript(http.MethodGet, "queries", "list").Return("/tmp/list.sql", nil)
-	scripts.EXPECT().ParseScript(gomock.Any(), gomock.Any()).Return(`SELECT 1`, nil, nil)
+	scripts.EXPECT().ResolveScript(gomock.Any(), http.MethodGet, "queries", "list", "prest-test").Return(adapters.ScriptSource{
+		Name: "list.read.sql", Content: "SELECT 1",
+	}, nil)
+	scripts.EXPECT().ParseScriptTemplate(gomock.Any(), gomock.Any(), gomock.Any()).Return(`SELECT 1`, nil, nil)
 
 	scanner := mockgen.NewMockScanner(ctrl)
 	scanner.EXPECT().Err().Return(nil)
@@ -115,7 +122,7 @@ func TestScriptHandler_ExecuteScriptQuery_GetScriptError(t *testing.T) {
 	defer ctrl.Finish()
 
 	scripts := mockgen.NewMockScriptRunner(ctrl)
-	scripts.EXPECT().GetScript(http.MethodGet, "queries", "missing").Return("", errors.New("not found"))
+	scripts.EXPECT().ResolveScript(gomock.Any(), http.MethodGet, "queries", "missing", "").Return(adapters.ScriptSource{}, errors.New("not found"))
 
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
 
@@ -134,8 +141,10 @@ func TestScriptHandler_ExecuteScriptQuery_ExecuteError(t *testing.T) {
 	defer ctrl.Finish()
 
 	scripts := mockgen.NewMockScriptRunner(ctrl)
-	scripts.EXPECT().GetScript(http.MethodGet, "queries", "bad").Return("/tmp/bad.sql", nil)
-	scripts.EXPECT().ParseScript("/tmp/bad.sql", gomock.Any()).Return(`SELECT bad`, nil, nil)
+	scripts.EXPECT().ResolveScript(gomock.Any(), http.MethodGet, "queries", "bad", "").Return(adapters.ScriptSource{
+		Name: "bad.read.sql", Content: "SELECT bad",
+	}, nil)
+	scripts.EXPECT().ParseScriptTemplate("bad.read.sql", "SELECT bad", gomock.Any()).Return(`SELECT bad`, nil, nil)
 
 	scanner := mockgen.NewMockScanner(ctrl)
 	scanner.EXPECT().Err().Return(errors.New("syntax error"))

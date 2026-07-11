@@ -29,6 +29,12 @@ func AuthServerURL(t *testing.T) string {
 	return envURL(t, "PREST_AUTH_TEST_URL")
 }
 
+// QueriesServerURL returns the base URL for the database-queries prestd service.
+func QueriesServerURL(t *testing.T) string {
+	t.Helper()
+	return envURL(t, "PREST_QUERIES_TEST_URL")
+}
+
 func envURL(t *testing.T, key string) string {
 	t.Helper()
 	u := strings.TrimSpace(os.Getenv(key))

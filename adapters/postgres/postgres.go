@@ -64,11 +64,12 @@ type Stmt struct {
 }
 
 var (
-	_ adapters.Adapter           = (*postgres)(nil)
-	_ adapters.DatabaseConnector = (*postgres)(nil)
-	_ adapters.DatabaseAccessor  = (*postgres)(nil)
-	_ adapters.DatabasePinger    = (*postgres)(nil)
-	_ adapters.ReadinessChecker  = (*postgres)(nil)
+	_ adapters.Adapter                  = (*postgres)(nil)
+	_ adapters.DatabaseConnector        = (*postgres)(nil)
+	_ adapters.DatabaseAccessor         = (*postgres)(nil)
+	_ adapters.DatabasePinger           = (*postgres)(nil)
+	_ adapters.QueryRegistry            = (*postgres)(nil)
+	_ adapters.ScriptPermissionsChecker = (*postgres)(nil)
 )
 
 // New creates a Postgres adapter without connecting.
