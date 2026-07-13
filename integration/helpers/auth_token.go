@@ -37,11 +37,23 @@ func LoginToken(t *testing.T, baseURL, username, password string) string {
 }
 
 // DoAuthRequest sends an HTTP request with an optional Bearer token.
-func DoAuthRequest(t *testing.T, url string, r interface{}, method, token string, expectedStatus int, name string, expectedBody ...string) {
+// If the expectedStatus is 0, the request is expected to fail.
+// If the expectedStatus is not 0, the request is expected to succeed and the response body is expected to be in the expectedBody slice.
+// If the expectedBody is provided, the request is expected to return the body in the expectedBody slice.
+func DoAuthRequest(
+	t *testing.T,
+	url string,
+	r interface{},
+	method, token string,
+	expectedStatus int,
+	name string,
+	expectedBody ...string) {
+
 	t.Helper()
 	headers := map[string]string{}
 	if token != "" {
 		headers["Authorization"] = "Bearer " + token
 	}
-	testutils.DoRequestWithHeaders(t, url, r, method, expectedStatus, name, headers, expectedBody...)
+	testutils.DoRequestWithHeaders(
+		t, url, r, method, expectedStatus, name, headers, expectedBody...)
 }

@@ -13,12 +13,33 @@ import (
 )
 
 // DoRequest function used to test internal http requests
-func DoRequest(t *testing.T, url string, r interface{}, method string, expectedStatus int, where string, expectedBody ...string) {
-	DoRequestWithHeaders(t, url, r, method, expectedStatus, where, nil, expectedBody...)
+func DoRequest(
+	t *testing.T,
+	url string,
+	r interface{},
+	method string,
+	expectedStatus int,
+	where string,
+	expectedBody ...string,
+) {
+	DoRequestWithHeaders(
+		t, url, r, method, expectedStatus, where, nil, expectedBody...)
 }
 
 // DoRequestWithHeaders sends an HTTP request with optional extra headers.
-func DoRequestWithHeaders(t *testing.T, url string, r interface{}, method string, expectedStatus int, where string, headers map[string]string, expectedBody ...string) {
+// If the expectedStatus is 0, the request is expected to fail.
+// If the expectedStatus is not 0, the request is expected to succeed and the response body is expected to be in the expectedBody slice.
+// If the expectedBody is provided, the request is expected to return the body in the expectedBody slice.
+func DoRequestWithHeaders(
+	t *testing.T,
+	url string,
+	r interface{},
+	method string,
+	expectedStatus int,
+	where string,
+	headers map[string]string,
+	expectedBody ...string,
+) {
 	var byt []byte
 	var err error
 

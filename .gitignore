@@ -33,7 +33,7 @@ cache/test
 .lsp/
 
 # prestd
-prest-*
+# prest-*
 prestd
 main
 /dist
