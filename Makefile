@@ -1,7 +1,7 @@
 DOCKER_COMPOSE?=docker-compose -f docker-compose.yml
 UNIT_PKGS = $(shell go list ./... | grep -v '/integration')
 
-.PHONY: build_test_image test test-unit test-integration
+.PHONY: build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb
 build_test_image:
 	$(DOCKER_COMPOSE) up -d postgres
 
@@ -10,11 +10,24 @@ test: test-unit
 test-unit:
 	go test -timeout 30s -tags prest_test_hooks -race -count=1 -covermode=atomic -coverprofile=coverage.out $(UNIT_PKGS)
 
-test-integration:
-	docker compose -f docker-compose-test.yml up -d --wait postgres postgres-b db-init prestd prestd-multicluster prestd-auth prestd-queries && \
-	docker compose -f docker-compose-test.yml run --rm --no-deps tests; \
+POSTGRES_COMPOSE=docker compose -f integration/postgres/docker-compose.yml
+TIMESCALEDB_COMPOSE=docker compose -f integration/timescaledb/docker-compose.yml
+
+# Alias for the historical Postgres integration target.
+test-integration: test-integration-postgres
+
+test-integration-postgres:
+	$(POSTGRES_COMPOSE) up -d --wait postgres postgres-b db-init prestd prestd-multicluster prestd-auth prestd-queries && \
+	$(POSTGRES_COMPOSE) run --rm --no-deps tests; \
 	status=$$?; \
-	docker compose -f docker-compose-test.yml down -v --remove-orphans; \
+	$(POSTGRES_COMPOSE) down -v --remove-orphans; \
+	exit $$status
+
+test-integration-timescaledb:
+	$(TIMESCALEDB_COMPOSE) up -d --wait timescaledb db-init prestd && \
+	$(TIMESCALEDB_COMPOSE) run --rm --no-deps tests; \
+	status=$$?; \
+	$(TIMESCALEDB_COMPOSE) down -v --remove-orphans; \
 	exit $$status
 
 .PHONY: dc-up

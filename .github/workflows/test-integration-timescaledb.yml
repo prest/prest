@@ -1,0 +1,24 @@
+name: test-integration-timescaledb
+run-name: TimescaleDB integration tests
+
+on:
+  push:
+    branches:
+      - "main"
+    tags:
+      - "v*"
+  pull_request:
+
+jobs:
+  integration-timescaledb:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run TimescaleDB E2E integration tests via docker compose
+        run: make test-integration-timescaledb

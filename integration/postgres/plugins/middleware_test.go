@@ -7,8 +7,8 @@ import (
 
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/integration/helpers"
-	"github.com/prest/prest/v2/plugins"
 	"github.com/prest/prest/v2/integration/testutils"
+	"github.com/prest/prest/v2/plugins"
 	"github.com/urfave/negroni/v3"
 )
 
@@ -28,5 +28,9 @@ func TestPluginsMiddleware(t *testing.T) {
 	server := httptest.NewServer(initMiddlewarePluginTestRouter(cfg))
 	defer server.Close()
 
-	testutils.DoRequest(t, server.URL+"/", nil, "GET", http.StatusOK, "Plugins")
+	// Hit a stack that includes the Hello plugin middleware.
+	// Expected to succeed with HTTP status OK.
+	testutils.DoRequest(
+		t, server.URL+"/",
+		nil, "GET", http.StatusOK, "PluginsMiddleware")
 }

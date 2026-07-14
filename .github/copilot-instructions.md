@@ -168,16 +168,18 @@ func NewCRUDHandler(cfg *config.Prest) *CRUDHandler {
 
 ### Postgres adapter unit tests (`adapters/postgres`)
 
-Unit tests under `adapters/postgres/**` must pass with **no Postgres process running**. Real DB usage belongs only in `integration/adapters/postgres/**` (Docker).
+Unit tests under `adapters/postgres/**` must pass with **no Postgres process running**. Real DB usage belongs only in `integration/postgres/adapters/postgres/**` (Docker).
 
 | Location | Package | Database | Run via |
 |----------|---------|----------|---------|
 | `adapters/postgres/**` | unit | **Never real** — sqlmock only | `go test ./adapters/postgres/...`, `make test-unit` |
-| `integration/adapters/postgres/**` | integration | Real Postgres (Docker) | `make test-integration` |
+| `integration/postgres/adapters/postgres/**` | integration | Real Postgres (Docker) | `make test-integration-postgres` |
 
 ### Network integration tests
 
-`make test-integration` (`docker-compose-test.yml`) provisions Postgres, seeds data via `testdata/db-init.sh`, starts **real prestd servers**, then runs tests in the `tests` container.
+`make test-integration-postgres` (`integration/postgres/docker-compose.yml`) provisions Postgres, seeds data via `testdata/db-init.sh`, starts **real prestd servers**, then runs `./integration/suites/...` and `./integration/postgres/...`.
+
+`make test-integration-timescaledb` (`integration/timescaledb/docker-compose.yml`) provisions TimescaleDB and runs `./integration/suites/...` plus `./integration/timescaledb/...`.
 
 | Service | URL env (in tests container) | Config |
 |---------|------------------------------|--------|
@@ -193,7 +195,7 @@ Standard-stack HTTP tests use [`integration/helpers/server.go`](integration/help
 
 Call deployed servers with `integration/testutils.DoRequest(t, base+path, ...)`. Do **not** use `httptest.NewServer(helpers.IntegrationHandler(...))` for controller/router tests unless the test needs a **custom negroni stack** or per-test config mutation (e.g. `integration/middlewares/`, `integration/plugins/`, `TestSilentErrorsOnQuery`).
 
-Keep [`helpers.IntegrationHandler`](integration/helpers/setup.go) for custom-stack tests only. Adapter-level tests under `integration/adapters/` may still call the adapter directly.
+Keep [`helpers.IntegrationHandler`](integration/helpers/setup.go) for custom-stack tests only. Adapter-level tests under `integration/postgres/adapters/` may still call the adapter directly.
 
 Local `go test ./integration/...` without compose skips network tests (no `PREST_*_TEST_URL`).
 

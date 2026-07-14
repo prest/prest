@@ -41,6 +41,9 @@ func TestGetAppWithReorderedMiddleware(t *testing.T) {
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
 	defer server.Close()
+
+	// GET / through custom middleware prepended to the stack.
+	// Expected to succeed with HTTP status OK and include the custom middleware JSON message.
 	resp, err := http.Get(server.URL)
 	require.NoError(t, err)
 
@@ -61,6 +64,9 @@ func TestGetAppWithoutReorderedMiddleware(t *testing.T) {
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
 	defer server.Close()
+
+	// GET / with the default middleware stack (no custom reorder).
+	// Expected to succeed and set a JSON Content-Type.
 	resp, err := http.Get(server.URL)
 	require.NoError(t, err)
 	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
@@ -85,6 +91,8 @@ func Test_Middleware_DoesntBlock_CustomRoutes(t *testing.T) {
 	server := httptest.NewServer(n)
 	defer server.Close()
 
+	// Hit a custom application route registered before CRUD access control.
+	// Expected to succeed and return the custom route body.
 	resp, err := http.Get(server.URL)
 	require.NoError(t, err)
 
@@ -96,6 +104,8 @@ func Test_Middleware_DoesntBlock_CustomRoutes(t *testing.T) {
 	require.Contains(t, string(body), "custom route")
 	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
 
+	// CRUD path still enforces AccessControl for restricted tables.
+	// Expected to fail with HTTP status Unauthorized and an authorization message.
 	resp, err = http.Get(server.URL + "/prest-test/public/test_write_and_delete_access")
 	require.NoError(t, err)
 
@@ -125,6 +135,9 @@ func TestDebug(t *testing.T) {
 	nd := appTest(t)
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
+
+	// GET / with PREST_DEBUG=true.
+	// Expected to succeed with HTTP status OK.
 	resp, err := http.Get(serverd.URL)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -136,6 +149,9 @@ func TestEnableDefaultJWT(t *testing.T) {
 	nd := appTest(t)
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
+
+	// GET / with JWT default disabled and debug off.
+	// Expected to fail with HTTP status NotImplemented from the test stub handler.
 	resp, err := http.Get(serverd.URL)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
@@ -149,6 +165,8 @@ func TestJWTIsRequired(t *testing.T) {
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
 
+	// GET / with JWT required and no Authorization header.
+	// Expected to fail with HTTP status Unauthorized.
 	resp, err := http.Get(serverd.URL)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
@@ -169,6 +187,8 @@ func TestJWTSignatureOk(t *testing.T) {
 
 	req.Header.Add("authorization", bearer)
 
+	// GET / with a valid HS512 JWT.
+	// Expected to succeed with HTTP status OK.
 	client := http.Client{}
 	respd, err := client.Do(req)
 	require.NoError(t, err)
@@ -190,6 +210,8 @@ func TestJWTSignatureKo(t *testing.T) {
 
 	req.Header.Add("authorization", bearer)
 
+	// GET / with a malformed/invalid bearer token under HS256.
+	// Expected to fail with HTTP status Unauthorized.
 	client := http.Client{}
 	respd, err := client.Do(req)
 	require.NoError(t, err)
@@ -243,6 +265,9 @@ func Test_CORS_Middleware(t *testing.T) {
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
 	defer server.Close()
+
+	// OPTIONS preflight with Access-Control-Request-Method GET.
+	// Expected to succeed with HTTP status NoContent and an empty body.
 	req, err := http.NewRequest("OPTIONS", server.URL, nil)
 	require.NoError(t, err)
 
@@ -276,12 +301,19 @@ func TestExposeTablesMiddleware(t *testing.T) {
 	n.UseHandler(r)
 	server := httptest.NewServer(n)
 	defer server.Close()
+
+	// Catalog /tables with expose-tables restricting unauthenticated access.
+	// Expected to fail with HTTP status Unauthorized.
 	resp, _ := http.Get(server.URL + "/tables")
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
+	// Catalog /databases under the same restriction.
+	// Expected to fail with HTTP status Unauthorized.
 	resp, _ = http.Get(server.URL + "/databases")
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
+	// Catalog /schemas under the same restriction.
+	// Expected to fail with HTTP status Unauthorized.
 	resp, _ = http.Get(server.URL + "/schemas")
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }

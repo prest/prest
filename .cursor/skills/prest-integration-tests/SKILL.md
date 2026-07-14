@@ -5,7 +5,8 @@ description: >-
   integration/ so each request is human-readable via step comments or
   table-driven descriptions. Use when adding or editing
   integration/**/*_test.go, HTTP controller E2E coverage, make
-  test-integration, or when the user asks for integration tests.
+  test-integration, test-integration-postgres, test-integration-timescaledb,
+  or when the user asks for integration tests.
 ---
 
 # pREST Integration Tests
@@ -14,17 +15,40 @@ Integration tests must be **human-readable**. A reader should understand the
 scenario, expected outcome, and why each request matters without decoding URLs
 or status codes alone.
 
-Gold standard: `integration/controllers/queries_database_test.go`.
+Gold standard: `integration/postgres/controllers/queries_database_test.go`.
 Side-by-side patterns: [examples.md](examples.md).
+
+## Layout
+
+```text
+integration/
+  helpers/          # shared URL/auth/setup
+  testutils/        # shared HTTP helpers
+  suites/           # wire-compatible HTTP E2E (Postgres integration workflow)
+  postgres/         # Postgres-only tests + docker-compose.yml
+  timescaledb/      # Timescale-specific E2E + docker-compose.yml
+```
+
+| Target | Workflow | Compose | Packages |
+|--------|----------|---------|----------|
+| `make test-integration-postgres` (alias: `test-integration`) | `.github/workflows/test-integration.yml` | `integration/postgres/docker-compose.yml` | `./integration/suites/...` `./integration/postgres/...` |
+| `make test-integration-timescaledb` | `.github/workflows/test-integration-timescaledb.yml` | `integration/timescaledb/docker-compose.yml` | `./integration/timescaledb/...` only |
+
+Workflows run in parallel. The Timescale workflow does **not** re-run shared
+`suites/` or Postgres packages — only Timescale-specific E2E.
+
+Local `go test` without Compose skips network tests when `PREST_*_TEST_URL` is unset.
+
+For adding a **new SQL engine**, see the `sql-database-support` skill.
 
 ## When writing or editing
 
-1. Place tests only under `integration/`, mirroring production packages
-   (`controllers/`, `middlewares/`, `adapters/`, …).
+1. Choose the right folder: `suites/` for wire-compatible HTTP (Postgres job);
+   `postgres/` / `timescaledb/` (etc.) for engine- or stack-specific tests.
 2. Document every request (see below).
 3. Prefer deployed-server helpers over in-process HTTP servers.
-4. Validate with `make test-integration` (local `go test ./integration/...`
-   skips when `PREST_*_TEST_URL` is unset).
+4. Validate with the matching `make test-integration-*` target (and the matching
+   GitHub workflow for that DB).
 
 ## Human-readable step docs (required)
 
@@ -68,16 +92,16 @@ Log or surface the description in the loop (`t.Log(tc.description)` or
 |----|-------|
 | `helpers.ServerURL`, `QueriesServerURL`, `AuthServerURL`, `MultiClusterServerURL` | `httptest.NewServer` for standard controller routes |
 | `testutils.DoRequest` / `helpers.DoAuthRequest` | Call `postgres.Load()` or live DB outside `integration/` |
-| Custom Negroni/config only when needed (`middlewares/`, `plugins/`) | Invent new HTTP client helpers when existing ones suffice |
+| Dedicated workflow + compose per DB (`test-integration-<db>.yml`) | Fold a new DB into the Postgres compose or workflow |
 
-Controller behavior changes need unit tests **and** integration coverage under
-`integration/`.
+Controller behavior changes need unit tests **and** integration coverage
+(`suites/` and/or the relevant DB folder).
 
 ## Checklist
 
 Before finishing a new or edited integration test:
 
-- [ ] File lives under `integration/`
+- [ ] File lives under `integration/suites/` or `integration/<db>/`
 - [ ] Every request documented (step comments) **or** table `description` is self-explanatory
 - [ ] Expected status and failure cases called out in the docs
 - [ ] Uses existing helpers; no live DB via `postgres.Load()` outside `integration/`

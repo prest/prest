@@ -10,5 +10,10 @@ import (
 
 func TestCheckDBHealth(t *testing.T) {
 	base := helpers.ServerURL(t)
-	testutils.DoRequest(t, base+"/_health", nil, "GET", http.StatusOK, "CheckDBHealth")
+
+	// Probe the public health endpoint.
+	// Expected to succeed with HTTP status OK when the database is reachable.
+	testutils.DoRequest(
+		t, base+"/_health",
+		nil, "GET", http.StatusOK, "CheckDBHealth")
 }

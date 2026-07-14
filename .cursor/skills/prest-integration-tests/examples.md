@@ -2,33 +2,36 @@
 
 ## 1. Narrative step comments (preferred for sequential flows)
 
-Source: `integration/controllers/queries_database_test.go`
+Source: `integration/postgres/controllers/queries_database_test.go`
 
 ```go
 func TestQueriesDatabaseExecution(t *testing.T) {
 	base := helpers.QueriesServerURL(t)
 	token := helpers.LoginToken(t, base, queriesAdminUser, queriesAdminPass)
 
-	// Test the fulltable/get_all endpoint
-	// Expected to succeed with HTTP status OK (no expectedBody passed).
+	// Test the fulltable/get_all custom query.
+	// Expected to succeed with HTTP status OK.
 	helpers.DoAuthRequest(
 		t, base+"/_QUERIES/fulltable/get_all?field1=gopher",
 		nil, http.MethodGet, token, http.StatusOK, "QueriesDBExecute")
 
-	// Test the fulltable/get_all endpoint with a database name
-	// Expected to succeed with HTTP status OK (no expectedBody passed).
-	// It will use the database name from the URL.
+	// Test get_all with an explicit database name in the path.
+	// Expected to succeed with HTTP status OK.
+	// The database segment selects which registered DB runs the query.
 	helpers.DoAuthRequest(
 		t, base+"/_QUERIES/prest-test/fulltable/get_all?field1=gopher",
 		nil, http.MethodGet, token, http.StatusOK, "QueriesDBExecuteWithDB")
 
-	// Test the registry endpoint
-	// Expected to succeed with HTTP status Created (no expectedBody passed).
-	helpers.DoAuthRequest(t, base+"/_QUERIES/registry", map[string]string{
-		"location": "itest",
-		"name":     "ephemeral",
-		"read_sql": "SELECT 1",
-	}, http.MethodPost, token, http.StatusCreated, "QueriesDBCreateEphemeral")
+	// Register an ephemeral custom query via the registry API.
+	// Expected to succeed with HTTP status Created.
+	helpers.DoAuthRequest(
+		t, base+"/_QUERIES/registry",
+		map[string]string{
+			"location": "itest",
+			"name":     "ephemeral",
+			"read_sql": "SELECT 1",
+		},
+		http.MethodPost, token, http.StatusCreated, "QueriesDBCreateEphemeral")
 }
 ```
 
@@ -37,7 +40,7 @@ the comment intent.
 
 ## 2. Table-driven `description` (comments optional)
 
-Source: `integration/controllers/crud_test.go`
+Source: `integration/suites/controllers/crud_test.go`
 
 Per-request block comments may be skipped when every case has a clear
 `description`:

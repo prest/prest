@@ -93,7 +93,8 @@ Must pass with **no Postgres process running** (sqlmock only).
 
 ```sh
 go test -timeout 30s -race ./controllers/...
-make test-integration   # Docker: real prestd + Postgres (full CI parity)
+make test-integration-postgres    # suites + Postgres-only (alias: make test-integration)
+make test-integration-timescaledb # Timescale-specific E2E only
 ```
 
 Integration tests live under `integration/` only; use `integration/helpers` (`ServerURL`, `MultiClusterServerURL`, `AuthServerURL`) and `integration/testutils.DoRequest`. Local `go test ./integration/...` skips network tests when `PREST_*_TEST_URL` is unset.
@@ -151,7 +152,7 @@ A task is **done** only when all apply:
 1. Code compiles (`go build ./...`) and passes `go vet ./...`
 2. Relevant unit tests pass (`make test-unit` or scoped `go test` with `-race -timeout 30s`)
 3. All possible controller/HTTP behavior changes are added to `integration/`
-4. Controller/HTTP behavior changes pass `make test-integration` (or documented reason why not run)
+4. Controller/HTTP behavior changes pass `make test-integration-postgres` (and `make test-integration-timescaledb` when Timescale-specific coverage changes), or documented reason why not run
 5. New code paths have tests (≥80% coverage target on new paths)
 6. Port changes include regenerated mocks (`make mockgen`)
 7. Self-review checklist (step 6) is satisfied
