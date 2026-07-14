@@ -10,20 +10,20 @@ func TestQueriesDatabaseExecution(t *testing.T) {
 	token := helpers.LoginToken(t, base, queriesAdminUser, queriesAdminPass)
 
 	// Test the fulltable/get_all endpoint
-	// Expected to succeed and return the body in the expectedBody slice.
+	// Expected to succeed with HTTP status OK (no expectedBody passed).
 	helpers.DoAuthRequest(
 		t, base+"/_QUERIES/fulltable/get_all?field1=gopher",
 		nil, http.MethodGet, token, http.StatusOK, "QueriesDBExecute")
 
 	// Test the fulltable/get_all endpoint with a database name
-	// Expected to succeed and return the body in the expectedBody slice.
+	// Expected to succeed with HTTP status OK (no expectedBody passed).
 	// It will use the database name from the URL.
 	helpers.DoAuthRequest(
 		t, base+"/_QUERIES/prest-test/fulltable/get_all?field1=gopher",
 		nil, http.MethodGet, token, http.StatusOK, "QueriesDBExecuteWithDB")
 
 	// Test the registry endpoint
-	// Expected to succeed and return the body in the expectedBody slice.
+	// Expected to succeed with HTTP status Created (no expectedBody passed).
 	helpers.DoAuthRequest(t, base+"/_QUERIES/registry", map[string]string{
 		"location": "itest",
 		"name":     "ephemeral",
