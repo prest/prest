@@ -83,8 +83,8 @@ func TestParseScriptSyntaxInvalid(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected parse error, got nil")
 	}
-	if !strings.Contains(err.Error(), "could not parse file") {
-		t.Errorf("expected error containing %q, got: %v", "could not parse file", err)
+	if !strings.Contains(err.Error(), "could not parse template") {
+		t.Errorf("expected error containing %q, got: %v", "could not parse template", err)
 	}
 }
 

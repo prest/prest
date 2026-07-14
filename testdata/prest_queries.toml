@@ -1,0 +1,50 @@
+[auth]
+enabled = true
+migrate_on_startup = true
+schema = "public"
+table = "prest_users"
+username = "username"
+password = "password"
+encrypt = "md5"
+type = "body"
+
+[jwt]
+key = "integration-test-secret"
+algo = "HS256"
+whitelist = ["^\\/auth$"]
+
+[http]
+port = 3003
+
+[access]
+restrict = false
+
+[queries]
+storage = "database"
+migrate_on_startup = true
+import_on_startup = true
+import_policy = "update"
+register_enabled = true
+register_admins = ["test@postgres.rest"]
+restrict = true
+
+[[queries.scripts]]
+location = "fulltable"
+name = "get_all"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "itest"
+name = "ephemeral"
+permissions = ["read"]
+
+[[queries.users]]
+name = "test@postgres.rest"
+  [[queries.users.scripts]]
+  location = "fulltable"
+  name = "get_all"
+  permissions = ["read"]
+  [[queries.users.scripts]]
+  location = "itest"
+  name = "ephemeral"
+  permissions = ["read"]

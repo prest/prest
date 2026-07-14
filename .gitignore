@@ -34,6 +34,8 @@ cache/test
 
 # prestd
 prest-*
+!.cursor/skills/prest-integration-tests/
+!.cursor/skills/prest-integration-tests/**
 prestd
 main
 /dist

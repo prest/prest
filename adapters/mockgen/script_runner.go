@@ -5,9 +5,11 @@
 package mockgen
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	adapters "github.com/prest/prest/v2/adapters"
 )
 
 // MockScriptRunner is a mock of ScriptRunner interface.
@@ -62,4 +64,35 @@ func (m *MockScriptRunner) ParseScript(arg0 string, arg1 map[string]interface{})
 func (mr *MockScriptRunnerMockRecorder) ParseScript(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ParseScript", reflect.TypeOf((*MockScriptRunner)(nil).ParseScript), arg0, arg1)
+}
+
+// ParseScriptTemplate mocks base method.
+func (m *MockScriptRunner) ParseScriptTemplate(arg0, arg1 string, arg2 map[string]interface{}) (string, []interface{}, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ParseScriptTemplate", arg0, arg1, arg2)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].([]interface{})
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ParseScriptTemplate indicates an expected call of ParseScriptTemplate.
+func (mr *MockScriptRunnerMockRecorder) ParseScriptTemplate(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ParseScriptTemplate", reflect.TypeOf((*MockScriptRunner)(nil).ParseScriptTemplate), arg0, arg1, arg2)
+}
+
+// ResolveScript mocks base method.
+func (m *MockScriptRunner) ResolveScript(arg0 context.Context, arg1, arg2, arg3, arg4 string) (adapters.ScriptSource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResolveScript", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(adapters.ScriptSource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ResolveScript indicates an expected call of ResolveScript.
+func (mr *MockScriptRunnerMockRecorder) ResolveScript(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveScript", reflect.TypeOf((*MockScriptRunner)(nil).ResolveScript), arg0, arg1, arg2, arg3, arg4)
 }

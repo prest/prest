@@ -114,6 +114,7 @@ mode = "disable" # disable | require | verify-ca | verify-full
 # ------------------------------------------------------------------------
 [auth]
 enabled = false
+# migrate_on_startup = true   # default true when enabled=true; also: prestd migrate up auth
 schema = "public"
 table = "prest_users"
 username = "username"
@@ -206,11 +207,33 @@ sufixfile = ".cache.prestd.db"
 
 
 # ------------------------------------------------------------------------
-# [queries] - named, reusable .sql query files.
+# [queries] - custom SQL scripts (filesystem or database storage).
 # ------------------------------------------------------------------------
-# Directory of named, reusable .sql query files. Defaults to ~/queries.
-# [queries]
-# location = "./queries"
+# storage = "filesystem"   # filesystem (default) | database
+# location = "./queries"     # import source + filesystem runtime path
+# schema = "public"
+# table = "prest_queries"
+# restrict = false           # true requires auth + [[queries.scripts]] ACL
+# register_enabled = false   # enables POST/PUT/DELETE /_QUERIES/registry (database mode)
+# register_admins = ["admin"]
+# migrate_on_startup = true  # default true when storage=database; also: prestd migrate up queries
+# import_on_startup = true   # default true when storage=database
+# import_policy = "update"   # skip | update | error
+#
+# [[queries.scripts]]
+# location = "fulltable"
+# name = "get_all"
+# permissions = ["read"]
+#
+# [[queries.users]]
+# name = "app_user"
+#   [[queries.users.scripts]]
+#   location = "fulltable"
+#   name = "get_all"
+#   permissions = ["read"]
+#
+# With storage = "database", migrate_on_startup creates prest_queries on API boot
+# (CLI migrate up queries remains available for manual runs).
 
 [json]
 [json.agg]

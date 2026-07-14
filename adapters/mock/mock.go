@@ -135,6 +135,16 @@ func (m *Mock) GetScript(verb string, folder string, scriptName string) (script 
 	return
 }
 
+// ResolveScript mock
+func (m *Mock) ResolveScript(ctx context.Context, verb, location, name, database string) (adapters.ScriptSource, error) {
+	return adapters.ScriptSource{}, nil
+}
+
+// ParseScriptTemplate mock
+func (m *Mock) ParseScriptTemplate(name, content string, templateData map[string]interface{}) (sqlQuery string, values []interface{}, err error) {
+	return
+}
+
 // ParseScript mock
 func (m *Mock) ParseScript(scriptPath string, data map[string]interface{}) (sqlQuery string, values []interface{}, err error) {
 	return

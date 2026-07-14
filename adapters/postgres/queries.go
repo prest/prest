@@ -6,75 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
-	gotemplate "text/template"
 
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/adapters/scanner"
 	"github.com/prest/prest/v2/internal/logsafe"
-	"github.com/prest/prest/v2/template"
 
 	"log/slog"
 )
-
-// GetScript get SQL template file
-func (adapter *postgres) GetScript(verb, folder, scriptName string) (script string, err error) {
-	verbs := map[string]string{
-		"GET":    ".read.sql",
-		"POST":   ".write.sql",
-		"PATCH":  ".update.sql",
-		"PUT":    ".update.sql",
-		"DELETE": ".delete.sql",
-	}
-
-	sufix, ok := verbs[verb]
-	if !ok {
-		err = fmt.Errorf("invalid http method %s", verb)
-		return
-	}
-
-	base := adapter.cfg.QueriesPath
-	if env := os.Getenv("PREST_QUERIES_LOCATION"); env != "" {
-		base = env
-	}
-
-	script = filepath.Join(base, folder, fmt.Sprint(scriptName, sufix))
-
-	if _, err = os.Stat(script); os.IsNotExist(err) {
-		slog.Error("could not load script", "script", script)
-		err = fmt.Errorf("could not load script: %w", err)
-		return
-	}
-
-	return
-}
-
-// ParseScript use values sent by users and add on script
-func (adapter *postgres) ParseScript(scriptPath string, templateData map[string]interface{}) (sqlQuery string, values []interface{}, err error) {
-	_, tplName := filepath.Split(scriptPath)
-
-	funcs := &template.FuncRegistry{TemplateData: templateData}
-	tpl := gotemplate.New(tplName).Funcs(funcs.RegistryAllFuncs())
-
-	tpl, err = tpl.ParseFiles(scriptPath)
-	if err != nil {
-		slog.Error("could not parse file", "scriptPath", scriptPath, "err", err)
-		err = fmt.Errorf("could not parse file: %w", err)
-		return
-	}
-
-	var buff bytes.Buffer
-	err = tpl.Execute(&buff, funcs.TemplateData)
-	if err != nil {
-		err = fmt.Errorf("could not execute template %v", err)
-		return
-	}
-
-	sqlQuery = buff.String()
-	values = funcs.Args
-	return
-}
 
 // WriteSQL perform INSERT's, UPDATE's, DELETE's operations
 func (adapter *postgres) WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {

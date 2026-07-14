@@ -79,7 +79,7 @@ func TestParseScript_InvalidTemplate(t *testing.T) {
 
 	_, _, err := adapter.ParseScript(scriptPath, map[string]interface{}{})
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "could not parse file")
+	require.Contains(t, err.Error(), "could not parse template")
 }
 
 func TestExecuteScripts_InvalidMethod(t *testing.T) {

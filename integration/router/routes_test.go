@@ -37,6 +37,8 @@ func TestDefaultRouters(t *testing.T) {
 		{"/_mcp", "GET", http.StatusOK},
 		{"/schemas", "GET", http.StatusOK},
 		{"/_QUERIES/missing/script", "GET", http.StatusBadRequest},
+		// Registry is not registered on the default server; path falls through to catalog.
+		{"/_QUERIES/registry", "GET", http.StatusBadRequest},
 		{"/prest-test/public", "GET", http.StatusOK},
 		{"/show/0prest-test/public/test", "GET", http.StatusBadRequest},
 		{"/prest-test/public/test", "GET", http.StatusOK},
@@ -59,6 +61,12 @@ func TestAuthRouterActive(t *testing.T) {
 	testutils.DoRequest(t, base+"/auth", nil, "GET", http.StatusMethodNotAllowed, "AuthEnable")
 	testutils.DoRequest(t, base+"/auth", nil, "POST", http.StatusUnauthorized, "AuthEnable")
 	testutils.DoRequest(t, base+"/_mcp", nil, "GET", http.StatusUnauthorized, "MCPAuthRequired")
+}
+
+func TestQueriesRegistryRoutes(t *testing.T) {
+	base := helpers.QueriesServerURL(t)
+	token := helpers.LoginToken(t, base, "test@postgres.rest", "123456")
+	helpers.DoAuthRequest(t, base+"/_QUERIES/registry", nil, http.MethodGet, token, http.StatusOK, "QueriesRegistryRoutes", "get_all")
 }
 
 func TestMultiClusterRoutes(t *testing.T) {

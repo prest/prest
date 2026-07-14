@@ -54,6 +54,7 @@ Follow repo conventions (details in @.github/copilot-instructions.md):
 **Test isolation when writing tests:**
 
 - Unit tests: `t.Parallel()` when safe; **never** parallelize tests using `t.Setenv`, `config.Load()` on mutated env, `SetDBConnectForTest`, or shared globals.
+- Unit tests: cases should always be on their corresponding file, so `config.go` test files should always reside under `config_test.go` and nowhere else.
 - `adapters/postgres/**` unit tests: sqlmock only (`withSQLMock`, `withFailingDBConnect`) — **no real Postgres, no `sqlx.Connect`**.
 - Never call `postgres.Load()` outside `integration/` and startup (`cmd/`).
 - Mock ports (`adapters/mockgen/`), not concrete postgres types, outside `adapters/postgres/`.

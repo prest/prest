@@ -136,6 +136,32 @@ services:
       retries: 30
       start_period: 90s
 
+  prestd-queries:
+    <<: *prestd-service
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *prest-env
+      PREST_CONF: /workspace/testdata/prest_queries.toml
+      PREST_DEBUG: "true"
+      PREST_JWT_DEFAULT: "false"
+      PREST_CACHE_ENABLED: "false"
+      PREST_AUTH_ENABLED: "true"
+      PREST_JWT_KEY: integration-test-secret
+      PREST_PG_SINGLE: "false"
+      PREST_HTTP_PORT: "3003"
+    command: >-
+      bash -lc "export PATH=/usr/local/go/bin:/go/bin:$$PATH && apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && go run ./cmd/prestd/main.go"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3003/_health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+
   tests:
     <<: *prestd-service
     depends_on:
@@ -145,11 +171,14 @@ services:
         condition: service_healthy
       prestd-auth:
         condition: service_healthy
+      prestd-queries:
+        condition: service_healthy
     environment:
       <<: *prest-env
       PREST_CONF: /workspace/testdata/prest.toml
       PREST_TEST_URL: http://prestd:3000
       PREST_MULTICLUSTER_TEST_URL: http://prestd-multicluster:3001
       PREST_AUTH_TEST_URL: http://prestd-auth:3002
+      PREST_QUERIES_TEST_URL: http://prestd-queries:3003
     command: >-
       bash -lc "apt-get update && apt-get install -y --no-install-recommends postgresql-client git ca-certificates && bash -x ./testdata/runtest.sh"

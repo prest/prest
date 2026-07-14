@@ -157,7 +157,7 @@ func NewCRUDHandler(cfg *config.Prest) *CRUDHandler {
 - **Unit tests:** co-located `*_test.go` in the source package; use gomock of narrow adapter interfaces; never call `postgres.Load()` or hit a real database.
 - **Integration tests:** only under `integration/`, mirroring package layout; exercise public HTTP/adapter surfaces end-to-end with Docker Postgres and **deployed prestd processes** over the network (see **Network integration tests** below).
 - Never add `postgres.Load()` outside `integration/`.
-- Reuse existing test patterns (`testify`, `adapters/mockgen/`, `handlerstest.NewTestHandlers`, `integration/testutils/` for HTTP helpers).
+- Reuse existing test patterns (`testify`, `adapters/mockgen/`, `integration/testutils/` for HTTP helpers).
 - Mock **ports** (`adapters/*` interfaces), not `adapters/postgres` types, in unit tests outside `adapters/postgres/`.
 - Maintain ≥80% coverage on new code paths (unit + integration combined).
 - Name test files after the source file under test: `<source_file>_test.go` (e.g. `catalog.go` → `catalog_test.go`).
