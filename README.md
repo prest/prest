@@ -63,21 +63,28 @@ Run unit tests locally:
 make test-unit
 ```
 
-Run the full integration suite inside Docker (Postgres, deployed prestd servers, no local setup required):
+Run integration suites inside Docker (no local Postgres required):
 
 ```bash
-make test-integration
+# Postgres (full stack: default, auth, multicluster, queries) — also: make test-integration
+make test-integration-postgres
+
+# TimescaleDB (Timescale-specific E2E only)
+make test-integration-timescaledb
 ```
 
 Or with Docker Compose:
 
 ```bash
-docker compose -f docker-compose-test.yml up -d --wait postgres postgres-b db-init prestd prestd-multicluster prestd-auth
-docker compose -f docker-compose-test.yml run --rm --no-deps tests
-docker compose -f docker-compose-test.yml down -v --remove-orphans
+docker compose -f integration/postgres/docker-compose.yml up -d --wait \
+  postgres postgres-b db-init prestd prestd-multicluster prestd-auth prestd-queries
+docker compose -f integration/postgres/docker-compose.yml run --rm --no-deps tests
+docker compose -f integration/postgres/docker-compose.yml down -v --remove-orphans
 ```
 
-Compose starts Postgres services, a one-shot `db-init` job, prestd servers, then runs `go test ./integration/...`. Network integration tests require `PREST_TEST_URL`, `PREST_MULTICLUSTER_TEST_URL`, and `PREST_AUTH_TEST_URL`; outside Compose those tests skip when the URLs are unset.
+Postgres compose runs `./integration/suites/...` and `./integration/postgres/...`.
+TimescaleDB compose runs `./integration/timescaledb/...` only (see `.github/workflows/test-integration-timescaledb.yml`).
+Network tests require `PREST_TEST_URL` (and flavor-specific URLs for the Postgres job); outside Compose those tests skip when the URLs are unset.
 
 ## Example: Docker Build
 

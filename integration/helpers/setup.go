@@ -44,7 +44,7 @@ func PluginLibDir() string {
 }
 
 // TestConfigPath returns the path to prest.toml for integration tests.
-// It respects PREST_CONF when set (e.g. by docker-compose-test.yml).
+// It respects PREST_CONF when set (e.g. by integration/*/docker-compose.yml).
 func TestConfigPath() string {
 	if p := os.Getenv("PREST_CONF"); p != "" {
 		return p

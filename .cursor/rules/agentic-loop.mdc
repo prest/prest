@@ -30,12 +30,14 @@ Understand → Locate → Plan → Implement → Validate → Self-review → (i
 ### 3. Plan (minimal change)
 
 - Propose the **smallest** diff that solves the task.
-- Map changes to hexagonal layers (ports → adapter → handler → route → tests).
+- Map changes to hexagonal layers (failing unit test → port → adapter → handler → route → integration).
 - Flag if `adapters/` interfaces change → plan `make mockgen`.
 - Flag if `controllers/` behavior changes → plan unit **and** integration tests.
 - Do not weaken auth/SQL safety or introduce breaking CLI/config/route changes unless explicitly requested.
 
 ### 4. Implement
+
+**TDD first** for behavior changes (see `unit-tests-tdd.mdc`): failing unit test → implement → refactor.
 
 Follow repo conventions (details in @.github/copilot-instructions.md):
 
@@ -76,10 +78,10 @@ gofmt -l .          # fix any output before finishing
 ```sh
 make test              # alias for make test-unit
 # or targeted:
-go test -timeout 30s -race -count=1 ./path/to/package/...
+go test -timeout 30s -race -cover ./path/to/package/...
 ```
 
-`make test-unit` runs all non-integration packages with `-race`, `-timeout 30s`, and coverage (`coverage.out`).
+`make test-unit` runs all non-integration packages with `-race`, `-timeout 30s`, and coverage (`coverage.out`). Touched packages must meet **≥80%** package coverage (`unit-tests-tdd.mdc`).
 
 #### Postgres adapter unit tests
 
@@ -93,7 +95,8 @@ Must pass with **no Postgres process running** (sqlmock only).
 
 ```sh
 go test -timeout 30s -race ./controllers/...
-make test-integration   # Docker: real prestd + Postgres (full CI parity)
+make test-integration-postgres    # suites + Postgres-only (alias: make test-integration)
+make test-integration-timescaledb # Timescale-specific E2E only
 ```
 
 Integration tests live under `integration/` only; use `integration/helpers` (`ServerURL`, `MultiClusterServerURL`, `AuthServerURL`) and `integration/testutils.DoRequest`. Local `go test ./integration/...` skips network tests when `PREST_*_TEST_URL` is unset.
@@ -118,6 +121,7 @@ Before marking done, verify:
 - [ ] Diff is minimal — no unrelated formatting or drive-by refactors
 - [ ] No `adapters/postgres` imports in `controllers/`, `middlewares/`, or `router/`
 - [ ] Non-sensitive config uses warn-and-continue; auth/JWT/secrets/ACL/DB-credential settings fail closed (no silent weakening)
+- [ ] Behavior changes used TDD (red→green); touched packages ≥80% coverage
 - [ ] New behavior has tests; controller changes include integration coverage
 - [ ] Postgres unit tests use sqlmock helpers, not live DB
 - [ ] `t.Parallel()` / serial test rules respected
@@ -151,10 +155,20 @@ A task is **done** only when all apply:
 1. Code compiles (`go build ./...`) and passes `go vet ./...`
 2. Relevant unit tests pass (`make test-unit` or scoped `go test` with `-race -timeout 30s`)
 3. All possible controller/HTTP behavior changes are added to `integration/`
-4. Controller/HTTP behavior changes pass `make test-integration` (or documented reason why not run)
-5. New code paths have tests (≥80% coverage target on new paths)
+4. Controller/HTTP behavior changes pass `make test-integration-postgres` (and `make test-integration-timescaledb` when Timescale-specific coverage changes), or documented reason why not run
+5. Touched packages meet ≥80% package coverage; behavior changes followed TDD (`unit-tests-tdd.mdc`)
 6. Port changes include regenerated mocks (`make mockgen`)
 7. Self-review checklist (step 6) is satisfied
 8. No scope creep — only files required for the task were changed
+
+## Related rules
+
+- `unit-tests-tdd.mdc` — always-on TDD + ≥80% package coverage
+- `integration-tests.mdc` / `integration-layout.mdc` — E2E readability and per-DB layout
+- `sql-database-support.mdc` — classify engines, DIFFERENCES gate, where-to-change matrix
+- `adapter-unit-tests.mdc` — sqlmock-only under `adapters/postgres`
+- `hexagonal-architecture.mdc` — DIP/ISP and feature checklist
+- `config-resilience.mdc` — warn-and-continue vs fail-closed
+- `git-commits.mdc` — human-owned commits
 
 When in doubt about conventions, architecture, SOLID mapping, or test patterns, read **@.github/copilot-instructions.md** before implementing.

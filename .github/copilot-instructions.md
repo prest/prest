@@ -153,13 +153,13 @@ func NewCRUDHandler(cfg *config.Prest) *CRUDHandler {
 
 ## Testing Expectations
 
+- Develop behavior changes with **TDD**; maintain **≥80% package coverage** for packages under change. See `.cursor/rules/unit-tests-tdd.mdc`.
 - Add or update tests for behavior changes.
 - **Unit tests:** co-located `*_test.go` in the source package; use gomock of narrow adapter interfaces; never call `postgres.Load()` or hit a real database.
 - **Integration tests:** only under `integration/`, mirroring package layout; exercise public HTTP/adapter surfaces end-to-end with Docker Postgres and **deployed prestd processes** over the network (see **Network integration tests** below).
 - Never add `postgres.Load()` outside `integration/`.
 - Reuse existing test patterns (`testify`, `adapters/mockgen/`, `integration/testutils/` for HTTP helpers).
 - Mock **ports** (`adapters/*` interfaces), not `adapters/postgres` types, in unit tests outside `adapters/postgres/`.
-- Maintain ≥80% coverage on new code paths (unit + integration combined).
 - Name test files after the source file under test: `<source_file>_test.go` (e.g. `catalog.go` → `catalog_test.go`).
 - Any new change in behavior on the controllers package should introduce a new integration test as well as a unit test.
 - Prefer `t.Parallel()` in unit tests when safe (no shared mutable state, globals, or ordering dependencies). Subtests in table-driven tests can call `t.Parallel()` inside `t.Run`.
@@ -168,16 +168,18 @@ func NewCRUDHandler(cfg *config.Prest) *CRUDHandler {
 
 ### Postgres adapter unit tests (`adapters/postgres`)
 
-Unit tests under `adapters/postgres/**` must pass with **no Postgres process running**. Real DB usage belongs only in `integration/adapters/postgres/**` (Docker).
+Unit tests under `adapters/postgres/**` must pass with **no Postgres process running**. Real DB usage belongs only in `integration/postgres/adapters/postgres/**` (Docker).
 
 | Location | Package | Database | Run via |
 |----------|---------|----------|---------|
 | `adapters/postgres/**` | unit | **Never real** — sqlmock only | `go test ./adapters/postgres/...`, `make test-unit` |
-| `integration/adapters/postgres/**` | integration | Real Postgres (Docker) | `make test-integration` |
+| `integration/postgres/adapters/postgres/**` | integration | Real Postgres (Docker) | `make test-integration-postgres` |
 
 ### Network integration tests
 
-`make test-integration` (`docker-compose-test.yml`) provisions Postgres, seeds data via `testdata/db-init.sh`, starts **real prestd servers**, then runs tests in the `tests` container.
+`make test-integration-postgres` (`integration/postgres/docker-compose.yml`) provisions Postgres, seeds data via `testdata/db-init.sh`, starts **real prestd servers**, then runs `./integration/suites/...` and `./integration/postgres/...`.
+
+`make test-integration-timescaledb` (`integration/timescaledb/docker-compose.yml`) provisions TimescaleDB and runs `./integration/timescaledb/...` **only** (does not re-run shared `suites/` or Postgres packages).
 
 | Service | URL env (in tests container) | Config |
 |---------|------------------------------|--------|
@@ -193,7 +195,7 @@ Standard-stack HTTP tests use [`integration/helpers/server.go`](integration/help
 
 Call deployed servers with `integration/testutils.DoRequest(t, base+path, ...)`. Do **not** use `httptest.NewServer(helpers.IntegrationHandler(...))` for controller/router tests unless the test needs a **custom negroni stack** or per-test config mutation (e.g. `integration/middlewares/`, `integration/plugins/`, `TestSilentErrorsOnQuery`).
 
-Keep [`helpers.IntegrationHandler`](integration/helpers/setup.go) for custom-stack tests only. Adapter-level tests under `integration/adapters/` may still call the adapter directly.
+Keep [`helpers.IntegrationHandler`](integration/helpers/setup.go) for custom-stack tests only. Adapter-level tests under `integration/postgres/adapters/` may still call the adapter directly.
 
 Local `go test ./integration/...` without compose skips network tests (no `PREST_*_TEST_URL`).
 
@@ -383,12 +385,13 @@ Handlers should depend on the **smallest port** that suffices (e.g. `CRUDHandler
 
 ### Adding a new feature (checklist)
 
-1. **Port** — add or extend an interface in `adapters/` if the core needs new external capability.
-2. **Adapter** — implement it in `adapters/postgres/` (or another driven adapter package).
-3. **Handler** — add methods on a handler struct; accept the port via constructor/`Deps`.
-4. **Route** — register in `router/router.go`; add middleware in `middlewares/` if needed.
-5. **Mocks** — run `make mockgen` for new/changed interfaces; unit-test handlers with `adapters/mockgen/`.
-6. **Integration** — add `integration/<package>/` tests for end-to-end behavior with Docker Postgres.
+1. **Failing unit test (TDD)** — write/adjust a failing unit test first (see `.cursor/rules/unit-tests-tdd.mdc`).
+2. **Port** — add or extend an interface in `adapters/` if the core needs new external capability.
+3. **Adapter** — implement it in `adapters/postgres/` (or another driven adapter package).
+4. **Handler** — add methods on a handler struct; accept the port via constructor/`Deps`.
+5. **Route** — register in `router/router.go`; add middleware in `middlewares/` if needed.
+6. **Mocks** — run `make mockgen` for new/changed interfaces; unit-test handlers with `adapters/mockgen/`.
+7. **Integration** — add `integration/<package>/` tests for end-to-end behavior with Docker Postgres.
 
 ### Dependency rules (do / don't)
 

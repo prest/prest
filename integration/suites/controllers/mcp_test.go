@@ -10,7 +10,12 @@ import (
 
 func TestMCPDiscovery(t *testing.T) {
 	base := helpers.ServerURL(t)
-	testutils.DoRequest(t, base+"/_mcp", nil, http.MethodGet, http.StatusOK, "MCPDiscovery",
+
+	// Discover MCP server metadata and tool catalog via GET.
+	// Expected to succeed with HTTP status OK and advertise core list_* tools.
+	testutils.DoRequest(
+		t, base+"/_mcp",
+		nil, http.MethodGet, http.StatusOK, "MCPDiscovery",
 		`"name":"prest"`,
 		`"protocol":"0.1"`,
 		`"tools"`,
@@ -28,7 +33,11 @@ func TestMCPInitialize(t *testing.T) {
 		"method":  "initialize",
 	}
 
-	testutils.DoRequest(t, base+"/_mcp", payload, http.MethodPost, http.StatusOK, "MCPInitialize",
+	// JSON-RPC initialize handshake.
+	// Expected to succeed with HTTP status OK and return serverInfo.
+	testutils.DoRequest(
+		t, base+"/_mcp",
+		payload, http.MethodPost, http.StatusOK, "MCPInitialize",
 		`"serverInfo"`,
 		`"name":"prest"`,
 		`"instructions"`,
@@ -43,7 +52,11 @@ func TestMCPToolsList(t *testing.T) {
 		"method":  "tools/list",
 	}
 
-	testutils.DoRequest(t, base+"/_mcp", payload, http.MethodPost, http.StatusOK, "MCPToolsList",
+	// List MCP tools via JSON-RPC tools/list.
+	// Expected to succeed with HTTP status OK and include catalog + select tools.
+	testutils.DoRequest(
+		t, base+"/_mcp",
+		payload, http.MethodPost, http.StatusOK, "MCPToolsList",
 		`"tools"`,
 		`prest.list_databases`,
 		`prest.list_schemas`,
@@ -57,13 +70,13 @@ func TestMCPToolCalls(t *testing.T) {
 	base := helpers.ServerURL(t)
 
 	toolCalls := []struct {
-		name         string
+		description  string
 		payload      map[string]any
 		status       int
 		expectedBody string
 	}{
 		{
-			name: "ListDatabases",
+			description: "Call prest.list_databases; expect OK and prest-test physical_name",
 			payload: map[string]any{
 				"jsonrpc": "2.0",
 				"id":      3,
@@ -76,7 +89,7 @@ func TestMCPToolCalls(t *testing.T) {
 			expectedBody: `"physical_name":"prest-test"`,
 		},
 		{
-			name: "ListSchemas",
+			description: "Call prest.list_schemas; expect OK and public schema",
 			payload: map[string]any{
 				"jsonrpc": "2.0",
 				"id":      4,
@@ -89,7 +102,7 @@ func TestMCPToolCalls(t *testing.T) {
 			expectedBody: `"public"`,
 		},
 		{
-			name: "ListTables",
+			description: "Call prest.list_tables; expect OK and test table name",
 			payload: map[string]any{
 				"jsonrpc": "2.0",
 				"id":      5,
@@ -102,7 +115,7 @@ func TestMCPToolCalls(t *testing.T) {
 			expectedBody: `"name":"test"`,
 		},
 		{
-			name: "DescribeTable",
+			description: "Call prest.describe_table for public.test; expect OK and columns",
 			payload: map[string]any{
 				"jsonrpc": "2.0",
 				"id":      6,
@@ -125,7 +138,7 @@ func TestMCPToolCalls(t *testing.T) {
 			// reliable even when other packages run concurrently against the
 			// shared database (unlike the "test" table, which is emptied by the
 			// delete CRUD/router tests).
-			name: "SelectTable",
+			description: "Call select on Reply filtered by name; expect OK and prest tester",
 			payload: map[string]any{
 				"jsonrpc": "2.0",
 				"id":      7,
@@ -147,8 +160,10 @@ func TestMCPToolCalls(t *testing.T) {
 	}
 
 	for _, tc := range toolCalls {
-		t.Run(tc.name, func(t *testing.T) {
-			testutils.DoRequest(t, base+"/_mcp", tc.payload, http.MethodPost, tc.status, tc.name, tc.expectedBody)
+		t.Run(tc.description, func(t *testing.T) {
+			testutils.DoRequest(
+				t, base+"/_mcp",
+				tc.payload, http.MethodPost, tc.status, tc.description, tc.expectedBody)
 		})
 	}
 }
@@ -164,15 +179,11 @@ func TestMCPUnsupportedTool(t *testing.T) {
 		},
 	}
 
-	testutils.DoRequest(t, base+"/_mcp", payload, http.MethodPost, http.StatusBadRequest, "MCPUnsupportedTool",
+	// Call an unsupported MCP tool name.
+	// Expected to fail with HTTP status BadRequest mentioning unsupported tool.
+	testutils.DoRequest(
+		t, base+"/_mcp",
+		payload, http.MethodPost, http.StatusBadRequest, "MCPUnsupportedTool",
 		`unsupported tool`,
-	)
-}
-
-func TestMCPMultiClusterDiscovery(t *testing.T) {
-	base := helpers.MultiClusterServerURL(t)
-	testutils.DoRequest(t, base+"/_mcp", nil, http.MethodGet, http.StatusOK, "MCPMultiClusterDiscovery",
-		`"name":"prest"`,
-		`"tools"`,
 	)
 }

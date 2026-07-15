@@ -16,7 +16,7 @@ x-prestd-service: &prestd-service
   image: golang:1.26-bookworm
   working_dir: /workspace
   volumes:
-    - ./:/workspace
+    - ../..:/workspace
 
 services:
   postgres:
@@ -181,4 +181,4 @@ services:
       PREST_AUTH_TEST_URL: http://prestd-auth:3002
       PREST_QUERIES_TEST_URL: http://prestd-queries:3003
     command: >-
-      bash -lc "apt-get update && apt-get install -y --no-install-recommends postgresql-client git ca-certificates && bash -x ./testdata/runtest.sh"
+      bash -lc "apt-get update && apt-get install -y --no-install-recommends postgresql-client git ca-certificates && bash -x ./testdata/runtest.sh ./integration/suites/... ./integration/postgres/..."

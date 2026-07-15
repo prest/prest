@@ -1,0 +1,42 @@
+---
+description: Classify engines, require DIFFERENCES.md, and map what/where for new SQL DB support
+globs: integration/**/DIFFERENCES.md,integration/**/docker-compose.yml,adapters/**/*.go,app/**/*.go,.github/workflows/test-integration*.yml
+alwaysApply: false
+---
+
+# SQL Database Support
+
+MUST gates when adding or planning support for a SQL engine. Full playbook: skill `sql-database-support`.
+
+## 1. Classify first
+
+| Kind | Examples | Implication |
+|------|----------|-------------|
+| Postgres-wire variant | TimescaleDB, Citus | Reuse `adapters/postgres`; focus on compose, seed, catalog quirks, specific tests |
+| New dialect | MySQL, SQLite, … | New `adapters/<engine>` implementing `adapters.Adapter`; select in `app/app.go` (today hardcodes `postgres.New`) |
+
+Do not treat a new dialect as compose-only.
+
+## 2. No CI without analysis
+
+`integration/<db>/DIFFERENCES.md` must exist before scaffolding CI green paths. Cover at least: image/init, catalog, DDL, wire/driver, system schemas/ACL, compose ownership vs Postgres.
+
+## 3. Where matrix (condensed)
+
+| Kind | Touch these | Do not |
+|------|-------------|--------|
+| Wire variant | `integration/<db>/` (compose, init, tests), `Makefile`, `test-integration-<db>.yml`, `DIFFERENCES.md` | New adapter; fold into Postgres compose |
+| New dialect | ports in `adapters/*.go` if needed → `adapters/<engine>/` → `app/app.go` selection → config if needed → `make mockgen` → same integration/CI layout | Pretend compose-only; import engine from `controllers/` / `middlewares/` / `router/` |
+
+## 4. Safety
+
+- Parameterized SQL only; no unchecked identifier concatenation
+- Auth / ACL / JWT / secrets fail closed — never weaken for “compatibility”
+- No `postgres.Load()` or live DB outside `integration/` and startup (`cmd/`)
+
+## Related
+
+- Compose/package ownership: `integration-layout.mdc`
+- E2E readability: `integration-tests.mdc` / skill `prest-integration-tests`
+- TDD + ≥80%: `unit-tests-tdd.mdc`
+- Hexagonal wiring: `hexagonal-architecture.mdc`
