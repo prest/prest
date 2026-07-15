@@ -1,0 +1,38 @@
+---
+description: Postgres adapter unit tests are sqlmock-only; no real DB or sqlx.Connect
+globs: adapters/postgres/**/*_test.go
+alwaysApply: false
+---
+
+# Postgres Adapter Unit Tests
+
+Unit tests under `adapters/<adapter_name>/**` must pass with **no database process running**.
+Complements (does not replace) `unit-tests-tdd.mdc`.
+
+## Allowed only
+
+1. **Happy path / SQL** — `withSQLMock` / `withSQLMocks` (+ optional `withSQLMockPing`)
+2. **Connection failure** — `withFailingDBConnect` (no TCP)
+3. **Pure logic** — no adapter DB calls
+
+Real DB tests belongs only under `integration/postgres/adapters/`.
+
+## Anti-patterns
+
+```go
+// BAD: reaches real sqlx.Connect
+adapter := New(defaultTestConf()).(*postgres)
+adapter.BatchInsertCopy(...)
+
+// BAD: relies on network / PGConnTimeout
+cfg.PGConnTimeout = 1
+adapter.Connect()
+
+// GOOD
+adapter := withFailingDBConnect(t, "connect failed")
+adapter, mock := withSQLMock(t)
+```
+
+- Do not call `conn.Get()`, `Connect()`, `DB()`, or `Ping()` in a way that reaches `sqlx.Connect` without a test double
+- Prefer helpers over bare `New(cfg)` for DB paths; rely on helper `t.Cleanup` for pool/stmt cache
+- Full helper tables and file layout: `@.github/copilot-instructions.md`

@@ -1,0 +1,40 @@
+---
+description: TDD required for behavior changes; ≥80% package coverage on touched packages; unit-test conventions
+alwaysApply: true
+---
+
+# Unit Tests & TDD
+
+## TDD (behavior changes)
+
+For adding or changing behavior: **failing unit test first** → implement → refactor.
+Do not land production code without a red→green cycle.
+
+## Coverage bar
+
+Unit tests for packages under change must cover **≥80%** of that package’s existing code (not only new lines).
+Verify before done:
+
+```sh
+go test -timeout 30s -race -cover ./path/to/package/...
+# or full unit suite (writes coverage.out):
+make test-unit
+```
+
+Fail the task if package coverage is under 80%.
+
+## Placement & isolation
+
+- Co-located `<source>_test.go` (e.g. `config.go` → `config_test.go`)
+- Mock ports via `adapters/mockgen/`; never live DB or `postgres.Load()` in unit tests
+- Outside `adapters/postgres/`, mock ports — not concrete postgres types
+
+## Parallelism
+
+- Prefer `t.Parallel()` when safe (no shared mutable state / ordering)
+- **Never** with `t.Setenv`, mutated `config.Load()`, `SetDBConnectForTest`, or shared globals
+
+## Controllers / HTTP
+
+TDD unit tests do **not** replace E2E. Controller/HTTP behavior also needs integration coverage —
+see `integration-tests.mdc` and skill `prest-integration-tests`.

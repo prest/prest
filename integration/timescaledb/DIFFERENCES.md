@@ -10,7 +10,7 @@ existing `adapters/postgres` stack — no separate adapter.
 | DDL | Standard SQL | Hypertable conversion (`create_hypertable`), policies — covered by Timescale-specific tests |
 | Wire / driver | `lib/pq` + postgres adapter | Same |
 | System schemas | `pg_catalog` / `information_schema` | Extra `_timescaledb_*` schemas; ACL/`access_confine` may need allowlists later |
-| Compose | Multi-service (auth, multicluster, queries) | Lean stack for suites + specific tests; other flavours stay on the Postgres job |
+| Compose | Multi-service (auth, multicluster, queries) | Lean stack for suites + specific tests; other flavors stay on the Postgres job |
 
 ## Shared suites vs Timescale E2E
 

@@ -1,0 +1,30 @@
+---
+description: Config warn-and-continue for non-sensitive keys; Auth/ACL/JWT/secrets/DB credentials fail closed
+globs: config/**/*.go
+alwaysApply: false
+---
+
+# Config Resilience
+
+Wrong or partial config must not block API startup for **non-sensitive** settings.
+Security-related settings **fail closed** — never silent-weaken via zero defaults.
+
+## Warn-and-continue (non-sensitive)
+
+| Kind | On invalid/missing | Helper / pattern |
+|------|-------------------|------------------|
+| Scalar | viper default | `viper.SetDefault` + `Get*` |
+| Optional dirs / feature paths | default → disable feature | `ensureCacheStorage`, `ensureQueriesPath` |
+| Enum-like | warn + default | `getJSONAgg` |
+| Non-security structured keys | warn + zero | `unmarshalKeyOrZero` (`pluginmiddlewarelist`, `cache.endpoints`) |
+
+## Fail closed (never weaken)
+
+**Auth, ACL, JWT, secrets, DB credentials:**
+
+- Hard error or disable the feature (`ensureJWTConfig`, middleware empty-key guards)
+- Do **not** use `unmarshalKeyOrZero` for access/ACL
+- Never zero/default into a weaker security posture
+
+Middleware empty-key guards and SQL/auth validation remain defense-in-depth at request time.
+Full parse/Load behavior list: `@.github/copilot-instructions.md`.

@@ -1,0 +1,30 @@
+---
+description: Hexagonal DIP/ISP — no postgres in handlers; narrow ports via Deps; TDD→port→adapter→route
+globs: controllers/**/*.go,middlewares/**/*.go,router/**/*.go,adapters/**/*.go,cmd/**/*.go
+alwaysApply: false
+---
+
+# Hexagonal Architecture
+
+Dependencies point **inward**. Handlers depend on ports, not `adapters/postgres`.
+
+## DIP / ISP
+
+| Do | Don't |
+|----|-------|
+| Depend on narrow `adapters/*` ports via `controllers.Deps` | Import `adapters/postgres` from `controllers/`, `middlewares/`, or `router/` |
+| Inject at composition root (`cmd/`, `router/`, `NewDepsFromConfig`) | Construct concrete postgres inside handlers |
+| Smallest interface that suffices | Depend on composite `Adapter` when a narrower port works |
+| `make mockgen` when ports change | Call `postgres.Load()` outside `integration/` and startup (`cmd/`) |
+
+## Adding a feature (checklist)
+
+1. **Failing unit test (TDD)** — see `unit-tests-tdd.mdc`
+2. **Port** — add/extend interface in `adapters/` if needed
+3. **Adapter** — implement in `adapters/postgres/` (or other driven adapter)
+4. **Handler** — methods on focused struct; accept port via constructor/`Deps`
+5. **Route** — register in `router/`; middleware in `middlewares/` if needed
+6. **Mocks** — `make mockgen`; unit-test with `adapters/mockgen/`
+7. **Integration** — `integration/` E2E for HTTP/controller behavior
+
+Samples and SOLID essay: `@.github/copilot-instructions.md`.

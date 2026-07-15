@@ -9,6 +9,10 @@ description: >-
 
 # Adding SQL Database Support
 
+MUST invariants for compose/workflow layout also live in
+`.cursor/rules/integration-layout.mdc` (this skill keeps classify / DIFFERENCES /
+scaffolding steps).
+
 Use this skill to **think through and start** support for a SQL engine — not to
 implement a full product surface in one pass.
 
@@ -32,11 +36,11 @@ RETURNING, types) must be designed before CI greenwashing.
 Create `integration/<db>/DIFFERENCES.md` covering at least:
 
 - Image / init (extensions, required SQL)
-- Catalog / listing behaviour vs stock Postgres
+- Catalog / listing behavior vs stock Postgres
 - DDL features unique to the engine
 - Wire / driver / adapter choice
 - System schemas and ACL/`access_confine` implications
-- Which compose flavours this DB job will own vs leave on Postgres
+- Which compose flavors this DB job will own vs leave on Postgres
 
 ## 3. Integration layout contract
 

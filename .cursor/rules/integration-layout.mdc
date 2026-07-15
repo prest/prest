@@ -1,0 +1,25 @@
+---
+description: Per-DB compose/workflow layout; Timescale runs only its package; no folding into Postgres
+globs: integration/**,.github/workflows/test-integration*.yml,Makefile
+alwaysApply: false
+---
+
+# Integration Layout
+
+One Docker Compose file and one dedicated GitHub Actions workflow **per database**.
+Never fold a new engine into `integration/postgres/docker-compose.yml` or the Postgres workflow.
+
+## Package ownership
+
+| Target | Workflow | Compose | Packages |
+|--------|----------|---------|----------|
+| Postgres (`make test-integration-postgres`) | `test-integration.yml` | `integration/postgres/docker-compose.yml` | `./integration/suites/...` + `./integration/postgres/...` |
+| Timescale (`make test-integration-timescaledb`) | `test-integration-timescaledb.yml` | `integration/timescaledb/docker-compose.yml` | `./integration/timescaledb/...` **only** |
+| Future DB | `test-integration-<db>.yml` | `integration/<db>/docker-compose.yml` | `./integration/<db>/...` only (unless a separate compat job is intentional) |
+
+- Shared wire-compatible `suites/` stay on the **Postgres** job
+- Timescale (and future DB jobs) must **not** re-run `suites/` or other DBs’ packages
+- Makefile: `test-integration-<db>` that runs compose against that package tree only
+
+When adding a new SQL engine, follow skill `sql-database-support` (classify, `DIFFERENCES.md`, scaffold).
+Request readability: `integration-tests.mdc` / skill `prest-integration-tests`.

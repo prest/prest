@@ -11,6 +11,9 @@ description: >-
 
 # pREST Integration Tests
 
+MUST invariants also live in `.cursor/rules/integration-tests.mdc` and
+`.cursor/rules/integration-layout.mdc` (this skill keeps examples + checklists).
+
 Integration tests must be **human-readable**. A reader should understand the
 scenario, expected outcome, and why each request matters without decoding URLs
 or status codes alone.
