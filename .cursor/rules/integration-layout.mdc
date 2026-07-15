@@ -21,5 +21,5 @@ Never fold a new engine into `integration/postgres/docker-compose.yml` or the Po
 - Timescale (and future DB jobs) must **not** re-run `suites/` or other DBs’ packages
 - Makefile: `test-integration-<db>` that runs compose against that package tree only
 
-When adding a new SQL engine, follow skill `sql-database-support` (classify, `DIFFERENCES.md`, scaffold).
+When adding a new SQL engine, follow rule/skill `sql-database-support` (classify, gap analysis / `DIFFERENCES.md`, where-to-change matrix, scaffold).
 Request readability: `integration-tests.mdc` / skill `prest-integration-tests`.

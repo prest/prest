@@ -165,7 +165,8 @@ A task is **done** only when all apply:
 
 - `unit-tests-tdd.mdc` — always-on TDD + ≥80% package coverage
 - `integration-tests.mdc` / `integration-layout.mdc` — E2E readability and per-DB layout
-- `postgres-adapter-unit-tests.mdc` — sqlmock-only under `adapters/postgres`
+- `sql-database-support.mdc` — classify engines, DIFFERENCES gate, where-to-change matrix
+- `adapter-unit-tests.mdc` — sqlmock-only under `adapters/postgres`
 - `hexagonal-architecture.mdc` — DIP/ISP and feature checklist
 - `config-resilience.mdc` — warn-and-continue vs fail-closed
 - `git-commits.mdc` — human-owned commits

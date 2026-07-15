@@ -42,7 +42,7 @@ Workflows run in parallel. The Timescale workflow does **not** re-run shared
 
 Local `go test` without Compose skips network tests when `PREST_*_TEST_URL` is unset.
 
-For adding a **new SQL engine**, see the `sql-database-support` skill.
+For adding a **new SQL engine**, see rule/skill `sql-database-support` (analysis + where-to-change).
 
 ## When writing or editing
 
