@@ -58,6 +58,9 @@ jobs:
           trim: github.com/prest/prest/v2/
           github-baseline-workflow-ref: test-unit.yml
 
+  # Fork PRs cannot use secrets under pull_request. Generate the markdown here;
+  # coverage-pr-comment-fork.yml posts it via workflow_run + org secret PR_TOKEN.
+  # See .github/ci-coverage-comments.md
   coverage-report-fork:
     name: Coverage PR comment (fork)
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
@@ -77,23 +80,20 @@ jobs:
           trim: github.com/prest/prest/v2/
           github-baseline-workflow-ref: test-unit.yml
 
-      # Fork PRs: GITHUB_TOKEN cannot comment on the base repo; use PR_TOKEN (PAT).
-      - name: Post coverage comment
+      - name: Write coverage comment artifact
         env:
-          GH_TOKEN: ${{ secrets.PR_TOKEN }}
           COVERAGE_REPORT: ${{ steps.coverage.outputs.coverage_report }}
         run: |
           if [ -z "$COVERAGE_REPORT" ]; then
-            echo "No coverage report to post"
+            echo "No coverage report to upload"
             exit 0
           fi
-
           printf '%s\n' "$COVERAGE_REPORT" > coverage-comment.md
 
-          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
-            -q '.[] | select(.body | test("Coverage Δ")) | .id' | head -n 1)
-          if [ -n "$COMMENT_ID" ]; then
-            gh api -X DELETE "repos/${{ github.repository }}/issues/comments/${COMMENT_ID}" || true
-          fi
-
-          gh pr comment "${{ github.event.pull_request.number }}" --body-file=coverage-comment.md
+      - name: Upload coverage comment artifact
+        if: hashFiles('coverage-comment.md') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-pr-comment
+          path: coverage-comment.md
+          if-no-files-found: ignore
