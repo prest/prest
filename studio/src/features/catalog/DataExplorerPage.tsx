@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { getRouteApi } from '@tanstack/react-router'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
 	ChevronDown,
 	ChevronRight,
@@ -111,8 +111,20 @@ export function DataExplorerPage() {
 		queryFn: ({ signal }) =>
 			queryTable(client, selectedDb, selected!.schema, selected!.table, spec, signal),
 		enabled: Boolean(selectedDb && selected),
-		placeholderData: keepPreviousData,
 	})
+
+	const setDatabase = (db: string) => {
+		setFilters([])
+		navigate({
+			search: (prev) => ({
+				...prev,
+				db,
+				schema: undefined,
+				table: undefined,
+				page: 1,
+			}),
+		})
+	}
 
 	const selectTable = (schema: string, table: string) => {
 		setFilters([])
@@ -165,9 +177,7 @@ export function DataExplorerPage() {
 									id="db-select"
 									className="h-9 rounded-md border border-input bg-background px-2 text-sm"
 									value={selectedDb}
-									onChange={(e) =>
-										navigate({ search: (prev) => ({ ...prev, db: e.target.value }) })
-									}
+									onChange={(e) => setDatabase(e.target.value)}
 								>
 									{dbOptions.map((db) => (
 										<option key={db} value={db}>
@@ -180,9 +190,7 @@ export function DataExplorerPage() {
 									id="db-select"
 									placeholder="database name"
 									defaultValue={selectedDb}
-									onBlur={(e) =>
-										navigate({ search: (prev) => ({ ...prev, db: e.target.value.trim() }) })
-									}
+									onBlur={(e) => setDatabase(e.target.value.trim())}
 								/>
 							)}
 						</div>

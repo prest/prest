@@ -11,6 +11,7 @@ import { buildCurl } from '@/lib/api/curl'
 import { toErrorMessage } from '@/lib/errors'
 
 interface Param {
+	id: string
 	key: string
 	value: string
 	enabled: boolean
@@ -22,6 +23,16 @@ interface ResponseState {
 	durationMs: number
 	body: string
 	contentType: string
+}
+
+function newParam(partial?: Partial<Omit<Param, 'id'>>): Param {
+	return {
+		id: crypto.randomUUID(),
+		key: '',
+		value: '',
+		enabled: true,
+		...partial,
+	}
 }
 
 function buildQuery(params: Param[]): string {
@@ -44,7 +55,7 @@ function prettify(text: string, contentType: string): string {
 export function RestExplorerPage() {
 	const client = usePrestClient()
 	const [path, setPath] = React.useState('/databases')
-	const [params, setParams] = React.useState<Param[]>([{ key: '', value: '', enabled: true }])
+	const [params, setParams] = React.useState<Param[]>(() => [newParam()])
 	const [response, setResponse] = React.useState<ResponseState | null>(null)
 	const [error, setError] = React.useState<string | null>(null)
 	const [loading, setLoading] = React.useState(false)
@@ -73,8 +84,8 @@ export function RestExplorerPage() {
 		}
 	}
 
-	const updateParam = (index: number, patch: Partial<Param>) => {
-		setParams((prev) => prev.map((p, i) => (i === index ? { ...p, ...patch } : p)))
+	const updateParam = (id: string, patch: Partial<Param>) => {
+		setParams((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)))
 	}
 
 	return (
@@ -101,7 +112,7 @@ export function RestExplorerPage() {
 								placeholder="/{database}/{schema}/{table}"
 								className="font-mono"
 								onKeyDown={(e) => {
-									if (e.key === 'Enter') void send()
+									if (e.key === 'Enter' && !loading) void send()
 								}}
 							/>
 						</div>
@@ -112,31 +123,31 @@ export function RestExplorerPage() {
 
 					<div className="flex flex-col gap-2">
 						<Label className="text-xs text-muted-foreground">Query parameters</Label>
-						{params.map((p, i) => (
-							<div key={i} className="flex items-center gap-2">
+						{params.map((p) => (
+							<div key={p.id} className="flex items-center gap-2">
 								<input
 									type="checkbox"
 									className="size-4 accent-primary"
 									checked={p.enabled}
-									onChange={(e) => updateParam(i, { enabled: e.target.checked })}
+									onChange={(e) => updateParam(p.id, { enabled: e.target.checked })}
 									aria-label="Enable parameter"
 								/>
 								<Input
 									className="flex-1 font-mono"
 									placeholder="key"
 									value={p.key}
-									onChange={(e) => updateParam(i, { key: e.target.value })}
+									onChange={(e) => updateParam(p.id, { key: e.target.value })}
 								/>
 								<Input
 									className="flex-1 font-mono"
 									placeholder="value (e.g. $eq.1)"
 									value={p.value}
-									onChange={(e) => updateParam(i, { value: e.target.value })}
+									onChange={(e) => updateParam(p.id, { value: e.target.value })}
 								/>
 								<Button
 									variant="ghost"
 									size="icon"
-									onClick={() => setParams((prev) => prev.filter((_, idx) => idx !== i))}
+									onClick={() => setParams((prev) => prev.filter((x) => x.id !== p.id))}
 									aria-label="Remove parameter"
 								>
 									<Trash2 />
@@ -147,9 +158,7 @@ export function RestExplorerPage() {
 							<Button
 								variant="secondary"
 								size="sm"
-								onClick={() =>
-									setParams((prev) => [...prev, { key: '', value: '', enabled: true }])
-								}
+								onClick={() => setParams((prev) => [...prev, newParam()])}
 							>
 								<Plus /> Add parameter
 							</Button>

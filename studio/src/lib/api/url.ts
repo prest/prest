@@ -61,7 +61,7 @@ export interface QuerySpec {
 }
 
 /**
- * Encode a single path segment. Unlike `encodeURIComponent`, forward slashes
+ * Encode a single path segment. Unlike `encodeURI`, forward slashes
  * are always escaped so a segment can never inject an extra path level.
  */
 export function encodeSegment(segment: string): string {

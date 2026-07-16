@@ -31,14 +31,14 @@ export const DialogContent = React.forwardRef<
 			className={cn(
 				'fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4',
 				'rounded-lg border border-border bg-card p-6 text-card-foreground shadow-lg',
-				'focus:outline-none',
+				'focus:outline-hidden',
 				className,
 			)}
 			{...props}
 		>
 			{children}
 			<DialogPrimitive.Close
-				className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 				aria-label="Close"
 			>
 				<X className="size-4" />

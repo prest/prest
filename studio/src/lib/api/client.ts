@@ -21,6 +21,11 @@ export interface PrestClientOptions {
 	fetchImpl?: typeof fetch
 	/** Request timeout in ms. Defaults to 30000. */
 	timeoutMs?: number
+	/**
+	 * Origin used to decide whether bearer auth may be attached.
+	 * Defaults to `window.location.origin` when available.
+	 */
+	apiOrigin?: string
 }
 
 export interface RequestOptions {
@@ -54,12 +59,16 @@ export class PrestClient {
 	private readonly getToken: TokenProvider
 	private readonly fetchImpl: typeof fetch
 	private readonly timeoutMs: number
+	private readonly apiOrigin: string | null
 
 	constructor(options: PrestClientOptions = {}) {
 		this.baseUrl = (options.baseUrl ?? '').replace(/\/$/, '')
 		this.getToken = options.getToken ?? (() => null)
 		this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis)
 		this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT
+		this.apiOrigin =
+			options.apiOrigin ??
+			(typeof globalThis.location?.origin === 'string' ? globalThis.location.origin : null)
 	}
 
 	/** Resolve a relative path (and optional query) into a request URL. */
@@ -72,40 +81,78 @@ export class PrestClient {
 		return base.includes('?') ? `${base}&${qs}` : `${base}?${qs}`
 	}
 
-	private buildHeaders(opts: RequestOptions): Headers {
+	/** Absolute URLs must share the configured API origin before auth is attached. */
+	private isSameOrigin(url: string): boolean {
+		if (!/^https?:\/\//i.test(url)) return true
+		if (!this.apiOrigin) return false
+		try {
+			return new URL(url).origin === new URL(this.apiOrigin).origin
+		} catch {
+			return false
+		}
+	}
+
+	private buildHeaders(opts: RequestOptions, url: string): Headers {
 		const headers = new Headers({ Accept: 'application/json' })
 		if (opts.body != null) headers.set('Content-Type', 'application/json')
 		for (const [k, v] of Object.entries(opts.headers ?? {})) headers.set(k, v)
-		if (!opts.noAuth) {
+		if (!opts.noAuth && this.isSameOrigin(url)) {
 			const token = this.getToken()
 			if (token) headers.set('Authorization', `Bearer ${token}`)
 		}
 		return headers
 	}
 
-	private async run(path: string, opts: RequestOptions): Promise<Response> {
+	/**
+	 * Run fetch + body consumer under a shared abort timeout.
+	 * Distinguishes timer aborts from caller-provided AbortSignals.
+	 */
+	private async withTimeout<T>(
+		path: string,
+		opts: RequestOptions,
+		consume: (res: Response, url: string) => Promise<T>,
+	): Promise<T> {
 		const url = this.resolve(path, opts.query)
+		if (/^https?:\/\//i.test(url) && !this.isSameOrigin(url)) {
+			throw new ApiError('Cross-origin requests are not allowed.', {
+				kind: 'bad_request',
+				url,
+			})
+		}
+
 		const controller = new AbortController()
 		const timeout = opts.timeoutMs ?? this.timeoutMs
-		const timer = setTimeout(() => controller.abort(), timeout)
+		let timedOut = false
+		const timer = setTimeout(() => {
+			timedOut = true
+			controller.abort()
+		}, timeout)
 
-		// Propagate external cancellation into our controller.
 		if (opts.signal) {
 			if (opts.signal.aborted) controller.abort()
 			else opts.signal.addEventListener('abort', () => controller.abort(), { once: true })
 		}
 
 		try {
-			return await this.fetchImpl(url, {
+			const res = await this.fetchImpl(url, {
 				method: opts.method ?? 'GET',
-				headers: this.buildHeaders(opts),
+				headers: this.buildHeaders(opts, url),
 				body: opts.body != null ? JSON.stringify(opts.body) : undefined,
 				signal: controller.signal,
 			})
+			return await consume(res, url)
 		} catch (err) {
+			if (err instanceof ApiError) throw err
 			if (controller.signal.aborted) {
-				throw new ApiError(`Request timed out after ${timeout}ms.`, {
-					kind: 'timeout',
+				if (timedOut) {
+					throw new ApiError(`Request timed out after ${timeout}ms.`, {
+						kind: 'timeout',
+						url,
+						cause: err,
+					})
+				}
+				throw new ApiError('Request was cancelled.', {
+					kind: 'network',
 					url,
 					cause: err,
 				})
@@ -122,8 +169,7 @@ export class PrestClient {
 
 	/** Fire a request and return only status info (empty-body endpoints). */
 	async probe(path: string, opts: RequestOptions = {}): Promise<ProbeResult> {
-		const res = await this.run(path, opts)
-		return { status: res.status, ok: res.ok }
+		return this.withTimeout(path, opts, async (res) => ({ status: res.status, ok: res.ok }))
 	}
 
 	/** Request JSON and throw {@link ApiError} on non-2xx or parse failure. */
@@ -132,23 +178,21 @@ export class PrestClient {
 		opts: RequestOptions = {},
 	): Promise<JsonResponse<T>> {
 		const start = now()
-		const res = await this.run(path, opts)
-		const durationMs = Math.round(now() - start)
-		const url = this.resolve(path, opts.query)
-
-		if (!res.ok) {
-			const body = await safeReadBody(res)
-			throw new ApiError(messageFromStatus(res.status, bodyMessage(body)), {
-				kind: kindFromStatus(res.status),
-				status: res.status,
-				body,
-				url,
-			})
-		}
-
-		const text = await res.text()
-		const data = parseJson<T>(text, url)
-		return { data, status: res.status, headers: res.headers, durationMs }
+		return this.withTimeout(path, opts, async (res, url) => {
+			const durationMs = Math.round(now() - start)
+			if (!res.ok) {
+				const body = await safeReadBody(res)
+				throw new ApiError(messageFromStatus(res.status, bodyMessage(body)), {
+					kind: kindFromStatus(res.status),
+					status: res.status,
+					body,
+					url,
+				})
+			}
+			const text = await res.text()
+			const data = parseJson<T>(text, url)
+			return { data, status: res.status, headers: res.headers, durationMs }
+		})
 	}
 
 	/** Like {@link requestJson} but returns raw text alongside metadata. */
@@ -157,10 +201,11 @@ export class PrestClient {
 		opts: RequestOptions = {},
 	): Promise<{ text: string; status: number; ok: boolean; headers: Headers; durationMs: number }> {
 		const start = now()
-		const res = await this.run(path, opts)
-		const durationMs = Math.round(now() - start)
-		const text = await res.text()
-		return { text, status: res.status, ok: res.ok, headers: res.headers, durationMs }
+		return this.withTimeout(path, opts, async (res) => {
+			const text = await res.text()
+			const durationMs = Math.round(now() - start)
+			return { text, status: res.status, ok: res.ok, headers: res.headers, durationMs }
+		})
 	}
 }
 

@@ -71,6 +71,9 @@ export function McpExplorerPage() {
 	const connect = async () => {
 		setConnecting(true)
 		setConnectError(null)
+		setTools([])
+		setSelected(null)
+		setResult(null)
 		try {
 			const info = await mcp.initialize()
 			setInit(info)
@@ -79,6 +82,9 @@ export function McpExplorerPage() {
 		} catch (err) {
 			setConnectError(err instanceof McpError ? err.message : String(err))
 			setInit(null)
+			setTools([])
+			setSelected(null)
+			setResult(null)
 		} finally {
 			setConnecting(false)
 		}
@@ -95,13 +101,20 @@ export function McpExplorerPage() {
 	const buildArgs = (): Record<string, unknown> => {
 		if (rawMode) {
 			const parsed = JSON.parse(rawArgs || '{}')
-			if (!parsed || typeof parsed !== 'object') throw new Error('Arguments must be a JSON object.')
+			if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+				throw new Error('Arguments must be a JSON object.')
+			}
 			return parsed as Record<string, unknown>
 		}
+		const required = requiredFields(selected)
 		const args: Record<string, unknown> = {}
 		for (const [name, prop] of schemaProps(selected)) {
 			const raw = formArgs[name]
 			if (raw !== undefined && raw !== '') args[name] = coerce(raw, prop.type)
+		}
+		const missing = [...required].filter((name) => !(name in args))
+		if (missing.length > 0) {
+			throw new Error(`Missing required fields: ${missing.join(', ')}`)
 		}
 		return args
 	}

@@ -30,12 +30,16 @@ RUN apt-get update && apt-get upgrade -y && \
 # Use runtime image
 # Plugins not supported
 FROM registry.hub.docker.com/library/debian:bookworm
-RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system prest \
+    && useradd --system --gid prest --home-dir /app --shell /usr/sbin/nologin prest
 ENV PREST_BUILD_PLUGINS=0
 COPY --from=builder /bin/nc /bin/nc
 COPY --from=builder /workspace/prestd /bin/prestd
 COPY --from=builder /workspace/etc/entrypoint.sh /app/entrypoint.sh
 COPY --from=builder /workspace/lib /app/lib
 COPY --from=builder /workspace/etc/plugin /app/plugin
+RUN chown -R prest:prest /app
 WORKDIR /app
+USER prest
 ENTRYPOINT ["sh", "/app/entrypoint.sh"]

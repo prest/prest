@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
 import { PrestClient } from '@/lib/api/client'
 import { tokenStore, type TokenStore, type TokenSnapshot } from '@/lib/auth/token'
 
@@ -96,16 +96,30 @@ export function AuthProvider({
 	store?: TokenStore
 	children: React.ReactNode
 }) {
+	const queryClient = useQueryClient()
 	const snapshot = React.useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot)
+
+	const setToken = React.useCallback(
+		(token: string, remember?: boolean) => {
+			store.set(token, remember)
+			queryClient.clear()
+		},
+		[store, queryClient],
+	)
+
+	const clearToken = React.useCallback(() => {
+		store.clear()
+		queryClient.clear()
+	}, [store, queryClient])
 
 	const value = React.useMemo<AuthContextValue>(
 		() => ({
 			...snapshot,
 			hasToken: snapshot.token !== null && snapshot.token.length > 0,
-			setToken: (token, remember) => store.set(token, remember),
-			clearToken: () => store.clear(),
+			setToken,
+			clearToken,
 		}),
-		[snapshot, store],
+		[snapshot, setToken, clearToken],
 	)
 
 	return <AuthContext value={value}>{children}</AuthContext>

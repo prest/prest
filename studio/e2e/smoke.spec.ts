@@ -8,7 +8,7 @@ import { expect, test } from '@playwright/test'
  * shell is available, the deeper API-backed assertions are skipped.
  */
 test('studio shell loads at /_studio/', async ({ page }) => {
-	const response = await page.goto('/')
+	const response = await page.goto('/_studio/')
 	expect(response?.ok()).toBeTruthy()
 
 	await expect(page.locator('#root')).toBeVisible()
@@ -22,7 +22,7 @@ test.describe('backend-dependent', () => {
 	)
 
 	test('overview shows navigation', async ({ page }) => {
-		await page.goto('/')
+		await page.goto('/_studio/')
 		await expect(page.getByRole('navigation', { name: 'Primary' }).first()).toBeVisible()
 	})
 })

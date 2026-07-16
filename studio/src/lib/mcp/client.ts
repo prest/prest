@@ -40,7 +40,7 @@ export class McpError extends Error {
 
 export interface JsonRpcRequest {
 	jsonrpc: '2.0'
-	id: number
+	id?: number
 	method: string
 	params?: unknown
 }
@@ -114,15 +114,16 @@ export class McpClient {
 	private readonly client: PrestClient
 	private readonly endpoint: string
 	private id = 0
+	private sessionId: string | null = null
 
 	constructor(client: PrestClient, options: McpClientOptions = {}) {
 		this.client = client
 		this.endpoint = options.endpoint ?? '/_mcp'
 	}
 
-	/** Perform the MCP `initialize` handshake. */
+	/** Perform the MCP `initialize` handshake, then send `notifications/initialized`. */
 	async initialize(signal?: AbortSignal): Promise<InitializeResult> {
-		return this.call<InitializeResult>(
+		const { result, headers } = await this.callWithHeaders<InitializeResult>(
 			'initialize',
 			{
 				protocolVersion: MCP_PROTOCOL_VERSION,
@@ -131,6 +132,10 @@ export class McpClient {
 			},
 			signal,
 		)
+		const session = headers.get('Mcp-Session-Id')
+		this.sessionId = session && session.length > 0 ? session : null
+		await this.notify('notifications/initialized', {}, signal)
+		return result
 	}
 
 	/** List available tools (`tools/list`). */
@@ -151,21 +156,52 @@ export class McpClient {
 		return this.call<CallToolResult>('tools/call', { name, arguments: args }, signal)
 	}
 
-	/** Send a single JSON-RPC request and return its `result`, or throw. */
+	private sessionHeaders(): Record<string, string> {
+		const headers: Record<string, string> = {
+			Accept: 'application/json, text/event-stream',
+		}
+		if (this.sessionId) headers['Mcp-Session-Id'] = this.sessionId
+		return headers
+	}
+
+	/** JSON-RPC notification (no id); best-effort, ignores empty bodies. */
+	private async notify(method: string, params: unknown, signal?: AbortSignal): Promise<void> {
+		const request: JsonRpcRequest = { jsonrpc: '2.0', method, params }
+		try {
+			await this.client.requestRaw(this.endpoint, {
+				method: 'POST',
+				body: request,
+				headers: this.sessionHeaders(),
+				signal,
+			})
+		} catch (err) {
+			throw new McpError(toErrorMessage(err), { kind: 'transport', cause: err })
+		}
+	}
+
 	private async call<T>(method: string, params: unknown, signal?: AbortSignal): Promise<T> {
+		const { result } = await this.callWithHeaders<T>(method, params, signal)
+		return result
+	}
+
+	/** Send a single JSON-RPC request and return its `result` plus response headers. */
+	private async callWithHeaders<T>(
+		method: string,
+		params: unknown,
+		signal?: AbortSignal,
+	): Promise<{ result: T; headers: Headers }> {
 		const id = ++this.id
 		const request: JsonRpcRequest = { jsonrpc: '2.0', id, method, params }
 
-		let raw: { text: string; status: number; ok: boolean }
+		let raw: { text: string; status: number; ok: boolean; headers: Headers }
 		try {
 			raw = await this.client.requestRaw(this.endpoint, {
 				method: 'POST',
 				body: request,
-				headers: { Accept: 'application/json, text/event-stream' },
+				headers: this.sessionHeaders(),
 				signal,
 			})
 		} catch (err) {
-			// PrestClient already normalized network/timeout failures.
 			throw new McpError(toErrorMessage(err), {
 				kind: 'transport',
 				cause: err,
@@ -179,7 +215,7 @@ export class McpClient {
 			})
 		}
 
-		const message = parseRpcBody<T>(raw.text)
+		const message = parseRpcBody<T>(raw.text, id)
 		if (message.error) {
 			throw new McpError(message.error.message || 'MCP protocol error.', {
 				kind: 'protocol',
@@ -187,50 +223,80 @@ export class McpClient {
 				data: message.error.data,
 			})
 		}
-		return message.result as T
+		return { result: message.result as T, headers: raw.headers }
 	}
 }
 
 /**
  * Parse a JSON-RPC response body, transparently unwrapping Streamable-HTTP SSE
  * framing (`event: message\n` / `data: {…}` lines) when present.
+ * When `requestId` is provided, selects the message matching that id.
  */
-export function parseRpcBody<T>(text: string): JsonRpcResponse<T> {
+export function parseRpcBody<T>(text: string, requestId?: number): JsonRpcResponse<T> {
 	const trimmed = text.trim()
 	if (!trimmed) {
 		throw new McpError('Empty MCP response body.', { kind: 'parse' })
 	}
 
-	const payload =
-		trimmed.startsWith('{') || trimmed.startsWith('[') ? trimmed : extractSseData(trimmed)
-
-	let parsed: unknown
-	try {
-		parsed = JSON.parse(payload)
-	} catch (err) {
-		throw new McpError('Failed to parse MCP response.', { kind: 'parse', cause: err })
+	if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+		let parsed: unknown
+		try {
+			parsed = JSON.parse(trimmed)
+		} catch (err) {
+			throw new McpError('Failed to parse MCP response.', { kind: 'parse', cause: err })
+		}
+		return selectRpcMessage(parsed, requestId)
 	}
 
-	// A batch response is not expected for single requests; take the last frame.
-	const message = Array.isArray(parsed) ? parsed[parsed.length - 1] : parsed
+	const messages = extractSseMessages(trimmed)
+	if (messages.length === 0) {
+		throw new McpError('No JSON payload found in MCP SSE response.', { kind: 'parse' })
+	}
+	return selectRpcMessage(messages, requestId)
+}
+
+function selectRpcMessage<T>(parsed: unknown, requestId?: number): JsonRpcResponse<T> {
+	const candidates: unknown[] = Array.isArray(parsed) ? parsed : [parsed]
+	let message: unknown
+	if (requestId !== undefined) {
+		message = candidates.find(
+			(m) => m && typeof m === 'object' && (m as JsonRpcResponse).id === requestId,
+		)
+		if (!message && candidates.length === 1) message = candidates[0]
+	} else {
+		message = candidates[candidates.length - 1]
+	}
 	if (!message || typeof message !== 'object' || (message as JsonRpcResponse).jsonrpc !== '2.0') {
 		throw new McpError('Malformed JSON-RPC response.', { kind: 'parse' })
 	}
 	return message as JsonRpcResponse<T>
 }
 
-/** Pull the concatenated `data:` payload out of an SSE stream chunk. */
-function extractSseData(text: string): string {
-	const dataLines: string[] = []
+/** Parse each SSE event's `data:` payload independently into JSON values. */
+function extractSseMessages(text: string): unknown[] {
+	const messages: unknown[] = []
+	let dataLines: string[] = []
+
+	const flush = () => {
+		if (dataLines.length === 0) return
+		const payload = dataLines.join('\n')
+		dataLines = []
+		try {
+			messages.push(JSON.parse(payload))
+		} catch (err) {
+			throw new McpError('Failed to parse MCP response.', { kind: 'parse', cause: err })
+		}
+	}
+
 	for (const line of text.split(/\r?\n/)) {
 		if (line.startsWith('data:')) {
 			dataLines.push(line.slice(5).trimStart())
+		} else if (line === '') {
+			flush()
 		}
 	}
-	if (dataLines.length === 0) {
-		throw new McpError('No JSON payload found in MCP SSE response.', { kind: 'parse' })
-	}
-	return dataLines.join('')
+	flush()
+	return messages
 }
 
 /** Flatten a tool result's content blocks into a display string. */

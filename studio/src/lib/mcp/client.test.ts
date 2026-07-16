@@ -29,18 +29,39 @@ function rpc(result: unknown, id = 1): Response {
 
 describe('McpClient.initialize', () => {
 	it('sends a JSON-RPC initialize request and returns the result', async () => {
-		const { client, fetchImpl } = mcpClient(() =>
-			rpc({ protocolVersion: '2025-06-18', serverInfo: { name: 'prest', version: '2' } }),
-		)
+		const fetchImpl = vi.fn(async (_url: unknown, init?: RequestInit) => {
+			const body = init?.body ? JSON.parse(String(init.body)) : undefined
+			if (body?.method === 'initialize') {
+				return new Response(
+					JSON.stringify({
+						jsonrpc: '2.0',
+						id: body.id,
+						result: { protocolVersion: '2025-06-18', serverInfo: { name: 'prest', version: '2' } },
+					}),
+					{
+						status: 200,
+						headers: { 'content-type': 'application/json', 'Mcp-Session-Id': 'sess-1' },
+					},
+				)
+			}
+			return new Response('', { status: 202 })
+		})
+		const prest = new PrestClient({ fetchImpl: fetchImpl as unknown as typeof fetch })
+		const client = new McpClient(prest)
 		const info = await client.initialize()
 		expect(info.serverInfo?.name).toBe('prest')
 
-		const sent = JSON.parse(String((fetchImpl.mock.calls[0][1] as RequestInit).body))
-		expect(sent.jsonrpc).toBe('2.0')
-		expect(sent.method).toBe('initialize')
-		expect(sent.id).toBe(1)
-		const headers = (fetchImpl.mock.calls[0][1] as RequestInit).headers as Headers
-		expect(headers.get('Accept')).toContain('text/event-stream')
+		const initSent = JSON.parse(String((fetchImpl.mock.calls[0][1] as RequestInit).body))
+		expect(initSent.jsonrpc).toBe('2.0')
+		expect(initSent.method).toBe('initialize')
+		expect(initSent.id).toBe(1)
+
+		const notifySent = JSON.parse(String((fetchImpl.mock.calls[1][1] as RequestInit).body))
+		expect(notifySent.method).toBe('notifications/initialized')
+		expect(notifySent.id).toBeUndefined()
+
+		const notifyHeaders = (fetchImpl.mock.calls[1][1] as RequestInit).headers as Headers
+		expect(notifyHeaders.get('Mcp-Session-Id')).toBe('sess-1')
 	})
 })
 
@@ -128,12 +149,14 @@ describe('parseRpcBody', () => {
 
 	it('unwraps Streamable-HTTP SSE framing', () => {
 		const sse = 'event: message\ndata: {"jsonrpc":"2.0","id":1,"result":{"ok":true}}\n\n'
-		expect(parseRpcBody(sse).result).toEqual({ ok: true })
+		expect(parseRpcBody(sse, 1).result).toEqual({ ok: true })
 	})
 
-	it('takes the last frame of a batch response', () => {
-		const batch = '[{"jsonrpc":"2.0","id":0,"result":1},{"jsonrpc":"2.0","id":1,"result":2}]'
-		expect(parseRpcBody(batch).result).toBe(2)
+	it('selects the SSE event matching the request id', () => {
+		const sse =
+			'event: message\ndata: {"jsonrpc":"2.0","id":0,"result":1}\n\n' +
+			'event: message\ndata: {"jsonrpc":"2.0","id":1,"result":2}\n\n'
+		expect(parseRpcBody(sse, 1).result).toBe(2)
 	})
 
 	it('throws on an empty body', () => {

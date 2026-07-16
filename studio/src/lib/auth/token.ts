@@ -98,13 +98,17 @@ export class TokenStore {
 		this.remembered = remember
 		const store = safeSessionStorage()
 		if (store) {
-			if (remember) {
-				store.setItem(STORAGE_KEY, trimmed)
-			} else {
-				store.removeItem(STORAGE_KEY)
+			try {
+				if (remember) {
+					store.setItem(STORAGE_KEY, trimmed)
+				} else {
+					store.removeItem(STORAGE_KEY)
+				}
+			} catch {
+				// Probe succeeded but a later write failed — keep memory token only.
+				this.remembered = false
 			}
 		} else {
-			// Storage unavailable: fall back to memory-only regardless of request.
 			this.remembered = false
 		}
 		this.emit()
@@ -114,7 +118,13 @@ export class TokenStore {
 		this.token = null
 		this.remembered = false
 		const store = safeSessionStorage()
-		store?.removeItem(STORAGE_KEY)
+		if (store) {
+			try {
+				store.removeItem(STORAGE_KEY)
+			} catch {
+				/* still clear in-memory state and notify; persistence may be stale */
+			}
+		}
 		this.emit()
 	}
 }

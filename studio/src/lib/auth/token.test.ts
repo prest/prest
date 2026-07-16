@@ -91,6 +91,48 @@ describe('TokenStore', () => {
 		expect(store.getToken()).toBe('x')
 		expect(store.isRemembered()).toBe(false)
 	})
+
+	it('keeps the in-memory token when a post-probe setItem fails', () => {
+		let writes = 0
+		vi.stubGlobal('sessionStorage', {
+			getItem: () => null,
+			setItem: (key: string) => {
+				writes += 1
+				// Allow the probe, fail the real persist.
+				if (key === STORAGE_KEY) throw new Error('quota')
+			},
+			removeItem: () => undefined,
+		})
+		const store = new TokenStore()
+		const listener = vi.fn()
+		store.subscribe(listener)
+		store.set('tok', true)
+		expect(store.getToken()).toBe('tok')
+		expect(store.isRemembered()).toBe(false)
+		expect(listener).toHaveBeenCalled()
+		expect(writes).toBeGreaterThan(0)
+	})
+
+	it('still emits on clear when removeItem fails and does not claim persistence cleared', () => {
+		sessionStorage.setItem(STORAGE_KEY, 'stale')
+		const store = new TokenStore()
+		expect(store.getToken()).toBe('stale')
+
+		vi.stubGlobal('sessionStorage', {
+			getItem: () => 'stale',
+			setItem: () => undefined,
+			removeItem: () => {
+				throw new Error('denied')
+			},
+		})
+		const listener = vi.fn()
+		store.subscribe(listener)
+		store.clear()
+		expect(store.getToken()).toBeNull()
+		expect(store.isRemembered()).toBe(false)
+		expect(listener).toHaveBeenCalled()
+		// Stale key may remain in the real storage mock after stub — memory is cleared.
+	})
 })
 
 describe('maskToken', () => {

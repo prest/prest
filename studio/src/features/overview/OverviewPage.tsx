@@ -22,12 +22,26 @@ function useProbe(name: string, fn: (c: PrestClient) => Promise<{ ok: boolean; s
 	})
 }
 
-function StatusRow({ label, ok, detail }: { label: string; ok?: boolean; detail?: string }) {
+function StatusRow({
+	label,
+	ok,
+	detail,
+	isError,
+}: {
+	label: string
+	ok?: boolean
+	detail?: string
+	isError?: boolean
+}) {
 	return (
 		<div className="flex items-center justify-between gap-2 py-1.5">
 			<span className="text-sm text-muted-foreground">{label}</span>
 			<span className="flex items-center gap-1.5 text-sm font-medium">
-				{ok === undefined ? (
+				{isError ? (
+					<>
+						<XCircle className="size-4 text-destructive" /> {detail ?? 'Error'}
+					</>
+				) : ok === undefined ? (
 					<span className="text-muted-foreground">—</span>
 				) : ok ? (
 					<>
@@ -49,12 +63,14 @@ function CountCard({
 	count,
 	disabled,
 	error,
+	isError,
 }: {
 	icon: typeof Database
 	label: string
 	count?: number
 	disabled?: boolean
 	error?: string
+	isError?: boolean
 }) {
 	return (
 		<Card>
@@ -64,10 +80,16 @@ function CountCard({
 				</div>
 				<div className="min-w-0">
 					<div className="text-2xl font-semibold tabular-nums">
-						{disabled ? '—' : error ? '!' : (count ?? '…')}
+						{disabled ? '—' : isError || error ? '!' : (count ?? '…')}
 					</div>
 					<div className="truncate text-xs text-muted-foreground">
-						{disabled ? `${label} (restricted)` : label}
+						{disabled
+							? `${label} (restricted)`
+							: isError
+								? `${label} (failed)`
+								: error
+									? `${label} (${error})`
+									: label}
 					</div>
 				</div>
 			</CardContent>
@@ -110,6 +132,7 @@ export function OverviewPage() {
 					count={databases.data?.items?.length}
 					disabled={databases.data?.disabled}
 					error={databases.data?.error}
+					isError={databases.isError}
 				/>
 				<CountCard
 					icon={Database}
@@ -117,6 +140,7 @@ export function OverviewPage() {
 					count={schemas.data?.items?.length}
 					disabled={schemas.data?.disabled}
 					error={schemas.data?.error}
+					isError={schemas.isError}
 				/>
 				<CountCard
 					icon={Database}
@@ -124,6 +148,7 @@ export function OverviewPage() {
 					count={tables.data?.items?.length}
 					disabled={tables.data?.disabled}
 					error={tables.data?.error}
+					isError={tables.isError}
 				/>
 			</div>
 
@@ -138,17 +163,34 @@ export function OverviewPage() {
 						<StatusRow
 							label="Health (/_health)"
 							ok={health.isSuccess ? health.data?.ok : undefined}
-							detail={health.data ? `HTTP ${health.data.status}` : undefined}
+							detail={
+								health.isError
+									? 'Request failed'
+									: health.data
+										? `HTTP ${health.data.status}`
+										: undefined
+							}
+							isError={health.isError}
 						/>
 						<StatusRow
 							label="Ready (/_ready)"
 							ok={ready.isSuccess ? ready.data?.ok : undefined}
-							detail={ready.data ? `HTTP ${ready.data.status}` : undefined}
+							detail={
+								ready.isError
+									? 'Request failed'
+									: ready.data
+										? `HTTP ${ready.data.status}`
+										: undefined
+							}
+							isError={ready.isError}
 						/>
 						<StatusRow
 							label="MCP (/_mcp)"
 							ok={mcp.isSuccess ? mcp.data?.ok : undefined}
-							detail={mcp.data ? `HTTP ${mcp.data.status}` : undefined}
+							detail={
+								mcp.isError ? 'Request failed' : mcp.data ? `HTTP ${mcp.data.status}` : undefined
+							}
+							isError={mcp.isError}
 						/>
 						<StatusRow label="Bearer token" ok={hasToken} detail={hasToken ? 'Set' : 'Not set'} />
 					</CardContent>

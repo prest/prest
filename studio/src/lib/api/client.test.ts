@@ -162,7 +162,7 @@ describe('PrestClient failure handling', () => {
 		expect(err.kind).toBe('timeout')
 	})
 
-	it('propagates an external abort signal', async () => {
+	it('propagates an external abort signal as cancellation, not timeout', async () => {
 		const controller = new AbortController()
 		controller.abort()
 		const client = new PrestClient({
@@ -176,7 +176,42 @@ describe('PrestClient failure handling', () => {
 					signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
 				}),
 		})
-		await expect(client.probe('/t', { signal: controller.signal })).rejects.toBeInstanceOf(ApiError)
+		const err = await client.probe('/t', { signal: controller.signal }).catch((e) => e)
+		expect(err).toBeInstanceOf(ApiError)
+		expect(err.kind).toBe('network')
+		expect(err.message).toMatch(/cancelled/i)
+	})
+
+	it('times out while reading a hanging response body', async () => {
+		const client = new PrestClient({
+			timeoutMs: 20,
+			fetchImpl: async (_url, init) => {
+				const body = new ReadableStream({
+					start(controller) {
+						init?.signal?.addEventListener('abort', () => {
+							controller.error(new DOMException('aborted', 'AbortError'))
+						})
+					},
+				})
+				return new Response(body, { status: 200 })
+			},
+		})
+		const err = await client.requestRaw('/t').catch((e) => e)
+		expect(err).toBeInstanceOf(ApiError)
+		expect(err.kind).toBe('timeout')
+	})
+
+	it('rejects cross-origin absolute URLs and omits bearer auth', async () => {
+		const fetchImpl = vi.fn(async () => jsonResponse([]))
+		const client = new PrestClient({
+			apiOrigin: 'http://localhost:3000',
+			getToken: () => 'secret',
+			fetchImpl,
+		})
+		await expect(client.requestJson('https://evil.example/steal')).rejects.toMatchObject({
+			kind: 'bad_request',
+		})
+		expect(fetchImpl).not.toHaveBeenCalled()
 	})
 
 	it('accepts a live (non-aborted) external signal', async () => {

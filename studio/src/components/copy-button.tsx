@@ -21,7 +21,8 @@ export function CopyButton({
 
 	const onCopy = React.useCallback(async () => {
 		try {
-			await navigator.clipboard?.writeText(value)
+			if (!navigator.clipboard?.writeText) return
+			await navigator.clipboard.writeText(value)
 			setCopied(true)
 			setTimeout(() => setCopied(false), 1500)
 		} catch {

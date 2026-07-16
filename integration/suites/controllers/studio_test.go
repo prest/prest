@@ -11,6 +11,7 @@ import (
 )
 
 func TestStudioIndexServesHTML(t *testing.T) {
+	t.Parallel()
 	base := helpers.ServerURL(t)
 
 	// Fetch the embedded Studio SPA entrypoint.

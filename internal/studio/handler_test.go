@@ -65,14 +65,14 @@ func TestHandlerAPINotSwallowed(t *testing.T) {
 }
 
 func TestHandlerMeta(t *testing.T) {
-	t.Parallel()
+	origVersion, origCommit, origDate := helpers.Version, helpers.Commit, helpers.Date
 	helpers.Version = "test-ver"
 	helpers.Commit = "abc123"
 	helpers.Date = "2026-01-01"
 	t.Cleanup(func() {
-		helpers.Version = ""
-		helpers.Commit = ""
-		helpers.Date = ""
+		helpers.Version = origVersion
+		helpers.Commit = origCommit
+		helpers.Date = origDate
 	})
 
 	h := Handler(true)

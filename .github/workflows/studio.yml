@@ -59,7 +59,7 @@ jobs:
       - name: Verify embedded assets match build
         working-directory: .
         run: |
-          if ! git diff --quiet -- internal/studio/dist; then
+          if [ -n "$(git status --porcelain -- internal/studio/dist)" ]; then
             echo "::error::internal/studio/dist is out of sync. Run 'make studio-build' and commit the result."
             git status --short internal/studio/dist
             exit 1
@@ -77,6 +77,7 @@ jobs:
         if: always()
         uses: codecov/codecov-action@v4
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: studio/coverage/lcov.info
           flags: studio
           fail_ci_if_error: false
