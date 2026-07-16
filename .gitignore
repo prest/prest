@@ -46,3 +46,7 @@ docbuild/
 /vendor
 .clj-kondo
 *debug*
+
+node_modules/
+studio/dist/
+.pnpm-store/

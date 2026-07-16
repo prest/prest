@@ -29,6 +29,17 @@ Contributor License Agreement — [![CLA assistant](https://cla-assistant.io/rea
 | Databases & roadmap | [Databases](https://docs.prestd.com/databases) · [Roadmap](https://docs.prestd.com/databases/roadmap) |
 | AI clients (Cursor, Claude, …) | [AI and MCP](https://docs.prestd.com/ai) |
 
+## pREST Studio
+
+Embedded UI at **`http://localhost:3000/_studio/`** for catalog browsing, REST request building, and MCP tool exploration.
+
+```bash
+make studio-dev      # Vite + proxy to local prestd
+make studio-check    # lint, typecheck, tests, build
+```
+
+Disable with `PREST_STUDIO_ENABLED=false`. See [`studio/README.md`](studio/README.md).
+
 ## Quick start
 
 Install and run options (Docker, Homebrew, or Go) are documented in [Get pREST](https://docs.prestd.com/get-prest). Point pREST at Postgres (`PREST_PG_URL` or `pg.*` / `DATABASE_URL`), then call:

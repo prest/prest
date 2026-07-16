@@ -1,0 +1,82 @@
+# Studio frontend quality (format, lint, typecheck, unit tests, build, dist drift)
+name: studio
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths:
+      - "studio/**"
+      - "internal/studio/**"
+      - ".github/workflows/studio.yml"
+      - "Makefile"
+  pull_request:
+    paths:
+      - "studio/**"
+      - "internal/studio/**"
+      - ".github/workflows/studio.yml"
+      - "Makefile"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: studio
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: studio/.node-version
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Get pnpm store path
+        id: pnpm-cache
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('studio/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Check
+        run: pnpm check
+
+      - name: Verify embedded assets match build
+        working-directory: .
+        run: |
+          if ! git diff --quiet -- internal/studio/dist; then
+            echo "::error::internal/studio/dist is out of sync. Run 'make studio-build' and commit the result."
+            git status --short internal/studio/dist
+            exit 1
+          fi
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-coverage
+          path: studio/coverage
+          if-no-files-found: ignore
+
+      - name: Codecov
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: studio/coverage/lcov.info
+          flags: studio
+          fail_ci_if_error: false

@@ -1,0 +1,6 @@
+name: "pREST CodeQL config"
+
+paths-ignore:
+  - "internal/studio/dist/**"
+  - "studio/coverage/**"
+  - "**/*.min.js"

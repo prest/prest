@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: ['go']
+        language: ['go', 'javascript-typescript']
 
     steps:
       - name: Checkout repository
@@ -41,6 +41,7 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: autobuild
+          config-file: ./.github/codeql/codeql-config.yml
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4

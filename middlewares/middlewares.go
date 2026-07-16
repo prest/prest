@@ -40,6 +40,11 @@ var (
 // HandlerSet add content type header
 func HandlerSet() negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+		// Studio serves HTML/JS/CSS; do not force application/json.
+		if r.URL.Path == "/_studio" || strings.HasPrefix(r.URL.Path, "/_studio/") {
+			next(w, r)
+			return
+		}
 		format := r.URL.Query().Get("_renderer")
 		recorder := httptest.NewRecorder()
 		negroniResp := negroni.NewResponseWriter(recorder)

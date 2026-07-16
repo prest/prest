@@ -61,6 +61,11 @@ type ExposeConf struct {
 	TableListing    bool
 }
 
+// StudioConf controls the embedded pREST Studio UI.
+type StudioConf struct {
+	Enabled bool
+}
+
 type PluginMiddleware struct {
 	File string
 	Func string
@@ -106,6 +111,7 @@ type Prest struct {
 	QueriesConf          QueriesConf
 	AccessConf           AccessConf
 	ExposeConf           ExposeConf
+	StudioConf           StudioConf
 	CORSAllowOrigin      []string
 	CORSAllowHeaders     []string
 	CORSAllowMethods     []string
@@ -384,6 +390,8 @@ func viperCfg() (*viper.Viper, string) {
 	v.SetDefault("expose.schemas", true)
 	v.SetDefault("expose.databases", true)
 
+	v.SetDefault("studio.enabled", true)
+
 	v.SetDefault("queries.location", defaultQueriesPath())
 	v.SetDefault("queries.storage", QueriesStorageFilesystem)
 	v.SetDefault("queries.schema", "public")
@@ -448,6 +456,8 @@ func Parse(v *viper.Viper, cfg *Prest, configPath string) {
 	cfg.ExposeConf.TableListing = v.GetBool("expose.tables")
 	cfg.ExposeConf.SchemaListing = v.GetBool("expose.schemas")
 	cfg.ExposeConf.DatabaseListing = v.GetBool("expose.databases")
+
+	cfg.StudioConf.Enabled = v.GetBool("studio.enabled")
 
 	cfg.AccessConf.Tables = unmarshalKeyOrZero[[]TablesConf](v, "access.tables")
 	cfg.AccessConf.Users = unmarshalKeyOrZero[[]UsersConf](v, "access.users")

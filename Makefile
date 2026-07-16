@@ -57,3 +57,38 @@ mockgen:
 	mockgen -destination=adapters/mockgen/database_registry.go -package=mockgen github.com/prest/prest/v2/adapters DatabaseRegistry
 	mockgen -destination=adapters/mockgen/database_pinger.go -package=mockgen github.com/prest/prest/v2/adapters DatabasePinger
 	mockgen -destination=adapters/mockgen/readiness_checker.go -package=mockgen github.com/prest/prest/v2/adapters ReadinessChecker
+
+.PHONY: studio-install studio-dev studio-format studio-lint studio-typecheck studio-test studio-test-coverage studio-build studio-check studio-e2e test-studio check-all
+studio-install:
+	cd studio && corepack enable && pnpm install
+
+studio-dev:
+	cd studio && pnpm dev
+
+studio-format:
+	cd studio && pnpm format
+
+studio-lint:
+	cd studio && pnpm lint
+
+studio-typecheck:
+	cd studio && pnpm typecheck
+
+studio-test:
+	cd studio && pnpm test
+
+studio-test-coverage:
+	cd studio && pnpm test:coverage
+
+studio-build:
+	cd studio && pnpm build
+
+studio-check:
+	cd studio && pnpm check
+
+studio-e2e:
+	cd studio && pnpm test:e2e
+
+test-studio: studio-check
+
+check-all: test-unit studio-check

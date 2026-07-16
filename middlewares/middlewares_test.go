@@ -15,8 +15,8 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/prest/prest/v2/adapters/mockgen"
 	"github.com/prest/prest/v2/config"
-	"github.com/prest/prest/v2/controllers/auth"
 	pctx "github.com/prest/prest/v2/context"
+	"github.com/prest/prest/v2/controllers/auth"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/negroni/v3"
 	jose "gopkg.in/square/go-jose.v2"
@@ -66,6 +66,23 @@ func TestHandlerSet_JSONResponse(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 	require.Contains(t, rec.Body.String(), `"ok":true`)
+}
+
+func TestHandlerSet_StudioPreservesHTML(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequest(http.MethodGet, "/_studio/", nil)
+	rec := httptest.NewRecorder()
+
+	HandlerSet().ServeHTTP(rec, req, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`<!doctype html><html></html>`))
+	})
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Header().Get("Content-Type"), "text/html")
+	require.Contains(t, rec.Body.String(), "<!doctype html>")
 }
 
 func TestHandlerSet_ErrorJSON(t *testing.T) {
