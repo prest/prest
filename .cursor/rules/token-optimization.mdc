@@ -1,0 +1,91 @@
+---
+description: Agent-mode tool-call efficiency. Cuts the largest hidden cost in modern AI IDEs — wasted tool calls and oversized context windows.
+globs:
+alwaysApply: true
+---
+
+# Agent Efficiency Rules
+
+In agent mode, response tokens are usually NOT the dominant cost. The dominant
+costs are:
+
+1. **Tool-call results piped back into context** (a single `read_file` of a
+   2,000-line file can cost more than the entire response).
+2. **Re-running expensive tools** (semantic search, repo-wide grep, full builds).
+3. **Multi-turn ping-pong** when one well-formed turn would have sufficed.
+
+These rules attack all three.
+
+---
+
+## 1. Plan Before Acting
+
+Before issuing tool calls, state internally (or briefly to user, max 1 line):
+- What file or symbol you're targeting
+- Which tool is the cheapest way to find it
+
+Skip planning chatter for trivial tasks (one-line edits, single-file reads).
+
+## 2. Cheapest Tool Wins
+
+| You need to…                              | Use…                              | Don't use…                          |
+|-------------------------------------------|-----------------------------------|-------------------------------------|
+| Find an exact symbol or string            | `grep` / ripgrep                  | Semantic search, full file reads    |
+| Locate a file by name pattern             | `glob`                            | `find` recursive shell, listing all |
+| Understand "how does X work"              | Semantic search, then targeted read | Reading 10 files speculatively    |
+| Read a known function in a known file     | Targeted `read` (offset/limit)    | Full-file read on a 1k-line file    |
+| Check a single command's output           | Run it once                       | Run it, then `--help`, then again   |
+
+## 3. Batch Independent Calls
+
+If two reads/searches don't depend on each other, fire them in **the same
+message**. Serial chains of independent calls double latency and inflate
+context-handoff tokens.
+
+## 4. Don't Re-Read
+
+- A file read in this session stays read. Refer back to it from memory.
+- A directory listed once stays listed.
+- If you genuinely think the file changed (e.g., you just edited it and need to
+  verify), re-read only the changed range.
+
+## 5. Search Before Reading
+
+For unfamiliar code, prefer `grep` for the symbol you care about, then read
+only the matching ±20 lines. Do not read the entire file just to find one
+function.
+
+## 6. Don't Speculatively Explore
+
+The "let me look around the repo first" instinct burns tokens fast.
+
+- If the user gave you a file path, start there.
+- If the user gave you an error, search for the error string first.
+- Only widen the search if the targeted approach failed.
+
+## 7. Build / Test / Lint Discipline
+
+- Never run a full test suite to verify a one-line typo fix.
+- Never run a full type-check or lint of the whole repo after touching one file.
+- After an edit, run targeted checks on the changed file only.
+- If the user didn't ask you to run tests, don't run them.
+
+## 8. Don't Babysit Long-Running Commands
+
+- Set generous timeouts and move on.
+- Never poll a backgrounded process repeatedly "just to check".
+- For dev servers/watchers: launch and walk away.
+
+## 9. Stop When Done
+
+- When the requested change is in place, stop.
+- Do not run extra verification steps "for safety".
+- Do not write a summary of changes the user can already see in the diff.
+- Do not propose follow-up work unless the user asked.
+
+## 10. No Redundant Confirmation
+
+- Don't echo back the file path you just edited.
+- Don't say "I have updated X" when the diff already shows that.
+- A short closing sentence (≤ 1 line) is enough only when something the user
+  needs to do is non-obvious (e.g., "restart the dev server").

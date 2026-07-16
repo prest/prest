@@ -1,0 +1,74 @@
+# Posts coverage comments for fork PRs. Secrets are available here (base-repo
+# workflow_run context) but not under pull_request from forks.
+# See .github/ci-coverage-comments.md
+name: coverage-pr-comment-fork
+run-name: coverage PR comment (fork)
+
+on:
+  workflow_run:
+    workflows: ["test-unit"]
+    types: [completed]
+
+jobs:
+  post-coverage-comment:
+    name: Post coverage comment (fork)
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name != github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Resolve PR number
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          PR_NUMBER=$(gh api "repos/${{ github.repository }}/commits/${HEAD_SHA}/pulls" \
+            --jq '.[0].number')
+          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
+            echo "::error::Could not resolve PR number for commit ${HEAD_SHA}"
+            exit 1
+          fi
+          echo "number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - name: Download coverage comment artifact
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-pr-comment
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Post coverage comment
+        if: steps.download.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.PR_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Organization secret PR_TOKEN is empty or not available to this repository. Fork coverage comments require secrets.PR_TOKEN (PAT with pull-requests: write on ${{ github.repository }})."
+            exit 1
+          fi
+
+          if [ ! -f coverage-comment.md ] || [ ! -s coverage-comment.md ]; then
+            echo "No coverage-comment.md artifact to post"
+            exit 0
+          fi
+
+          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+            -q '.[] | select(.body | test("Coverage Δ")) | .id' | head -n 1)
+          if [ -n "$COMMENT_ID" ]; then
+            gh api -X DELETE "repos/${{ github.repository }}/issues/comments/${COMMENT_ID}" || true
+          fi
+
+          gh pr comment "${PR_NUMBER}" --body-file=coverage-comment.md
+
+      - name: No coverage comment artifact
+        if: steps.download.outcome != 'success'
+        run: echo "No coverage-pr-comment artifact from test-unit (nothing to post)"
