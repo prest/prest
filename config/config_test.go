@@ -618,6 +618,32 @@ func Test_ExposeDataConfig(t *testing.T) {
 	}
 }
 
+func TestStudioConfig(t *testing.T) {
+	t.Run("defaults to enabled", func(t *testing.T) {
+		t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+		cfg, err := Load()
+		require.NoError(t, err)
+		require.True(t, cfg.StudioConf.Enabled)
+	})
+
+	t.Run("disabled via TOML", func(t *testing.T) {
+		conf := filepath.Join(t.TempDir(), "prest.toml")
+		require.NoError(t, os.WriteFile(conf, []byte("[studio]\nenabled = false\n"), 0600))
+		t.Setenv("PREST_CONF", conf)
+		cfg, err := Load()
+		require.NoError(t, err)
+		require.False(t, cfg.StudioConf.Enabled)
+	})
+
+	t.Run("disabled via PREST_STUDIO_ENABLED", func(t *testing.T) {
+		t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+		t.Setenv("PREST_STUDIO_ENABLED", "false")
+		cfg, err := Load()
+		require.NoError(t, err)
+		require.False(t, cfg.StudioConf.Enabled)
+	})
+}
+
 func TestEnsureDir(t *testing.T) {
 	t.Run("creates missing directory", func(t *testing.T) {
 		t.Parallel()
