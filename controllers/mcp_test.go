@@ -272,6 +272,7 @@ func TestMCPHandler_DispatchRPC_ToolsList(t *testing.T) {
 	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(tableScanner).AnyTimes()
 	tableScanner.EXPECT().Err().Return(nil).AnyTimes()
 	tableScanner.EXPECT().Bytes().Return([]byte(`[]`)).AnyTimes()
+	expectShowColumns(t, ctrl, executor, `[]`)
 
 	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, DB: db, PGDatabase: "prest-test"})
 	result, err := h.dispatchRPC(httptest.NewRequest(http.MethodGet, "/_mcp", nil), "tools/list", nil)
@@ -796,6 +797,7 @@ func TestMCPHandler_RPC_ToolsListViaHTTP(t *testing.T) {
 	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(tableScanner).AnyTimes()
 	tableScanner.EXPECT().Err().Return(nil).AnyTimes()
 	tableScanner.EXPECT().Bytes().Return([]byte(`[]`)).AnyTimes()
+	expectShowColumns(t, ctrl, executor, `[]`)
 
 	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, DB: db, PGDatabase: "prest-test"})
 	body := bytes.NewBufferString(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`)
@@ -1315,6 +1317,7 @@ func TestMCPHandler_Tools_ContinuesOnRawTableError(t *testing.T) {
 	scanner := mockgen.NewMockScanner(ctrl)
 	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)
 	scanner.EXPECT().Err().Return(errors.New("catalog failed"))
+	expectShowColumns(t, ctrl, executor, `[]`)
 
 	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, DB: db, PGDatabase: "prest-test"})
 	tools, err := h.tools(httptest.NewRequest(http.MethodGet, "/_mcp", nil))
@@ -1540,6 +1543,7 @@ func TestMCPHandler_DispatchRPC_ToolsListError(t *testing.T) {
 	scanner := mockgen.NewMockScanner(ctrl)
 	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)
 	scanner.EXPECT().Err().Return(errors.New("catalog failed"))
+	expectShowColumns(t, ctrl, executor, `[]`)
 
 	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, DB: db, PGDatabase: "prest-test"})
 	_, err := h.dispatchRPC(httptest.NewRequest(http.MethodGet, "/_mcp", nil), "tools/list", nil)

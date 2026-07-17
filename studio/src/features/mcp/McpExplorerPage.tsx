@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Bot, Play, Plug, Search, Wand2 } from 'lucide-react'
+import { Bot, Loader2, Play, Plug, Search, Wand2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,6 +26,7 @@ interface HistoryEntry {
 }
 
 type SchemaProp = { type?: string; description?: string }
+type ConnectPhase = 'idle' | 'connecting' | 'loading-tools' | 'ready' | 'error'
 
 function schemaProps(tool: McpTool | null): [string, SchemaProp][] {
 	const schema = tool?.inputSchema
@@ -54,7 +55,7 @@ export function McpExplorerPage() {
 	const mcp = React.useMemo(() => new McpClient(client), [client])
 
 	const [init, setInit] = React.useState<InitializeResult | null>(null)
-	const [connecting, setConnecting] = React.useState(false)
+	const [phase, setPhase] = React.useState<ConnectPhase>('idle')
 	const [connectError, setConnectError] = React.useState<string | null>(null)
 
 	const [tools, setTools] = React.useState<McpTool[]>([])
@@ -69,24 +70,26 @@ export function McpExplorerPage() {
 	const [history, setHistory] = React.useState<HistoryEntry[]>([])
 
 	const connect = async () => {
-		setConnecting(true)
+		setPhase('connecting')
 		setConnectError(null)
+		setInit(null)
 		setTools([])
 		setSelected(null)
 		setResult(null)
 		try {
 			const info = await mcp.initialize()
 			setInit(info)
+			setPhase('loading-tools')
 			const list = await mcp.listTools()
 			setTools(list.tools)
+			setPhase('ready')
 		} catch (err) {
 			setConnectError(err instanceof McpError ? err.message : String(err))
 			setInit(null)
 			setTools([])
 			setSelected(null)
 			setResult(null)
-		} finally {
-			setConnecting(false)
+			setPhase('error')
 		}
 	}
 
@@ -165,6 +168,15 @@ export function McpExplorerPage() {
 			t.name.toLowerCase().includes(filter.toLowerCase()) ||
 			(t.description ?? '').toLowerCase().includes(filter.toLowerCase()),
 	)
+	const isConnecting = phase === 'connecting' || phase === 'loading-tools'
+	const connectLabel =
+		phase === 'connecting'
+			? 'Connecting...'
+			: phase === 'loading-tools'
+				? 'Loading tools...'
+				: phase === 'ready'
+					? 'Reconnect'
+					: 'Connect'
 
 	return (
 		<div className="flex flex-col gap-4">
@@ -176,13 +188,23 @@ export function McpExplorerPage() {
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
-					{init ? (
+					{phase === 'connecting' ? (
+						<Badge variant="secondary">
+							<Loader2 className="size-3 animate-spin" /> Connecting
+						</Badge>
+					) : phase === 'loading-tools' ? (
+						<Badge variant="secondary">
+							<Loader2 className="size-3 animate-spin" /> Loading tools
+						</Badge>
+					) : phase === 'ready' ? (
 						<Badge variant="success">
 							<Plug className="size-3" /> connected
 						</Badge>
+					) : phase === 'error' ? (
+						<Badge variant="destructive">failed</Badge>
 					) : null}
-					<Button onClick={() => void connect()} disabled={connecting}>
-						<Plug /> {connecting ? 'Connecting…' : init ? 'Reconnect' : 'Connect'}
+					<Button onClick={() => void connect()} disabled={isConnecting}>
+						{isConnecting ? <Loader2 className="animate-spin" /> : <Plug />} {connectLabel}
 					</Button>
 				</div>
 			</div>
@@ -193,7 +215,7 @@ export function McpExplorerPage() {
 				</Card>
 			) : null}
 
-			{init ? (
+			{phase === 'ready' && init ? (
 				<Card>
 					<CardContent className="flex flex-wrap gap-x-6 gap-y-1 p-4 text-sm">
 						<span>
@@ -234,7 +256,11 @@ export function McpExplorerPage() {
 					<CardContent className="max-h-[60vh] overflow-auto">
 						{tools.length === 0 ? (
 							<p className="text-xs text-muted-foreground">
-								{init ? 'No tools reported.' : 'Connect to list tools.'}
+								{phase === 'ready'
+									? 'No tools reported.'
+									: isConnecting
+										? 'Loading tools...'
+										: 'Connect to list tools.'}
 							</p>
 						) : (
 							<ul className="flex flex-col gap-0.5">

@@ -299,16 +299,34 @@ function extractSseMessages(text: string): unknown[] {
 	return messages
 }
 
-/** Flatten a tool result's content blocks into a display string. */
-export function contentToText(result: CallToolResult): string {
-	if (result.structuredContent !== undefined) {
-		return JSON.stringify(result.structuredContent, null, 2)
+/**
+ * Flatten a tool result into a display string.
+ *
+ * Handles both MCP CallToolResult shapes (`structuredContent`/`content`) and
+ * raw JSON-RPC payloads (pREST returns tool results as a bare array/object),
+ * which would otherwise render as an empty string.
+ */
+export function contentToText(result: CallToolResult | unknown): string {
+	if (Array.isArray(result)) {
+		return result.length > 0 ? JSON.stringify(result, null, 2) : ''
 	}
-	const blocks = result.content ?? []
-	const texts = blocks
-		.map((b) => (typeof b.text === 'string' ? b.text : JSON.stringify(b, null, 2)))
-		.filter((s) => s.length > 0)
-	return texts.join('\n')
+	if (!result || typeof result !== 'object') {
+		return result == null ? '' : String(result)
+	}
+
+	const shaped = result as CallToolResult
+	if (shaped.structuredContent !== undefined) {
+		return JSON.stringify(shaped.structuredContent, null, 2)
+	}
+	if (shaped.content !== undefined) {
+		const texts = (shaped.content ?? [])
+			.map((b) => (typeof b.text === 'string' ? b.text : JSON.stringify(b, null, 2)))
+			.filter((s) => s.length > 0)
+		return texts.join('\n')
+	}
+
+	const keys = Object.keys(shaped)
+	return keys.length > 0 ? JSON.stringify(shaped, null, 2) : ''
 }
 
 /** Convenience re-export so callers can narrow transport errors uniformly. */

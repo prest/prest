@@ -200,4 +200,30 @@ describe('contentToText', () => {
 	it('returns an empty string when there is no content', () => {
 		expect(contentToText({})).toBe('')
 	})
+
+	it('serializes a raw array payload (list_tables shape)', () => {
+		const rows = [
+			{ database: 'db', name: 'users', schema: 'public' },
+			{ database: 'db', name: 'organizations', schema: 'public' },
+		]
+		const out = contentToText(rows)
+		expect(out).toContain('"users"')
+		expect(out).toContain('"organizations"')
+	})
+
+	it('returns an empty string for an empty array', () => {
+		expect(contentToText([])).toBe('')
+	})
+
+	it('serializes a raw object payload (describe_table shape)', () => {
+		const payload = { database: 'db', schema: 'public', table: 'users' }
+		const out = contentToText(payload)
+		expect(out).toContain('"table"')
+		expect(out).toContain('"users"')
+	})
+
+	it('returns an empty string for null or undefined', () => {
+		expect(contentToText(null)).toBe('')
+		expect(contentToText(undefined)).toBe('')
+	})
 })

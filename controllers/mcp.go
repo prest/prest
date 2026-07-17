@@ -13,6 +13,7 @@ import (
 	"github.com/prest/prest/v2/adapters"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -487,15 +488,22 @@ func (h *MCPHandler) tools(r *http.Request) ([]mcpTool, error) {
 
 	seen := make(map[string]struct{})
 	for _, database := range aliases {
-		rows, err := h.rawTableRows(r, database, "")
-		if err != nil {
-			continue
-		}
-		if len(rows) == 0 {
-			continue
-		}
-		columnsByTable, err := h.columnsByTable(r, database)
-		if err != nil {
+		var (
+			rows           []map[string]any
+			columnsByTable map[string][]mcpColumn
+		)
+		var group errgroup.Group
+		group.Go(func() error {
+			var err error
+			rows, err = h.rawTableRows(r, database, "")
+			return err
+		})
+		group.Go(func() error {
+			var err error
+			columnsByTable, err = h.columnsByTable(r, database)
+			return err
+		})
+		if err := group.Wait(); err != nil || len(rows) == 0 {
 			continue
 		}
 		for _, row := range rows {
