@@ -323,17 +323,29 @@ func (h *MCPHandler) listSchemas(r *http.Request, args mcpListSchemasArgs) (any,
 
 	query, hasCount := h.catalog.SchemaClause(httptest.NewRequest(http.MethodGet, "/schemas", nil))
 	query = fmt.Sprint(query, " ", h.catalog.SchemaOrderBy("", hasCount))
-	result, err := h.queryRows(r, query, args.Database)
-	if err != nil {
+
+	var (
+		result  any
+		schemas map[string]bool
+	)
+	var group errgroup.Group
+	group.Go(func() error {
+		var err error
+		result, err = h.queryRows(r, query, args.Database)
+		return err
+	})
+	group.Go(func() error {
+		var err error
+		schemas, err = h.accessibleSchemas(r, args.Database)
+		return err
+	})
+	if err := group.Wait(); err != nil {
 		return nil, err
 	}
+
 	rows, ok := result.([]map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("unexpected schema discovery result")
-	}
-	schemas, err := h.accessibleSchemas(r, args.Database)
-	if err != nil {
-		return nil, err
 	}
 
 	filtered := make([]map[string]any, 0, len(rows))
@@ -584,11 +596,33 @@ func (h *MCPHandler) describeColumns(r *http.Request, database, schema, table st
 }
 
 func (h *MCPHandler) tableRows(r *http.Request, database, schema string) ([]map[string]any, error) {
-	rows, err := h.rawTableRows(r, database, schema)
-	if err != nil {
+	if h.perms == nil {
+		rows, err := h.rawTableRows(r, database, schema)
+		if err != nil {
+			return nil, err
+		}
+		return h.filterAccessibleTablesWithColumns(r, database, rows, nil)
+	}
+
+	var (
+		rows           []map[string]any
+		columnsByTable map[string][]mcpColumn
+	)
+	var group errgroup.Group
+	group.Go(func() error {
+		var err error
+		rows, err = h.rawTableRows(r, database, schema)
+		return err
+	})
+	group.Go(func() error {
+		var err error
+		columnsByTable, err = h.columnsByTable(r, database)
+		return err
+	})
+	if err := group.Wait(); err != nil {
 		return nil, err
 	}
-	return h.filterAccessibleTables(r, database, rows)
+	return h.filterAccessibleTablesWithColumns(r, database, rows, columnsByTable)
 }
 
 func (h *MCPHandler) rawTableRows(r *http.Request, database, schema string) ([]map[string]any, error) {
@@ -640,6 +674,13 @@ func (h *MCPHandler) filterAccessibleTables(r *http.Request, database string, ro
 		if err != nil {
 			return nil, err
 		}
+	}
+	return h.filterAccessibleTablesWithColumns(r, database, rows, columnsByTable)
+}
+
+func (h *MCPHandler) filterAccessibleTablesWithColumns(r *http.Request, database string, rows []map[string]any, columnsByTable map[string][]mcpColumn) ([]map[string]any, error) {
+	if len(rows) == 0 {
+		return []map[string]any{}, nil
 	}
 
 	filtered := make([]map[string]any, 0, len(rows))

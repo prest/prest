@@ -978,10 +978,18 @@ func TestMCPHandler_ListSchemas_QueryError(t *testing.T) {
 
 	catalog.EXPECT().SchemaClause(gomock.Any()).Return("SELECT schema", false)
 	catalog.EXPECT().SchemaOrderBy("", false).Return("")
+	catalog.EXPECT().TableClause().Return("SELECT table")
+	catalog.EXPECT().TableWhere("").Return("")
+	catalog.EXPECT().TableOrderBy("").Return("")
 
-	scanner := mockgen.NewMockScanner(ctrl)
-	executor.EXPECT().QueryCtx(gomock.Any(), "SELECT schema ").Return(scanner)
-	scanner.EXPECT().Err().Return(errors.New("query failed"))
+	schemaScanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().QueryCtx(gomock.Any(), "SELECT schema ").Return(schemaScanner)
+	schemaScanner.EXPECT().Err().Return(errors.New("query failed"))
+
+	tableScanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().QueryCtx(gomock.Any(), "SELECT table  ").Return(tableScanner)
+	tableScanner.EXPECT().Err().Return(nil)
+	tableScanner.EXPECT().Bytes().Return([]byte(`[]`))
 
 	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, DB: db, PGDatabase: "prest-test"})
 	_, err := h.listSchemas(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpListSchemasArgs{Database: "prest-test"})
@@ -1778,4 +1786,75 @@ func TestMCPHandler_ContextWithTimeout(t *testing.T) {
 	deadline, ok := ctx.Deadline()
 	require.True(t, ok)
 	require.False(t, deadline.IsZero())
+}
+
+func TestMCPHandler_TableRows_WithPermissionsFetchesColumns(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	catalog, executor, perms, db := setupTableListMocks(ctrl, "")
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+
+	rows, err := h.tableRows(httptest.NewRequest(http.MethodGet, "/_mcp", nil), "prest-test", "")
+	require.NoError(t, err)
+	require.Len(t, rows, 1)
+	require.Equal(t, "users", firstString(rows[0], "name"))
+}
+
+func TestMCPHandler_TableRows_WithoutPermissionsSkipsColumns(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	catalog := mockgen.NewMockCatalogQuerier(ctrl)
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	db := mockDatabaseRegistry(ctrl)
+
+	catalog.EXPECT().TableClause().Return("SELECT table")
+	catalog.EXPECT().TableWhere("").Return("")
+	catalog.EXPECT().TableOrderBy("").Return("")
+
+	scanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().QueryCtx(gomock.Any(), "SELECT table  ").Return(scanner)
+	scanner.EXPECT().Err().Return(nil)
+	scanner.EXPECT().Bytes().Return([]byte(`[{"schema":"public","name":"users","type":"table"}]`))
+
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, DB: db, PGDatabase: "prest-test"})
+	rows, err := h.tableRows(httptest.NewRequest(http.MethodGet, "/_mcp", nil), "prest-test", "")
+	require.NoError(t, err)
+	require.Len(t, rows, 1)
+	require.Equal(t, "users", firstString(rows[0], "name"))
+}
+
+func TestMCPHandler_ListSchemas_AccessibleSchemasError(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	catalog := mockgen.NewMockCatalogQuerier(ctrl)
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	db := mockDatabaseRegistry(ctrl)
+
+	catalog.EXPECT().SchemaClause(gomock.Any()).Return("SELECT schema", false)
+	catalog.EXPECT().SchemaOrderBy("", false).Return("")
+	catalog.EXPECT().TableClause().Return("SELECT table")
+	catalog.EXPECT().TableWhere("").Return("")
+	catalog.EXPECT().TableOrderBy("").Return("")
+
+	schemaScanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().QueryCtx(gomock.Any(), "SELECT schema ").Return(schemaScanner)
+	schemaScanner.EXPECT().Err().Return(nil)
+	schemaScanner.EXPECT().Bytes().Return([]byte(`[{"schema":"public"}]`))
+
+	tableScanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().QueryCtx(gomock.Any(), "SELECT table  ").Return(tableScanner)
+	tableScanner.EXPECT().Err().Return(errors.New("tables failed"))
+
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, DB: db, PGDatabase: "prest-test"})
+	_, err := h.listSchemas(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpListSchemasArgs{Database: "prest-test"})
+	require.Error(t, err)
 }
