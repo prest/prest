@@ -49,7 +49,7 @@ var (
 
 // loadedMiddlewareFunc global variable to control plugins loaded, blocking duplicate loading
 var (
-	loadedMiddlewareMu sync.Mutex
+	loadedMiddlewareMu   sync.Mutex
 	loadedMiddlewareFunc = map[string]LoadedPlugin{}
 )
 

@@ -859,6 +859,20 @@ func (mr *MockAdapterMockRecorder) SetDatabase(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDatabase", reflect.TypeOf((*MockAdapter)(nil).SetDatabase), arg0)
 }
 
+// ShowColumnsCtx mocks base method.
+func (m *MockAdapter) ShowColumnsCtx(arg0 context.Context) adapters.Scanner {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ShowColumnsCtx", arg0)
+	ret0, _ := ret[0].(adapters.Scanner)
+	return ret0
+}
+
+// ShowColumnsCtx indicates an expected call of ShowColumnsCtx.
+func (mr *MockAdapterMockRecorder) ShowColumnsCtx(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShowColumnsCtx", reflect.TypeOf((*MockAdapter)(nil).ShowColumnsCtx), arg0)
+}
+
 // ShowTable mocks base method.
 func (m *MockAdapter) ShowTable(arg0, arg1 string) adapters.Scanner {
 	m.ctrl.T.Helper()

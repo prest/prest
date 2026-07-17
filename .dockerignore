@@ -1,0 +1,8 @@
+node_modules
+studio/node_modules
+studio/coverage
+studio/playwright-report
+studio/test-results
+.git
+*.md
+!README.md

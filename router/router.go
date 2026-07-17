@@ -6,6 +6,7 @@ import (
 
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers"
+	"github.com/prest/prest/v2/internal/studio"
 	"github.com/prest/prest/v2/middlewares"
 	"github.com/prest/prest/v2/plugins"
 
@@ -48,6 +49,10 @@ func RegisterRoutes(
 	if runtime.GOOS != "windows" {
 		router.HandleFunc("/_PLUGIN/{file}/{func}", plg.Handler())
 	}
+
+	// Studio must be registered before /{database}/{schema} catch-alls.
+	router.PathPrefix("/_studio").Handler(studio.Handler(cfg.StudioConf.Enabled))
+
 	router.HandleFunc("/{database}/{schema}", h.Catalog.ListTablesByDatabaseAndSchema).Methods("GET")
 	router.HandleFunc("/show/{database}/{schema}/{table}", h.Table.Show).Methods("GET")
 	router.HandleFunc("/_health", h.Health.Handler()).Methods("GET")

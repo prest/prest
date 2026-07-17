@@ -2185,6 +2185,22 @@ func (adapter *postgres) ShowTableCtx(ctx context.Context, schema, table string)
 	return adapter.QueryCtx(ctx, query, table, schema)
 }
 
+// ShowColumnsCtx shows all user table structures in the current database.
+func (adapter *postgres) ShowColumnsCtx(ctx context.Context) adapters.Scanner {
+	query := `SELECT table_schema, table_name, ordinal_position as position, column_name,data_type,
+			  	CASE WHEN character_maximum_length is not null
+					THEN character_maximum_length
+					ELSE numeric_precision end as max_length,
+			  	is_nullable,
+			  	is_generated,
+			  	is_updatable,
+			  	column_default as default_value
+			 FROM information_schema.columns
+			 WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+			 ORDER BY table_schema, table_name, ordinal_position`
+	return adapter.QueryCtx(ctx, query)
+}
+
 // GetDatabase returns the current DB name
 func (adapter *postgres) GetDatabase() string {
 	return adapter.conn.GetDatabase()

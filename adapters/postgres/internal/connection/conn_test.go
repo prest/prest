@@ -29,11 +29,11 @@ func TestManager_poolLimitsFor(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name          string
-		cfg           *config.Prest
-		dbName        string
-		wantMaxIdle   int
-		wantMaxOpen   int
+		name        string
+		cfg         *config.Prest
+		dbName      string
+		wantMaxIdle int
+		wantMaxOpen int
 	}{
 		{
 			name: "legacy mode uses global limits",

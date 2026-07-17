@@ -1698,6 +1698,19 @@ func TestMock_ShowTableCtx(t *testing.T) {
 	}
 }
 
+func TestMock_ShowColumnsCtx(t *testing.T) {
+	t.Parallel()
+
+	m := &Mock{
+		mtx: &sync.RWMutex{},
+		t:   t,
+	}
+	gotSc := m.ShowColumnsCtx(context.Background())
+	if gotSc != nil {
+		t.Errorf("ShowColumnsCtx() expected nil, got %v", gotSc)
+	}
+}
+
 func TestMock_New(t *testing.T) {
 	m := New(t)
 	if m == nil {

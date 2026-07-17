@@ -6,6 +6,14 @@
 version: 2
 updates:
   - package-ecosystem: "gomod"
-    directory: "/" # Location of package manifests
+    directory: "/"
     schedule:
       interval: "daily"
+
+  - package-ecosystem: "npm"
+    directory: "/studio"
+    schedule:
+      interval: "weekly"
+    groups:
+      studio-dev-dependencies:
+        dependency-type: development

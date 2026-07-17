@@ -30,6 +30,7 @@ type QueryExecutor interface {
 
 	ShowTable(schema, table string) (sc Scanner)
 	ShowTableCtx(ctx context.Context, schema, table string) (sc Scanner)
+	ShowColumnsCtx(ctx context.Context) (sc Scanner)
 
 	ExecuteScripts(method, sql string, values []interface{}) (sc Scanner)
 	ExecuteScriptsCtx(ctx context.Context, method, sql string, values []interface{}) (sc Scanner)

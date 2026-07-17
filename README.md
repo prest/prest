@@ -28,7 +28,6 @@ Contributor License Agreement — [![CLA assistant](https://cla-assistant.io/rea
 | Multi-database | [Multi-database](https://docs.prestd.com/get-started/multi-database) |
 | Databases & roadmap | [Databases](https://docs.prestd.com/databases) · [Roadmap](https://docs.prestd.com/databases/roadmap) |
 | AI clients (Cursor, Claude, …) | [AI and MCP](https://docs.prestd.com/ai) |
-
 ## Quick start
 
 Install and run options (Docker, Homebrew, or Go) are documented in [Get pREST](https://docs.prestd.com/get-prest). Point pREST at Postgres (`PREST_PG_URL` or `pg.*` / `DATABASE_URL`), then call:

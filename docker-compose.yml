@@ -1,6 +1,9 @@
 version: "3"
 services:
+  # Optional local Postgres (docker compose --profile local up).
+  # Default stack uses PREST_PG_URL from .env (remote).
   postgres:
+    profiles: ["local"]
     image: postgres:18
     volumes:
       - "./data/postgres:/var/lib/postgresql"
@@ -20,16 +23,13 @@ services:
   prest:
     build: .
     restart: on-failure
-    links:
-      - "postgres:postgres"
+    env_file:
+      - .env
     environment:
-      - PREST_DEBUG=true # remove comment to disable DEBUG mode
-      - PREST_PG_HOST=postgres
+      - PREST_DEBUG=true
+      - PREST_PG_URL=${PREST_PG_URL}
       - PREST_PG_CACHE=false
-      - PREST_JWT_DEFAULT=false # toggle to use jwt
+      - PREST_JWT_DEFAULT=false
       - PREST_CACHE_ENABLED=false
-    depends_on:
-      postgres:
-        condition: service_healthy
     ports:
       - "3000:3000"
