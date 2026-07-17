@@ -99,6 +99,24 @@ func TestHandlerSet_ErrorJSON(t *testing.T) {
 	require.Contains(t, rec.Body.String(), `"error": "bad request"`)
 }
 
+func TestHandlerSet_ErrorAlreadyJSONPassthrough(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	payload := `{"jsonrpc":"2.0","error":{"code":400,"message":"unsupported method"}}`
+	HandlerSet().ServeHTTP(rec, req, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(payload))
+	})
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.JSONEq(t, payload, rec.Body.String())
+	require.NotContains(t, rec.Body.String(), `"error": "{`)
+}
+
 func TestHandlerSet_XMLRenderer(t *testing.T) {
 	t.Parallel()
 

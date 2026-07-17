@@ -62,9 +62,15 @@ func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, fo
 	}
 	byt, _ := io.ReadAll(recorder.Body)
 	if recorder.Code >= 400 {
-		m := make(map[string]string)
-		m["error"] = strings.TrimSpace(string(byt))
-		byt, _ = json.MarshalIndent(m, "", "\t")
+		trimmed := strings.TrimSpace(string(byt))
+		// Pass through bodies that are already JSON (e.g. MCP JSON-RPC errors,
+		// controller {"error":"..."} payloads) to avoid double-wrapping.
+		if json.Valid([]byte(trimmed)) {
+			byt = []byte(trimmed)
+		} else {
+			m := map[string]string{"error": trimmed}
+			byt, _ = json.MarshalIndent(m, "", "\t")
+		}
 	}
 	switch format {
 	case "xml":

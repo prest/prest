@@ -50,3 +50,7 @@ docbuild/
 node_modules/
 studio/dist/
 .pnpm-store/
+
+# Local secrets / compose overrides (may contain DB credentials)
+.env
+.env.local

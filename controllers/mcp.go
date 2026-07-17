@@ -164,6 +164,11 @@ func (h *MCPHandler) handleRPC(w http.ResponseWriter, r *http.Request) {
 		h.writeRPCError(w, req.ID, http.StatusBadRequest, "invalid request", "missing method")
 		return
 	}
+	// JSON-RPC notification (no id): accept with empty body; do not dispatch a response.
+	if len(req.ID) == 0 {
+		w.WriteHeader(http.StatusAccepted)
+		return
+	}
 
 	result, err := h.dispatchRPC(r, req.Method, req.Params)
 	if err != nil {
@@ -486,12 +491,19 @@ func (h *MCPHandler) tools(r *http.Request) ([]mcpTool, error) {
 		if err != nil {
 			continue
 		}
+		if len(rows) == 0 {
+			continue
+		}
+		columnsByTable, err := h.columnsByTable(r, database)
+		if err != nil {
+			continue
+		}
 		for _, row := range rows {
 			ref, ok := tableRefFromRow(database, row)
 			if !ok || !isQueryableTableType(ref.Type) {
 				continue
 			}
-			columns, err := h.selectableColumns(r, ref.Database, ref.Schema, ref.Table)
+			columns, err := h.filterColumnsByPermissions(r, ref.Database, ref.Schema, ref.Table, columnsByTable[tableColumnsKey(ref.Schema, ref.Table)])
 			if err != nil || len(columns) == 0 {
 				continue
 			}
@@ -510,6 +522,41 @@ func (h *MCPHandler) tools(r *http.Request) ([]mcpTool, error) {
 
 	sort.SliceStable(tools, func(i, j int) bool { return tools[i].Name < tools[j].Name })
 	return tools, nil
+}
+
+func (h *MCPHandler) columnsByTable(r *http.Request, database string) (map[string][]mcpColumn, error) {
+	ctx, cancel := requestContext(r, database)
+	defer cancel()
+
+	sc := h.executor.ShowColumnsCtx(ctx)
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("list columns failed: %w", err)
+	}
+	rows, err := decodeJSONRows(sc.Bytes())
+	if err != nil {
+		return nil, err
+	}
+
+	groupedRows := make(map[string][]map[string]any)
+	for _, row := range rows {
+		schema := firstString(row, "table_schema", "schema")
+		table := firstString(row, "table_name", "name")
+		if schema == "" || table == "" {
+			continue
+		}
+		key := tableColumnsKey(schema, table)
+		groupedRows[key] = append(groupedRows[key], row)
+	}
+
+	columns := make(map[string][]mcpColumn, len(groupedRows))
+	for key, rows := range groupedRows {
+		columns[key] = columnsFromRows(rows)
+	}
+	return columns, nil
+}
+
+func tableColumnsKey(schema, table string) string {
+	return schema + "." + table
 }
 
 func (h *MCPHandler) describeColumns(r *http.Request, database, schema, table string) ([]mcpColumn, error) {
@@ -574,6 +621,19 @@ func (h *MCPHandler) queryRows(r *http.Request, query string, database string, v
 }
 
 func (h *MCPHandler) filterAccessibleTables(r *http.Request, database string, rows []map[string]any) ([]map[string]any, error) {
+	if len(rows) == 0 {
+		return []map[string]any{}, nil
+	}
+
+	var columnsByTable map[string][]mcpColumn
+	if h.perms != nil {
+		var err error
+		columnsByTable, err = h.columnsByTable(r, database)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	filtered := make([]map[string]any, 0, len(rows))
 	for _, row := range rows {
 		ref, ok := tableRefFromRow(database, row)
@@ -581,7 +641,7 @@ func (h *MCPHandler) filterAccessibleTables(r *http.Request, database string, ro
 			continue
 		}
 		if h.perms != nil {
-			columns, err := h.selectableColumns(r, ref.Database, ref.Schema, ref.Table)
+			columns, err := h.filterColumnsByPermissions(r, ref.Database, ref.Schema, ref.Table, columnsByTable[tableColumnsKey(ref.Schema, ref.Table)])
 			if err != nil {
 				return nil, err
 			}
@@ -614,6 +674,10 @@ func (h *MCPHandler) selectableColumns(r *http.Request, database, schema, table 
 	if err != nil {
 		return nil, err
 	}
+	return h.filterColumnsByPermissions(r, database, schema, table, columns)
+}
+
+func (h *MCPHandler) filterColumnsByPermissions(r *http.Request, database, schema, table string, columns []mcpColumn) ([]mcpColumn, error) {
 	if h.perms == nil {
 		return columns, nil
 	}

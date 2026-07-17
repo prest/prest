@@ -3036,6 +3036,23 @@ func TestShowTableCtx_Success(t *testing.T) {
 	require.NoError(t, defaultMock.ExpectationsWereMet())
 }
 
+func TestShowColumnsCtx_Success(t *testing.T) {
+	t.Parallel()
+
+	adapter, defaultMock, ctxMock := withSQLMocks(t)
+
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, contextMockDB)
+	ctxMock.ExpectPrepare(`SELECT json_agg\(s\) FROM \(SELECT table_schema`).
+		ExpectQuery().
+		WillReturnRows(sqlmock.NewRows([]string{"json_agg"}).AddRow([]byte(`[{"table_schema":"public","table_name":"users","column_name":"id"}]`)))
+
+	sc := adapter.ShowColumnsCtx(ctx)
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `[{"table_schema":"public","table_name":"users","column_name":"id"}]`, string(sc.Bytes()))
+	require.NoError(t, ctxMock.ExpectationsWereMet())
+	require.NoError(t, defaultMock.ExpectationsWereMet())
+}
+
 func TestGetTransaction_Success(t *testing.T) {
 	t.Parallel()
 

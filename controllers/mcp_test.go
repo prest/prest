@@ -16,6 +16,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func expectShowColumns(t *testing.T, ctrl *gomock.Controller, executor *mockgen.MockQueryExecutor, body string) {
+	t.Helper()
+
+	scanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().ShowColumnsCtx(gomock.Any()).Return(scanner)
+	scanner.EXPECT().Err().Return(nil)
+	scanner.EXPECT().Bytes().Return([]byte(body))
+}
+
 func TestMCPHandler_GetDiscovery(t *testing.T) {
 	t.Parallel()
 
@@ -39,10 +48,10 @@ func TestMCPHandler_GetDiscovery(t *testing.T) {
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(true).AnyTimes()
 	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "users", "read", "").Return([]string{"*"}, nil).AnyTimes()
 
-	showScanner := mockgen.NewMockScanner(ctrl)
-	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(showScanner).AnyTimes()
-	showScanner.EXPECT().Err().Return(nil).AnyTimes()
-	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","data_type":"integer","position":1},{"column_name":"name","data_type":"text","position":2}]`)).AnyTimes()
+	expectShowColumns(t, ctrl, executor, `[
+		{"table_schema":"public","table_name":"users","column_name":"id","data_type":"integer","position":1},
+		{"table_schema":"public","table_name":"users","column_name":"name","data_type":"text","position":2}
+	]`)
 
 	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	rec := httptest.NewRecorder()
@@ -162,10 +171,7 @@ func TestMCPHandler_AccessDeniedFiltersTools(t *testing.T) {
 	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(tableScanner)
 	tableScanner.EXPECT().Err().Return(nil)
 	tableScanner.EXPECT().Bytes().Return([]byte(`[{"schema":"public","name":"users","type":"table"}]`))
-	showScanner := mockgen.NewMockScanner(ctrl)
-	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(showScanner)
-	showScanner.EXPECT().Err().Return(nil)
-	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","data_type":"integer","position":1}]`))
+	expectShowColumns(t, ctrl, executor, `[{"table_schema":"public","table_name":"users","column_name":"id","data_type":"integer","position":1}]`)
 
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(false).AnyTimes()
 
@@ -205,10 +211,7 @@ func TestMCPHandler_ListSchemasDoesNotLeakWhenAllFiltered(t *testing.T) {
 	tableScanner.EXPECT().Err().Return(nil)
 	tableScanner.EXPECT().Bytes().Return([]byte(`[{"schema":"public","name":"users","type":"table"}]`))
 
-	showScanner := mockgen.NewMockScanner(ctrl)
-	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(showScanner)
-	showScanner.EXPECT().Err().Return(nil)
-	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","data_type":"integer","position":1}]`))
+	expectShowColumns(t, ctrl, executor, `[{"table_schema":"public","table_name":"users","column_name":"id","data_type":"integer","position":1}]`)
 
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(false)
 
@@ -611,10 +614,10 @@ func setupSchemaListMocks(ctrl *gomock.Controller) (*mockgen.MockCatalogQuerier,
 	tableScanner.EXPECT().Err().Return(nil)
 	tableScanner.EXPECT().Bytes().Return([]byte(`[{"schema":"public","name":"users","type":"table"}]`))
 
-	showScanner := mockgen.NewMockScanner(ctrl)
-	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(showScanner)
-	showScanner.EXPECT().Err().Return(nil)
-	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","data_type":"integer","position":1}]`))
+	columnsScanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().ShowColumnsCtx(gomock.Any()).Return(columnsScanner)
+	columnsScanner.EXPECT().Err().Return(nil)
+	columnsScanner.EXPECT().Bytes().Return([]byte(`[{"table_schema":"public","table_name":"users","column_name":"id","data_type":"integer","position":1}]`))
 
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(true)
 	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "users", "read", "").Return([]string{"id"}, nil)
@@ -646,10 +649,10 @@ func setupTableListMocks(ctrl *gomock.Controller, schema string) (*mockgen.MockC
 		scanner.EXPECT().Bytes().Return([]byte(`[{"schema":"public","name":"users","type":"table"}]`))
 	}
 
-	showScanner := mockgen.NewMockScanner(ctrl)
-	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(showScanner)
-	showScanner.EXPECT().Err().Return(nil)
-	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","data_type":"integer","position":1}]`))
+	columnsScanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().ShowColumnsCtx(gomock.Any()).Return(columnsScanner)
+	columnsScanner.EXPECT().Err().Return(nil)
+	columnsScanner.EXPECT().Bytes().Return([]byte(`[{"table_schema":"public","table_name":"users","column_name":"id","data_type":"integer","position":1}]`))
 
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(true)
 	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "users", "read", "").Return([]string{"id"}, nil)
@@ -1180,10 +1183,10 @@ func TestMCPHandler_FilterAccessibleTables_SelectableError(t *testing.T) {
 	perms := mockgen.NewMockPermissionsChecker(ctrl)
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 
-	showScanner := mockgen.NewMockScanner(ctrl)
-	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(showScanner)
-	showScanner.EXPECT().Err().Return(nil)
-	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","data_type":"integer","position":1}]`))
+	columnsScanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().ShowColumnsCtx(gomock.Any()).Return(columnsScanner)
+	columnsScanner.EXPECT().Err().Return(nil)
+	columnsScanner.EXPECT().Bytes().Return([]byte(`[{"table_schema":"public","table_name":"users","column_name":"id","data_type":"integer","position":1}]`))
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(true)
 	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "users", "read", "").Return(nil, errors.New("fields failed"))
 
@@ -1240,10 +1243,7 @@ func TestMCPHandler_Tools_SkipsInvalidRowsAndDuplicates(t *testing.T) {
 		{"schema":"public","name":"users","type":"table"}
 	]`))
 
-	showScanner := mockgen.NewMockScanner(ctrl)
-	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(showScanner).AnyTimes()
-	showScanner.EXPECT().Err().Return(nil).AnyTimes()
-	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","data_type":"integer","position":1}]`)).AnyTimes()
+	expectShowColumns(t, ctrl, executor, `[{"table_schema":"public","table_name":"users","column_name":"id","data_type":"integer","position":1}]`)
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(true).AnyTimes()
 	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "users", "read", "").Return([]string{"id"}, nil).AnyTimes()
 
@@ -1258,6 +1258,44 @@ func TestMCPHandler_Tools_SkipsInvalidRowsAndDuplicates(t *testing.T) {
 		}
 	}
 	require.Equal(t, 1, selectTools)
+}
+
+func TestMCPHandler_Tools_BatchedColumnsBuildsTableTools(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	catalog := mockgen.NewMockCatalogQuerier(ctrl)
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	db := mockDatabaseRegistry(ctrl)
+
+	catalog.EXPECT().TableClause().Return("SELECT table")
+	catalog.EXPECT().TableWhere("").Return("")
+	catalog.EXPECT().TableOrderBy("").Return("")
+
+	tableScanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(tableScanner)
+	tableScanner.EXPECT().Err().Return(nil)
+	tableScanner.EXPECT().Bytes().Return([]byte(`[
+		{"schema":"public","name":"users","type":"table"},
+		{"schema":"public","name":"teams","type":"table"}
+	]`))
+	expectShowColumns(t, ctrl, executor, `[
+		{"table_schema":"public","table_name":"users","column_name":"id","data_type":"integer","position":1},
+		{"table_schema":"public","table_name":"teams","column_name":"slug","data_type":"text","position":1}
+	]`)
+
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, DB: db, PGDatabase: "prest-test"})
+	tools, err := h.tools(httptest.NewRequest(http.MethodGet, "/_mcp", nil))
+	require.NoError(t, err)
+
+	names := make([]string, 0, len(tools))
+	for _, tool := range tools {
+		names = append(names, tool.Name)
+	}
+	require.Contains(t, names, "prest.select.prest-test.public.users")
+	require.Contains(t, names, "prest.select.prest-test.public.teams")
 }
 
 func TestMCPHandler_Tools_ContinuesOnRawTableError(t *testing.T) {
@@ -1589,6 +1627,18 @@ func TestMCPHandler_HandleRPC_DispatchError(t *testing.T) {
 	require.Contains(t, rec.Body.String(), "unsupported method")
 }
 
+func TestMCPHandler_HandleRPC_NotificationAccepted(t *testing.T) {
+	t.Parallel()
+
+	h := NewMCPHandler(Deps{})
+	body := bytes.NewBufferString(`{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}`)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/_mcp", body))
+
+	require.Equal(t, http.StatusAccepted, rec.Code)
+	require.Empty(t, rec.Body.String())
+}
+
 func TestMCPHandler_McpTableSelectSchema(t *testing.T) {
 	t.Parallel()
 
@@ -1680,10 +1730,7 @@ func TestMCPHandler_Tools_SkipsWhenNoSelectableColumns(t *testing.T) {
 	tableScanner.EXPECT().Err().Return(nil)
 	tableScanner.EXPECT().Bytes().Return([]byte(`[{"schema":"public","name":"users","type":"table"}]`))
 
-	showScanner := mockgen.NewMockScanner(ctrl)
-	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(showScanner)
-	showScanner.EXPECT().Err().Return(nil)
-	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","data_type":"integer","position":1}]`))
+	expectShowColumns(t, ctrl, executor, `[{"table_schema":"public","table_name":"users","column_name":"id","data_type":"integer","position":1}]`)
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(false)
 
 	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})

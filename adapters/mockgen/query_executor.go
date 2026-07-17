@@ -291,6 +291,20 @@ func (mr *MockQueryExecutorMockRecorder) QueryCtx(arg0, arg1 interface{}, arg2 .
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryCtx", reflect.TypeOf((*MockQueryExecutor)(nil).QueryCtx), varargs...)
 }
 
+// ShowColumnsCtx mocks base method.
+func (m *MockQueryExecutor) ShowColumnsCtx(arg0 context.Context) adapters.Scanner {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ShowColumnsCtx", arg0)
+	ret0, _ := ret[0].(adapters.Scanner)
+	return ret0
+}
+
+// ShowColumnsCtx indicates an expected call of ShowColumnsCtx.
+func (mr *MockQueryExecutorMockRecorder) ShowColumnsCtx(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShowColumnsCtx", reflect.TypeOf((*MockQueryExecutor)(nil).ShowColumnsCtx), arg0)
+}
+
 // ShowTable mocks base method.
 func (m *MockQueryExecutor) ShowTable(arg0, arg1 string) adapters.Scanner {
 	m.ctrl.T.Helper()
