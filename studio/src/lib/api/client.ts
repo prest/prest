@@ -128,9 +128,14 @@ export class PrestClient {
 			controller.abort()
 		}, timeout)
 
+		let abortHandler: (() => void) | undefined
 		if (opts.signal) {
-			if (opts.signal.aborted) controller.abort()
-			else opts.signal.addEventListener('abort', () => controller.abort(), { once: true })
+			if (opts.signal.aborted) {
+				controller.abort()
+			} else {
+				abortHandler = () => controller.abort()
+				opts.signal.addEventListener('abort', abortHandler, { once: true })
+			}
 		}
 
 		try {
@@ -164,6 +169,9 @@ export class PrestClient {
 			})
 		} finally {
 			clearTimeout(timer)
+			if (opts.signal && abortHandler) {
+				opts.signal.removeEventListener('abort', abortHandler)
+			}
 		}
 	}
 
@@ -179,7 +187,6 @@ export class PrestClient {
 	): Promise<JsonResponse<T>> {
 		const start = now()
 		return this.withTimeout(path, opts, async (res, url) => {
-			const durationMs = Math.round(now() - start)
 			if (!res.ok) {
 				const body = await safeReadBody(res)
 				throw new ApiError(messageFromStatus(res.status, bodyMessage(body)), {
@@ -190,6 +197,7 @@ export class PrestClient {
 				})
 			}
 			const text = await res.text()
+			const durationMs = Math.round(now() - start)
 			const data = parseJson<T>(text, url)
 			return { data, status: res.status, headers: res.headers, durationMs }
 		})
