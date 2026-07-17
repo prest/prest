@@ -1,0 +1,26 @@
+---
+description: After Studio changes, regenerate embedded assets with make studio-build and keep dist in the diff
+globs: studio/**/*
+alwaysApply: false
+---
+
+# Studio Build (Embedded Assets)
+
+Studio UI is built into `internal/studio/dist` and embedded by Go (`go:embed`). Source changes alone do **not** update the binary assets.
+
+## When required
+
+After any change under `studio/` (source, tests that affect the app build, dependencies, or Studio build config such as `package.json`, `vite.config.*`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`), **before** marking the task done:
+
+```sh
+make studio-build
+git status --short internal/studio/dist
+```
+
+## Definition of done for Studio changes
+
+- [ ] `make studio-build` succeeded
+- [ ] Generated updates under `internal/studio/dist` are present in the working tree / final diff when the build produces them (do not discard or unstage them)
+- [ ] If the build fails, the task is incomplete — fix the build; do not skip asset regeneration
+
+Studio lint/typecheck/unit tests remain optional based on change risk; the embed rebuild is **not** optional when Studio sources changed.
