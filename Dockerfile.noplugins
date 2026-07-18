@@ -27,9 +27,8 @@ RUN apt-get update && apt-get upgrade -y && \
       go build -ldflags "-s -w -X github.com/prest/prest/v2/helpers.Version=${VERSION} -X github.com/prest/prest/v2/helpers.Commit=${COMMIT} -X github.com/prest/prest/v2/helpers.Date=${DATE}" -o prestd cmd/prestd/main.go; \
     fi
 
-# Use runtime image
-# Plugins not supported
-FROM registry.hub.docker.com/library/debian:bookworm
+# Full-repo build (default for docker build .); plugins not supported
+FROM registry.hub.docker.com/library/debian:bookworm AS full
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/* \
     && groupadd --system prest \
     && useradd --system --gid prest --home-dir /app --shell /usr/sbin/nologin prest
@@ -43,3 +42,22 @@ RUN chown -R prest:prest /app
 WORKDIR /app
 USER prest
 ENTRYPOINT ["sh", "/app/entrypoint.sh"]
+
+# GoReleaser: prebuilt binary + extra_files only (no studio/ in context)
+FROM registry.hub.docker.com/library/debian:bookworm AS release
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install --no-install-recommends -yq netcat-traditional && \
+    rm -rf /var/lib/apt/lists/* \
+    && groupadd --system prest \
+    && useradd --system --gid prest --home-dir /app --shell /usr/sbin/nologin prest
+ENV PREST_BUILD_PLUGINS=0
+COPY prestd /bin/prestd
+COPY etc/entrypoint.sh /app/entrypoint.sh
+COPY lib /app/lib
+COPY etc/plugin /app/plugin
+RUN chown -R prest:prest /app
+WORKDIR /app
+USER prest
+ENTRYPOINT ["sh", "/app/entrypoint.sh"]
+
+FROM full
