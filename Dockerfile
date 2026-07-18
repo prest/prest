@@ -27,9 +27,9 @@ RUN apt-get update && apt-get upgrade -y && \
       go build -ldflags "-s -w -X github.com/prest/prest/v2/helpers.Version=${VERSION} -X github.com/prest/prest/v2/helpers.Commit=${COMMIT} -X github.com/prest/prest/v2/helpers.Date=${DATE}" -o prestd cmd/prestd/main.go; \
     fi
 
-# Use golang image
-# needs go to compile the plugin system
-FROM registry.hub.docker.com/library/golang:1.26
+# Full-repo build (default for docker build .)
+# Needs go to compile the plugin system
+FROM registry.hub.docker.com/library/golang:1.26 AS full
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 ENV CGO_ENABLED=1
 ENV PREST_BUILD_PLUGINS=1
@@ -40,3 +40,19 @@ COPY --from=builder /workspace/lib /app/lib
 COPY --from=builder /workspace/etc/plugin /app/plugin
 WORKDIR /app
 ENTRYPOINT ["sh", "/app/entrypoint.sh"]
+
+# GoReleaser: prebuilt binary + extra_files only (no studio/ in context)
+FROM registry.hub.docker.com/library/golang:1.26 AS release
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install --no-install-recommends -yq netcat-traditional && \
+    rm -rf /var/lib/apt/lists/*
+ENV CGO_ENABLED=1
+ENV PREST_BUILD_PLUGINS=1
+COPY prestd /bin/prestd
+COPY etc/entrypoint.sh /app/entrypoint.sh
+COPY lib /app/lib
+COPY etc/plugin /app/plugin
+WORKDIR /app
+ENTRYPOINT ["sh", "/app/entrypoint.sh"]
+
+FROM full

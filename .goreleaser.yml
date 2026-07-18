@@ -65,6 +65,7 @@ dockers:
     - lib
     - etc/plugin
   build_flag_templates:
+  - "--target=release"
   - "--build-arg=VERSION={{.Version}}"
   - "--build-arg=COMMIT={{.Commit}}"
   - "--build-arg=DATE={{.Date}}"
@@ -86,6 +87,7 @@ dockers:
     - lib
     - etc/plugin
   build_flag_templates:
+  - "--target=release"
   - "--build-arg=VERSION={{.Version}}"
   - "--build-arg=COMMIT={{.Commit}}"
   - "--build-arg=DATE={{.Date}}"
