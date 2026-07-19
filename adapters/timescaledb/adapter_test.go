@@ -14,6 +14,16 @@ func testAdapter() adapters.Adapter {
 	return New(cfg)
 }
 
+func TestAdapterImplementsOptionalDBInterfaces(t *testing.T) {
+	t.Parallel()
+
+	a := New(&config.Prest{PGDatabase: "x"})
+	_, okConn := a.(adapters.DatabaseConnector)
+	_, okDB := a.(adapters.DatabaseAccessor)
+	require.True(t, okConn)
+	require.True(t, okDB)
+}
+
 func TestTimeBucketClause(t *testing.T) {
 	t.Parallel()
 
@@ -67,10 +77,10 @@ func TestTimeBucketClause(t *testing.T) {
 			expected: `GROUP BY time_bucket('15 minutes', "created_at")`,
 		},
 		{
-			name:      "empty _time_bucket",
-			url:       "/",
-			expected:  "",
-			hasError:  false,
+			name:     "empty _time_bucket",
+			url:      "/",
+			expected: "",
+			hasError: false,
 		},
 		{
 			name:      "invalid interval",

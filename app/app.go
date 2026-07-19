@@ -25,10 +25,10 @@ import (
 
 // App is the composition root for the HTTP server.
 type App struct {
-	Config    *config.Prest
-	Handler   http.Handler
-	Adapters  adapters.Registry
-	pg        adapters.Adapter // deprecated: kept for backward compatibility
+	Config   *config.Prest
+	Handler  http.Handler
+	Adapters adapters.Registry
+	pg       adapters.Adapter // deprecated: kept for backward compatibility
 }
 
 // New builds a ready-to-serve App from cfg.
@@ -63,7 +63,7 @@ func New(cfg *config.Prest) (*App, error) {
 		cfg.Adapter = adapter
 		alias := cfg.PGDatabase
 		if alias == "" {
-			alias = "prest"  // Use default alias when database name is not set
+			alias = "prest" // Use default alias when database name is not set
 		}
 		if err := registry.Register(alias, adapter); err != nil {
 			return nil, err
@@ -72,7 +72,7 @@ func New(cfg *config.Prest) (*App, error) {
 		// Adapter already configured (injected): register it
 		alias := cfg.PGDatabase
 		if alias == "" {
-			alias = "prest"  // Use default alias when database name is not set
+			alias = "prest" // Use default alias when database name is not set
 		}
 		if err := registry.Register(alias, cfg.Adapter); err != nil {
 			return nil, err

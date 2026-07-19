@@ -12,6 +12,25 @@ import (
 // ErrNotTimescaleDBAdapter is returned when an adapter does not support TimescaleDB connection helpers.
 var ErrNotTimescaleDBAdapter = errors.New("adapter is not timescaledb")
 
+// Connect implements adapters.DatabaseConnector by delegating to the embedded postgres adapter.
+// Required because embedding adapters.Adapter (interface) does not promote optional connector methods.
+func (a *Adapter) Connect() error {
+	c, ok := a.Adapter.(adapters.DatabaseConnector)
+	if !ok {
+		return ErrNotTimescaleDBAdapter
+	}
+	return c.Connect()
+}
+
+// DB implements adapters.DatabaseAccessor by delegating to the embedded postgres adapter.
+func (a *Adapter) DB() (*sqlx.DB, error) {
+	d, ok := a.Adapter.(adapters.DatabaseAccessor)
+	if !ok {
+		return nil, ErrNotTimescaleDBAdapter
+	}
+	return d.DB()
+}
+
 // Connect initializes the TimescaleDB adapter connection pool and verifies TimescaleDB is available.
 func Connect(a adapters.Adapter) error {
 	c, ok := a.(adapters.DatabaseConnector)
