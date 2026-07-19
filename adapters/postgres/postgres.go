@@ -2006,8 +2006,6 @@ func (adapter *postgres) GroupByClause(r *http.Request) (groupBySQL string) {
 		// Handle function calls (e.g., time_bucket('1 minute', time)) for TimescaleDB support.
 		// If field contains parentheses, treat it as a raw SQL expression (must already be safe).
 		if strings.Contains(field, "(") && strings.Contains(field, ")") {
-			// Basic safety check: function calls should only contain allowed characters
-			// This is not foolproof but prevents obvious injection attempts
 			if !isSafeSQLExpression(field) {
 				return ""
 			}
@@ -2031,12 +2029,42 @@ func (adapter *postgres) TimeBucketClause(r *http.Request) (groupBySQL string, e
 	return
 }
 
-// isSafeSQLExpression validates that a SQL expression (typically a function call)
-// only contains safe characters. This is a basic safety check to prevent obvious
-// SQL injection attempts while allowing legitimate function calls like time_bucket.
+// allowedGroupByFunctions is the explicit allowlist for function expressions in _groupby.
+var allowedGroupByFunctions = map[string]struct{}{
+	"time_bucket": {},
+	"date_trunc":  {},
+	"extract":     {},
+	"upper":       {},
+	"lower":       {},
+	"length":      {},
+	"coalesce":    {},
+	"nullif":      {},
+	"trim":        {},
+	"abs":         {},
+	"round":       {},
+	"floor":       {},
+	"ceil":        {},
+}
+
+// isSafeSQLExpression validates that a SQL expression used in GROUP BY is an
+// allowlisted function call with safe characters (no comments, no pg_* funcs).
 func isSafeSQLExpression(expr string) bool {
-	// Allow: letters, digits, underscore, parentheses, quotes, comma, space, hyphen, and dot
-	// Disallow: semicolon (statement terminator) and other dangerous SQL characters
+	if strings.Contains(expr, "--") || strings.Contains(expr, ";") || strings.Contains(expr, "/*") {
+		return false
+	}
+
+	idx := strings.Index(expr, "(")
+	if idx <= 0 {
+		return false
+	}
+	funcName := strings.ToLower(strings.TrimSpace(expr[:idx]))
+	if strings.HasPrefix(funcName, "pg_") {
+		return false
+	}
+	if _, ok := allowedGroupByFunctions[funcName]; !ok {
+		return false
+	}
+
 	for _, ch := range expr {
 		if !((ch >= 'a' && ch <= 'z') ||
 			(ch >= 'A' && ch <= 'Z') ||
@@ -2046,7 +2074,7 @@ func isSafeSQLExpression(expr string) bool {
 			return false
 		}
 	}
-	// Additional check: expressions should be balanced parentheses
+
 	balance := 0
 	for _, ch := range expr {
 		if ch == '(' {

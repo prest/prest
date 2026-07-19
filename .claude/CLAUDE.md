@@ -101,7 +101,7 @@ See `.cursor/rules/` for all authoritative rules:
 
 pREST allows a single API server to serve **multiple SQL databases**, each with its own adapter:
 
-```
+```text
 Request: GET /mydb/public/users
   ↓
 Router looks up "mydb" in adapter registry

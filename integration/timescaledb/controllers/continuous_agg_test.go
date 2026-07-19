@@ -14,7 +14,7 @@ func TestTimescaleContinuousAggregateDiscovery(t *testing.T) {
 	base := helpers.ServerURL(t)
 	testutils.DoRequest(
 		t,
-		base+"/prest-test/public?t.tablename=$like.sensor%",
+		base+"/prest-test/public?t.tablename=$like.sensor%25",
 		nil,
 		http.MethodGet,
 		http.StatusOK,

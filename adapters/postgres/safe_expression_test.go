@@ -18,12 +18,16 @@ func TestIsSafeSQLExpression(t *testing.T) {
 		{"time_bucket('1 hour', created_at)", true},
 		{"date_trunc('day', updated_at)", true},
 		{"extract(hour from event_time)", true},
+		{"upper(name)", true},
 
 		// Invalid expressions (injection attempts)
 		{"time_bucket('1 minute'; DROP TABLE users; time)", false},
-		{"time_bucket('1 minute'--comment", false},
-		{"time_bucket(1 minute, time)", true}, // Missing quotes but syntactically ok per our check
-		{"time_bucket('1 minute', time", false}, // unbalanced parentheses
+		{"time_bucket('1 minute'--comment)", false},
+		{"upper(name)--x", false},
+		{"pg_sleep(1)", false},
+		{"pg_read_file('/etc/passwd')", false},
+		{"unknown_func(name)", false},
+		{"time_bucket('1 minute', time", false},
 		{"time_bucket)('1 minute', time)", false},
 	}
 

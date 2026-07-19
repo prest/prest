@@ -695,6 +695,16 @@ func TestGroupByClause(t *testing.T) {
 			url:   "/?_groupby=upper((name)",
 			empty: true,
 		},
+		{
+			name:  "sql line comment in function expression rejected",
+			url:   "/?_groupby=upper(name)--x",
+			empty: true,
+		},
+		{
+			name:  "pg_ function expression rejected",
+			url:   "/?_groupby=pg_sleep(1)",
+			empty: true,
+		},
 	}
 
 	for _, tc := range testCases {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
+	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/adapters/mockgen"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
@@ -147,6 +148,99 @@ func TestCRUDHandler_Select_Success(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Contains(t, rec.Body.String(), "prest")
+}
+
+func TestCRUDHandler_Select_TimeBucketClauseError(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "test", "read", "").Return([]string{"name"}, nil)
+
+	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
+	sqlBuilder.EXPECT().SelectFields([]string{"name"}).Return(`"name"`, nil)
+	sqlBuilder.EXPECT().SelectSQL(`"name"`, "prest-test", "public", "test").Return(`SELECT "name" FROM "prest-test"."public"."test"`)
+
+	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+	builder.EXPECT().DistinctClause(gomock.Any()).Return("", nil)
+	builder.EXPECT().CountByRequest(gomock.Any()).Return("", nil)
+	builder.EXPECT().JoinByRequest(gomock.Any()).Return(nil, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+	builder.EXPECT().GroupByClause(gomock.Any()).Return("")
+	builder.EXPECT().TimeBucketClause(gomock.Any()).Return("", errors.New("invalid time_bucket interval"))
+
+	h := NewCRUDHandler(Deps{
+		Perms:   perms,
+		SQL:     sqlBuilder,
+		Builder: builder,
+		DB:      mockDatabaseRegistry(ctrl),
+	})
+
+	req := crudRequest(http.MethodGet, "/prest-test/public/test?_time_bucket=2h", map[string]string{
+		"database": "prest-test", "schema": "public", "table": "test",
+	})
+	rec := httptest.NewRecorder()
+	h.Select(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Contains(t, rec.Body.String(), "could not perform TimeBucketClause")
+	require.Contains(t, rec.Body.String(), "invalid time_bucket interval")
+}
+
+func TestCRUDHandler_Select_TimeBucketClauseSuccess(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "test", "read", "").Return([]string{"*"}, nil)
+
+	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
+	sqlBuilder.EXPECT().SelectFields([]string{"*"}).Return(`*`, nil)
+	sqlBuilder.EXPECT().SelectSQL(`*`, "prest-test", "public", "test").Return(`SELECT * FROM "prest-test"."public"."test"`)
+
+	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+	builder.EXPECT().DistinctClause(gomock.Any()).Return("", nil)
+	builder.EXPECT().CountByRequest(gomock.Any()).Return("", nil)
+	builder.EXPECT().JoinByRequest(gomock.Any()).Return(nil, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+	builder.EXPECT().GroupByClause(gomock.Any()).Return("GROUP BY status")
+	builder.EXPECT().TimeBucketClause(gomock.Any()).Return(`GROUP BY time_bucket('1 hour', "time")`, nil)
+	builder.EXPECT().OrderByRequest(gomock.Any()).Return("", nil)
+	builder.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
+
+	scanner := mockgen.NewMockScanner(ctrl)
+	scanner.EXPECT().Err().Return(nil)
+	scanner.EXPECT().Bytes().Return([]byte(`[{"status":"ok"}]`))
+
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, sql string, _ ...interface{}) adapters.Scanner {
+			require.NotContains(t, sql, "GROUP BY status GROUP BY")
+			require.Contains(t, sql, `GROUP BY status, time_bucket('1 hour', "time")`)
+			return scanner
+		},
+	)
+
+	h := NewCRUDHandler(Deps{
+		Perms:    perms,
+		SQL:      sqlBuilder,
+		Builder:  builder,
+		Executor: executor,
+		DB:       mockDatabaseRegistry(ctrl),
+	})
+
+	req := crudRequest(http.MethodGet, "/prest-test/public/test?_groupby=status&_time_bucket=1h", map[string]string{
+		"database": "prest-test", "schema": "public", "table": "test",
+	})
+	rec := httptest.NewRecorder()
+	h.Select(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), "ok")
 }
 
 func TestCRUDHandler_Select_WithClauses(t *testing.T) {

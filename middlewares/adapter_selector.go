@@ -6,6 +6,8 @@ import (
 
 	"github.com/prest/prest/v2/adapters"
 	pctx "github.com/prest/prest/v2/context"
+
+	"github.com/gorilla/mux"
 )
 
 // AdapterSelectorMiddleware selects the correct adapter based on the database name
@@ -55,12 +57,7 @@ func (m *AdapterSelectorMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Req
 	m.next.ServeHTTP(w, r)
 }
 
-// getRouteVars extracts route variables from the request context.
-// This is a helper that works with gorilla/mux.
+// getRouteVars extracts route variables from the request using gorilla/mux.
 func getRouteVars(r *http.Request) map[string]string {
-	// Try to get vars from context (set by mux)
-	if vars, ok := r.Context().Value("mux.Vars").(map[string]string); ok {
-		return vars
-	}
-	return nil
+	return mux.Vars(r)
 }

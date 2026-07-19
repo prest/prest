@@ -8,10 +8,8 @@ import (
 	"github.com/prest/prest/v2/integration/testutils"
 )
 
-func TestTimescaleMultipleInserts(t *testing.T) {
-	// Insert a record with a new device ID for testing joins and aggregations.
-	// Note: INSERT via REST returns different status codes depending on configuration.
-	// This test just verifies we can query the sensor_data table.
+func TestTimescaleSensorDataAccess(t *testing.T) {
+	// Verify read access to the sensor_data hypertable.
 	base := helpers.ServerURL(t)
 	testutils.DoRequest(
 		t,
@@ -19,7 +17,7 @@ func TestTimescaleMultipleInserts(t *testing.T) {
 		nil,
 		http.MethodGet,
 		http.StatusOK,
-		"TimescaleMultipleInserts",
+		"TimescaleSensorDataAccess",
 		"device_id",
 	)
 }
