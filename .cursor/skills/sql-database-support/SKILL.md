@@ -112,6 +112,36 @@ Details: `integration-layout.mdc`.
 - Auth / ACL / JWT / secrets fail closed — never weaken for “compatibility”.
 - Do not call `postgres.Load()` or open live DBs outside `integration/` and `cmd/`.
 
+## Adapter-Specific Features
+
+When a feature is unique to one database engine (e.g., TimescaleDB's `time_bucket`):
+
+**Pattern:**
+1. Base adapter provides empty/no-op implementation with a clear comment
+2. Specialized adapter overrides with the actual feature
+3. Handlers depend on the interface method, not the concrete adapter
+
+**Example — time_bucket (TimescaleDB-only):**
+
+Base postgres adapter:
+```go
+func (adapter *postgres) TimeBucketClause(r *http.Request) (groupBySQL string, err error) {
+	return  // Not supported in base postgres
+}
+```
+
+TimescaleDB adapter:
+```go
+func (a *Adapter) TimeBucketClause(req *http.Request) (groupBySQL string, err error) {
+	// Full time_bucket implementation here
+	return
+}
+```
+
+**Why:** Base adapter must remain database-agnostic. Wire-compatible variants (Citus, Cockroach) inherit the base adapter unchanged; specialized variants override only what they need.
+
+See rule: `adapter-features.mdc`.
+
 ## Checklist (opening a new DB)
 
 - [ ] Engine classified (wire variant vs new dialect)

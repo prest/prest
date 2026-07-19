@@ -258,6 +258,11 @@ func (m *Mock) GroupByClause(r *http.Request) (groupBySQL string) {
 	return
 }
 
+// TimeBucketClause mock
+func (m *Mock) TimeBucketClause(r *http.Request) (groupBySQL string, err error) {
+	return
+}
+
 // QueryCount mock
 func (m *Mock) QueryCount(SQL string, params ...interface{}) (sc adapters.Scanner) {
 	m.t.Helper()

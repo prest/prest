@@ -1,0 +1,107 @@
+# Adapter Features Rule
+
+Database-specific features must be implemented in the specialized adapter only. Base adapters (postgres, mysql, etc.) must remain database-agnostic.
+
+## Core Principle
+
+When a SQL feature is specific to one database engine:
+- The **base adapter** provides an empty or no-op implementation
+- The **specialized adapter** overrides it with the actual feature implementation
+- **Handlers and middleware** remain database-agnostic by depending on the interface
+
+## Pattern
+
+### Base Adapter (e.g., `adapters/postgres/postgres.go`)
+
+```go
+// FeatureName is not supported in the base postgres adapter.
+// This is a [database]-specific feature; the [database] adapter overrides this method.
+func (adapter *postgres) FeatureName(r *http.Request) (result string, err error) {
+	return  // empty implementation
+}
+```
+
+### Specialized Adapter (e.g., `adapters/timescaledb/adapter.go`)
+
+```go
+// FeatureName implements [database]-specific feature.
+// This overrides the base postgres adapter's no-op implementation.
+func (a *Adapter) FeatureName(req *http.Request) (result string, err error) {
+	// Full implementation here
+	return
+}
+```
+
+## Examples
+
+### ✓ Correct: time_bucket (TimescaleDB-only)
+
+**Base postgres adapter:**
+```go
+func (adapter *postgres) TimeBucketClause(r *http.Request) (groupBySQL string, err error) {
+	return  // Not supported in base postgres
+}
+```
+
+**TimescaleDB adapter:**
+```go
+func (a *Adapter) TimeBucketClause(req *http.Request) (groupBySQL string, err error) {
+	// Parse _time_bucket=1h parameter
+	// Generate SQL with time_bucket('1 hour', column)
+	return groupBySQL, nil
+}
+```
+
+### ✗ Incorrect: Adding feature to base adapter
+
+```go
+// WRONG - base adapter now knows about timescaledb
+func (adapter *postgres) TimeBucketClause(r *http.Request) (groupBySQL string, err error) {
+	if isTimescaleDB {
+		// TimescaleDB logic
+	}
+	return
+}
+```
+
+## Why This Matters
+
+1. **Separation of Concerns** — Base adapter serves all compatible databases (Postgres, Citus, etc.)
+2. **Maintainability** — Database-specific logic stays in one place
+3. **Reusability** — Wire-compatible variants (Citus, Cockroach) inherit base adapter unchanged
+4. **Testing** — Each adapter can be tested independently
+
+## Implementation Checklist
+
+When adding a database-specific feature:
+
+- [ ] Feature is specific to ONE database engine (not generic SQL)
+- [ ] Base adapter has empty/no-op stub with clear comment
+- [ ] Specialized adapter overrides with full implementation
+- [ ] Handlers call the method without checking which adapter is in use
+- [ ] Tests cover both empty (base) and full (specialized) implementations
+- [ ] No conditional logic based on adapter type in handlers or middleware
+
+## Related Rules
+
+- **hexagonal-architecture.mdc** — Handlers depend on ports, not concrete adapters
+- **adapter-unit-tests.mdc** — Test specialized adapters with mocks only
+- **sql-database-support.mdc** — Database classification and gap analysis
+
+## Anti-pattern: Runtime Database Detection
+
+❌ Do NOT do this:
+
+```go
+// In handler or middleware:
+if adapter.(*timescaledb.Adapter) != nil {
+	// timescaledb-specific logic
+}
+```
+
+✓ Instead, use interface methods that adapters override:
+
+```go
+// Handler calls the interface method
+result := adapter.TimeBucketClause(r)  // Adapter implementation differs; handler doesn't care
+```

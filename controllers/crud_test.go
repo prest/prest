@@ -118,6 +118,7 @@ func TestCRUDHandler_Select_Success(t *testing.T) {
 	builder.EXPECT().JoinByRequest(gomock.Any()).Return(nil, nil)
 	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
 	builder.EXPECT().GroupByClause(gomock.Any()).Return("")
+	builder.EXPECT().TimeBucketClause(gomock.Any()).Return("", nil)
 	builder.EXPECT().OrderByRequest(gomock.Any()).Return("", nil)
 	builder.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
 
@@ -167,6 +168,7 @@ func TestCRUDHandler_Select_WithClauses(t *testing.T) {
 	builder.EXPECT().JoinByRequest(gomock.Any()).Return([]string{" JOIN other ON other.id=test.id"}, nil)
 	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("name=$1", []interface{}{"prest"}, nil)
 	builder.EXPECT().GroupByClause(gomock.Any()).Return("GROUP BY name")
+	builder.EXPECT().TimeBucketClause(gomock.Any()).Return("", nil)
 	builder.EXPECT().OrderByRequest(gomock.Any()).Return("ORDER BY name DESC", nil)
 	builder.EXPECT().PaginateIfPossible(gomock.Any()).Return("LIMIT 10", nil)
 
@@ -210,6 +212,7 @@ func TestCRUDHandler_Select_CountFirst(t *testing.T) {
 	builder.EXPECT().JoinByRequest(gomock.Any()).Return(nil, nil)
 	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
 	builder.EXPECT().GroupByClause(gomock.Any()).Return("")
+	builder.EXPECT().TimeBucketClause(gomock.Any()).Return("", nil)
 	builder.EXPECT().OrderByRequest(gomock.Any()).Return("", nil)
 	builder.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
 
@@ -252,6 +255,7 @@ func TestCRUDHandler_Select_WithCache(t *testing.T) {
 	builder.EXPECT().JoinByRequest(gomock.Any()).Return(nil, nil)
 	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
 	builder.EXPECT().GroupByClause(gomock.Any()).Return("")
+	builder.EXPECT().TimeBucketClause(gomock.Any()).Return("", nil)
 	builder.EXPECT().OrderByRequest(gomock.Any()).Return("", nil)
 	builder.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
 
@@ -300,6 +304,7 @@ func TestCRUDHandler_Select_RelationNotFound(t *testing.T) {
 	builder.EXPECT().JoinByRequest(gomock.Any()).Return(nil, nil)
 	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
 	builder.EXPECT().GroupByClause(gomock.Any()).Return("")
+	builder.EXPECT().TimeBucketClause(gomock.Any()).Return("", nil)
 	builder.EXPECT().OrderByRequest(gomock.Any()).Return("", nil)
 	builder.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
 
@@ -340,6 +345,7 @@ func TestCRUDHandler_Select_WithUserContext(t *testing.T) {
 	builder.EXPECT().JoinByRequest(gomock.Any()).Return(nil, nil)
 	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
 	builder.EXPECT().GroupByClause(gomock.Any()).Return("")
+	builder.EXPECT().TimeBucketClause(gomock.Any()).Return("", nil)
 	builder.EXPECT().OrderByRequest(gomock.Any()).Return("", nil)
 	builder.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
 
@@ -838,6 +844,7 @@ func expectSelectBuilderHappyPath(builder *mockgen.MockRequestQueryBuilder) {
 	builder.EXPECT().JoinByRequest(gomock.Any()).Return(nil, nil)
 	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
 	builder.EXPECT().GroupByClause(gomock.Any()).Return("")
+	builder.EXPECT().TimeBucketClause(gomock.Any()).Return("", nil)
 	builder.EXPECT().OrderByRequest(gomock.Any()).Return("", nil)
 	builder.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
 }
@@ -957,6 +964,7 @@ func TestCRUDHandler_Select_OrderByRequestError(t *testing.T) {
 	builder.EXPECT().JoinByRequest(gomock.Any()).Return(nil, nil)
 	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
 	builder.EXPECT().GroupByClause(gomock.Any()).Return("")
+	builder.EXPECT().TimeBucketClause(gomock.Any()).Return("", nil)
 	builder.EXPECT().OrderByRequest(gomock.Any()).Return("", errors.New("bad order"))
 
 	h := NewCRUDHandler(Deps{Perms: perms, SQL: sqlBuilder, Builder: builder, Executor: executor, DB: db})
@@ -978,6 +986,7 @@ func TestCRUDHandler_Select_PaginateError(t *testing.T) {
 	builder.EXPECT().JoinByRequest(gomock.Any()).Return(nil, nil)
 	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
 	builder.EXPECT().GroupByClause(gomock.Any()).Return("")
+	builder.EXPECT().TimeBucketClause(gomock.Any()).Return("", nil)
 	builder.EXPECT().OrderByRequest(gomock.Any()).Return("", nil)
 	builder.EXPECT().PaginateIfPossible(gomock.Any()).Return("", errors.New("bad page"))
 

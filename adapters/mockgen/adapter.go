@@ -957,6 +957,21 @@ func (mr *MockAdapterMockRecorder) TableWhere(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TableWhere", reflect.TypeOf((*MockAdapter)(nil).TableWhere), arg0)
 }
 
+// TimeBucketClause mocks base method.
+func (m *MockAdapter) TimeBucketClause(arg0 *http.Request) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TimeBucketClause", arg0)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TimeBucketClause indicates an expected call of TimeBucketClause.
+func (mr *MockAdapterMockRecorder) TimeBucketClause(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TimeBucketClause", reflect.TypeOf((*MockAdapter)(nil).TimeBucketClause), arg0)
+}
+
 // Update mocks base method.
 func (m *MockAdapter) Update(arg0 string, arg1 ...interface{}) adapters.Scanner {
 	m.ctrl.T.Helper()
