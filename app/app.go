@@ -87,6 +87,14 @@ func New(cfg *config.Prest) (*App, error) {
 		return nil, err
 	}
 
+	// For multi-database mode, set a default adapter for health checks and schema operations
+	// Use the first registered adapter if no primary adapter is configured
+	if cfg.Adapter == nil && len(registry.GetAll()) > 0 {
+		aliases := registry.GetAll()
+		defaultAdapter, _ := registry.Get(aliases[0])
+		cfg.Adapter = defaultAdapter
+	}
+
 	deps := controllers.NewDepsFromConfig(cfg)
 	deps.AdapterRegistry = registry // Inject registry into deps
 	h := controllers.NewHandlers(deps, cfg)
