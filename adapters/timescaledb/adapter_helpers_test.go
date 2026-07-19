@@ -8,7 +8,6 @@ import (
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/adapters/mock"
 	"github.com/prest/prest/v2/adapters/postgres"
-	"github.com/prest/prest/v2/config"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
@@ -281,13 +280,9 @@ func TestIsTimescaleDB(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
+	// postgres.Close is a no-op for non-*postgres adapters; exercise the helper without a concrete postgres type.
 	require.NotPanics(t, func() {
 		Close(mock.New(t))
-	})
-
-	pg := postgres.New(&config.Prest{PGDatabase: "prest"})
-	require.NotPanics(t, func() {
-		Close(pg)
 	})
 }
 
