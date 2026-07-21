@@ -10,6 +10,7 @@ type RequestQueryBuilder interface {
 	PaginateIfPossible(r *http.Request) (paginatedQuery string, err error)
 	JoinByRequest(r *http.Request) (values []string, err error)
 	GroupByClause(r *http.Request) (groupBySQL string)
+	TimeBucketClause(r *http.Request) (groupBySQL string, err error)
 	CountByRequest(req *http.Request) (countQuery string, err error)
 	ReturningByRequest(r *http.Request) (returningSyntax string, err error)
 	SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, values []interface{}, err error)

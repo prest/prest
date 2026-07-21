@@ -133,6 +133,21 @@ func (h *CRUDHandler) Select(w http.ResponseWriter, r *http.Request) {
 		sqlSelect = fmt.Sprintf("%s %s", sqlSelect, groupBySQL)
 	}
 
+	timeBucketSQL, err := h.builder.TimeBucketClause(r)
+	if err != nil {
+		err = fmt.Errorf("could not perform TimeBucketClause: %w", err)
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if timeBucketSQL != "" {
+		if groupBySQL != "" {
+			bucketExpr := strings.TrimSpace(strings.TrimPrefix(timeBucketSQL, "GROUP BY"))
+			sqlSelect = fmt.Sprintf("%s, %s", sqlSelect, bucketExpr)
+		} else {
+			sqlSelect = fmt.Sprintf("%s %s", sqlSelect, timeBucketSQL)
+		}
+	}
+
 	order, err := h.builder.OrderByRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform OrderByRequest: %v", err)

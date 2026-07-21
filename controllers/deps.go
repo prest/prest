@@ -25,21 +25,22 @@ type AuthConfig struct {
 
 // Deps bundles dependencies for HTTP handlers.
 type Deps struct {
-	Catalog       adapters.CatalogQuerier
-	Builder       adapters.RequestQueryBuilder
-	Executor      adapters.QueryExecutor
-	SQL           adapters.SQLBuilder
-	Perms         adapters.PermissionsChecker
-	Scripts       adapters.ScriptRunner
-	QueryRegistry adapters.QueryRegistry
-	ScriptPerms   adapters.ScriptPermissionsChecker
-	DB            adapters.DatabaseRegistry
-	Pinger        adapters.DatabasePinger
-	Readiness     adapters.ReadinessChecker
-	Cache         ResponseCacher
-	SingleDB      bool
-	PGDatabase    string
-	Auth          AuthConfig
+	Catalog            adapters.CatalogQuerier
+	Builder            adapters.RequestQueryBuilder
+	Executor           adapters.QueryExecutor
+	SQL                adapters.SQLBuilder
+	Perms              adapters.PermissionsChecker
+	Scripts            adapters.ScriptRunner
+	QueryRegistry      adapters.QueryRegistry
+	ScriptPerms        adapters.ScriptPermissionsChecker
+	DB                 adapters.DatabaseRegistry
+	Pinger             adapters.DatabasePinger
+	Readiness          adapters.ReadinessChecker
+	Cache              ResponseCacher
+	AdapterRegistry    adapters.Registry // Multi-database adapter registry
+	SingleDB           bool
+	PGDatabase         string
+	Auth               AuthConfig
 }
 
 // NewDepsFromConfig builds handler dependencies from application config.

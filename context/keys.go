@@ -8,4 +8,5 @@ const (
 	HTTPTimeoutKey
 	UserInfoKey
 	PrestConfigKey
+	AdapterKey // Selected adapter for multi-database requests
 )

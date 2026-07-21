@@ -188,6 +188,21 @@ func (mr *MockRequestQueryBuilderMockRecorder) SetByRequest(arg0, arg1 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetByRequest", reflect.TypeOf((*MockRequestQueryBuilder)(nil).SetByRequest), arg0, arg1)
 }
 
+// TimeBucketClause mocks base method.
+func (m *MockRequestQueryBuilder) TimeBucketClause(arg0 *http.Request) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TimeBucketClause", arg0)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TimeBucketClause indicates an expected call of TimeBucketClause.
+func (mr *MockRequestQueryBuilderMockRecorder) TimeBucketClause(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TimeBucketClause", reflect.TypeOf((*MockRequestQueryBuilder)(nil).TimeBucketClause), arg0)
+}
+
 // WhereByRequest mocks base method.
 func (m *MockRequestQueryBuilder) WhereByRequest(arg0 *http.Request, arg1 int) (string, []interface{}, error) {
 	m.ctrl.T.Helper()

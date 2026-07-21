@@ -2002,6 +2002,16 @@ func (adapter *postgres) GroupByClause(r *http.Request) (groupBySQL string) {
 	}
 	fields := strings.Split(groupQuery, ",")
 	for i, field := range fields {
+		field = strings.TrimSpace(field)
+		// Handle function calls (e.g., time_bucket('1 minute', time)) for TimescaleDB support.
+		// If field contains parentheses, treat it as a raw SQL expression (must already be safe).
+		if strings.Contains(field, "(") && strings.Contains(field, ")") {
+			if !isSafeSQLExpression(field) {
+				return ""
+			}
+			fields[i] = field
+			continue
+		}
 		if !ident.IsValid(field) {
 			return ""
 		}
@@ -2011,6 +2021,72 @@ func (adapter *postgres) GroupByClause(r *http.Request) (groupBySQL string) {
 	groupQuery = strings.Join(fields, ",")
 	groupBySQL = fmt.Sprintf(statements.GroupBy, groupQuery)
 	return
+}
+
+// TimeBucketClause is not supported in the base postgres adapter.
+// This is a TimescaleDB-specific feature; the TimescaleDB adapter overrides this method.
+func (adapter *postgres) TimeBucketClause(r *http.Request) (groupBySQL string, err error) {
+	return
+}
+
+// allowedGroupByFunctions is the explicit allowlist for function expressions in _groupby.
+var allowedGroupByFunctions = map[string]struct{}{
+	"time_bucket": {},
+	"date_trunc":  {},
+	"extract":     {},
+	"upper":       {},
+	"lower":       {},
+	"length":      {},
+	"coalesce":    {},
+	"nullif":      {},
+	"trim":        {},
+	"abs":         {},
+	"round":       {},
+	"floor":       {},
+	"ceil":        {},
+}
+
+// isSafeSQLExpression validates that a SQL expression used in GROUP BY is an
+// allowlisted function call with safe characters (no comments, no pg_* funcs).
+func isSafeSQLExpression(expr string) bool {
+	if strings.Contains(expr, "--") || strings.Contains(expr, ";") || strings.Contains(expr, "/*") {
+		return false
+	}
+
+	idx := strings.Index(expr, "(")
+	if idx <= 0 {
+		return false
+	}
+	funcName := strings.ToLower(strings.TrimSpace(expr[:idx]))
+	if strings.HasPrefix(funcName, "pg_") {
+		return false
+	}
+	if _, ok := allowedGroupByFunctions[funcName]; !ok {
+		return false
+	}
+
+	for _, ch := range expr {
+		if !((ch >= 'a' && ch <= 'z') ||
+			(ch >= 'A' && ch <= 'Z') ||
+			(ch >= '0' && ch <= '9') ||
+			ch == '_' || ch == '(' || ch == ')' || ch == ',' ||
+			ch == '\'' || ch == ' ' || ch == '.' || ch == '-') {
+			return false
+		}
+	}
+
+	balance := 0
+	for _, ch := range expr {
+		if ch == '(' {
+			balance++
+		} else if ch == ')' {
+			balance--
+		}
+		if balance < 0 {
+			return false
+		}
+	}
+	return balance == 0
 }
 
 // NormalizeGroupFunction normalize url params values to sql group functions

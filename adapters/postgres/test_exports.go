@@ -6,7 +6,15 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/prest/prest/v2/adapters"
+	"github.com/prest/prest/v2/adapters/postgres/internal/connection"
 )
+
+// SetDBConnectForTest replaces sqlx.Connect for unit tests outside this package
+// (e.g. app composition-root tests) and returns a restore function.
+// Callers must not use t.Parallel().
+func SetDBConnectForTest(fn func(driverName, dataSourceName string) (*sqlx.DB, error)) func() {
+	return connection.SetDBConnectForTest(fn)
+}
 
 // ChkInvalidIdentifierExported exposes chkInvalidIdentifier for integration tests.
 func ChkInvalidIdentifierExported(identifier ...string) bool {
@@ -63,6 +71,7 @@ func WriteSQLCtxExported(ctx context.Context, a adapters.Adapter, sql string, va
 	return p.WriteSQLCtx(ctx, sql, values)
 }
 
+// PrepareExported prepares a statement for integration tests.
 func PrepareExported(a adapters.Adapter, db *sqlx.DB, sql string) error {
 	p, ok := a.(*postgres)
 	if !ok {

@@ -7,8 +7,11 @@ import (
 
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/adapters/mock"
+	"github.com/prest/prest/v2/adapters/timescaledb"
 	"github.com/prest/prest/v2/app"
 	"github.com/prest/prest/v2/config"
+
+	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -423,4 +426,119 @@ func TestNew_AdminQueryStackEnabled(t *testing.T) {
 	got, err := app.New(cfg)
 	require.NoError(t, err)
 	require.NotNil(t, got)
+}
+
+func TestNew_DefaultAliasWhenPGDatabaseEmpty(t *testing.T) {
+	t.Parallel()
+
+	adapter := mock.New(t)
+	cfg := &config.Prest{Adapter: adapter}
+	got, err := app.New(cfg)
+	require.NoError(t, err)
+	require.True(t, got.Adapters.IsRegistered("prest"))
+}
+
+func TestEnsureAdapter_Success(t *testing.T) {
+	stubPostgresConnect(t)
+
+	cfg := connectablePrest("prest")
+	require.NoError(t, app.EnsureAdapter(cfg))
+	require.NotNil(t, cfg.Adapter)
+}
+
+func TestNew_DetectAdapter_PostgresFallback(t *testing.T) {
+	stubPostgresFallbackConnect(t)
+
+	cfg := connectablePrest("prest")
+	got, err := app.New(cfg)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.True(t, got.Adapters.IsRegistered("prest"))
+	_, isTS := cfg.Adapter.(*timescaledb.Adapter)
+	require.False(t, isTS)
+}
+
+func TestNew_DetectAdapter_TimescaleDB(t *testing.T) {
+	stubTimescaleConnect(t)
+
+	cfg := connectablePrest("prest")
+	got, err := app.New(cfg)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	_, isTS := cfg.Adapter.(*timescaledb.Adapter)
+	require.True(t, isTS)
+}
+
+func TestNew_DetectAdapter_DefaultAliasWhenPGDatabaseEmpty(t *testing.T) {
+	stubPostgresFallbackConnect(t)
+
+	cfg := connectablePrest("")
+	got, err := app.New(cfg)
+	require.NoError(t, err)
+	require.True(t, got.Adapters.IsRegistered("prest"))
+}
+
+func TestNew_MultiDatabase_PostgresFallback(t *testing.T) {
+	stubPostgresFallbackConnect(t)
+
+	cfg := &config.Prest{
+		Databases: []config.DatabaseConf{
+			baseDBConf("tenant-a"),
+			baseDBConf("tenant-b"),
+		},
+	}
+	got, err := app.New(cfg)
+	require.NoError(t, err)
+	require.True(t, got.Adapters.IsRegistered("tenant-a"))
+	require.True(t, got.Adapters.IsRegistered("tenant-b"))
+}
+
+func TestNew_MultiDatabase_TimescaleDB(t *testing.T) {
+	stubTimescaleConnect(t)
+
+	cfg := &config.Prest{
+		Databases: []config.DatabaseConf{baseDBConf("metrics")},
+	}
+	got, err := app.New(cfg)
+	require.NoError(t, err)
+	require.True(t, got.Adapters.IsRegistered("metrics"))
+	adapter, err := got.Adapters.Get("metrics")
+	require.NoError(t, err)
+	_, isTS := adapter.(*timescaledb.Adapter)
+	require.True(t, isTS)
+}
+
+func TestNew_MultiDatabase_WithURL(t *testing.T) {
+	stubPostgresFallbackConnect(t)
+
+	db := baseDBConf("url-db")
+	db.URL = "postgres://prest:prest@localhost:5432/url_db?sslmode=disable"
+	cfg := &config.Prest{Databases: []config.DatabaseConf{db}}
+	got, err := app.New(cfg)
+	require.NoError(t, err)
+	require.True(t, got.Adapters.IsRegistered("url-db"))
+}
+
+func TestNew_MultiDatabase_ConnectError(t *testing.T) {
+	stubDBConnect(t, func(_, _ string) (*sqlx.DB, error) {
+		return nil, errors.New("connect failed")
+	})
+
+	cfg := &config.Prest{
+		Databases: []config.DatabaseConf{baseDBConf("broken")},
+	}
+	_, err := app.New(cfg)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to connect to database broken")
+}
+
+func TestNew_MultiDatabase_EmptyAlias(t *testing.T) {
+	stubPostgresFallbackConnect(t)
+
+	db := baseDBConf("ignored")
+	db.Alias = ""
+	cfg := &config.Prest{Databases: []config.DatabaseConf{db}}
+	_, err := app.New(cfg)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "adapter alias cannot be empty")
 }

@@ -665,6 +665,46 @@ func TestGroupByClause(t *testing.T) {
 			url:      "/?_groupby=status->>having:avg:age:$gt:18",
 			contains: []string{"GROUP BY", "HAVING", "AVG", "> 18"},
 		},
+		{
+			name:     "having with string value",
+			url:      "/?_groupby=status->>having:avg:age:$gt:o'brien",
+			contains: []string{"GROUP BY", "HAVING", "AVG", "> 'o''brien'"},
+		},
+		{
+			name:     "safe function expression",
+			url:      "/?_groupby=upper(name)",
+			contains: []string{"GROUP BY", "upper(name)"},
+		},
+		{
+			name:     "safe function expression with regular column",
+			url:      "/?_groupby=upper(name),status",
+			contains: []string{"GROUP BY", "upper(name)", `"status"`},
+		},
+		{
+			name:  "unsafe function expression with semicolon rejected",
+			url:   "/?_groupby=upper(name);drop",
+			empty: true,
+		},
+		{
+			name:  "unsafe function expression with equals rejected",
+			url:   "/?_groupby=upper(name=1)",
+			empty: true,
+		},
+		{
+			name:  "unbalanced parentheses in function expression rejected",
+			url:   "/?_groupby=upper((name)",
+			empty: true,
+		},
+		{
+			name:  "sql line comment in function expression rejected",
+			url:   "/?_groupby=upper(name)--x",
+			empty: true,
+		},
+		{
+			name:  "pg_ function expression rejected",
+			url:   "/?_groupby=pg_sleep(1)",
+			empty: true,
+		},
 	}
 
 	for _, tc := range testCases {

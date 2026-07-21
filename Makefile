@@ -1,9 +1,11 @@
 DOCKER_COMPOSE?=docker-compose -f docker-compose.yml
 UNIT_PKGS = $(shell go list ./... | grep -v '/integration')
 
-.PHONY: build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb
+.PHONY: build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb ci
 build_test_image:
 	$(DOCKER_COMPOSE) up -d postgres
+
+ci: test-integration-postgres test-integration-timescaledb
 
 test: test-unit
 
