@@ -944,29 +944,12 @@ func (adapter *postgres) SelectFields(fields []string) (sql string, err error) {
 	var aux []string
 
 	for _, field := range fields {
-		groupFunc, _ := NormalizeGroupFunction(field)
-
-		if groupFunc != "" {
-			aux = append(aux, groupFunc)
-			continue
+		q, ferr := sanitizeSelectField(field)
+		if ferr != nil {
+			err = ferr
+			return
 		}
-
-		if field != `*` {
-			// Allow function-like expressions already quoted, e.g., SUM("salary")
-			isFunction, _ := regexp.MatchString(groupRegex.String(), field)
-			if isFunction {
-				aux = append(aux, field)
-				continue
-			}
-			if !ident.IsValid(field) {
-				err = errors.Wrapf(ErrInvalidIdentifier, "%s", field)
-				return
-			}
-			q, _ := ident.Quote(field)
-			aux = append(aux, q)
-			continue
-		}
-		aux = append(aux, `*`)
+		aux = append(aux, q)
 	}
 	sql = fmt.Sprintf("SELECT %s FROM", strings.Join(aux, ","))
 	return
@@ -1015,7 +998,16 @@ func (adapter *postgres) CountByRequest(req *http.Request) (countQuery string, e
 		return
 	}
 	if selectFields != "" {
-		selectFields = fmt.Sprintf(", %s", selectFields)
+		parts := strings.Split(selectFields, ",")
+		for i, p := range parts {
+			s, ferr := sanitizeSelectField(strings.TrimSpace(p))
+			if ferr != nil {
+				err = ErrInvalidIdentifier
+				return
+			}
+			parts[i] = s
+		}
+		selectFields = fmt.Sprintf(", %s", strings.Join(parts, ","))
 	}
 	fields := strings.Split(countFields, ",")
 	for i, field := range fields {
@@ -2087,6 +2079,36 @@ func isSafeSQLExpression(expr string) bool {
 		}
 	}
 	return balance == 0
+}
+
+// quotedAggRegex matches a NormalizeGroupFunction-produced aggregate expression:
+// FUNC("ident") or FUNC("a"."b") with an optional  AS "alias". Anchored and strict:
+// only the six aggregate functions, quoted simple identifiers (or *), no subselects,
+// no extra parens/spaces. Rejects (SELECT ...)"x", pg_read_file(...)"f", etc.
+var quotedAggRegex = regexp.MustCompile(
+	`^(SUM|AVG|MAX|MIN|STDDEV|VARIANCE)` +
+		`\((\*|"[A-Za-z_]\w*"(\."[A-Za-z_]\w*")*)\)` +
+		`( AS "[A-Za-z_]\w*")?$`)
+
+// sanitizeSelectField returns the safe SQL form of one _select field, or an error
+// if it is neither "*", a valid identifier, nor a whitelisted aggregate expression.
+// It is the single validation gate shared by SelectFields and CountByRequest so that
+// no attacker-controlled _select value ever reaches raw SQL concatenation.
+func sanitizeSelectField(field string) (string, error) {
+	if field == "*" {
+		return "*", nil
+	}
+	if groupFunc, _ := NormalizeGroupFunction(field); groupFunc != "" {
+		return groupFunc, nil // colon-syntax: already validated + quoted
+	}
+	if quotedAggRegex.MatchString(field) {
+		return field, nil // pre-quoted aggregate from the _groupby path
+	}
+	if !ident.IsValid(field) {
+		return "", errors.Wrapf(ErrInvalidIdentifier, "%s", field)
+	}
+	q, _ := ident.Quote(field)
+	return q, nil
 }
 
 // NormalizeGroupFunction normalize url params values to sql group functions

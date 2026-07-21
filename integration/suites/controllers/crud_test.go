@@ -109,6 +109,11 @@ func TestSelectFromTables(t *testing.T) {
 		{"execute select in a table with invalid order clause", "/%s/public/test?_order=0name", "GET", http.StatusBadRequest, ""},
 		{"execute select in a table with invalid fields using group by clause", "/%s/public/test_group_by_table?_select=pa,sum:pum&_groupby=pa", "GET", http.StatusBadRequest, ""},
 		{"execute select in a table with invalid fields using group by and having clause", "/%s/public/test_group_by_table?_select=pa,sum:pum&_groupby=pa->>having:sum:pmu:$eq:150", "GET", http.StatusBadRequest, ""},
+		// GHSA-qvx3-q8vx-9q3c: a _select field carrying a quoted alias used to reach raw SQL
+		// via the SelectFields fast-path. It must now be rejected, not executed.
+		{"execute select rejects _select projection injection", "/%s/public/test?_select=(1)\"x\"", "GET", http.StatusBadRequest, ""},
+		// Same class through the second sink: _select interpolated into SELECT COUNT(...) when _count is set.
+		{"execute select rejects _select injection via the _count sink", "/%s/public/test?_count=*&_select=pg_read_file('/etc/passwd')\"f\"", "GET", http.StatusBadRequest, ""},
 		{"execute select in a view with an other column", "/%s/public/view_test?_select=celphone", "GET", http.StatusBadRequest, ""},
 		{"execute select in a view with where and column invalid", "/%s/public/view_test?0celphone=$eq.888888", "GET", http.StatusBadRequest, ""},
 		{"execute select in a view with custom join clause invalid", "/%s/public/view_test?_join=inner:test2.name:eq:view_test.player", "GET", http.StatusBadRequest, ""},
