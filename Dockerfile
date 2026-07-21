@@ -19,6 +19,8 @@ ARG COMMIT
 ARG DATE
 ENV GOOS=linux
 ENV CGO_ENABLED=1
+# jwx v4 imports encoding/json/v2, gated behind GOEXPERIMENT=jsonv2 on Go 1.26.
+ENV GOEXPERIMENT=jsonv2
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install --no-install-recommends -yq netcat-traditional && \
     rm -rf /var/lib/apt/lists/* && \
@@ -32,6 +34,8 @@ RUN apt-get update && apt-get upgrade -y && \
 FROM registry.hub.docker.com/library/golang:1.26 AS full
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 ENV CGO_ENABLED=1
+# jwx v4 imports encoding/json/v2, gated behind GOEXPERIMENT=jsonv2 on Go 1.26.
+ENV GOEXPERIMENT=jsonv2
 ENV PREST_BUILD_PLUGINS=1
 COPY --from=builder /bin/nc /bin/nc
 COPY --from=builder /workspace/prestd /bin/prestd
@@ -47,6 +51,8 @@ RUN apt-get update && apt-get upgrade -y && \
     apt-get install --no-install-recommends -yq netcat-traditional && \
     rm -rf /var/lib/apt/lists/*
 ENV CGO_ENABLED=1
+# jwx v4 imports encoding/json/v2, gated behind GOEXPERIMENT=jsonv2 on Go 1.26.
+ENV GOEXPERIMENT=jsonv2
 ENV PREST_BUILD_PLUGINS=1
 COPY prestd /bin/prestd
 COPY etc/entrypoint.sh /app/entrypoint.sh
