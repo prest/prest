@@ -934,8 +934,9 @@ func TestCountFields(t *testing.T) {
 		{"Count with invalid columns", "/prest-test/public/test5?_count=celphone,0name", "", true},
 		{"Count with `_groupby`", "/prest-test/public/test5?_count=celphone&_groupby=celphone",
 			`SELECT COUNT("celphone") FROM`, false},
+		// _select value is now validated and quoted, not concatenated raw (GHSA-qvx3-q8vx-9q3c).
 		{"Count with `_groupby` and `_select`", "/prest-test/public/test5?_count=celphone&_groupby=celphone&_select=celphone",
-			`SELECT COUNT("celphone"), celphone FROM`, false},
+			`SELECT COUNT("celphone"), "celphone" FROM`, false},
 	}
 
 	for _, tc := range testCases {

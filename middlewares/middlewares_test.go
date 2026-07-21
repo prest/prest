@@ -12,7 +12,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwk"
 	"github.com/prest/prest/v2/adapters/mockgen"
 	"github.com/prest/prest/v2/config"
 	pctx "github.com/prest/prest/v2/context"

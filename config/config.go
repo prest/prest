@@ -20,7 +20,7 @@ import (
 
 	"log/slog"
 
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwk"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 )
