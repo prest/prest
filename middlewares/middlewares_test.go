@@ -687,7 +687,7 @@ func TestJWKSetRSAOk(t *testing.T) {
 	raw, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 
-	key, err := jwk.FromRaw(raw)
+	key, err := jwk.Import[jwk.Key](raw)
 	require.NoError(t, err)
 
 	jwks_private := jwk.NewSet()
@@ -743,7 +743,7 @@ func TestJWKSetRSANoKey(t *testing.T) {
 	raw, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 
-	key, err := jwk.FromRaw(raw)
+	key, err := jwk.Import[jwk.Key](raw)
 	require.NoError(t, err)
 
 	jwks_private := jwk.NewSet()
@@ -842,7 +842,7 @@ func TestJWTJWKSWithoutMatchingKidRejected(t *testing.T) {
 	// Minimal JWKS containing one RSA key with kid="other".
 	raw, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
-	key, err := jwk.FromRaw(raw)
+	key, err := jwk.Import[jwk.Key](raw)
 	require.NoError(t, err)
 	require.NoError(t, key.Set(jwk.KeyIDKey, "other"))
 

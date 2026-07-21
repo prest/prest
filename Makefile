@@ -1,5 +1,5 @@
 DOCKER_COMPOSE?=docker-compose -f docker-compose.yml
-UNIT_PKGS = $(shell go list ./... | grep -v '/integration')
+UNIT_PKGS = $(shell GOEXPERIMENT=jsonv2 go list ./... | grep -v '/integration')
 
 .PHONY: build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb ci
 build_test_image:
@@ -9,8 +9,10 @@ ci: test-integration-postgres test-integration-timescaledb
 
 test: test-unit
 
+# jsonv2 is required because github.com/lestrrat-go/jwx/v4 imports encoding/json/v2,
+# which is gated behind GOEXPERIMENT=jsonv2 on Go 1.26 host toolchains.
 test-unit:
-	go test -timeout 30s -tags prest_test_hooks -race -count=1 -covermode=atomic -coverprofile=coverage.out $(UNIT_PKGS)
+	GOEXPERIMENT=jsonv2 go test -timeout 30s -tags prest_test_hooks -race -count=1 -covermode=atomic -coverprofile=coverage.out $(UNIT_PKGS)
 
 POSTGRES_COMPOSE=docker compose -f integration/postgres/docker-compose.yml
 TIMESCALEDB_COMPOSE=docker compose -f integration/timescaledb/docker-compose.yml

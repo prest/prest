@@ -196,16 +196,24 @@ func JwtMiddleware(key string, JWKSet, _ string, whitelist []string) negroni.Han
 				http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWKSetParse.Error()), http.StatusUnauthorized)
 				return
 			}
-			for it := parsedJWKSet.Keys(context.Background()); it.Next(context.Background()); {
-				pair := it.Pair()
-				key := pair.Value.(jwk.Key)
-
-				if key.KeyID() == tok.Headers[0].KeyID {
-					if err := key.Raw(&rawkey); err != nil {
+			// jwx v4 dropped the Set iterator; walk the keys via Len()/Key(i) and
+			// match the token's kid, preserving the original behavior (an empty kid
+			// on both sides is a legitimate single-key JWKS match; the jwksMatched
+			// guard below is what prevents the empty-HMAC-key auth bypass).
+			for i := 0; i < parsedJWKSet.Len(); i++ {
+				key, ok := parsedJWKSet.Key(i)
+				if !ok {
+					continue
+				}
+				kid, _ := key.KeyID()
+				if kid == tok.Headers[0].KeyID {
+					rawkeyV, err := jwk.Export[any](key)
+					if err != nil {
 						slog.Error("failed to create public key", "err", err)
 						http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWKSetCreate.Error()), http.StatusUnauthorized)
 						return
 					}
+					rawkey = rawkeyV
 					jwksMatched = true
 				}
 			}

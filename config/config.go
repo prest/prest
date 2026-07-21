@@ -1,10 +1,10 @@
 package config
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -548,10 +548,24 @@ func fetchJWKS(cfg *Prest) {
 		return
 	}
 
-	JWKSet, err := jwk.Fetch(context.Background(), uri)
+	// jwx v4 removed the package-level jwk.Fetch (fetching is now transport-agnostic),
+	// so retrieve the JWK Set over HTTP with the same client and parse it.
+	jwksResp, err := client.Get(uri)
 	if err != nil {
-		err := fmt.Errorf("failed to parse JWK: %s", err)
 		log.Errorf("Failed to fetch JWK: %v\n", err)
+		return
+	}
+	defer jwksResp.Body.Close()
+
+	jwksBody, err := io.ReadAll(jwksResp.Body)
+	if err != nil {
+		slog.Error("Failed to read JWKS response body", "err", err)
+		return
+	}
+
+	JWKSet, err := jwk.Parse(jwksBody)
+	if err != nil {
+		log.Errorf("Failed to parse JWK: %v\n", err)
 		return
 	}
 
