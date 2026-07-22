@@ -2117,6 +2117,12 @@ func NormalizeGroupFunction(paramValue string) (groupFuncSQL string, err error) 
 	groupFunc := strings.ToUpper(values[0])
 	switch groupFunc {
 	case "SUM", "AVG", "MAX", "MIN", "STDDEV", "VARIANCE":
+		// A bare aggregate keyword (no ":field") is not a group function; reject
+		// it here so callers treat it as an ordinary field instead of panicking.
+		if len(values) < 2 {
+			err = errors.Wrapf(ErrInvalidGroupFn, "%s", groupFunc)
+			return
+		}
 		// values[1] it's a field in table
 		v := values[1]
 		if v != "*" {

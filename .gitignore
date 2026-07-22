@@ -57,4 +57,4 @@ studio/dist/
 
 # Integration test output captured by `make test-integration-log`
 integration-test.log
-.integration-status
+.integration-status*

@@ -459,6 +459,26 @@ func Test_parseDatabaseURL(t *testing.T) {
 	})
 }
 
+func Test_redactURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"strips userinfo", "https://user:secret@idp.example.com/jwks", "https://idp.example.com/jwks"},
+		{"strips query", "https://idp.example.com/jwks?token=abc", "https://idp.example.com/jwks"},
+		{"strips fragment", "https://idp.example.com/jwks#f", "https://idp.example.com/jwks"},
+		{"keeps host and path", "https://idp.example.com:8443/realm/jwks", "https://idp.example.com:8443/realm/jwks"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, redactURL(tc.in))
+		})
+	}
+}
+
 func Test_fetchJWKS(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
@@ -491,6 +511,28 @@ func Test_fetchJWKS(t *testing.T) {
 		t.Cleanup(srv.Close)
 
 		cfg := &Prest{JWTWellKnownURL: srv.URL}
+		fetchJWKS(cfg)
+		require.Empty(t, cfg.JWTJWKS)
+	})
+
+	t.Run("non-2xx JWKS response is rejected", func(t *testing.T) {
+		t.Parallel()
+		// JWKS endpoint returns syntactically valid JWKS JSON but an error status;
+		// the body must not be trusted.
+		jwksSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"keys":[]}`))
+		}))
+		t.Cleanup(jwksSrv.Close)
+
+		wellKnownSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"jwks_uri":"` + jwksSrv.URL + `"}`))
+		}))
+		t.Cleanup(wellKnownSrv.Close)
+
+		cfg := &Prest{JWTWellKnownURL: wellKnownSrv.URL}
 		fetchJWKS(cfg)
 		require.Empty(t, cfg.JWTJWKS)
 	})

@@ -21,7 +21,6 @@ import (
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
-	"github.com/structy/log"
 )
 
 const (
@@ -511,6 +510,17 @@ var ErrAuthEnabledNoJWTKey = errors.New(
 	"auth.enabled is true but jwt.key is empty (required to verify HS256 tokens)")
 
 // fetchJWKS tries to get the JWKS from the URL in the config
+// redactURL returns a log-safe "scheme://host/path" form of raw, dropping
+// userinfo, query, and fragment which may carry credentials or tokens. It
+// returns "" when raw cannot be parsed, so no unsanitized value is ever logged.
+func redactURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	return (&url.URL{Scheme: u.Scheme, Host: u.Host, Path: u.Path}).String()
+}
+
 func fetchJWKS(cfg *Prest) {
 	if cfg.JWTWellKnownURL == "" {
 		slog.Debug("no JWT WellKnown url found, skipping")
@@ -549,20 +559,31 @@ func fetchJWKS(cfg *Prest) {
 
 	jwksResp, err := client.Get(uri)
 	if err != nil {
-		log.Errorf("Failed to fetch JWK: %v\n", err)
+		slog.Error("Failed to fetch JWK", "err", err)
 		return
 	}
 	defer jwksResp.Body.Close()
 
-	jwksBody, err := io.ReadAll(jwksResp.Body)
+	if jwksResp.StatusCode < 200 || jwksResp.StatusCode >= 300 {
+		slog.Error("JWKS endpoint returned non-success status", "status", jwksResp.StatusCode, "url", redactURL(uri))
+		return
+	}
+
+	// Cap the JWKS body to guard against oversized or hostile responses.
+	const maxJWKSBytes = 1 << 20 // 1 MiB
+	jwksBody, err := io.ReadAll(io.LimitReader(jwksResp.Body, maxJWKSBytes+1))
 	if err != nil {
 		slog.Error("Failed to read JWKS response body", "err", err)
+		return
+	}
+	if len(jwksBody) > maxJWKSBytes {
+		slog.Error("JWKS response body exceeds size limit", "limit", maxJWKSBytes)
 		return
 	}
 
 	JWKSet, err := jwk.Parse(jwksBody)
 	if err != nil {
-		log.Errorf("Failed to parse JWK: %v\n", err)
+		slog.Error("Failed to parse JWK", "err", err)
 		return
 	}
 

@@ -1,6 +1,6 @@
 module github.com/prest/prest/v2
 
-go 1.26.5
+go 1.26.0
 
 // todo: upgrade go-jose
 // github.com/go-jose/go-jose/v4 v4.0.4

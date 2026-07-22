@@ -929,6 +929,7 @@ func Test_sanitizeSelectField(t *testing.T) {
 		{"plain identifier is quoted", "name", `"name"`, false},
 		{"dotted identifier is quoted per segment", "public.age", `"public"."age"`, false},
 		{"colon-syntax aggregate is normalized", "avg:age", `AVG("age")`, false},
+		{"bare aggregate keyword is a plain field", "sum", `"sum"`, false},
 		{"pre-quoted aggregate is accepted", `SUM("salary")`, `SUM("salary")`, false},
 		{"pre-quoted aggregate with alias is accepted", `MAX("age") AS "m"`, `MAX("age") AS "m"`, false},
 		{"invalid identifier is rejected", "0bad", "", true},

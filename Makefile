@@ -1,7 +1,7 @@
 DOCKER_COMPOSE?=docker-compose -f docker-compose.yml
 UNIT_PKGS = $(shell go list ./... | grep -v '/integration')
 
-.PHONY: build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb test-integration-log test-integration-postgres-log ci
+.PHONY: build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb test-integration-log test-integration-postgres-log test-integration-timescaledb-log ci
 build_test_image:
 	$(DOCKER_COMPOSE) up -d postgres
 
@@ -49,10 +49,10 @@ test-integration-postgres-log:
 	@{ \
 	  $(POSTGRES_COMPOSE) up -d --wait postgres postgres-b db-init prestd prestd-multicluster prestd-auth prestd-queries && \
 	  $(POSTGRES_COMPOSE) run --rm --no-deps tests; \
-	  echo $$? > .integration-status; \
+	  echo $$? > .integration-status.$$$$; \
 	  $(POSTGRES_COMPOSE) down -v --remove-orphans; \
 	} 2>&1 | $(TEE) $(INTEGRATION_LOG); \
-	status=$$(cat .integration-status); rm -f .integration-status; \
+	status=$$(cat .integration-status.$$$$); rm -f .integration-status.$$$$; \
 	echo "Full output saved to $(INTEGRATION_LOG) (exit $$status)"; \
 	exit $$status
 
@@ -61,10 +61,10 @@ test-integration-timescaledb-log:
 	@{ \
 	  $(TIMESCALEDB_COMPOSE) up -d --wait timescaledb db-init prestd && \
 	  $(TIMESCALEDB_COMPOSE) run --rm --no-deps tests; \
-	  echo $$? > .integration-status; \
+	  echo $$? > .integration-status.$$$$; \
 	  $(TIMESCALEDB_COMPOSE) down -v --remove-orphans; \
 	} 2>&1 | $(TEE) $(INTEGRATION_LOG); \
-	status=$$(cat .integration-status); rm -f .integration-status; \
+	status=$$(cat .integration-status.$$$$); rm -f .integration-status.$$$$; \
 	echo "Full output saved to $(INTEGRATION_LOG) (exit $$status)"; \
 	exit $$status
 

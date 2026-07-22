@@ -1001,7 +1001,13 @@ func TestCountFields(t *testing.T) {
 				t.Errorf("expected no errors, but got: %v", err)
 			}
 
-			if !strings.Contains(sql, tc.expectedSQL) {
+			if tc.expectedSQL == "" {
+				// A no-count request must generate no SQL; strings.Contains("")
+				// would pass unconditionally and hide such a regression.
+				if sql != "" {
+					t.Errorf("expected empty sql, but got: %s", sql)
+				}
+			} else if !strings.Contains(sql, tc.expectedSQL) {
 				t.Errorf("expected %s in %s", tc.expectedSQL, sql)
 			}
 		}
