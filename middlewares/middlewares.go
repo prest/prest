@@ -16,7 +16,7 @@ import (
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
 
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/urfave/negroni/v3"
 	jose "gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
@@ -196,16 +196,23 @@ func JwtMiddleware(key string, JWKSet, _ string, whitelist []string) negroni.Han
 				http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWKSetParse.Error()), http.StatusUnauthorized)
 				return
 			}
-			for it := parsedJWKSet.Keys(context.Background()); it.Next(context.Background()); {
-				pair := it.Pair()
-				key := pair.Value.(jwk.Key)
-
-				if key.KeyID() == tok.Headers[0].KeyID {
-					if err := key.Raw(&rawkey); err != nil {
+			// Walk keys via Len()/Key(i) and match the token's kid. An empty kid on
+			// both sides is a legitimate single-key JWKS match; the jwksMatched
+			// guard below prevents the empty-HMAC-key auth bypass.
+			for i := 0; i < parsedJWKSet.Len(); i++ {
+				key, ok := parsedJWKSet.Key(i)
+				if !ok {
+					continue
+				}
+				kid, _ := key.KeyID()
+				if kid == tok.Headers[0].KeyID {
+					var rawkeyV any
+					if err := jwk.Export(key, &rawkeyV); err != nil {
 						slog.Error("failed to create public key", "err", err)
 						http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWKSetCreate.Error()), http.StatusUnauthorized)
 						return
 					}
+					rawkey = rawkeyV
 					jwksMatched = true
 				}
 			}

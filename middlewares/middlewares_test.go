@@ -10,13 +10,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
-	"github.com/gorilla/mux"
-	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/prest/prest/v2/adapters/mockgen"
 	"github.com/prest/prest/v2/config"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
+
+	"github.com/golang/mock/gomock"
+	"github.com/gorilla/mux"
+	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/negroni/v3"
 	jose "gopkg.in/square/go-jose.v2"
@@ -687,7 +688,7 @@ func TestJWKSetRSAOk(t *testing.T) {
 	raw, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 
-	key, err := jwk.FromRaw(raw)
+	key, err := jwk.Import(raw)
 	require.NoError(t, err)
 
 	jwks_private := jwk.NewSet()
@@ -743,7 +744,7 @@ func TestJWKSetRSANoKey(t *testing.T) {
 	raw, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 
-	key, err := jwk.FromRaw(raw)
+	key, err := jwk.Import(raw)
 	require.NoError(t, err)
 
 	jwks_private := jwk.NewSet()
@@ -842,7 +843,7 @@ func TestJWTJWKSWithoutMatchingKidRejected(t *testing.T) {
 	// Minimal JWKS containing one RSA key with kid="other".
 	raw, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
-	key, err := jwk.FromRaw(raw)
+	key, err := jwk.Import(raw)
 	require.NoError(t, err)
 	require.NoError(t, key.Set(jwk.KeyIDKey, "other"))
 

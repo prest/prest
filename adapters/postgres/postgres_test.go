@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -871,12 +872,82 @@ func TestSelectFields_Branches(t *testing.T) {
 	require.Contains(t, sql, `*`)
 	require.Contains(t, sql, `AVG("age")`)
 
+	// Pre-quoted aggregates produced by the _groupby normalization path must
+	// still be accepted verbatim.
 	sql, err = adapter.SelectFields([]string{`SUM("salary")`})
 	require.NoError(t, err)
 	require.Contains(t, sql, `SUM("salary")`)
 
+	sql, err = adapter.SelectFields([]string{`MAX("age")`})
+	require.NoError(t, err)
+	require.Contains(t, sql, `MAX("age")`)
+
+	sql, err = adapter.SelectFields([]string{`AVG("age") AS "avg_age"`})
+	require.NoError(t, err)
+	require.Contains(t, sql, `AVG("age") AS "avg_age"`)
+
+	// Plain identifiers are quoted.
+	sql, err = adapter.SelectFields([]string{"name"})
+	require.NoError(t, err)
+	require.Contains(t, sql, `"name"`)
+
 	_, err = adapter.SelectFields([]string{"0bad"})
 	require.Error(t, err)
+}
+
+// TestSelectFields_Injection guards GHSA-qvx3-q8vx-9q3c: the double-quoted-substring
+// fast-path let any _select field carrying a quoted alias reach raw SQL. Each payload
+// must now be rejected instead of concatenated.
+func TestSelectFields_Injection(t *testing.T) {
+	t.Parallel()
+
+	adapter := testAdapter()
+
+	payloads := []string{
+		`(SELECT rolpassword FROM pg_authid WHERE rolname='postgres' LIMIT 1)"h"`,
+		`(SELECT pg_read_file('/etc/passwd'))"f"`,
+		`(SELECT version())"v"`,
+		`pg_sleep(5)"s"`,
+	}
+	for _, p := range payloads {
+		_, err := adapter.SelectFields([]string{p})
+		require.ErrorIs(t, err, ErrInvalidIdentifier, "payload must be rejected: %s", p)
+	}
+}
+
+// Test_sanitizeSelectField exercises the shared validation gate directly.
+func Test_sanitizeSelectField(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		description string
+		field       string
+		want        string
+		wantErr     bool
+	}{
+		{"asterisk passes through", "*", "*", false},
+		{"plain identifier is quoted", "name", `"name"`, false},
+		{"dotted identifier is quoted per segment", "public.age", `"public"."age"`, false},
+		{"colon-syntax aggregate is normalized", "avg:age", `AVG("age")`, false},
+		{"bare aggregate keyword is a plain field", "sum", `"sum"`, false},
+		{"pre-quoted aggregate is accepted", `SUM("salary")`, `SUM("salary")`, false},
+		{"pre-quoted aggregate with alias is accepted", `MAX("age") AS "m"`, `MAX("age") AS "m"`, false},
+		{"invalid identifier is rejected", "0bad", "", true},
+		{"aliased subselect injection is rejected", `(SELECT version())"v"`, "", true},
+		{"non-aggregate function is rejected", `pg_read_file('/etc/passwd')"f"`, "", true},
+		{"non-whitelisted quoted func is rejected", `pg_sleep("x")`, "", true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			got, err := sanitizeSelectField(tc.field)
+			if tc.wantErr {
+				require.ErrorIs(t, err, ErrInvalidIdentifier)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
 }
 
 func TestCountByRequest(t *testing.T) {
@@ -902,12 +973,38 @@ func TestCountByRequest_WithSelect(t *testing.T) {
 	count, err := adapter.CountByRequest(req)
 	require.NoError(t, err)
 	require.Contains(t, count, `COUNT("name")`)
-	require.Contains(t, count, ", age")
+	// _select value is now validated and quoted, not concatenated raw.
+	require.Contains(t, count, `, "age"`)
 
 	req, err = http.NewRequest(http.MethodGet, "/public/test?_count=0bad", nil)
 	require.NoError(t, err)
 	_, err = adapter.CountByRequest(req)
 	require.Error(t, err)
+}
+
+// TestCountByRequest_Injection guards the second sink: _select interpolated into
+// SELECT COUNT(...)%s FROM. Crafted projections from GHSA-qvx3-q8vx-9q3c must be
+// rejected, not executed.
+func TestCountByRequest_Injection(t *testing.T) {
+	t.Parallel()
+
+	adapter := testAdapter()
+
+	payloads := []string{
+		`(SELECT rolpassword FROM pg_authid WHERE rolname='postgres' LIMIT 1)"h"`,
+		`(SELECT pg_read_file('/etc/passwd'))"f"`,
+		`(SELECT version())"v"`,
+		`pg_sleep(5)"s"`,
+		`celphone,(SELECT 1)"x"`,
+		`pg_sleep("x")`,
+	}
+	for _, p := range payloads {
+		req, err := http.NewRequest(http.MethodGet,
+			"/public/test?_count=*&_select="+url.QueryEscape(p), nil)
+		require.NoError(t, err)
+		_, err = adapter.CountByRequest(req)
+		require.ErrorIs(t, err, ErrInvalidIdentifier, "payload must be rejected: %s", p)
+	}
 }
 
 func TestPaginateIfPossible(t *testing.T) {

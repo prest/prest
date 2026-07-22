@@ -1,7 +1,7 @@
 DOCKER_COMPOSE?=docker-compose -f docker-compose.yml
 UNIT_PKGS = $(shell go list ./... | grep -v '/integration')
 
-.PHONY: build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb ci
+.PHONY: build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb test-integration-log test-integration-postgres-log test-integration-timescaledb-log ci
 build_test_image:
 	$(DOCKER_COMPOSE) up -d postgres
 
@@ -23,6 +23,49 @@ test-integration-postgres:
 	$(POSTGRES_COMPOSE) run --rm --no-deps tests; \
 	status=$$?; \
 	$(POSTGRES_COMPOSE) down -v --remove-orphans; \
+	exit $$status
+
+# Same as test-integration but tees the full combined output to a file so the
+# whole result can be explored after the run (terminals truncate long output).
+# Everything is captured into a single file. The aggregate truncates it once and
+# both suites append (TEE='tee -a'), so a failure in the first never overwrites
+# or hides the second. A standalone *-log target starts the file fresh.
+# Override the destination with: make test-integration-log INTEGRATION_LOG=path.log
+INTEGRATION_LOG ?= integration-test.log
+TEE ?= tee
+
+# Runs both suites regardless of the first's result, appending to one file, and
+# exits non-zero if either failed, so the full output is always available.
+test-integration-log:
+	@: > $(INTEGRATION_LOG)
+	@rc=0; \
+	$(MAKE) test-integration-postgres-log TEE='tee -a' || rc=1; \
+	$(MAKE) test-integration-timescaledb-log TEE='tee -a' || rc=1; \
+	echo "Full output saved to $(INTEGRATION_LOG) (exit $$rc)"; \
+	exit $$rc
+
+test-integration-postgres-log:
+	@echo "Writing full Postgres integration output to $(INTEGRATION_LOG)"
+	@{ \
+	  $(POSTGRES_COMPOSE) up -d --wait postgres postgres-b db-init prestd prestd-multicluster prestd-auth prestd-queries && \
+	  $(POSTGRES_COMPOSE) run --rm --no-deps tests; \
+	  echo $$? > .integration-status.$$$$; \
+	  $(POSTGRES_COMPOSE) down -v --remove-orphans; \
+	} 2>&1 | $(TEE) $(INTEGRATION_LOG); \
+	status=$$(cat .integration-status.$$$$); rm -f .integration-status.$$$$; \
+	echo "Full output saved to $(INTEGRATION_LOG) (exit $$status)"; \
+	exit $$status
+
+test-integration-timescaledb-log:
+	@echo "Writing full TimescaleDB integration output to $(INTEGRATION_LOG)"
+	@{ \
+	  $(TIMESCALEDB_COMPOSE) up -d --wait timescaledb db-init prestd && \
+	  $(TIMESCALEDB_COMPOSE) run --rm --no-deps tests; \
+	  echo $$? > .integration-status.$$$$; \
+	  $(TIMESCALEDB_COMPOSE) down -v --remove-orphans; \
+	} 2>&1 | $(TEE) $(INTEGRATION_LOG); \
+	status=$$(cat .integration-status.$$$$); rm -f .integration-status.$$$$; \
+	echo "Full output saved to $(INTEGRATION_LOG) (exit $$status)"; \
 	exit $$status
 
 test-integration-timescaledb:

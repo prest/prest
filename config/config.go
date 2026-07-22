@@ -1,10 +1,11 @@
 package config
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -16,11 +17,8 @@ import (
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/cache"
 	"github.com/prest/prest/v2/internal/logsafe"
-	"github.com/structy/log"
 
-	"log/slog"
-
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v3/jwk"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 )
@@ -512,6 +510,17 @@ var ErrAuthEnabledNoJWTKey = errors.New(
 	"auth.enabled is true but jwt.key is empty (required to verify HS256 tokens)")
 
 // fetchJWKS tries to get the JWKS from the URL in the config
+// redactURL returns a log-safe "scheme://host/path" form of raw, dropping
+// userinfo, query, and fragment which may carry credentials or tokens. It
+// returns "" when raw cannot be parsed, so no unsanitized value is ever logged.
+func redactURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	return (&url.URL{Scheme: u.Scheme, Host: u.Host, Path: u.Path}).String()
+}
+
 func fetchJWKS(cfg *Prest) {
 	if cfg.JWTWellKnownURL == "" {
 		slog.Debug("no JWT WellKnown url found, skipping")
@@ -548,10 +557,33 @@ func fetchJWKS(cfg *Prest) {
 		return
 	}
 
-	JWKSet, err := jwk.Fetch(context.Background(), uri)
+	jwksResp, err := client.Get(uri)
 	if err != nil {
-		err := fmt.Errorf("failed to parse JWK: %s", err)
-		log.Errorf("Failed to fetch JWK: %v\n", err)
+		slog.Error("Failed to fetch JWK", "err", err)
+		return
+	}
+	defer jwksResp.Body.Close()
+
+	if jwksResp.StatusCode < 200 || jwksResp.StatusCode >= 300 {
+		slog.Error("JWKS endpoint returned non-success status", "status", jwksResp.StatusCode, "url", redactURL(uri))
+		return
+	}
+
+	// Cap the JWKS body to guard against oversized or hostile responses.
+	const maxJWKSBytes = 1 << 20 // 1 MiB
+	jwksBody, err := io.ReadAll(io.LimitReader(jwksResp.Body, maxJWKSBytes+1))
+	if err != nil {
+		slog.Error("Failed to read JWKS response body", "err", err)
+		return
+	}
+	if len(jwksBody) > maxJWKSBytes {
+		slog.Error("JWKS response body exceeds size limit", "limit", maxJWKSBytes)
+		return
+	}
+
+	JWKSet, err := jwk.Parse(jwksBody)
+	if err != nil {
+		slog.Error("Failed to parse JWK", "err", err)
 		return
 	}
 
