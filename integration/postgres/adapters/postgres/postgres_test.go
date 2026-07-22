@@ -937,6 +937,47 @@ func TestCountFields(t *testing.T) {
 		// _select value is now validated and quoted, not concatenated raw (GHSA-qvx3-q8vx-9q3c).
 		{"Count with `_groupby` and `_select`", "/prest-test/public/test5?_count=celphone&_groupby=celphone&_select=celphone",
 			`SELECT COUNT("celphone"), "celphone" FROM`, false},
+		// CountByRequest is a no-op without `_count` (returns empty, no error).
+		{"Count with `_select` only (no `_count`)", "/prest-test/public/test5?_select=celphone",
+			"", false},
+		{"Count with `_select` and `_groupby` only (no `_count`)", "/prest-test/public/test5?_select=celphone&_groupby=celphone",
+			"", false},
+		{"Count with `_select` and `_groupby` and `_count`", "/prest-test/public/test5?_select=celphone&_groupby=celphone&_count=celphone",
+			`SELECT COUNT("celphone"), "celphone" FROM`, false},
+		{"Count with `_select` and `_groupby` and `_count` and `_order`", "/prest-test/public/test5?_select=celphone&_groupby=celphone&_count=celphone&_order=celphone",
+			`SELECT COUNT("celphone"), "celphone" FROM`, false},
+		{"Count with `_select` and `_groupby` and `_count` and `_order` and `_limit`", "/prest-test/public/test5?_select=celphone&_groupby=celphone&_count=celphone&_order=celphone&_limit=10",
+			`SELECT COUNT("celphone"), "celphone" FROM`, false},
+		{"Count with `_select` and `_groupby` and `_count` and `_order` and `_limit` and `_offset`", "/prest-test/public/test5?_select=celphone&_groupby=celphone&_count=celphone&_order=celphone&_limit=10&_offset=0",
+			`SELECT COUNT("celphone"), "celphone" FROM`, false},
+		{"Count with `_select` and `_groupby` and `_count` and `_order` and `_limit` and `_offset` and `_where`", "/prest-test/public/test5?_select=celphone&_groupby=celphone&_count=celphone&_order=celphone&_limit=10&_offset=0&_where=celphone=$eq.1",
+			`SELECT COUNT("celphone"), "celphone" FROM`, false},
+		// GHSA-qvx3-q8vx-9q3c: crafted _select projections that used the double-quoted
+		// fast-path must be rejected by CountByRequest (empty SQL + error).
+		{
+			"Reject `_select` aliased subselect (pg_authid PoC)",
+			`/prest-test/public/test5?_count=*&_select=(SELECT rolpassword FROM pg_authid WHERE rolname='postgres' LIMIT 1)"h"`,
+			"", true},
+		{
+			"Reject `_select` pg_read_file injection",
+			`/prest-test/public/test5?_count=*&_select=(SELECT pg_read_file('/etc/passwd'))"f"`,
+			"", true},
+		{
+			"Reject `_select` version() subselect injection",
+			`/prest-test/public/test5?_count=*&_select=(SELECT version())"v"`,
+			"", true},
+		{
+			"Reject `_select` pg_sleep injection",
+			`/prest-test/public/test5?_count=celphone&_select=pg_sleep(5)"s"`,
+			"", true},
+		{
+			"Reject `_select` injection mixed with a valid column",
+			`/prest-test/public/test5?_count=*&_select=celphone,(SELECT 1)"x"`,
+			"", true},
+		{
+			"Reject `_select` non-whitelisted quoted function",
+			`/prest-test/public/test5?_count=*&_select=pg_sleep("x")`,
+			"", true},
 	}
 
 	for _, tc := range testCases {
@@ -1513,6 +1554,13 @@ func TestSelectFields(t *testing.T) {
 	}{
 		{"Invalid fields", []string{"0test", "test02"}, ""},
 		{"Empty fields", []string{}, ""},
+		// GHSA-qvx3-q8vx-9q3c: SelectFields must reject projection injection payloads.
+		{"Reject aliased subselect (pg_authid PoC)", []string{`(SELECT rolpassword FROM pg_authid WHERE rolname='postgres' LIMIT 1)"h"`}, ""},
+		{"Reject pg_read_file injection", []string{`(SELECT pg_read_file('/etc/passwd'))"f"`}, ""},
+		{"Reject version() subselect injection", []string{`(SELECT version())"v"`}, ""},
+		{"Reject pg_sleep injection", []string{`pg_sleep(5)"s"`}, ""},
+		{"Reject injection mixed with a valid column", []string{"celphone", `(SELECT 1)"x"`}, ""},
+		{"Reject non-whitelisted quoted function", []string{`pg_sleep("x")`}, ""},
 	}
 
 	for _, tc := range testCases {

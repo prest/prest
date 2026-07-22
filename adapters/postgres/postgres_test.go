@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -981,17 +982,28 @@ func TestCountByRequest_WithSelect(t *testing.T) {
 }
 
 // TestCountByRequest_Injection guards the second sink: _select interpolated into
-// SELECT COUNT(...)%s FROM. Crafted projections must be rejected, not executed.
+// SELECT COUNT(...)%s FROM. Crafted projections from GHSA-qvx3-q8vx-9q3c must be
+// rejected, not executed.
 func TestCountByRequest_Injection(t *testing.T) {
 	t.Parallel()
 
 	adapter := testAdapter()
 
-	req, err := http.NewRequest(http.MethodGet,
-		`/public/test?_count=*&_select=(SELECT version())"v"`, nil)
-	require.NoError(t, err)
-	_, err = adapter.CountByRequest(req)
-	require.ErrorIs(t, err, ErrInvalidIdentifier)
+	payloads := []string{
+		`(SELECT rolpassword FROM pg_authid WHERE rolname='postgres' LIMIT 1)"h"`,
+		`(SELECT pg_read_file('/etc/passwd'))"f"`,
+		`(SELECT version())"v"`,
+		`pg_sleep(5)"s"`,
+		`celphone,(SELECT 1)"x"`,
+		`pg_sleep("x")`,
+	}
+	for _, p := range payloads {
+		req, err := http.NewRequest(http.MethodGet,
+			"/public/test?_count=*&_select="+url.QueryEscape(p), nil)
+		require.NoError(t, err)
+		_, err = adapter.CountByRequest(req)
+		require.ErrorIs(t, err, ErrInvalidIdentifier, "payload must be rejected: %s", p)
+	}
 }
 
 func TestPaginateIfPossible(t *testing.T) {
