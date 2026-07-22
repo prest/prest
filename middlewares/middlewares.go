@@ -16,7 +16,7 @@ import (
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
 
-	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/urfave/negroni/v3"
 	jose "gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
@@ -196,10 +196,9 @@ func JwtMiddleware(key string, JWKSet, _ string, whitelist []string) negroni.Han
 				http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWKSetParse.Error()), http.StatusUnauthorized)
 				return
 			}
-			// jwx v4 dropped the Set iterator; walk the keys via Len()/Key(i) and
-			// match the token's kid, preserving the original behavior (an empty kid
-			// on both sides is a legitimate single-key JWKS match; the jwksMatched
-			// guard below is what prevents the empty-HMAC-key auth bypass).
+			// Walk keys via Len()/Key(i) and match the token's kid. An empty kid on
+			// both sides is a legitimate single-key JWKS match; the jwksMatched
+			// guard below prevents the empty-HMAC-key auth bypass.
 			for i := 0; i < parsedJWKSet.Len(); i++ {
 				key, ok := parsedJWKSet.Key(i)
 				if !ok {
@@ -207,8 +206,8 @@ func JwtMiddleware(key string, JWKSet, _ string, whitelist []string) negroni.Han
 				}
 				kid, _ := key.KeyID()
 				if kid == tok.Headers[0].KeyID {
-					rawkeyV, err := jwk.Export[any](key)
-					if err != nil {
+					var rawkeyV any
+					if err := jwk.Export(key, &rawkeyV); err != nil {
 						slog.Error("failed to create public key", "err", err)
 						http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWKSetCreate.Error()), http.StatusUnauthorized)
 						return

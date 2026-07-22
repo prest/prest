@@ -11,8 +11,6 @@ x-prest-env: &prest-env
   PGPASSWORD: postgres
   GOTOOLCHAIN: auto
   GOPROXY: https://proxy.golang.org,direct
-  # jwx v4 imports encoding/json/v2, gated behind GOEXPERIMENT=jsonv2 on Go 1.26.
-  GOEXPERIMENT: jsonv2
 
 x-prestd-service: &prestd-service
   image: golang:1.26-bookworm

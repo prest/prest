@@ -19,8 +19,6 @@ ARG COMMIT
 ARG DATE
 ENV GOOS=linux
 ENV CGO_ENABLED=1
-# jwx v4 imports encoding/json/v2, gated behind GOEXPERIMENT=jsonv2 on Go 1.26.
-ENV GOEXPERIMENT=jsonv2
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install --no-install-recommends -yq netcat-traditional && \
     rm -rf /var/lib/apt/lists/* && \

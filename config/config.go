@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -16,13 +17,11 @@ import (
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/cache"
 	"github.com/prest/prest/v2/internal/logsafe"
-	"github.com/structy/log"
 
-	"log/slog"
-
-	"github.com/lestrrat-go/jwx/v4/jwk"
+	"github.com/lestrrat-go/jwx/v3/jwk"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
+	"github.com/structy/log"
 )
 
 const (
@@ -548,8 +547,6 @@ func fetchJWKS(cfg *Prest) {
 		return
 	}
 
-	// jwx v4 removed the package-level jwk.Fetch (fetching is now transport-agnostic),
-	// so retrieve the JWK Set over HTTP with the same client and parse it.
 	jwksResp, err := client.Get(uri)
 	if err != nil {
 		log.Errorf("Failed to fetch JWK: %v\n", err)
