@@ -83,16 +83,7 @@ func startServer(ctx context.Context, cfg *config.Prest, a *app.App) {
 		slog.Warn("You are running prestd in debug mode.")
 	}
 
-	// Serve the app handler directly for the default context path. Mounting on a
-	// stdlib http.ServeMux sets http.Request.Pattern, which makes otelhttp
-	// overwrite span names (e.g. "GET /") at request end, discarding the route
-	// template gorilla/mux already tagged. Only wrap for a non-root context path.
-	handler := a.Handler
-	if cfg.ContextPath != "" && cfg.ContextPath != "/" {
-		mux := http.NewServeMux()
-		mux.Handle(cfg.ContextPath, a.Handler)
-		handler = mux
-	}
+	handler := contextPathHandler(cfg.ContextPath, a.Handler)
 
 	address := cfg.HTTPHost + ":" + strconv.Itoa(cfg.HTTPPort)
 	srv := &http.Server{
@@ -111,6 +102,17 @@ func startServer(ctx context.Context, cfg *config.Prest, a *app.App) {
 		slog.Error("HTTP server failed", "err", err)
 		os.Exit(1)
 	}
+}
+
+// contextPathHandler mounts h under contextPath. Unlike a stdlib http.ServeMux
+// it does not set http.Request.Pattern, so otelhttp preserves the route-template
+// span name set by the gorilla/mux router; it also strips the prefix so routes
+// resolve. A root context path ("" or "/") returns h unchanged.
+func contextPathHandler(contextPath string, h http.Handler) http.Handler {
+	if contextPath == "" || contextPath == "/" {
+		return h
+	}
+	return http.StripPrefix(contextPath, h)
 }
 
 // serveWithShutdown runs srv until it fails or ctx is cancelled, then drains

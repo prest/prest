@@ -4,10 +4,20 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/prest/prest/v2/config"
+
+	"github.com/gorilla/mux"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,6 +44,45 @@ func waitUntilServing(t *testing.T, addr string) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatalf("server at %s never came up", addr)
+}
+
+// Regression: a non-root context path must not clobber the route-template span
+// name. contextPathHandler uses StripPrefix (not http.ServeMux, which would set
+// http.Request.Pattern and make otelhttp overwrite the name with "GET /").
+func TestContextPathHandler_PreservesRouteSpanName(t *testing.T) {
+	sr := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(sr))
+	prev := otel.GetTracerProvider()
+	otel.SetTracerProvider(tp)
+	t.Cleanup(func() { otel.SetTracerProvider(prev) })
+
+	// Minimal stand-in for the real router: name the span by the matched route
+	// template, exactly as router.otelRouteTagMiddleware does.
+	r := mux.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			if route := mux.CurrentRoute(req); route != nil {
+				if tmpl, err := route.GetPathTemplate(); err == nil {
+					trace.SpanFromContext(req.Context()).SetName(req.Method + " " + tmpl)
+				}
+			}
+			next.ServeHTTP(w, req)
+		})
+	})
+	r.HandleFunc("/{database}/{schema}/{table}", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	// Mirror app wiring: otelhttp wraps the router, then the context-path mount.
+	handler := contextPathHandler("/api", otelhttp.NewHandler(r, "prest"))
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/mydb/public/users", nil))
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	ended := sr.Ended()
+	require.Len(t, ended, 1)
+	require.Equal(t, "GET /{database}/{schema}/{table}", ended[0].Name())
 }
 
 // Cancelling the context triggers a graceful shutdown and serveWithShutdown
@@ -78,11 +127,16 @@ func TestServeWithShutdown_ShutdownTimeout(t *testing.T) {
 	t.Cleanup(func() { shutdownGracePeriod = prev })
 
 	addr := freeAddr(t)
+	entered := make(chan struct{})
 	release := make(chan struct{})
 	t.Cleanup(func() { close(release) })
+	var enterOnce sync.Once
 	srv := &http.Server{
-		Addr:    addr,
-		Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) { <-release }),
+		Addr: addr,
+		Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+			enterOnce.Do(func() { close(entered) }) // signal the request reached the handler
+			<-release
+		}),
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -92,12 +146,12 @@ func TestServeWithShutdown_ShutdownTimeout(t *testing.T) {
 
 	// Kick off a request that hangs in the handler.
 	go func() {
-		client := &http.Client{Timeout: 2 * time.Second}
+		client := &http.Client{Timeout: 5 * time.Second}
 		if resp, err := client.Get("http://" + addr + "/"); err == nil {
 			_ = resp.Body.Close()
 		}
 	}()
-	time.Sleep(100 * time.Millisecond) // let the request reach the handler
+	<-entered // deterministically wait until the request is in-flight in the handler
 
 	start := time.Now()
 	cancel()

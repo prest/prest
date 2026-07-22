@@ -16,18 +16,20 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
+// otelDrivers caches one instrumented driver name per distinct telemetry option
+// set (keyed by DBStatement), so a manager always receives a driver matching its
+// own configuration regardless of construction order. database/sql drivers are
+// process-global, so each distinct configuration is registered at most once.
 var (
-	otelRegisterOnce sync.Once
-	otelDriverName   string
-	otelRegisterErr  error
+	otelDriverMu    sync.Mutex
+	otelDriverNames = map[bool]string{}
 )
 
 // otelManagerOptions returns connection.Manager options that route the pool
 // through an OpenTelemetry-instrumented driver and publish DB pool metrics,
-// when cfg.Otel.Enabled is set. The lib/pq "postgres" driver is wrapped once
-// per process (database/sql drivers are process-global). On registration
-// failure it logs a warning and returns nil, so the pool falls back to the
-// default driver rather than blocking startup.
+// when cfg.Otel.Enabled is set. On registration failure it logs a warning and
+// returns nil, so the pool falls back to the default driver rather than blocking
+// startup.
 //
 // DB spans are tagged with db.namespace using the database alias carried in the
 // request context (pctx.DBNameKey). The raw SQL statement is recorded only when
@@ -37,28 +39,42 @@ func otelManagerOptions(cfg *config.Prest) []connection.ManagerOption {
 		return nil
 	}
 
-	otelRegisterOnce.Do(func() {
-		otelDriverName, otelRegisterErr = otelsql.Register("postgres",
-			otelsql.WithAttributes(semconv.DBSystemPostgreSQL),
-			otelsql.WithSpanOptions(otelsql.SpanOptions{DisableQuery: !cfg.Otel.DBStatement}),
-			otelsql.WithAttributesGetter(dbAliasAttributes),
-		)
-		if otelRegisterErr != nil {
-			slog.Warn("otel: registering instrumented db driver failed, db telemetry disabled", "err", otelRegisterErr)
-		}
-	})
-	if otelRegisterErr != nil {
+	driverName, err := instrumentedDriver(cfg.Otel.DBStatement)
+	if err != nil {
+		slog.Warn("otel: registering instrumented db driver failed, db telemetry disabled", "err", err)
 		return nil
 	}
 
 	return []connection.ManagerOption{
-		connection.WithDriverName(otelDriverName),
+		connection.WithDriverName(driverName),
 		connection.WithAfterConnect(func(db *sql.DB) {
 			// Pool stats metrics are best-effort; a failure must not break setup.
 			_, _ = otelsql.RegisterDBStatsMetrics(db,
 				otelsql.WithAttributes(semconv.DBSystemPostgreSQL))
 		}),
 	}
+}
+
+// instrumentedDriver returns the otelsql-wrapped "postgres" driver name for the
+// given DBStatement setting, registering (and caching) it on first use.
+func instrumentedDriver(dbStatement bool) (string, error) {
+	otelDriverMu.Lock()
+	defer otelDriverMu.Unlock()
+
+	if name, ok := otelDriverNames[dbStatement]; ok {
+		return name, nil
+	}
+
+	name, err := otelsql.Register("postgres",
+		otelsql.WithAttributes(semconv.DBSystemPostgreSQL),
+		otelsql.WithSpanOptions(otelsql.SpanOptions{DisableQuery: !dbStatement}),
+		otelsql.WithAttributesGetter(dbAliasAttributes),
+	)
+	if err != nil {
+		return "", err
+	}
+	otelDriverNames[dbStatement] = name
+	return name, nil
 }
 
 // dbAliasAttributes tags each DB span with the database alias from the request
