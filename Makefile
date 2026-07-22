@@ -1,7 +1,7 @@
 DOCKER_COMPOSE?=docker-compose -f docker-compose.yml
 UNIT_PKGS = $(shell GOEXPERIMENT=jsonv2 go list ./... | grep -v '/integration')
 
-.PHONY: build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb ci
+.PHONY: build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb test-integration-log test-integration-postgres-log ci
 build_test_image:
 	$(DOCKER_COMPOSE) up -d postgres
 
@@ -25,6 +25,37 @@ test-integration-postgres:
 	$(POSTGRES_COMPOSE) run --rm --no-deps tests; \
 	status=$$?; \
 	$(POSTGRES_COMPOSE) down -v --remove-orphans; \
+	exit $$status
+
+# Same as test-integration but tees the full combined output to a file so the
+# whole result can be explored after the run (terminals truncate long output).
+# Override the destination with: make test-integration-log INTEGRATION_LOG=path.log
+INTEGRATION_LOG ?= integration-test.log
+
+test-integration-log: test-integration-postgres-log test-integration-timescaledb-log
+
+test-integration-postgres-log:
+	@echo "Writing full integration output to $(INTEGRATION_LOG)"
+	@{ \
+	  $(POSTGRES_COMPOSE) up -d --wait postgres postgres-b db-init prestd prestd-multicluster prestd-auth prestd-queries && \
+	  $(POSTGRES_COMPOSE) run --rm --no-deps tests; \
+	  echo $$? > .integration-status; \
+	  $(POSTGRES_COMPOSE) down -v --remove-orphans; \
+	} 2>&1 | tee $(INTEGRATION_LOG); \
+	status=$$(cat .integration-status); rm -f .integration-status; \
+	echo "Full output saved to $(INTEGRATION_LOG) (exit $$status)"; \
+	exit $$status
+
+test-integration-timescaledb-log:
+	@echo "Writing full integration output to $(INTEGRATION_LOG)"
+	@{ \
+	  $(TIMESCALEDB_COMPOSE) up -d --wait timescaledb db-init prestd && \
+	  $(TIMESCALEDB_COMPOSE) run --rm --no-deps tests; \
+	  echo $$? > .integration-status; \
+	  $(TIMESCALEDB_COMPOSE) down -v --remove-orphans; \
+	} 2>&1 | tee $(INTEGRATION_LOG); \
+	status=$$(cat .integration-status); rm -f .integration-status; \
+	echo "Full output saved to $(INTEGRATION_LOG) (exit $$status)"; \
 	exit $$status
 
 test-integration-timescaledb:

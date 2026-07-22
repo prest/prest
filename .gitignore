@@ -54,3 +54,7 @@ studio/dist/
 # Local secrets / compose overrides (may contain DB credentials)
 .env
 .env.local
+
+# Integration test output captured by `make test-integration-log`
+integration-test.log
+.integration-status
