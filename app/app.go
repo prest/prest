@@ -21,6 +21,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // App is the composition root for the HTTP server.
@@ -41,6 +42,14 @@ type App struct {
 // Returns an error when the database connection cannot be established.
 func New(cfg *config.Prest) (*App, error) {
 	registry := adapters.NewRegistry()
+
+	// Instrument the Postgres driver before any connection is opened. A setup
+	// failure disables DB telemetry (warn) rather than blocking startup.
+	if cfg.Otel.Enabled {
+		if err := postgres.RegisterOTelDriver(cfg); err != nil {
+			slog.Warn("otel: registering instrumented db driver failed, db telemetry disabled", "err", err)
+		}
+	}
 
 	// Multi-database mode: create adapter for each configured database
 	if cfg.HasDatabaseRegistry() {
@@ -116,7 +125,14 @@ func New(cfg *config.Prest) (*App, error) {
 
 	n := middlewares.New(cfg)
 	n.UseHandler(muxWithAdapter)
-	return &App{Config: cfg, Handler: n, Adapters: registry, pg: cfg.Adapter}, nil
+
+	var handler http.Handler = n
+	if cfg.Otel.Enabled {
+		// Outermost span covers the whole middleware chain and extracts inbound
+		// W3C trace context. Per-route http.route tags are added in the router.
+		handler = otelhttp.NewHandler(handler, "prest")
+	}
+	return &App{Config: cfg, Handler: handler, Adapters: registry, pg: cfg.Adapter}, nil
 }
 
 func ensureSchemaMigrated(cfg *config.Prest) error {

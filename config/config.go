@@ -125,6 +125,7 @@ type Prest struct {
 	Cache                cache.Config
 	PluginPath           string
 	PluginMiddlewareList []PluginMiddleware
+	Otel                 OtelConf
 	Logger               *slog.Logger
 }
 
@@ -390,6 +391,14 @@ func viperCfg() (*viper.Viper, string) {
 
 	v.SetDefault("studio.enabled", true)
 
+	v.SetDefault("otel.enabled", false)
+	v.SetDefault("otel.service_name", "prestd")
+	v.SetDefault("otel.protocol", "grpc")
+	v.SetDefault("otel.sample_ratio", 1.0)
+	v.SetDefault("otel.metrics_interval", "15s")
+	v.SetDefault("otel.insecure", false)
+	v.SetDefault("otel.db_statement", false)
+
 	v.SetDefault("queries.location", defaultQueriesPath())
 	v.SetDefault("queries.storage", QueriesStorageFilesystem)
 	v.SetDefault("queries.schema", "public")
@@ -456,6 +465,8 @@ func Parse(v *viper.Viper, cfg *Prest, configPath string) {
 	cfg.ExposeConf.DatabaseListing = v.GetBool("expose.databases")
 
 	cfg.StudioConf.Enabled = v.GetBool("studio.enabled")
+
+	parseOtelConfig(v, cfg)
 
 	cfg.AccessConf.Tables = unmarshalKeyOrZero[[]TablesConf](v, "access.tables")
 	cfg.AccessConf.Users = unmarshalKeyOrZero[[]UsersConf](v, "access.users")

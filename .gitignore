@@ -58,3 +58,4 @@ studio/dist/
 # Integration test output captured by `make test-integration-log`
 integration-test.log
 .integration-status*
+dev/signoz/common/clickhouse/user_scripts/histogramQuantile

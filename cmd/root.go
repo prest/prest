@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/prest/prest/v2/app"
 	"github.com/prest/prest/v2/config"
@@ -41,7 +43,7 @@ var RootCmd = &cobra.Command{
 			slog.Error("initializing app", "err", logsafe.Error(err))
 			os.Exit(1)
 		}
-		startServer(cfg, prestApp)
+		startServer(cmd.Context(), cfg, prestApp)
 	},
 }
 
@@ -69,9 +71,12 @@ func Execute(ctx context.Context, cfg *config.Prest) {
 	}
 }
 
-// startServer starts the server
-func startServer(cfg *config.Prest, a *app.App) {
-	http.Handle(cfg.ContextPath, a.Handler)
+// startServer starts the HTTP server and blocks until it fails or ctx is
+// cancelled (SIGINT/SIGTERM), at which point it drains in-flight requests via
+// a graceful shutdown so deferred telemetry flushes can run.
+func startServer(ctx context.Context, cfg *config.Prest, a *app.App) {
+	handler := http.NewServeMux()
+	handler.Handle(cfg.ContextPath, a.Handler)
 
 	if !cfg.AccessConf.Restrict {
 		slog.Warn("You are running prestd in public mode.")
@@ -82,16 +87,30 @@ func startServer(cfg *config.Prest, a *app.App) {
 	}
 
 	address := cfg.HTTPHost + ":" + strconv.Itoa(cfg.HTTPPort)
+	srv := &http.Server{Addr: address, Handler: handler}
 	slog.Info("listening and serving", slog.String("addr", address), slog.String("context", cfg.ContextPath))
 
-	if cfg.HTTPSMode {
-		if err := http.ListenAndServeTLS(address, cfg.HTTPSCert, cfg.HTTPSKey, nil); err != nil {
-			slog.Error("HTTPS server failed", "err", err)
+	errCh := make(chan error, 1)
+	go func() {
+		if cfg.HTTPSMode {
+			errCh <- srv.ListenAndServeTLS(cfg.HTTPSCert, cfg.HTTPSKey)
+			return
+		}
+		errCh <- srv.ListenAndServe()
+	}()
+
+	select {
+	case err := <-errCh:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("HTTP server failed", "err", err)
 			os.Exit(1)
 		}
-	}
-	if err := http.ListenAndServe(address, nil); err != nil {
-		slog.Error("HTTP server failed", "err", err)
-		os.Exit(1)
+	case <-ctx.Done():
+		slog.Info("shutdown signal received, stopping server")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			slog.Error("graceful shutdown failed", "err", err)
+		}
 	}
 }

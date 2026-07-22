@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -34,6 +35,31 @@ type Manager struct {
 // do not use this function directly, use Get() instead
 // nolint:revive
 var dbConnect = sqlx.Connect
+
+// driverName is the database/sql driver used to open pooled connections.
+// It defaults to the lib/pq "postgres" driver and is swapped for an
+// instrumented driver name by SetDriverName when OpenTelemetry is enabled.
+var driverName = "postgres"
+
+// afterConnect, when set, is invoked with the underlying *sql.DB immediately
+// after a pooled connection is created. It is used to register OpenTelemetry
+// DB pool metrics without importing the OTel SDK into this package.
+var afterConnect func(*sql.DB)
+
+// SetDriverName overrides the database/sql driver used for new pooled
+// connections (e.g. an otelsql-wrapped driver). Call once at startup before
+// any connection is opened.
+func SetDriverName(name string) {
+	if name != "" {
+		driverName = name
+	}
+}
+
+// SetAfterConnect registers a hook invoked with each newly created pooled
+// *sql.DB. Call once at startup before any connection is opened.
+func SetAfterConnect(fn func(*sql.DB)) {
+	afterConnect = fn
+}
 
 // NewManager creates a connection manager for the given config.
 func NewManager(cfg *config.Prest) *Manager {
@@ -231,13 +257,16 @@ func (m *Manager) AddDatabaseToPool(name string) (*sqlx.DB, error) {
 			return DB, nil
 		}
 
-		DB, err := dbConnect("postgres", uri)
+		DB, err := dbConnect(driverName, uri)
 		if err != nil {
 			return nil, err
 		}
 		maxIdle, maxOpen := m.poolLimitsFor(name)
 		DB.SetMaxIdleConns(maxIdle)
 		DB.SetMaxOpenConns(maxOpen)
+		if afterConnect != nil {
+			afterConnect(DB.DB)
+		}
 
 		p := m.getPool()
 		p.Mtx.Lock()
