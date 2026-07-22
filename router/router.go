@@ -84,7 +84,8 @@ func otelRouteTagMiddleware(next http.Handler) http.Handler {
 			if tmpl, err := route.GetPathTemplate(); err == nil {
 				routeAttr := semconv.HTTPRoute(tmpl)
 				span := trace.SpanFromContext(r.Context())
-				span.SetName(tmpl)
+				// Semconv HTTP server span name: "{method} {route}".
+				span.SetName(r.Method + " " + tmpl)
 				span.SetAttributes(routeAttr)
 				// Bind the route template to the otelhttp server metrics too.
 				if labeler, ok := otelhttp.LabelerFromContext(r.Context()); ok {

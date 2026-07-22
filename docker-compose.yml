@@ -34,18 +34,18 @@ services:
       # OpenTelemetry (opt-in). Bring up the SigNoz stack first (make signoz-up),
       # then start prest on the shared signoz-net:
       #   docker compose -f docker-compose.yml --profile otel up prest
-      - PREST_OTEL_ENABLED=true
-      - PREST_OTEL_ENDPOINT=signoz-otel-collector:4317
-      - PREST_OTEL_INSECURE=true
-      - PREST_OTEL_SERVICE_NAME=prestd
+      # - PREST_OTEL_ENABLED=true
+      # - PREST_OTEL_ENDPOINT=signoz-otel-collector:4317
+      # - PREST_OTEL_INSECURE=true
+      # - PREST_OTEL_SERVICE_NAME=prestd
     ports:
       - "3000:3000"
     # Uncomment to reach the SigNoz collector started by dev/signoz/docker-compose.yaml.
-    networks:
-      - default
-      - signoz-net
+    # networks:
+    #   - default
+    #   - signoz-net
 
 # Uncomment together with the prest service's signoz-net entry above.
-networks:
-  signoz-net:
-    external: true
+# networks:
+#   signoz-net:
+#     external: true

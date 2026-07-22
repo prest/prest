@@ -38,7 +38,7 @@ func TestOtelRouteTagMiddleware_setsRouteOnSpan(t *testing.T) {
 	ended := sr.Ended()
 	require.Len(t, ended, 1)
 	const wantRoute = "/{database}/{schema}/{table}"
-	require.Equal(t, wantRoute, ended[0].Name())
+	require.Equal(t, "GET "+wantRoute, ended[0].Name())
 
 	var gotRoute string
 	for _, attr := range ended[0].Attributes() {

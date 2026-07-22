@@ -75,15 +75,23 @@ func Execute(ctx context.Context, cfg *config.Prest) {
 // cancelled (SIGINT/SIGTERM), at which point it drains in-flight requests via
 // a graceful shutdown so deferred telemetry flushes can run.
 func startServer(ctx context.Context, cfg *config.Prest, a *app.App) {
-	handler := http.NewServeMux()
-	handler.Handle(cfg.ContextPath, a.Handler)
-
 	if !cfg.AccessConf.Restrict {
 		slog.Warn("You are running prestd in public mode.")
 	}
 
 	if cfg.Debug {
 		slog.Warn("You are running prestd in debug mode.")
+	}
+
+	// Serve the app handler directly for the default context path. Mounting on a
+	// stdlib http.ServeMux sets http.Request.Pattern, which makes otelhttp
+	// overwrite span names (e.g. "GET /") at request end, discarding the route
+	// template gorilla/mux already tagged. Only wrap for a non-root context path.
+	handler := a.Handler
+	if cfg.ContextPath != "" && cfg.ContextPath != "/" {
+		mux := http.NewServeMux()
+		mux.Handle(cfg.ContextPath, a.Handler)
+		handler = mux
 	}
 
 	address := cfg.HTTPHost + ":" + strconv.Itoa(cfg.HTTPPort)
