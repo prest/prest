@@ -26,20 +26,9 @@ func TestDBAliasAttributes(t *testing.T) {
 	require.Nil(t, dbAliasAttributes(context.Background(), "", "", nil))
 }
 
-// RegisterOTelDriver wraps the postgres driver and points the pool at it.
-// It mutates connection globals; restore them so other tests see the default.
-func TestRegisterOTelDriver(t *testing.T) {
-	t.Cleanup(func() {
-		connection.SetDriverName("postgres")
-		connection.SetAfterConnect(nil)
-	})
-
-	cfg := &config.Prest{}
-	cfg.Otel.Enabled = true
-	require.NoError(t, RegisterOTelDriver(cfg))
-
-	// Verify the pool now opens connections with the instrumented (non-default)
-	// driver name.
+// When OTel is enabled, New builds a Manager that opens connections through the
+// instrumented (non-default) driver. When disabled, it uses the default driver.
+func TestNew_OTelInstrumentsDriver(t *testing.T) {
 	var gotDriver string
 	restore := connection.SetDBConnectForTest(func(name, _ string) (*sqlx.DB, error) {
 		gotDriver = name
@@ -51,11 +40,23 @@ func TestRegisterOTelDriver(t *testing.T) {
 	})
 	t.Cleanup(restore)
 
-	m := connection.NewManager(&config.Prest{PGDatabase: "testdb", PGSSLMode: "disable"})
-	db, err := m.AddDatabaseToPool("testdb")
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	connectWith := func(cfg *config.Prest) string {
+		gotDriver = ""
+		p := New(cfg).(*postgres)
+		db, err := p.conn.AddDatabaseToPool("testdb")
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = db.Close() })
+		p.conn.ResetPoolForTest()
+		return gotDriver
+	}
 
-	require.NotEqual(t, "postgres", gotDriver)
-	require.Contains(t, gotDriver, "postgres")
+	// Disabled: default lib/pq "postgres" driver.
+	require.Equal(t, "postgres", connectWith(&config.Prest{PGDatabase: "testdb", PGSSLMode: "disable"}))
+
+	// Enabled: an otelsql-wrapped driver whose name is derived from "postgres".
+	enabled := &config.Prest{PGDatabase: "testdb", PGSSLMode: "disable"}
+	enabled.Otel.Enabled = true
+	got := connectWith(enabled)
+	require.NotEqual(t, "postgres", got)
+	require.Contains(t, got, "postgres")
 }

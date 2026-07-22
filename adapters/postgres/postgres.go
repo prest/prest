@@ -76,7 +76,7 @@ var (
 func New(cfg *config.Prest) adapters.Adapter {
 	return &postgres{
 		cfg:  cfg,
-		conn: connection.NewManager(cfg),
+		conn: connection.NewManager(cfg, otelManagerOptions(cfg)...),
 	}
 }
 

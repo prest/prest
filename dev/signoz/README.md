@@ -52,7 +52,7 @@ Uncomment the `PREST_OTEL_*` env and the `signoz-net` network entries in the
 repo-root [`docker-compose.yml`](../../docker-compose.yml). Inside the compose
 network use the collector's service DNS name instead of localhost:
 
-```
+```sh
 PREST_OTEL_ENDPOINT=signoz-otel-collector:4317
 ```
 

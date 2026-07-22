@@ -43,14 +43,6 @@ type App struct {
 func New(cfg *config.Prest) (*App, error) {
 	registry := adapters.NewRegistry()
 
-	// Instrument the Postgres driver before any connection is opened. A setup
-	// failure disables DB telemetry (warn) rather than blocking startup.
-	if cfg.Otel.Enabled {
-		if err := postgres.RegisterOTelDriver(cfg); err != nil {
-			slog.Warn("otel: registering instrumented db driver failed, db telemetry disabled", "err", err)
-		}
-	}
-
 	// Multi-database mode: create adapter for each configured database
 	if cfg.HasDatabaseRegistry() {
 		for _, dbConf := range cfg.Databases {

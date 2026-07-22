@@ -29,6 +29,8 @@ type Manager struct {
 	pool         *Pool
 	currDatabase string
 	addDB        singleflight.Group
+	driverName   string
+	afterConnect func(*sql.DB)
 }
 
 // dbConnect opens a database connection. Overridden in unit tests.
@@ -36,34 +38,39 @@ type Manager struct {
 // nolint:revive
 var dbConnect = sqlx.Connect
 
-// driverName is the database/sql driver used to open pooled connections.
-// It defaults to the lib/pq "postgres" driver and is swapped for an
-// instrumented driver name by SetDriverName when OpenTelemetry is enabled.
-var driverName = "postgres"
+// defaultDriverName is the lib/pq driver used to open pooled connections when
+// no instrumented driver is injected.
+const defaultDriverName = "postgres"
 
-// afterConnect, when set, is invoked with the underlying *sql.DB immediately
-// after a pooled connection is created. It is used to register OpenTelemetry
-// DB pool metrics without importing the OTel SDK into this package.
-var afterConnect func(*sql.DB)
+// ManagerOption configures a Manager at construction time.
+type ManagerOption func(*Manager)
 
-// SetDriverName overrides the database/sql driver used for new pooled
-// connections (e.g. an otelsql-wrapped driver). Call once at startup before
-// any connection is opened.
-func SetDriverName(name string) {
-	if name != "" {
-		driverName = name
+// WithDriverName sets the database/sql driver used to open pooled connections
+// (e.g. an otelsql-wrapped driver). An empty name is ignored, preserving the
+// default lib/pq "postgres" driver.
+func WithDriverName(name string) ManagerOption {
+	return func(m *Manager) {
+		if name != "" {
+			m.driverName = name
+		}
 	}
 }
 
-// SetAfterConnect registers a hook invoked with each newly created pooled
-// *sql.DB. Call once at startup before any connection is opened.
-func SetAfterConnect(fn func(*sql.DB)) {
-	afterConnect = fn
+// WithAfterConnect registers a hook invoked with the underlying *sql.DB
+// immediately after a pooled connection is created (e.g. to register OTel DB
+// pool metrics), without importing the OTel SDK into this package.
+func WithAfterConnect(fn func(*sql.DB)) ManagerOption {
+	return func(m *Manager) { m.afterConnect = fn }
 }
 
-// NewManager creates a connection manager for the given config.
-func NewManager(cfg *config.Prest) *Manager {
-	return &Manager{cfg: cfg}
+// NewManager creates a connection manager for the given config. Options may
+// inject an instrumented driver name and a post-connect hook.
+func NewManager(cfg *config.Prest, opts ...ManagerOption) *Manager {
+	m := &Manager{cfg: cfg, driverName: defaultDriverName}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
 }
 
 func (m *Manager) getPool() *Pool {
@@ -257,15 +264,15 @@ func (m *Manager) AddDatabaseToPool(name string) (*sqlx.DB, error) {
 			return DB, nil
 		}
 
-		DB, err := dbConnect(driverName, uri)
+		DB, err := dbConnect(m.driverName, uri)
 		if err != nil {
 			return nil, err
 		}
 		maxIdle, maxOpen := m.poolLimitsFor(name)
 		DB.SetMaxIdleConns(maxIdle)
 		DB.SetMaxOpenConns(maxOpen)
-		if afterConnect != nil {
-			afterConnect(DB.DB)
+		if m.afterConnect != nil {
+			m.afterConnect(DB.DB)
 		}
 
 		p := m.getPool()

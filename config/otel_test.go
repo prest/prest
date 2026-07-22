@@ -49,6 +49,33 @@ func TestParseOtelEnvOverride(t *testing.T) {
 	require.True(t, cfg.Otel.DBStatement)
 }
 
+// An unsupported protocol warns and falls back to grpc; empty defaults to grpc.
+func TestParseOtelProtocolFallback(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		set  bool
+		in   string
+	}{
+		{"unsupported falls back", true, "http"},
+		{"empty defaults", false, ""},
+		{"grpc preserved", true, "grpc"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			v := viper.New()
+			if tc.set {
+				v.Set("otel.protocol", tc.in)
+			}
+			cfg := &Prest{}
+			parseOtelConfig(v, cfg)
+			require.Equal(t, OtelProtocolGRPC, cfg.Otel.Protocol)
+		})
+	}
+}
+
 // sample_ratio is clamped to [0,1]; invalid interval falls back to default.
 func TestParseOtelClampsAndFallbacks(t *testing.T) {
 	t.Parallel()

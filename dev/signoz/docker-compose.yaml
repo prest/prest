@@ -10,7 +10,6 @@
 #
 # NOTE: init-clickhouse downloads a small helper binary from GitHub on first run,
 # so the initial `up` needs outbound network access.
-version: "3"
 x-common: &common
   networks:
     - signoz-net

@@ -11,34 +11,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// A connection opened after SetDriverName/SetAfterConnect uses the overridden
-// driver name and invokes the post-connect hook. Mutates package globals, so it
-// must not run in parallel; globals are restored on cleanup.
-func TestSetDriverName_and_AfterConnect(t *testing.T) {
-	origConnect := dbConnect
-	origDriver := driverName
-	origAfter := afterConnect
-	t.Cleanup(func() {
-		dbConnect = origConnect
-		driverName = origDriver
-		afterConnect = origAfter
-	})
-
+// A Manager built with WithDriverName/WithAfterConnect opens connections using
+// the injected driver name and invokes the post-connect hook. Uses the dbConnect
+// test seam; restored on cleanup.
+func TestManager_WithDriverNameAndAfterConnect(t *testing.T) {
 	var gotDriver string
-	dbConnect = func(name, _ string) (*sqlx.DB, error) {
+	restore := SetDBConnectForTest(func(name, _ string) (*sqlx.DB, error) {
 		gotDriver = name
 		mockDB, _, err := sqlmock.New()
 		if err != nil {
 			return nil, err
 		}
 		return sqlx.NewDb(mockDB, "sqlmock"), nil
-	}
+	})
+	t.Cleanup(restore)
 
 	var hookCalls int32
-	SetDriverName("postgres-otel")
-	SetAfterConnect(func(*sql.DB) { atomic.AddInt32(&hookCalls, 1) })
+	m := NewManager(&config.Prest{PGDatabase: "testdb", PGSSLMode: "disable"},
+		WithDriverName("postgres-otel"),
+		WithAfterConnect(func(*sql.DB) { atomic.AddInt32(&hookCalls, 1) }),
+	)
 
-	m := NewManager(&config.Prest{PGDatabase: "testdb", PGSSLMode: "disable"})
 	db, err := m.AddDatabaseToPool("testdb")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
@@ -47,12 +40,30 @@ func TestSetDriverName_and_AfterConnect(t *testing.T) {
 	require.Equal(t, int32(1), atomic.LoadInt32(&hookCalls))
 }
 
-// SetDriverName ignores an empty name to avoid breaking the default driver.
-func TestSetDriverName_emptyIgnored(t *testing.T) {
-	origDriver := driverName
-	t.Cleanup(func() { driverName = origDriver })
+// Without options, the Manager uses the default lib/pq "postgres" driver and no
+// post-connect hook.
+func TestManager_DefaultDriverName(t *testing.T) {
+	var gotDriver string
+	restore := SetDBConnectForTest(func(name, _ string) (*sqlx.DB, error) {
+		gotDriver = name
+		mockDB, _, err := sqlmock.New()
+		if err != nil {
+			return nil, err
+		}
+		return sqlx.NewDb(mockDB, "sqlmock"), nil
+	})
+	t.Cleanup(restore)
 
-	SetDriverName("custom")
-	SetDriverName("")
-	require.Equal(t, "custom", driverName)
+	m := NewManager(&config.Prest{PGDatabase: "testdb", PGSSLMode: "disable"})
+	db, err := m.AddDatabaseToPool("testdb")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+
+	require.Equal(t, defaultDriverName, gotDriver)
+}
+
+// WithDriverName ignores an empty name to preserve the default driver.
+func TestWithDriverName_emptyIgnored(t *testing.T) {
+	m := NewManager(&config.Prest{}, WithDriverName(""))
+	require.Equal(t, defaultDriverName, m.driverName)
 }

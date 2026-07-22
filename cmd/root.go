@@ -95,9 +95,30 @@ func startServer(ctx context.Context, cfg *config.Prest, a *app.App) {
 	}
 
 	address := cfg.HTTPHost + ":" + strconv.Itoa(cfg.HTTPPort)
-	srv := &http.Server{Addr: address, Handler: handler}
+	srv := &http.Server{
+		Addr:    address,
+		Handler: handler,
+		// Bound how long slow/idle clients may hold a connection. ReadHeaderTimeout
+		// mitigates Slowloris; IdleTimeout reaps idle keep-alives. WriteTimeout is
+		// intentionally left unset so large/streamed query responses are not
+		// truncated; per-request deadlines come from the timeout middleware.
+		ReadHeaderTimeout: 15 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
 	slog.Info("listening and serving", slog.String("addr", address), slog.String("context", cfg.ContextPath))
 
+	if err := serveWithShutdown(ctx, cfg, srv); err != nil {
+		slog.Error("HTTP server failed", "err", err)
+		os.Exit(1)
+	}
+}
+
+// serveWithShutdown runs srv until it fails or ctx is cancelled, then drains
+// in-flight requests via a graceful shutdown (bounded by shutdownGracePeriod).
+// It returns a non-nil error only for an unexpected serve failure, so callers
+// can decide how to exit. It is separated from startServer to be testable
+// without os.Exit.
+func serveWithShutdown(ctx context.Context, cfg *config.Prest, srv *http.Server) error {
 	errCh := make(chan error, 1)
 	go func() {
 		if cfg.HTTPSMode {
@@ -110,15 +131,20 @@ func startServer(ctx context.Context, cfg *config.Prest, a *app.App) {
 	select {
 	case err := <-errCh:
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("HTTP server failed", "err", err)
-			os.Exit(1)
+			return err
 		}
+		return nil
 	case <-ctx.Done():
 		slog.Info("shutdown signal received, stopping server")
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownGracePeriod)
 		defer cancel()
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			slog.Error("graceful shutdown failed", "err", err)
 		}
+		return nil
 	}
 }
+
+// shutdownGracePeriod bounds how long a graceful shutdown waits for in-flight
+// requests to finish before returning. It is a var so tests can shorten it.
+var shutdownGracePeriod = 10 * time.Second

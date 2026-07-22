@@ -1,6 +1,7 @@
 package config
 
 import (
+	"log/slog"
 	"strings"
 	"time"
 
@@ -47,6 +48,9 @@ func parseOtelConfig(v *viper.Viper, cfg *Prest) {
 
 	o.Protocol = strings.ToLower(strings.TrimSpace(v.GetString("otel.protocol")))
 	if o.Protocol == "" {
+		o.Protocol = OtelProtocolGRPC
+	} else if o.Protocol != OtelProtocolGRPC {
+		slog.Warn("otel.protocol unsupported, using grpc", "value", o.Protocol)
 		o.Protocol = OtelProtocolGRPC
 	}
 
