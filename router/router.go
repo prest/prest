@@ -12,6 +12,9 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/urfave/negroni/v3"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // RegisterRoutes wires HTTP routes onto the given router.
@@ -24,6 +27,13 @@ func RegisterRoutes(
 	adminStack *middlewares.AdminQueryStack,
 	plg *plugins.Plugins,
 ) {
+	// When telemetry is enabled, tag each request span with its matched route
+	// template (http.route) so span/metric labels stay bounded to templates
+	// instead of raw URLs. The middleware runs after mux matches the route.
+	if cfg.Otel.Enabled {
+		router.Use(otelRouteTagMiddleware)
+	}
+
 	if cfg.AuthEnabled {
 		router.HandleFunc("/auth", h.Auth.Login).Methods("POST")
 	}
@@ -63,6 +73,28 @@ func RegisterRoutes(
 	router.Handle("/batch/{database}/{schema}/{table}", crudRoute(crudStack, h.CRUD.BatchInsert)).Methods("POST")
 	router.Handle("/{database}/{schema}/{table}", crudRoute(crudStack, h.CRUD.Delete)).Methods("DELETE")
 	router.Handle("/{database}/{schema}/{table}", crudRoute(crudStack, h.CRUD.Update)).Methods("PUT", "PATCH")
+}
+
+// otelRouteTagMiddleware annotates the active OpenTelemetry span with the
+// matched gorilla/mux path template (http.route). It is a no-op for unmatched
+// routes and when no recording span is active.
+func otelRouteTagMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if route := mux.CurrentRoute(r); route != nil {
+			if tmpl, err := route.GetPathTemplate(); err == nil {
+				routeAttr := semconv.HTTPRoute(tmpl)
+				span := trace.SpanFromContext(r.Context())
+				// Semconv HTTP server span name: "{method} {route}".
+				span.SetName(r.Method + " " + tmpl)
+				span.SetAttributes(routeAttr)
+				// Bind the route template to the otelhttp server metrics too.
+				if labeler, ok := otelhttp.LabelerFromContext(r.Context()); ok {
+					labeler.Add(routeAttr)
+				}
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func crudRoute(stack *middlewares.CRUDStack, handler http.HandlerFunc) http.Handler {

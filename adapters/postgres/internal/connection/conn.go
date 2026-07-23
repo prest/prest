@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -28,6 +29,8 @@ type Manager struct {
 	pool         *Pool
 	currDatabase string
 	addDB        singleflight.Group
+	driverName   string
+	afterConnect func(*sql.DB)
 }
 
 // dbConnect opens a database connection. Overridden in unit tests.
@@ -35,9 +38,39 @@ type Manager struct {
 // nolint:revive
 var dbConnect = sqlx.Connect
 
-// NewManager creates a connection manager for the given config.
-func NewManager(cfg *config.Prest) *Manager {
-	return &Manager{cfg: cfg}
+// defaultDriverName is the lib/pq driver used to open pooled connections when
+// no instrumented driver is injected.
+const defaultDriverName = "postgres"
+
+// ManagerOption configures a Manager at construction time.
+type ManagerOption func(*Manager)
+
+// WithDriverName sets the database/sql driver used to open pooled connections
+// (e.g. an otelsql-wrapped driver). An empty name is ignored, preserving the
+// default lib/pq "postgres" driver.
+func WithDriverName(name string) ManagerOption {
+	return func(m *Manager) {
+		if name != "" {
+			m.driverName = name
+		}
+	}
+}
+
+// WithAfterConnect registers a hook invoked with the underlying *sql.DB
+// immediately after a pooled connection is created (e.g. to register OTel DB
+// pool metrics), without importing the OTel SDK into this package.
+func WithAfterConnect(fn func(*sql.DB)) ManagerOption {
+	return func(m *Manager) { m.afterConnect = fn }
+}
+
+// NewManager creates a connection manager for the given config. Options may
+// inject an instrumented driver name and a post-connect hook.
+func NewManager(cfg *config.Prest, opts ...ManagerOption) *Manager {
+	m := &Manager{cfg: cfg, driverName: defaultDriverName}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
 }
 
 func (m *Manager) getPool() *Pool {
@@ -231,13 +264,16 @@ func (m *Manager) AddDatabaseToPool(name string) (*sqlx.DB, error) {
 			return DB, nil
 		}
 
-		DB, err := dbConnect("postgres", uri)
+		DB, err := dbConnect(m.driverName, uri)
 		if err != nil {
 			return nil, err
 		}
 		maxIdle, maxOpen := m.poolLimitsFor(name)
 		DB.SetMaxIdleConns(maxIdle)
 		DB.SetMaxOpenConns(maxOpen)
+		if m.afterConnect != nil {
+			m.afterConnect(DB.DB)
+		}
 
 		p := m.getPool()
 		p.Mtx.Lock()

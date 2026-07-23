@@ -13,6 +13,11 @@ import (
 	"github.com/prest/prest/v2/adapters"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -21,6 +26,7 @@ const (
 	mcpServerName      = "prest"
 	mcpSelectPrefix    = "prest.select."
 	mcpMaxRows         = 100
+	mcpTracerName      = "github.com/prest/prest/v2/controllers/mcp"
 )
 
 // MCPHandler serves a read-only MCP-style HTTP endpoint.
@@ -184,7 +190,26 @@ func (h *MCPHandler) handleRPC(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *MCPHandler) dispatchRPC(r *http.Request, method string, params json.RawMessage) (any, error) {
+// endSpan records an error (if any) and ends the span. It is a no-op-safe
+// helper for the non-recording spans returned when telemetry is disabled.
+func endSpan(span trace.Span, err error) {
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+	span.End()
+}
+
+func (h *MCPHandler) dispatchRPC(r *http.Request, method string, params json.RawMessage) (result any, err error) {
+	ctx, span := otel.Tracer(mcpTracerName).Start(r.Context(), "mcp.rpc/"+method,
+		trace.WithSpanKind(trace.SpanKindServer),
+		trace.WithAttributes(
+			attribute.String("rpc.system", "jsonrpc"),
+			attribute.String("rpc.method", method),
+		))
+	defer func() { endSpan(span, err) }()
+	r = r.WithContext(ctx)
+
 	switch method {
 	case "initialize":
 		return map[string]any{
@@ -230,7 +255,7 @@ func (h *MCPHandler) discoveryPayload(r *http.Request) mcpDiscoveryPayload {
 	}
 }
 
-func (h *MCPHandler) callTool(r *http.Request, params json.RawMessage) (any, error) {
+func (h *MCPHandler) callTool(r *http.Request, params json.RawMessage) (result any, err error) {
 	var payload struct {
 		Name      string          `json:"name"`
 		Arguments json.RawMessage `json:"arguments"`
@@ -241,6 +266,11 @@ func (h *MCPHandler) callTool(r *http.Request, params json.RawMessage) (any, err
 	if payload.Name == "" {
 		return nil, fmt.Errorf("tool name is required")
 	}
+
+	ctx, span := otel.Tracer(mcpTracerName).Start(r.Context(), "mcp.tool/"+payload.Name,
+		trace.WithAttributes(attribute.String("mcp.tool.name", payload.Name)))
+	defer func() { endSpan(span, err) }()
+	r = r.WithContext(ctx)
 
 	switch payload.Name {
 	case "prest.list_databases":

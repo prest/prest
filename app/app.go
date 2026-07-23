@@ -21,6 +21,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // App is the composition root for the HTTP server.
@@ -116,7 +117,14 @@ func New(cfg *config.Prest) (*App, error) {
 
 	n := middlewares.New(cfg)
 	n.UseHandler(muxWithAdapter)
-	return &App{Config: cfg, Handler: n, Adapters: registry, pg: cfg.Adapter}, nil
+
+	var handler http.Handler = n
+	if cfg.Otel.Enabled {
+		// Outermost span covers the whole middleware chain and extracts inbound
+		// W3C trace context. Per-route http.route tags are added in the router.
+		handler = otelhttp.NewHandler(handler, "prest")
+	}
+	return &App{Config: cfg, Handler: handler, Adapters: registry, pg: cfg.Adapter}, nil
 }
 
 func ensureSchemaMigrated(cfg *config.Prest) error {

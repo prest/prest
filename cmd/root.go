@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/prest/prest/v2/app"
 	"github.com/prest/prest/v2/config"
@@ -41,7 +43,7 @@ var RootCmd = &cobra.Command{
 			slog.Error("initializing app", "err", logsafe.Error(err))
 			os.Exit(1)
 		}
-		startServer(cfg, prestApp)
+		startServer(cmd.Context(), cfg, prestApp)
 	},
 }
 
@@ -69,10 +71,10 @@ func Execute(ctx context.Context, cfg *config.Prest) {
 	}
 }
 
-// startServer starts the server
-func startServer(cfg *config.Prest, a *app.App) {
-	http.Handle(cfg.ContextPath, a.Handler)
-
+// startServer starts the HTTP server and blocks until it fails or ctx is
+// cancelled (SIGINT/SIGTERM), at which point it drains in-flight requests via
+// a graceful shutdown so deferred telemetry flushes can run.
+func startServer(ctx context.Context, cfg *config.Prest, a *app.App) {
 	if !cfg.AccessConf.Restrict {
 		slog.Warn("You are running prestd in public mode.")
 	}
@@ -81,17 +83,70 @@ func startServer(cfg *config.Prest, a *app.App) {
 		slog.Warn("You are running prestd in debug mode.")
 	}
 
+	handler := contextPathHandler(cfg.ContextPath, a.Handler)
+
 	address := cfg.HTTPHost + ":" + strconv.Itoa(cfg.HTTPPort)
+	srv := &http.Server{
+		Addr:    address,
+		Handler: handler,
+		// Bound how long slow/idle clients may hold a connection. ReadHeaderTimeout
+		// mitigates Slowloris; IdleTimeout reaps idle keep-alives. WriteTimeout is
+		// intentionally left unset so large/streamed query responses are not
+		// truncated; per-request deadlines come from the timeout middleware.
+		ReadHeaderTimeout: 15 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
 	slog.Info("listening and serving", slog.String("addr", address), slog.String("context", cfg.ContextPath))
 
-	if cfg.HTTPSMode {
-		if err := http.ListenAndServeTLS(address, cfg.HTTPSCert, cfg.HTTPSKey, nil); err != nil {
-			slog.Error("HTTPS server failed", "err", err)
-			os.Exit(1)
-		}
-	}
-	if err := http.ListenAndServe(address, nil); err != nil {
+	if err := serveWithShutdown(ctx, cfg, srv); err != nil {
 		slog.Error("HTTP server failed", "err", err)
 		os.Exit(1)
 	}
 }
+
+// contextPathHandler mounts h under contextPath. Unlike a stdlib http.ServeMux
+// it does not set http.Request.Pattern, so otelhttp preserves the route-template
+// span name set by the gorilla/mux router; it also strips the prefix so routes
+// resolve. A root context path ("" or "/") returns h unchanged.
+func contextPathHandler(contextPath string, h http.Handler) http.Handler {
+	if contextPath == "" || contextPath == "/" {
+		return h
+	}
+	return http.StripPrefix(contextPath, h)
+}
+
+// serveWithShutdown runs srv until it fails or ctx is cancelled, then drains
+// in-flight requests via a graceful shutdown (bounded by shutdownGracePeriod).
+// It returns a non-nil error only for an unexpected serve failure, so callers
+// can decide how to exit. It is separated from startServer to be testable
+// without os.Exit.
+func serveWithShutdown(ctx context.Context, cfg *config.Prest, srv *http.Server) error {
+	errCh := make(chan error, 1)
+	go func() {
+		if cfg.HTTPSMode {
+			errCh <- srv.ListenAndServeTLS(cfg.HTTPSCert, cfg.HTTPSKey)
+			return
+		}
+		errCh <- srv.ListenAndServe()
+	}()
+
+	select {
+	case err := <-errCh:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+		return nil
+	case <-ctx.Done():
+		slog.Info("shutdown signal received, stopping server")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownGracePeriod)
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			slog.Error("graceful shutdown failed", "err", err)
+		}
+		return nil
+	}
+}
+
+// shutdownGracePeriod bounds how long a graceful shutdown waits for in-flight
+// requests to finish before returning. It is a var so tests can shorten it.
+var shutdownGracePeriod = 10 * time.Second

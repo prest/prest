@@ -247,3 +247,24 @@ sufixfile = ".cache.prestd.db"
 # jsonb_agg (default) or json_agg; see
 # https://www.postgresql.org/docs/9.5/functions-aggregate.html
 type = "jsonb_agg"
+
+
+# ------------------------------------------------------------------------
+# [otel] - OpenTelemetry traces + metrics, pushed over OTLP (gRPC).
+# ------------------------------------------------------------------------
+# Telemetry is opt-in and disabled by default. pREST exposes NO scrape/metrics
+# HTTP route: signals are pushed to a collector you configure. When enabled but
+# the exporter cannot be set up, pREST warns and keeps serving with telemetry
+# off (fail-closed). Standard OTEL_* env vars (e.g. OTEL_EXPORTER_OTLP_ENDPOINT)
+# are honored by the SDK when the matching key below is left unset. Enabling also
+# bridges slog logs to OTLP (stdout JSON logs are preserved). For a local viewer,
+# see dev/signoz/ (make signoz-up).
+[otel]
+enabled = false                # PREST_OTEL_ENABLED; master switch (zero overhead when false)
+# service_name = "prestd"      # PREST_OTEL_SERVICE_NAME; resource service.name
+# endpoint = "localhost:4317"  # PREST_OTEL_ENDPOINT; OTLP gRPC collector host:port
+# protocol = "grpc"            # PREST_OTEL_PROTOCOL; grpc (only supported value in v1)
+# sample_ratio = 1.0           # PREST_OTEL_SAMPLE_RATIO; trace head sampling, 0.0-1.0
+# metrics_interval = "15s"     # PREST_OTEL_METRICS_INTERVAL; metric export period
+# insecure = false             # PREST_OTEL_INSECURE; disable TLS to collector (local/dev only)
+# db_statement = false         # PREST_OTEL_DB_STATEMENT; record SQL text on DB spans (trusted envs only)

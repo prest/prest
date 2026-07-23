@@ -1,9 +1,21 @@
 DOCKER_COMPOSE?=docker-compose -f docker-compose.yml
 UNIT_PKGS = $(shell go list ./... | grep -v '/integration')
 
-.PHONY: build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb test-integration-log test-integration-postgres-log test-integration-timescaledb-log ci
+.PHONY: build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb test-integration-log test-integration-postgres-log test-integration-timescaledb-log ci signoz-up signoz-down
 build_test_image:
 	$(DOCKER_COMPOSE) up -d postgres
+
+SIGNOZ_COMPOSE=docker compose -f dev/signoz/docker-compose.yaml
+
+# Local SigNoz stack to view pREST OpenTelemetry signals (traces/metrics/logs).
+# After `make signoz-up`, run prestd with:
+#   PREST_OTEL_ENABLED=true PREST_OTEL_ENDPOINT=localhost:4317 PREST_OTEL_INSECURE=true
+# and open the SigNoz UI at http://localhost:8080
+signoz-up:
+	$(SIGNOZ_COMPOSE) up -d
+
+signoz-down:
+	$(SIGNOZ_COMPOSE) down -v --remove-orphans
 
 ci: test-integration-postgres test-integration-timescaledb
 
