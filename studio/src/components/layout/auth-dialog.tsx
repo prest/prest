@@ -26,12 +26,16 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
 	const [value, setValue] = React.useState('')
 	const [remember, setRemember] = React.useState(remembered)
 
-	React.useEffect(() => {
+	// Repopulate fields from the current token each time the dialog opens.
+	// Done during render (not in an effect) per React's state-adjustment guidance.
+	const [prevOpen, setPrevOpen] = React.useState(open)
+	if (open !== prevOpen) {
+		setPrevOpen(open)
 		if (open) {
 			setValue(token ?? '')
 			setRemember(remembered)
 		}
-	}, [open, token, remembered])
+	}
 
 	const onSubmit = (e: React.FormEvent) => {
 		e.preventDefault()

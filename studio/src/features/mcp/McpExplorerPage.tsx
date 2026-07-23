@@ -126,7 +126,7 @@ export function McpExplorerPage() {
 		if (!selected) return
 		setInvoking(true)
 		setResult(null)
-		let args: Record<string, unknown> = {}
+		let args: Record<string, unknown>
 		try {
 			args = buildArgs()
 		} catch (err) {
