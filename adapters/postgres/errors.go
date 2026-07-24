@@ -13,4 +13,10 @@ var (
 	// ErrBodyEmpty err throw when body is empty
 	ErrBodyEmpty           = errors.New("body is empty")
 	ErrEmptyOrInvalidSlice = errors.New("empty or invalid slice")
+	// pgvector errors
+	ErrInvalidVector          = errors.New("invalid vector literal")
+	ErrInvalidVectorMetric    = errors.New("invalid vector distance metric")
+	ErrInvalidVectorOrder     = errors.New("invalid vector order specification")
+	ErrInvalidVectorFilter    = errors.New("invalid vector distance filter")
+	ErrInvalidVectorThreshold = errors.New("invalid vector distance threshold")
 )
