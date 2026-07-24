@@ -28,7 +28,9 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
 
 	// Repopulate fields from the current token each time the dialog opens.
 	// Done during render (not in an effect) per React's state-adjustment guidance.
-	const [prevOpen, setPrevOpen] = React.useState(open)
+	// Initialize prevOpen to false so an initially open dialog still runs the
+	// opening transition and syncs token/remembered via setValue/setRemember.
+	const [prevOpen, setPrevOpen] = React.useState(false)
 	if (open !== prevOpen) {
 		setPrevOpen(open)
 		if (open) {
