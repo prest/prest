@@ -21,6 +21,17 @@ x-prestd-service: &prestd-service
 services:
   postgres:
     image: postgres:18
+    # Official image + PGDG pgvector package so `CREATE EXTENSION vector`
+    # (run by migration 002) has its binaries. The outer entrypoint passes the
+    # bash command through; the inner `exec docker-entrypoint.sh postgres` then
+    # performs the normal initdb/startup.
+    entrypoint:
+      - bash
+      - -c
+      - >-
+        apt-get update
+        && apt-get install -y --no-install-recommends postgresql-18-pgvector
+        && exec docker-entrypoint.sh postgres
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres

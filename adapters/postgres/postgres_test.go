@@ -847,6 +847,42 @@ func TestOrderByRequest(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestOrderByRequest_KNN(t *testing.T) {
+	t.Parallel()
+
+	adapter := testAdapter()
+
+	// _korder alone: nearest-neighbor ordering by L2 distance
+	req, err := http.NewRequest(http.MethodGet, "/public/test?_korder=embedding:l2:[1,2,3]", nil)
+	require.NoError(t, err)
+	order, err := adapter.OrderByRequest(req)
+	require.NoError(t, err)
+	require.Contains(t, order, "ORDER BY")
+	require.Contains(t, order, `"embedding" <-> '[1,2,3]'::vector`)
+
+	// _order and _korder combine into a single ORDER BY
+	req, err = http.NewRequest(http.MethodGet, "/public/test?_order=name&_korder=embedding:cosine:[0.1,0.2]", nil)
+	require.NoError(t, err)
+	order, err = adapter.OrderByRequest(req)
+	require.NoError(t, err)
+	require.Contains(t, order, `"name"`)
+	require.Contains(t, order, `"embedding" <=> '[0.1,0.2]'::vector`)
+
+	// invalid metric surfaces an error and empty order
+	req, err = http.NewRequest(http.MethodGet, "/public/test?_korder=embedding:bogus:[1,2]", nil)
+	require.NoError(t, err)
+	order, err = adapter.OrderByRequest(req)
+	require.Error(t, err)
+	require.Empty(t, order)
+
+	// a non-numeric / malformed vector is rejected (no bytes reach SQL)
+	req, err = http.NewRequest(http.MethodGet, "/public/test?_korder=embedding:l2:notavector", nil)
+	require.NoError(t, err)
+	order, err = adapter.OrderByRequest(req)
+	require.Error(t, err)
+	require.Empty(t, order)
+}
+
 func TestSelectFields(t *testing.T) {
 
 	t.Parallel()
@@ -1793,6 +1829,56 @@ func Test_postgres_whereKeyAndValue(t *testing.T) {
 			rawKey: "name:unknown",
 			v:      "$eq.x",
 			errMsg: "unknown type suffix",
+		},
+		{
+			name:     "vecdist l2 less-than threshold",
+			rawKey:   "embedding:vecdist",
+			v:        "l2:lt:[1,2,3]:0.5",
+			wantKey:  `("embedding" <-> $1::vector) < $2`,
+			wantVals: []interface{}{"[1,2,3]", 0.5},
+		},
+		{
+			name:     "vecdist cosine less-than-equal on aliased column",
+			rawKey:   "d.embedding:vecdist",
+			v:        "cosine:lte:[0.1,0.2]:0.25",
+			wantKey:  `("d"."embedding" <=> $1::vector) <= $2`,
+			wantVals: []interface{}{"[0.1,0.2]", 0.25},
+		},
+		{
+			name:    "vecdist missing threshold",
+			rawKey:  "embedding:vecdist",
+			v:       "l2:lt:[1,2,3]",
+			wantErr: ErrInvalidVectorFilter,
+		},
+		{
+			name:    "vecdist invalid metric",
+			rawKey:  "embedding:vecdist",
+			v:       "bogus:lt:[1,2,3]:0.5",
+			wantErr: ErrInvalidVectorMetric,
+		},
+		{
+			name:    "vecdist non-comparison operator rejected",
+			rawKey:  "embedding:vecdist",
+			v:       "l2:like:[1,2,3]:0.5",
+			wantErr: ErrInvalidOperator,
+		},
+		{
+			name:    "vecdist invalid vector",
+			rawKey:  "embedding:vecdist",
+			v:       "l2:lt:[a,b]:0.5",
+			wantErr: ErrInvalidVector,
+		},
+		{
+			name:    "vecdist non-numeric threshold",
+			rawKey:  "embedding:vecdist",
+			v:       "l2:lt:[1,2,3]:notanumber",
+			wantErr: ErrInvalidVectorThreshold,
+		},
+		{
+			name:    "vecdist invalid column identifier",
+			rawKey:  "0col:vecdist",
+			v:       "l2:lt:[1,2,3]:0.5",
+			wantErr: ErrInvalidIdentifier,
 		},
 	}
 	for _, tt := range tests {
