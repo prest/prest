@@ -175,7 +175,7 @@ func (plg *Plugins) Handler() http.HandlerFunc {
 	}
 }
 
-func (plg *Plugins) loadMiddlewareFunc(fileName, funcName string) (handlerFunc negroni.HandlerFunc, err error) {
+func (plg *Plugins) loadMiddlewareFunc(fileName, funcName string) (negroni.Handler, error) {
 	libPath := filepath.Join(plg.cfg.PluginPath, "middlewares", fmt.Sprintf("%s.so", fileName))
 
 	loadedMiddlewareMu.Lock()
@@ -183,9 +183,10 @@ func (plg *Plugins) loadMiddlewareFunc(fileName, funcName string) (handlerFunc n
 	p := loadedPlugin.Plugin
 	if !loadedPlugin.Loaded {
 		loadedMiddlewareMu.Unlock()
-		p, err = plugin.Open(libPath)
-		if err != nil {
-			return
+		var openErr error
+		p, openErr = plugin.Open(libPath)
+		if openErr != nil {
+			return nil, fmt.Errorf("open middleware plugin %s: %w", libPath, openErr)
 		}
 		loadedMiddlewareMu.Lock()
 		if existing, ok := loadedMiddlewareFunc[libPath]; ok && existing.Loaded {
@@ -198,17 +199,17 @@ func (plg *Plugins) loadMiddlewareFunc(fileName, funcName string) (handlerFunc n
 		}
 	}
 	loadedMiddlewareMu.Unlock()
-	f, err := p.Lookup(fmt.Sprintf("%sMiddlewareLoad", funcName))
-	if err != nil {
-		slog.Error("unable to load middleware plugin function: %s", "funcName", funcName)
-		return
+	f, lookupErr := p.Lookup(fmt.Sprintf("%sMiddlewareLoad", funcName))
+	if lookupErr != nil {
+		slog.Error("unable to load middleware plugin function", "funcName", funcName, "err", lookupErr)
+		return nil, fmt.Errorf("lookup middleware symbol %sMiddlewareLoad in %s: %w", funcName, libPath, lookupErr)
 	}
-	handlerFunc, ok := f.(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc))
+	loader, ok := f.(func() negroni.Handler)
 	if !ok {
-		slog.Error("it not a negroni middleware function: %s", "funcName", funcName)
-		return
+		slog.Error("it is not a negroni middleware function", "funcName", funcName)
+		return nil, fmt.Errorf("middleware plugin function %s is not func() negroni.Handler", funcName)
 	}
-	return
+	return loader(), nil
 }
 
 // Middleware loads configured plugin middleware.
@@ -217,13 +218,13 @@ func (plg *Plugins) Middleware() negroni.Handler {
 		for _, plugin := range plg.cfg.PluginMiddlewareList {
 			fn, err := plg.loadMiddlewareFunc(plugin.File, plugin.Func)
 			if err != nil {
-				slog.Error("unable to load middleware plugin function: %s", "funcName", plugin.Func)
+				slog.Error("unable to load middleware plugin function", "funcName", plugin.Func, "err", err)
 				continue
 			}
 			if fn == nil {
 				continue
 			}
-			return negroni.HandlerFunc(fn)
+			return fn
 		}
 	}
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
