@@ -126,6 +126,7 @@ type Prest struct {
 	PluginPath           string
 	PluginMiddlewareList []PluginMiddleware
 	Otel                 OtelConf
+	QueryGuard           QueryGuardConf
 	Logger               *slog.Logger
 }
 
@@ -467,6 +468,8 @@ func Parse(v *viper.Viper, cfg *Prest, configPath string) {
 	cfg.StudioConf.Enabled = v.GetBool("studio.enabled")
 
 	parseOtelConfig(v, cfg)
+
+	parseQueryGuardConfig(v, cfg)
 
 	cfg.AccessConf.Tables = unmarshalKeyOrZero[[]TablesConf](v, "access.tables")
 	cfg.AccessConf.Users = unmarshalKeyOrZero[[]UsersConf](v, "access.users")
