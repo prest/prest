@@ -106,6 +106,9 @@ func DoRequestJSON(
 	if r != nil {
 		byt, err = json.Marshal(r)
 		assert.Nil(t, err, "error on json marshal")
+		if err != nil {
+			return
+		}
 	}
 
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(byt))
@@ -114,6 +117,9 @@ func DoRequestJSON(
 		return
 	}
 	req.Header.Add("X-Application", "prest")
+	if r != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
