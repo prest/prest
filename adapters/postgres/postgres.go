@@ -972,6 +972,18 @@ func (adapter *postgres) OrderByRequest(r *http.Request) (values string, err err
 
 	terms := []string{}
 
+	// _korder must lead the ORDER BY so pgvector can use an ANN index for the
+	// nearest-neighbor scan; a preceding regular _order term would force an
+	// exact sort. e.g. _korder=embedding:l2:[1,2,3] -> "embedding" <-> '[1,2,3]'::vector
+	if reqKOrder != "" {
+		term, kerr := buildVectorOrderTerm(reqKOrder)
+		if kerr != nil {
+			err = kerr
+			return
+		}
+		terms = append(terms, term)
+	}
+
 	if reqOrder != "" {
 		for _, fld := range strings.Split(reqOrder, ",") {
 			desc := false
@@ -990,17 +1002,6 @@ func (adapter *postgres) OrderByRequest(r *http.Request) (values string, err err
 			}
 			terms = append(terms, q)
 		}
-	}
-
-	// _korder adds a pgvector nearest-neighbor ordering term, e.g.
-	// _korder=embedding:l2:[1,2,3] -> "embedding" <-> '[1,2,3]'::vector
-	if reqKOrder != "" {
-		term, kerr := buildVectorOrderTerm(reqKOrder)
-		if kerr != nil {
-			err = kerr
-			return
-		}
-		terms = append(terms, term)
 	}
 
 	values = " ORDER BY " + strings.Join(terms, " , ")

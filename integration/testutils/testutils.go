@@ -89,6 +89,52 @@ func DoRequestWithHeaders(
 	}
 }
 
+// DoRequestJSON performs an HTTP request, asserts the response status, and
+// decodes the JSON body into target. Unlike DoRequest (substring checks only),
+// this exposes the parsed response so callers can assert on structure/order.
+func DoRequestJSON(
+	t *testing.T,
+	url string,
+	r interface{},
+	method string,
+	expectedStatus int,
+	where string,
+	target interface{},
+) {
+	var byt []byte
+	var err error
+	if r != nil {
+		byt, err = json.Marshal(r)
+		assert.Nil(t, err, "error on json marshal")
+	}
+
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(byt))
+	assert.Nil(t, err, "error on New Request")
+	if err != nil {
+		return
+	}
+	req.Header.Add("X-Application", "prest")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	assert.Nil(t, err, "error on Do Request")
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	assert.Nil(t, err, "error on io ReadAll")
+	if err != nil {
+		return
+	}
+
+	assert.Equal(t, expectedStatus, resp.StatusCode,
+		"%s: unexpected status; body: %s", where, string(body))
+	assert.NoError(t, json.Unmarshal(body, target),
+		"%s: body: %s", where, string(body))
+}
+
 // DoRequestRaw sends a request with a raw body and optional headers.
 func DoRequestRaw(t *testing.T, url string, body []byte, method string, expectedStatus int, where string, headers map[string]string, expectedBody ...string) {
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))

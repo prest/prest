@@ -860,13 +860,18 @@ func TestOrderByRequest_KNN(t *testing.T) {
 	require.Contains(t, order, "ORDER BY")
 	require.Contains(t, order, `"embedding" <-> '[1,2,3]'::vector`)
 
-	// _order and _korder combine into a single ORDER BY
+	// _order and _korder combine into a single ORDER BY, with the KNN distance
+	// term LEADING so pgvector can use an ANN index (a preceding regular _order
+	// term would force an exact sort).
 	req, err = http.NewRequest(http.MethodGet, "/public/test?_order=name&_korder=embedding:cosine:[0.1,0.2]", nil)
 	require.NoError(t, err)
 	order, err = adapter.OrderByRequest(req)
 	require.NoError(t, err)
 	require.Contains(t, order, `"name"`)
 	require.Contains(t, order, `"embedding" <=> '[0.1,0.2]'::vector`)
+	require.Less(t,
+		strings.Index(order, `"embedding" <=>`), strings.Index(order, `"name"`),
+		"KNN term must lead the ORDER BY, before the regular _order term")
 
 	// invalid metric surfaces an error and empty order
 	req, err = http.NewRequest(http.MethodGet, "/public/test?_korder=embedding:bogus:[1,2]", nil)

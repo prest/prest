@@ -1,9 +1,7 @@
 package controllers_test
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"testing"
 
@@ -17,20 +15,8 @@ import (
 // which cannot prove nearest-first ordering).
 func getJSONArray(t *testing.T, url string) []map[string]interface{} {
 	t.Helper()
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	require.NoError(t, err)
-	req.Header.Set("X-Application", "prest")
-
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode, "unexpected status; body: %s", string(body))
-
 	var rows []map[string]interface{}
-	require.NoError(t, json.Unmarshal(body, &rows), "body: %s", string(body))
+	testutils.DoRequestJSON(t, url, nil, http.MethodGet, http.StatusOK, url, &rows)
 	return rows
 }
 
@@ -69,10 +55,15 @@ func TestVectorKNNOrdering(t *testing.T) {
 func TestVectorKNNCombinedWithOrder(t *testing.T) {
 	base := helpers.ServerURL(t)
 
-	// _order=name (tie-break) plus KNN distance ordering — request must succeed.
-	url := fmt.Sprintf("%s/prest-test/public/vector_items?_order=name&_korder=embedding:l2:[1,0,0]", base)
+	// KNN leads the sort; _order=-name only breaks the beta/gamma distance tie.
+	// L2 from [1,0,0]: alpha=0, delta≈0.14, then beta≈1.41 == gamma≈1.41 (tied).
+	// Descending name pins the tie to gamma-before-beta — the reverse of both the
+	// fixture insertion order (alpha,beta,gamma,delta) and an ascending tie-break,
+	// so the exact sequence proves _korder AND _order each shaped the result.
+	url := fmt.Sprintf("%s/prest-test/public/vector_items?_order=-name&_korder=embedding:l2:[1,0,0]", base)
 	rows := getJSONArray(t, url)
-	require.GreaterOrEqual(t, len(rows), 4)
+	require.Equal(t, []string{"alpha", "delta", "gamma", "beta"}, names(rows),
+		"KNN distance orders alpha,delta first; -name tie-break orders gamma before beta")
 }
 
 // TestVectorThresholdFilter verifies the :vecdist distance-threshold WHERE filter.
@@ -86,10 +77,16 @@ func TestVectorThresholdFilter(t *testing.T) {
 	require.ElementsMatch(t, []string{"alpha", "delta"}, got,
 		"threshold must exclude far vectors beta and gamma")
 
-	// A tiny threshold keeps only the exact match.
-	url = fmt.Sprintf("%s/prest-test/public/vector_items?embedding:vecdist=l2:lte:[1,0,0]:0.0001", base)
+	// lte at an exact 0 threshold includes alpha at the equality boundary
+	// (distance == 0) and excludes every other row.
+	url = fmt.Sprintf("%s/prest-test/public/vector_items?embedding:vecdist=l2:lte:[1,0,0]:0", base)
 	rows = getJSONArray(t, url)
-	require.Equal(t, []string{"alpha"}, names(rows))
+	require.Equal(t, []string{"alpha"}, names(rows), "lte 0 must include the exact match")
+
+	// lt at 0 is strictly below the minimum distance, so no row qualifies.
+	url = fmt.Sprintf("%s/prest-test/public/vector_items?embedding:vecdist=l2:lt:[1,0,0]:0", base)
+	rows = getJSONArray(t, url)
+	require.Empty(t, names(rows), "lt 0 must exclude the exact match at the boundary")
 }
 
 // TestVectorSecurity_RejectsInjection is the adversarial suite: every payload is
