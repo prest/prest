@@ -617,6 +617,11 @@ func (adapter *postgres) whereKeyAndValue(rawKey, v string, pid *int) (key strin
 				tsQuery = fmt.Sprintf(`%s @@ to_tsquery('%s', '%s')`, tsQueryField[0], safeCfg, safeVal)
 			}
 			key = tsQuery
+		case "vecdist":
+			// pgvector distance-threshold filter:
+			// embedding:vecdist=<metric>:<comparison>:<vector>:<threshold>
+			key, values, err = buildVectorFilter(keyInfo[0], value, pid)
+			return
 		default:
 			if !ident.IsValid(keyInfo[0]) {
 				err = errors.Wrapf(ErrInvalidIdentifier, "%s", keyInfo[0])
@@ -959,12 +964,28 @@ func (adapter *postgres) SelectFields(fields []string) (sql string, err error) {
 func (adapter *postgres) OrderByRequest(r *http.Request) (values string, err error) {
 	queries := r.URL.Query()
 	reqOrder := queries.Get("_order")
+	reqKOrder := queries.Get("_korder")
+
+	if reqOrder == "" && reqKOrder == "" {
+		return
+	}
+
+	terms := []string{}
+
+	// _korder must lead the ORDER BY so pgvector can use an ANN index for the
+	// nearest-neighbor scan; a preceding regular _order term would force an
+	// exact sort. e.g. _korder=embedding:l2:[1,2,3] -> "embedding" <-> '[1,2,3]'::vector
+	if reqKOrder != "" {
+		term, kerr := buildVectorOrderTerm(reqKOrder)
+		if kerr != nil {
+			err = kerr
+			return
+		}
+		terms = append(terms, term)
+	}
 
 	if reqOrder != "" {
-		values = " ORDER BY "
-		orderingArr := strings.Split(reqOrder, ",")
-
-		for i, fld := range orderingArr {
+		for _, fld := range strings.Split(reqOrder, ",") {
 			desc := false
 			field := fld
 			if strings.HasPrefix(field, "-") {
@@ -973,19 +994,17 @@ func (adapter *postgres) OrderByRequest(r *http.Request) (values string, err err
 			}
 			if !ident.IsValid(field) {
 				err = ErrInvalidIdentifier
-				values = ""
 				return
 			}
 			q, _ := ident.Quote(field)
 			if desc {
 				q = fmt.Sprintf("%s DESC", q)
 			}
-			values = fmt.Sprintf("%s %s", values, q)
-			if i < len(orderingArr)-1 {
-				values = fmt.Sprintf("%s ,", values)
-			}
+			terms = append(terms, q)
 		}
 	}
+
+	values = " ORDER BY " + strings.Join(terms, " , ")
 	return
 }
 

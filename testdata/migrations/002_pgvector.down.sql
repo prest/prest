@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS vector_items;
+DROP EXTENSION IF EXISTS vector;
