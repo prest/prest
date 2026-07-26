@@ -13,8 +13,8 @@ import (
 
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/config"
-	pctx "github.com/prest/prest/v2/context"
-	"github.com/prest/prest/v2/controllers/auth"
+	pctx "github.com/prest/prest/v2/internal/contextkeys"
+	"github.com/prest/prest/v2/internal/auth"
 
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/urfave/negroni/v3"

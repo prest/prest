@@ -13,11 +13,12 @@ import (
 	"github.com/prest/prest/v2/adapters/postgres"
 	"github.com/prest/prest/v2/adapters/timescaledb"
 	"github.com/prest/prest/v2/config"
-	pctx "github.com/prest/prest/v2/context"
+	pctx "github.com/prest/prest/v2/internal/contextkeys"
 	"github.com/prest/prest/v2/controllers"
 	"github.com/prest/prest/v2/middlewares"
 	"github.com/prest/prest/v2/plugins"
 	"github.com/prest/prest/v2/router"
+	"github.com/prest/prest/v2/transactions"
 
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
@@ -98,10 +99,22 @@ func New(cfg *config.Prest) (*App, error) {
 
 	deps := controllers.NewDepsFromConfig(cfg)
 	deps.AdapterRegistry = registry // Inject registry into deps
+
+	// Create transaction manager if transaction support is enabled
+	var txManager *transactions.Manager
+	if cfg.TransactionEnabled {
+		db, err := PostgresDB(cfg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get database for transaction manager: %w", err)
+		}
+		txManager = transactions.NewManager(db, 30*time.Minute)
+		deps.TransactionManager = txManager
+	}
+
 	h := controllers.NewHandlers(deps, cfg)
 
 	plg := plugins.New(cfg)
-	crud := middlewares.NewCRUDStack(cfg, plg)
+	crud := middlewares.NewCRUDStack(cfg, plg, txManager)
 	queryStack := middlewares.NewQueryStack(cfg, middlewares.ScriptPermsFromAdapter(cfg.Adapter))
 	var adminStack *middlewares.AdminQueryStack
 	if cfg.QueriesConf.RegisterEnabled && cfg.QueriesConf.Storage == config.QueriesStorageDatabase {
@@ -130,7 +143,9 @@ func New(cfg *config.Prest) (*App, error) {
 func ensureSchemaMigrated(cfg *config.Prest) error {
 	needAuth := cfg.AuthEnabled && cfg.AuthMigrateOnStartup
 	needQueries := cfg.QueriesConf.Storage == config.QueriesStorageDatabase && cfg.QueriesConf.MigrateOnStartup
-	if !needAuth && !needQueries {
+	needTx := cfg.TransactionEnabled
+
+	if !needAuth && !needQueries && !needTx {
 		return nil
 	}
 
@@ -152,6 +167,13 @@ func ensureSchemaMigrated(cfg *config.Prest) error {
 			return fmt.Errorf("migrate queries table %s.%s: %w", qc.Schema, qc.Table, err)
 		}
 		slog.Info("queries table migration complete", "schema", qc.Schema, "table", qc.Table)
+	}
+
+	if needTx {
+		if err := EnsureTransactionTables(db); err != nil {
+			return fmt.Errorf("migrate transaction tables: %w", err)
+		}
+		slog.Info("transaction tables migration complete")
 	}
 
 	return nil

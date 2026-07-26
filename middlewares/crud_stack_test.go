@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/prest/prest/v2/adapters/mockgen"
+	"github.com/prest/prest/v2/internal/mockgen"
 	"github.com/prest/prest/v2/cache"
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/plugins"
@@ -45,7 +45,7 @@ func TestNewCRUDStack(t *testing.T) {
 		JWTAlgo:     "HS256",
 		Cache:       cache.Config{Enabled: false},
 	}
-	stack := NewCRUDStack(cfg, plugins.New(cfg))
+	stack := NewCRUDStack(cfg, plugins.New(cfg), nil)
 	require.Len(t, stack.Handlers(), 5)
 
 	req := httptest.NewRequest(http.MethodGet, "/prest-test/public/test", nil)
@@ -69,7 +69,7 @@ func TestNewCRUDStackWithPerms(t *testing.T) {
 		JWTAlgo:     "HS256",
 		Cache:       cache.Config{Enabled: false},
 	}
-	stack := NewCRUDStackWithPerms(cfg, plugins.New(cfg), perms)
+	stack := NewCRUDStackWithPerms(cfg, plugins.New(cfg), perms, nil)
 	require.Len(t, stack.Handlers(), 5)
 
 	req := httptest.NewRequest(http.MethodGet, "/prest-test/public/test", nil)

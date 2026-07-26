@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prest/prest/v2/helpers"
+	"github.com/prest/prest/v2/internal/helpers"
 )
 
 //go:embed all:dist

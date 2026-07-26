@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/prest/prest/v2/adapters"
-	"github.com/prest/prest/v2/adapters/mock"
-	pctx "github.com/prest/prest/v2/context"
+	"github.com/prest/prest/v2/internal/mock"
+	pctx "github.com/prest/prest/v2/internal/contextkeys"
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"

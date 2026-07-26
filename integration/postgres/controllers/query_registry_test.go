@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/prest/prest/v2/controllers"
-	"github.com/prest/prest/v2/controllers/auth"
+	"github.com/prest/prest/v2/internal/auth"
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/integration/testutils"
 )

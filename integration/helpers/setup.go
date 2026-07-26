@@ -12,7 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/v2/adapters/postgres"
 	"github.com/prest/prest/v2/config"
-	pctx "github.com/prest/prest/v2/context"
+	pctx "github.com/prest/prest/v2/internal/contextkeys"
 	"github.com/prest/prest/v2/controllers"
 	"github.com/prest/prest/v2/middlewares"
 	"github.com/prest/prest/v2/plugins"
@@ -161,7 +161,7 @@ func IntegrationHandler(t *testing.T, cfg *config.Prest) http.Handler {
 	t.Helper()
 	h := controllers.NewHandlersFromConfig(cfg)
 	plg := plugins.New(cfg)
-	crud := middlewares.NewCRUDStack(cfg, plg)
+	crud := middlewares.NewCRUDStack(cfg, plg, nil)
 	queryStack := middlewares.NewQueryStack(cfg, middlewares.ScriptPermsFromAdapter(cfg.Adapter))
 	var adminStack *middlewares.AdminQueryStack
 	if cfg.QueriesConf.RegisterEnabled && cfg.QueriesConf.Storage == config.QueriesStorageDatabase {

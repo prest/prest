@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	"github.com/prest/prest/v2/adapters"
-	pctx "github.com/prest/prest/v2/context"
-	"github.com/prest/prest/v2/controllers/auth"
+	pctx "github.com/prest/prest/v2/internal/contextkeys"
+	"github.com/prest/prest/v2/internal/auth"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"

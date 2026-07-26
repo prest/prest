@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
-	pctx "github.com/prest/prest/v2/context"
+	pctx "github.com/prest/prest/v2/internal/contextkeys"
 	"github.com/stretchr/testify/require"
 )
 

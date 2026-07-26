@@ -1,40 +1,53 @@
 package controllers
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/prest/prest/v2/adapters"
-	pctx "github.com/prest/prest/v2/context"
-	"github.com/prest/prest/v2/controllers/auth"
+	pctx "github.com/prest/prest/v2/internal/contextkeys"
+	"github.com/prest/prest/v2/internal/auth"
+	"github.com/prest/prest/v2/transactions"
 
 	"github.com/structy/log"
 )
 
 // CRUDHandler serves table CRUD endpoints.
 type CRUDHandler struct {
-	builder  adapters.RequestQueryBuilder
-	sql      adapters.SQLBuilder
-	executor adapters.QueryExecutor
-	perms    adapters.PermissionsChecker
-	db       adapters.DatabaseRegistry
-	cache    ResponseCacher
-	singleDB bool
+	builder        adapters.RequestQueryBuilder
+	sql            adapters.SQLBuilder
+	executor       adapters.QueryExecutor
+	legacyExecutor adapters.LegacyExecutor
+	perms          adapters.PermissionsChecker
+	db             adapters.DatabaseRegistry
+	cache          ResponseCacher
+	singleDB       bool
+	txManager      *transactions.Manager
 }
 
 // NewCRUDHandler creates a CRUDHandler.
 func NewCRUDHandler(deps Deps) *CRUDHandler {
 	return &CRUDHandler{
-		builder:  deps.Builder,
-		sql:      deps.SQL,
-		executor: deps.Executor,
-		perms:    deps.Perms,
-		db:       deps.DB,
-		cache:    deps.Cache,
-		singleDB: deps.SingleDB,
+		builder:        deps.Builder,
+		sql:            deps.SQL,
+		executor:       deps.Executor,
+		legacyExecutor: deps.LegacyExecutor,
+		perms:          deps.Perms,
+		db:             deps.DB,
+		cache:          deps.Cache,
+		singleDB:       deps.SingleDB,
+		txManager:      deps.TransactionManager,
 	}
+}
+
+func txIDFromContext(r *http.Request) string {
+	if txID, ok := r.Context().Value(pctx.TxKey).(string); ok {
+		return txID
+	}
+	return ""
 }
 
 // Select performs a SELECT on a table.
@@ -220,6 +233,20 @@ func (h *CRUDHandler) Insert(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := requestContext(r, database)
 	defer cancel()
 
+	txID := txIDFromContext(r)
+	if txID != "" && h.txManager != nil {
+		if err := h.txManager.AddOperation(ctx, txID, "INSERT", table, sql, values); err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(map[string]string{
+			"status": "pending",
+			"tx":     txID,
+		})
+		return
+	}
+
 	sc := h.executor.InsertCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
 		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
@@ -327,6 +354,20 @@ func (h *CRUDHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := requestContext(r, database)
 	defer cancel()
 
+	txID := txIDFromContext(r)
+	if txID != "" && h.txManager != nil {
+		if err := h.txManager.AddOperation(ctx, txID, "DELETE", table, sql, values); err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(map[string]string{
+			"status": "pending",
+			"tx":     txID,
+		})
+		return
+	}
+
 	sc := h.executor.DeleteCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
 		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
@@ -392,6 +433,20 @@ func (h *CRUDHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := requestContext(r, database)
 	defer cancel()
+
+	txID := txIDFromContext(r)
+	if txID != "" && h.txManager != nil {
+		if err := h.txManager.AddOperation(ctx, txID, "UPDATE", table, sql, values); err != nil {
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(map[string]string{
+			"status": "pending",
+			"tx":     txID,
+		})
+		return
+	}
 
 	sc := h.executor.UpdateCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {

@@ -15,9 +15,9 @@ import (
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
 	"github.com/prest/prest/v2/adapters/postgres/internal/connection"
-	"github.com/prest/prest/v2/adapters/postgres/statements"
+	"github.com/prest/prest/v2/internal/postgres/statements"
 	"github.com/prest/prest/v2/config"
-	pctx "github.com/prest/prest/v2/context"
+	pctx "github.com/prest/prest/v2/internal/contextkeys"
 	"github.com/stretchr/testify/require"
 )
 

@@ -11,7 +11,7 @@ import (
 
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/config"
-	"github.com/prest/prest/v2/template"
+	"github.com/prest/prest/v2/internal/template"
 
 	"log/slog"
 )

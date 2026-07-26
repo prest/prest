@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/prest/prest/v2/middlewares/statements"
+	"github.com/prest/prest/v2/internal/statements"
 
 	"github.com/clbanning/mxj/j2x"
 )

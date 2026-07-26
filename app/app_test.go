@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/prest/prest/v2/adapters"
-	"github.com/prest/prest/v2/adapters/mock"
+	"github.com/prest/prest/v2/internal/mock"
 	"github.com/prest/prest/v2/adapters/timescaledb"
 	"github.com/prest/prest/v2/app"
 	"github.com/prest/prest/v2/config"

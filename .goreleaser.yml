@@ -5,7 +5,7 @@ builds:
     main: ./cmd/prestd/main.go
     mod_timestamp: '{{ .CommitTimestamp }}'
     ldflags:
-      - -X github.com/prest/prest/v2/helpers.Version={{.Version}} -X github.com/prest/prest/v2/helpers.Commit={{.Commit}} -X github.com/prest/prest/v2/helpers.Date={{ .CommitDate }} -X github.com/prest/prest/v2/helpers.BuiltBy=goreleaser
+      - -X github.com/prest/prest/v2/internal/helpers.Version={{.Version}} -X github.com/prest/prest/v2/internal/helpers.Commit={{.Commit}} -X github.com/prest/prest/v2/internal/helpers.Date={{ .CommitDate }} -X github.com/prest/prest/v2/internal/helpers.BuiltBy=goreleaser
     goos:
       - windows
       - darwin

@@ -24,7 +24,7 @@ RUN apt-get update && apt-get upgrade -y && \
     rm -rf /var/lib/apt/lists/* && \
     if [ -f go.mod ]; then \
       go mod vendor && \
-      go build -ldflags "-s -w -X github.com/prest/prest/v2/helpers.Version=${VERSION} -X github.com/prest/prest/v2/helpers.Commit=${COMMIT} -X github.com/prest/prest/v2/helpers.Date=${DATE}" -o prestd cmd/prestd/main.go; \
+      go build -ldflags "-s -w -X github.com/prest/prest/v2/internal/helpers.Version=${VERSION} -X github.com/prest/prest/v2/internal/helpers.Commit=${COMMIT} -X github.com/prest/prest/v2/internal/helpers.Date=${DATE}" -o prestd cmd/prestd/main.go; \
     fi
 
 # Full-repo build (default for docker build .)

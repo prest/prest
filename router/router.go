@@ -68,6 +68,16 @@ func RegisterRoutes(
 	router.HandleFunc("/_health", h.Health.Handler()).Methods("GET")
 	router.HandleFunc("/_ready", h.Ready.Handler()).Methods("GET")
 
+	// Transaction management routes
+	if h.Transaction != nil {
+		txPath := "/{database}/{schema}/transactions"
+		router.Handle(txPath, crudRoute(crudStack, h.Transaction.List)).Methods("GET")
+		router.Handle(txPath, crudRoute(crudStack, h.Transaction.Start)).Methods("POST")
+		router.Handle(txPath+"/{txID}", crudRoute(crudStack, h.Transaction.Status)).Methods("GET")
+		router.Handle(txPath+"/{txID}/commit", crudRoute(crudStack, h.Transaction.Commit)).Methods("POST")
+		router.Handle(txPath+"/{txID}/rollback", crudRoute(crudStack, h.Transaction.Rollback)).Methods("POST")
+	}
+
 	router.Handle("/{database}/{schema}/{table}", crudRoute(crudStack, h.CRUD.Select)).Methods("GET")
 	router.Handle("/{database}/{schema}/{table}", crudRoute(crudStack, h.CRUD.Insert)).Methods("POST")
 	router.Handle("/batch/{database}/{schema}/{table}", crudRoute(crudStack, h.CRUD.BatchInsert)).Methods("POST")

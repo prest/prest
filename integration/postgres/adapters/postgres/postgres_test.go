@@ -15,10 +15,10 @@ import (
 
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/adapters/postgres"
-	"github.com/prest/prest/v2/adapters/postgres/statements"
-	"github.com/prest/prest/v2/adapters/scanner"
+	"github.com/prest/prest/v2/internal/postgres/statements"
+	"github.com/prest/prest/v2/internal/scanner"
 	"github.com/prest/prest/v2/config"
-	pctx "github.com/prest/prest/v2/context"
+	pctx "github.com/prest/prest/v2/internal/contextkeys"
 	"github.com/prest/prest/v2/integration/helpers"
 
 	"github.com/stretchr/testify/require"

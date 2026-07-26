@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/prest/prest/v2/adapters/mockgen"
-	"github.com/prest/prest/v2/controllers/auth"
+	"github.com/prest/prest/v2/internal/mockgen"
+	"github.com/prest/prest/v2/internal/auth"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 	jose "gopkg.in/square/go-jose.v2"

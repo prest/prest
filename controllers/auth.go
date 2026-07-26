@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/prest/prest/v2/adapters"
-	"github.com/prest/prest/v2/controllers/auth"
+	"github.com/prest/prest/v2/internal/auth"
 	"golang.org/x/crypto/bcrypt"
 
 	jose "gopkg.in/square/go-jose.v2"

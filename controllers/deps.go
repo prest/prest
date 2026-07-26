@@ -4,6 +4,7 @@ import (
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/cache"
 	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/transactions"
 )
 
 // ResponseCacher stores HTTP response payloads for cacheable requests.
@@ -28,6 +29,7 @@ type Deps struct {
 	Catalog            adapters.CatalogQuerier
 	Builder            adapters.RequestQueryBuilder
 	Executor           adapters.QueryExecutor
+	LegacyExecutor     adapters.LegacyExecutor
 	SQL                adapters.SQLBuilder
 	Perms              adapters.PermissionsChecker
 	Scripts            adapters.ScriptRunner
@@ -41,6 +43,7 @@ type Deps struct {
 	SingleDB           bool
 	PGDatabase         string
 	Auth               AuthConfig
+	TransactionManager *transactions.Manager
 }
 
 // NewDepsFromConfig builds handler dependencies from application config.
@@ -61,6 +64,7 @@ func NewDepsFromConfig(p *config.Prest) Deps {
 		Catalog:       p.Adapter,
 		Builder:       p.Adapter,
 		Executor:      p.Adapter,
+		LegacyExecutor: p.Adapter,
 		SQL:           p.Adapter,
 		Perms:         p.Adapter,
 		Scripts:       p.Adapter,
@@ -96,6 +100,7 @@ type Handlers struct {
 	QueryRegistry *QueryRegistryHandler
 	Health        *HealthHandler
 	Ready         *HealthHandler
+	Transaction   *TransactionHandler
 }
 
 // NewHandlers constructs handlers from dependencies.
@@ -110,6 +115,9 @@ func NewHandlers(deps Deps, cfg *config.Prest) *Handlers {
 		Script:  NewScriptHandler(deps),
 		Health:  NewHealthHandler(checks),
 		Ready:   NewHealthHandler(DefaultReadyCheckList(deps.Readiness)),
+	}
+	if deps.TransactionManager != nil {
+		h.Transaction = NewTransactionHandler(deps.TransactionManager, deps.AdapterRegistry)
 	}
 	if cfg != nil && deps.QueryRegistry != nil && cfg.QueriesConf.RegisterEnabled && cfg.QueriesConf.Storage == config.QueriesStorageDatabase {
 		h.QueryRegistry = NewQueryRegistryHandler(deps, cfg.QueriesConf)

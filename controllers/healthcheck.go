@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	pctx "github.com/prest/prest/v2/context"
+	pctx "github.com/prest/prest/v2/internal/contextkeys"
 	"github.com/prest/prest/v2/internal/logsafe"
 
 	"log/slog"

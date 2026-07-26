@@ -8,11 +8,11 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/v2/adapters/mockgen"
+	"github.com/prest/prest/v2/internal/mockgen"
 	"github.com/prest/prest/v2/config"
-	pctx "github.com/prest/prest/v2/context"
-	"github.com/prest/prest/v2/controllers/auth"
-	"github.com/prest/prest/v2/middlewares/statements"
+	pctx "github.com/prest/prest/v2/internal/contextkeys"
+	"github.com/prest/prest/v2/internal/auth"
+	"github.com/prest/prest/v2/internal/statements"
 	"github.com/stretchr/testify/require"
 )
 

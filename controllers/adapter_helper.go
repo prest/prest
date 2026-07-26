@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/prest/prest/v2/adapters"
-	pctx "github.com/prest/prest/v2/context"
+	pctx "github.com/prest/prest/v2/internal/contextkeys"
 )
 
 // GetAdapterForRequest retrieves the appropriate adapter for a request.

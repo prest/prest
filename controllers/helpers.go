@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/prest/prest/v2/adapters"
-	pctx "github.com/prest/prest/v2/context"
+	pctx "github.com/prest/prest/v2/internal/contextkeys"
 	"github.com/prest/prest/v2/internal/ident"
 
 	"github.com/gorilla/mux"

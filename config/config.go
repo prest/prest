@@ -127,6 +127,7 @@ type Prest struct {
 	PluginMiddlewareList []PluginMiddleware
 	Otel                 OtelConf
 	Logger               *slog.Logger
+	TransactionEnabled   bool // Enable transaction support (creates prest_transactions tables)
 }
 
 const (

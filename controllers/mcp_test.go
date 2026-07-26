@@ -10,9 +10,9 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/prest/prest/v2/adapters/mockgen"
-	pctx "github.com/prest/prest/v2/context"
-	"github.com/prest/prest/v2/controllers/auth"
+	"github.com/prest/prest/v2/internal/mockgen"
+	pctx "github.com/prest/prest/v2/internal/contextkeys"
+	"github.com/prest/prest/v2/internal/auth"
 	"github.com/stretchr/testify/require"
 )
 

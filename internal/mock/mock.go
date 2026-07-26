@@ -14,7 +14,7 @@ import (
 	"testing"
 
 	"github.com/prest/prest/v2/adapters"
-	"github.com/prest/prest/v2/adapters/scanner"
+	"github.com/prest/prest/v2/internal/scanner"
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/internal/logsafe"
 )

@@ -11,7 +11,7 @@ import (
 	"log/slog"
 
 	"github.com/prest/prest/v2/config"
-	"github.com/prest/prest/v2/helpers"
+	"github.com/prest/prest/v2/internal/helpers"
 
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel"

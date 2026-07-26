@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/prest/prest/v2/adapters"
-	"github.com/prest/prest/v2/adapters/mock"
+	"github.com/prest/prest/v2/internal/mock"
 	"github.com/prest/prest/v2/adapters/postgres"
 	"github.com/prest/prest/v2/config"
 
@@ -85,6 +85,11 @@ func expectQueriesTableMigration(sqlMock sqlmock.Sqlmock) {
 	sqlMock.ExpectExec(`CREATE TABLE IF NOT EXISTS "public"\."prest_queries"`).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	sqlMock.ExpectExec(`CREATE INDEX IF NOT EXISTS "prest_queries_location_idx" ON "public"\."prest_queries"`).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+}
+
+func expectTransactionTablesMigration(sqlMock sqlmock.Sqlmock) {
+	sqlMock.ExpectExec(`CREATE TABLE IF NOT EXISTS prest_transactions`).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 }
 

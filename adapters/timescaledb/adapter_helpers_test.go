@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/prest/prest/v2/adapters"
-	"github.com/prest/prest/v2/adapters/mock"
+	"github.com/prest/prest/v2/internal/mock"
 	"github.com/prest/prest/v2/adapters/postgres"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"

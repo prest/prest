@@ -9,7 +9,7 @@ import (
 
 	"github.com/prest/prest/v2/adapters/postgres/internal/connection"
 	"github.com/prest/prest/v2/config"
-	pctx "github.com/prest/prest/v2/context"
+	pctx "github.com/prest/prest/v2/internal/contextkeys"
 
 	"github.com/XSAM/otelsql"
 	"go.opentelemetry.io/otel/attribute"

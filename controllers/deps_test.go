@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/prest/prest/v2/adapters/mockgen"
+	"github.com/prest/prest/v2/internal/mockgen"
 	"github.com/prest/prest/v2/cache"
 	"github.com/prest/prest/v2/config"
 	"github.com/stretchr/testify/require"

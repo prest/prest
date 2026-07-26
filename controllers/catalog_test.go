@@ -9,7 +9,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/v2/adapters/mockgen"
+	"github.com/prest/prest/v2/internal/mockgen"
 	"github.com/stretchr/testify/require"
 )
 
