@@ -9,11 +9,11 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/v2/app"
-	"github.com/prest/prest/v2/config"
-	"github.com/prest/prest/v2/controllers"
+	"github.com/prest/prest/v2/pkg/app"
+	"github.com/prest/prest/v2/pkg/config"
+	"github.com/prest/prest/v2/internal/controllers"
 	"github.com/prest/prest/v2/integration/helpers"
-	"github.com/prest/prest/v2/middlewares"
+	"github.com/prest/prest/v2/internal/middlewares"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/negroni/v3"
 )

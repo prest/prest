@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/pkg/config"
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/integration/testutils"
-	"github.com/prest/prest/v2/plugins"
+	"github.com/prest/prest/v2/internal/plugins"
 )
 
 func initPluginRoutes(cfg *config.Prest) *mux.Router {

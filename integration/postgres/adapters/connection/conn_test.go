@@ -3,7 +3,7 @@ package connection_test
 import (
 	"testing"
 
-	"github.com/prest/prest/v2/adapters/postgres"
+	"github.com/prest/prest/v2/internal/adapters/postgres"
 	"github.com/prest/prest/v2/integration/helpers"
 )
 

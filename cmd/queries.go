@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/prest/prest/v2/app"
+	"github.com/prest/prest/v2/pkg/app"
 
 	"github.com/lib/pq"
 	"github.com/spf13/cobra"

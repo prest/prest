@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/prest/prest/v2/adapters/postgres"
+	"github.com/prest/prest/v2/internal/adapters/postgres"
 )
 
 func TestValidGetScript(t *testing.T) {

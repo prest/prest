@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/prest/prest/v2/cmd"
-	"github.com/prest/prest/v2/config"
-	"github.com/prest/prest/v2/telemetry"
+	"github.com/prest/prest/v2/pkg/config"
+	"github.com/prest/prest/v2/internal/telemetry"
 )
 
 func main() {

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/prest/prest/v2/controllers"
+	"github.com/prest/prest/v2/internal/controllers"
 	"github.com/prest/prest/v2/internal/auth"
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/integration/testutils"

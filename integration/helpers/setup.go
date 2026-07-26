@@ -10,13 +10,13 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/prest/prest/v2/adapters/postgres"
-	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/internal/adapters/postgres"
+	"github.com/prest/prest/v2/pkg/config"
 	pctx "github.com/prest/prest/v2/internal/contextkeys"
-	"github.com/prest/prest/v2/controllers"
-	"github.com/prest/prest/v2/middlewares"
-	"github.com/prest/prest/v2/plugins"
-	"github.com/prest/prest/v2/router"
+	"github.com/prest/prest/v2/internal/controllers"
+	"github.com/prest/prest/v2/internal/middlewares"
+	"github.com/prest/prest/v2/internal/plugins"
+	"github.com/prest/prest/v2/internal/router"
 	"github.com/urfave/negroni/v3"
 )
 

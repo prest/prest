@@ -11,9 +11,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/prest/prest/v2/adapters"
+	"github.com/prest/prest/v2/pkg/adapters"
 	"github.com/prest/prest/v2/internal/scanner"
-	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/pkg/config"
 )
 
 func TestMock_validate(t *testing.T) {

@@ -13,11 +13,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/prest/prest/v2/adapters"
-	"github.com/prest/prest/v2/adapters/postgres"
+	"github.com/prest/prest/v2/pkg/adapters"
+	"github.com/prest/prest/v2/internal/adapters/postgres"
 	"github.com/prest/prest/v2/internal/postgres/statements"
 	"github.com/prest/prest/v2/internal/scanner"
-	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/pkg/config"
 	pctx "github.com/prest/prest/v2/internal/contextkeys"
 	"github.com/prest/prest/v2/integration/helpers"
 

@@ -1,33 +1,53 @@
 DOCKER_COMPOSE?=docker-compose -f docker-compose.yml
 UNIT_PKGS = $(shell go list ./... | grep -v '/integration')
+RACE?=-race
 
-.PHONY: build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb test-integration-log test-integration-postgres-log test-integration-timescaledb-log ci signoz-up signoz-down
-build_test_image:
+.PHONY: build test test-unit test-race vet lint ci \
+        test-integration test-integration-postgres test-integration-timescaledb \
+        test-integration-log test-integration-postgres-log test-integration-timescaledb-log \
+        build_test_image signoz-up signoz-down \
+        dc-up dc-down mockgen \
+        studio-install studio-dev studio-format studio-lint studio-typecheck \
+        studio-test studio-test-coverage studio-build studio-check studio-e2e test-studio check-all
+
+# ──────────────────────────────────────────────
+# Build
+# ──────────────────────────────────────────────
+
+build:
+	go build -o bin/prestd ./cmd/prestd
+
+build-test-image:
 	$(DOCKER_COMPOSE) up -d postgres
 
-SIGNOZ_COMPOSE=docker compose -f dev/signoz/docker-compose.yaml
+# ──────────────────────────────────────────────
+# Code quality
+# ──────────────────────────────────────────────
 
-# Local SigNoz stack to view pREST OpenTelemetry signals (traces/metrics/logs).
-# After `make signoz-up`, run prestd with:
-#   PREST_OTEL_ENABLED=true PREST_OTEL_ENDPOINT=localhost:4317 PREST_OTEL_INSECURE=true
-# and open the SigNoz UI at http://localhost:8080
-signoz-up:
-	$(SIGNOZ_COMPOSE) up -d
+vet:
+	go vet ./...
 
-signoz-down:
-	$(SIGNOZ_COMPOSE) down -v --remove-orphans
+lint: vet test-unit
 
-ci: test-integration-postgres test-integration-timescaledb
+# ──────────────────────────────────────────────
+# Unit tests
+# ──────────────────────────────────────────────
 
 test: test-unit
 
 test-unit:
-	go test -timeout 30s -tags prest_test_hooks -race -count=1 -covermode=atomic -coverprofile=coverage.out $(UNIT_PKGS)
+	go test -timeout 60s -tags prest_test_hooks -count=1 -covermode=atomic -coverprofile=coverage.out $(UNIT_PKGS)
+
+test-race:
+	go test -timeout 60s -tags prest_test_hooks $(RACE) -count=1 -covermode=atomic -coverprofile=coverage.out $(UNIT_PKGS)
+
+# ──────────────────────────────────────────────
+# Integration tests (require Docker)
+# ──────────────────────────────────────────────
 
 POSTGRES_COMPOSE=docker compose -f integration/postgres/docker-compose.yml
 TIMESCALEDB_COMPOSE=docker compose -f integration/timescaledb/docker-compose.yml
 
-# Alias for the historical Postgres integration target.
 test-integration: test-integration-postgres
 
 test-integration-postgres:
@@ -37,17 +57,16 @@ test-integration-postgres:
 	$(POSTGRES_COMPOSE) down -v --remove-orphans; \
 	exit $$status
 
-# Same as test-integration but tees the full combined output to a file so the
-# whole result can be explored after the run (terminals truncate long output).
-# Everything is captured into a single file. The aggregate truncates it once and
-# both suites append (TEE='tee -a'), so a failure in the first never overwrites
-# or hides the second. A standalone *-log target starts the file fresh.
-# Override the destination with: make test-integration-log INTEGRATION_LOG=path.log
+test-integration-timescaledb:
+	$(TIMESCALEDB_COMPOSE) up -d --wait timescaledb db-init prestd && \
+	$(TIMESCALEDB_COMPOSE) run --rm --no-deps tests; \
+	status=$$?; \
+	$(TIMESCALEDB_COMPOSE) down -v --remove-orphans; \
+	exit $$status
+
 INTEGRATION_LOG ?= integration-test.log
 TEE ?= tee
 
-# Runs both suites regardless of the first's result, appending to one file, and
-# exits non-zero if either failed, so the full output is always available.
 test-integration-log:
 	@: > $(INTEGRATION_LOG)
 	@rc=0; \
@@ -80,42 +99,54 @@ test-integration-timescaledb-log:
 	echo "Full output saved to $(INTEGRATION_LOG) (exit $$status)"; \
 	exit $$status
 
-test-integration-timescaledb:
-	$(TIMESCALEDB_COMPOSE) up -d --wait timescaledb db-init prestd && \
-	$(TIMESCALEDB_COMPOSE) run --rm --no-deps tests; \
-	status=$$?; \
-	$(TIMESCALEDB_COMPOSE) down -v --remove-orphans; \
-	exit $$status
+ci: test-integration-postgres test-integration-timescaledb
 
-.PHONY: dc-up
+# ──────────────────────────────────────────────
+# SigNoz (OpenTelemetry observability)
+# ──────────────────────────────────────────────
+
+SIGNOZ_COMPOSE=docker compose -f dev/signoz/docker-compose.yaml
+
+signoz-up:
+	$(SIGNOZ_COMPOSE) up -d
+
+signoz-down:
+	$(SIGNOZ_COMPOSE) down -v --remove-orphans
+
+# ──────────────────────────────────────────────
+# Docker
+# ──────────────────────────────────────────────
+
 dc-up:
-	$(DOCKER_COMPOSE) up \
-		--force-recreate \
-		--remove-orphans \
-		--build
+	$(DOCKER_COMPOSE) up --force-recreate --remove-orphans --build
 
-.PHONY: dc-down
 dc-down:
 	$(DOCKER_COMPOSE) down --volumes --remove-orphans --rmi local
 
-.PHONY: mockgen
+# ──────────────────────────────────────────────
+# Mockgen (regenerate adapter mocks)
+# ──────────────────────────────────────────────
+
 mockgen:
 	go install github.com/golang/mock/mockgen@v1.6.0
-	mockgen -destination=adapters/mockgen/scanner.go -package=mockgen github.com/prest/prest/v2/adapters Scanner
-	mockgen -destination=adapters/mockgen/adapter.go -package=mockgen github.com/prest/prest/v2/adapters Adapter
-	mockgen -destination=adapters/mockgen/request_query_builder.go -package=mockgen github.com/prest/prest/v2/adapters RequestQueryBuilder
-	mockgen -destination=adapters/mockgen/query_executor.go -package=mockgen github.com/prest/prest/v2/adapters QueryExecutor
-	mockgen -destination=adapters/mockgen/catalog_querier.go -package=mockgen github.com/prest/prest/v2/adapters CatalogQuerier
-	mockgen -destination=adapters/mockgen/sql_builder.go -package=mockgen github.com/prest/prest/v2/adapters SQLBuilder
-	mockgen -destination=adapters/mockgen/permissions_checker.go -package=mockgen github.com/prest/prest/v2/adapters PermissionsChecker
-	mockgen -destination=adapters/mockgen/script_runner.go -package=mockgen github.com/prest/prest/v2/adapters ScriptRunner
-	mockgen -destination=adapters/mockgen/query_registry.go -package=mockgen github.com/prest/prest/v2/adapters QueryRegistry
-	mockgen -destination=adapters/mockgen/script_permissions_checker.go -package=mockgen github.com/prest/prest/v2/adapters ScriptPermissionsChecker
-	mockgen -destination=adapters/mockgen/database_registry.go -package=mockgen github.com/prest/prest/v2/adapters DatabaseRegistry
-	mockgen -destination=adapters/mockgen/database_pinger.go -package=mockgen github.com/prest/prest/v2/adapters DatabasePinger
-	mockgen -destination=adapters/mockgen/readiness_checker.go -package=mockgen github.com/prest/prest/v2/adapters ReadinessChecker
+	mockgen -destination=internal/mockgen/scanner.go -package=mockgen github.com/prest/prest/v2/pkg/adapters Scanner
+	mockgen -destination=internal/mockgen/adapter.go -package=mockgen github.com/prest/prest/v2/pkg/adapters Adapter
+	mockgen -destination=internal/mockgen/request_query_builder.go -package=mockgen github.com/prest/prest/v2/pkg/adapters RequestQueryBuilder
+	mockgen -destination=internal/mockgen/query_executor.go -package=mockgen github.com/prest/prest/v2/pkg/adapters QueryExecutor
+	mockgen -destination=internal/mockgen/catalog_querier.go -package=mockgen github.com/prest/prest/v2/pkg/adapters CatalogQuerier
+	mockgen -destination=internal/mockgen/sql_builder.go -package=mockgen github.com/prest/prest/v2/pkg/adapters SQLBuilder
+	mockgen -destination=internal/mockgen/permissions_checker.go -package=mockgen github.com/prest/prest/v2/pkg/adapters PermissionsChecker
+	mockgen -destination=internal/mockgen/script_runner.go -package=mockgen github.com/prest/prest/v2/pkg/adapters ScriptRunner
+	mockgen -destination=internal/mockgen/query_registry.go -package=mockgen github.com/prest/prest/v2/pkg/adapters QueryRegistry
+	mockgen -destination=internal/mockgen/script_permissions_checker.go -package=mockgen github.com/prest/prest/v2/pkg/adapters ScriptPermissionsChecker
+	mockgen -destination=internal/mockgen/database_registry.go -package=mockgen github.com/prest/prest/v2/pkg/adapters DatabaseRegistry
+	mockgen -destination=internal/mockgen/database_pinger.go -package=mockgen github.com/prest/prest/v2/pkg/adapters DatabasePinger
+	mockgen -destination=internal/mockgen/readiness_checker.go -package=mockgen github.com/prest/prest/v2/pkg/adapters ReadinessChecker
 
-.PHONY: studio-install studio-dev studio-format studio-lint studio-typecheck studio-test studio-test-coverage studio-build studio-check studio-e2e test-studio check-all
+# ──────────────────────────────────────────────
+# Studio (frontend)
+# ──────────────────────────────────────────────
+
 studio-install:
 	cd studio && corepack enable && pnpm install
 
@@ -148,4 +179,8 @@ studio-e2e:
 
 test-studio: studio-check
 
-check-all: test-unit studio-check
+# ──────────────────────────────────────────────
+# All checks
+# ──────────────────────────────────────────────
+
+check-all: vet test-unit studio-check

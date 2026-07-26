@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/prest/prest/v2/app"
-	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/pkg/app"
+	"github.com/prest/prest/v2/pkg/config"
 
 	"github.com/spf13/cobra"
 	// pq driver

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/pkg/config"
 
 	"github.com/gorilla/mux"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"

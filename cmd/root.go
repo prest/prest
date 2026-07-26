@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/prest/prest/v2/app"
-	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/pkg/app"
+	"github.com/prest/prest/v2/pkg/config"
 	pctx "github.com/prest/prest/v2/internal/contextkeys"
 	"github.com/prest/prest/v2/internal/logsafe"
 
