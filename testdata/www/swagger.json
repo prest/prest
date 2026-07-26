@@ -1,0 +1,365 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "prestd API",
+    "description": "API REST générée par prestd au-dessus d'une base PostgreSQL (ou compatible). Les segments {database}, {schema} et {table} sont dynamiques : ils correspondent au catalogue réel de la base connectée, et non à des routes fixes. Voir https://docs.prestd.com/api-reference pour la documentation complète.",
+    "version": "1.0.0",
+    "license": { "name": "MIT" }
+  },
+  "servers": [
+    { "url": "http://127.0.0.1:3000", "description": "Serveur prestd local" }
+  ],
+  "security": [
+    { "bearerAuth": [] },
+    { "basicAuth": [] },
+    {}
+  ],
+  "tags": [
+    { "name": "Système", "description": "Sondes de vie et de disponibilité" },
+    { "name": "Catalogue", "description": "Découverte des bases, schémas et tables" },
+    { "name": "CRUD", "description": "Opérations SQL génériques (SELECT / INSERT / UPDATE / DELETE)" },
+    { "name": "Lot", "description": "Insertion en lot" },
+    { "name": "Requêtes personnalisées", "description": "Scripts SQL exposés via /_QUERIES" }
+  ],
+  "paths": {
+    "/_health": {
+      "get": {
+        "tags": ["Système"],
+        "summary": "Sonde de vie",
+        "description": "Ping la base de données par défaut.",
+        "responses": {
+          "200": { "description": "Le serveur et la base par défaut répondent." },
+          "503": { "description": "La base de données par défaut ne répond pas." }
+        }
+      }
+    },
+    "/_ready": {
+      "get": {
+        "tags": ["Système"],
+        "summary": "Sonde de disponibilité",
+        "description": "Ping la base de données par défaut ainsi que tous les alias enregistrés.",
+        "responses": {
+          "200": { "description": "Toutes les bases enregistrées répondent." },
+          "503": { "description": "Au moins une base enregistrée ne répond pas." }
+        }
+      }
+    },
+    "/databases": {
+      "get": {
+        "tags": ["Catalogue"],
+        "summary": "Lister les bases de données",
+        "responses": {
+          "200": {
+            "description": "Liste des bases de données disponibles.",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "type": "object", "additionalProperties": true } } } }
+          }
+        }
+      }
+    },
+    "/schemas": {
+      "get": {
+        "tags": ["Catalogue"],
+        "summary": "Lister les schémas",
+        "responses": {
+          "200": {
+            "description": "Liste des schémas disponibles.",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "type": "object", "additionalProperties": true } } } }
+          }
+        }
+      }
+    },
+    "/tables": {
+      "get": {
+        "tags": ["Catalogue"],
+        "summary": "Lister les tables",
+        "responses": {
+          "200": {
+            "description": "Liste de toutes les tables, toutes bases et schémas confondus.",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "type": "object", "additionalProperties": true } } } }
+          }
+        }
+      }
+    },
+    "/show/{database}/{schema}/{table}": {
+      "get": {
+        "tags": ["Catalogue"],
+        "summary": "Structure d'une table",
+        "description": "Liste les champs et leur type pour la table donnée.",
+        "parameters": [
+          { "$ref": "#/components/parameters/database" },
+          { "$ref": "#/components/parameters/schema" },
+          { "$ref": "#/components/parameters/table" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Structure de la table.",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "type": "object", "additionalProperties": true } } } }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/{database}/{schema}": {
+      "get": {
+        "tags": ["Catalogue"],
+        "summary": "Lister les tables d'un schéma",
+        "parameters": [
+          { "$ref": "#/components/parameters/database" },
+          { "$ref": "#/components/parameters/schema" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tables du schéma.",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "type": "object", "additionalProperties": true } } } }
+          }
+        }
+      }
+    },
+    "/{database}/{schema}/{table}": {
+      "get": {
+        "tags": ["CRUD"],
+        "summary": "Lister / filtrer les lignes (SELECT)",
+        "description": "Mappe vers un SELECT SQL. Le filtrage par champ arbitraire se fait via des paramètres de requête libres au format `?{champ}={valeur}` ou `?{champ}=$operateur.{valeur}` (voir le paramètre `filterExample`). Tous les opérateurs et paramètres globaux sont documentés dans les paramètres réutilisables ci-dessous.",
+        "parameters": [
+          { "$ref": "#/components/parameters/database" },
+          { "$ref": "#/components/parameters/schema" },
+          { "$ref": "#/components/parameters/table" },
+          { "$ref": "#/components/parameters/filterExample" },
+          { "$ref": "#/components/parameters/page" },
+          { "$ref": "#/components/parameters/pageSize" },
+          { "$ref": "#/components/parameters/select" },
+          { "$ref": "#/components/parameters/count" },
+          { "$ref": "#/components/parameters/countFirst" },
+          { "$ref": "#/components/parameters/renderer" },
+          { "$ref": "#/components/parameters/distinct" },
+          { "$ref": "#/components/parameters/order" },
+          { "$ref": "#/components/parameters/groupby" },
+          { "$ref": "#/components/parameters/or" },
+          { "$ref": "#/components/parameters/join" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lignes trouvées (ou objet unique si `_count_first=true`).",
+            "content": { "application/json": { "schema": { "oneOf": [
+              { "type": "array", "items": { "$ref": "#/components/schemas/GenericRow" } },
+              { "$ref": "#/components/schemas/GenericRow" }
+            ] } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      },
+      "post": {
+        "tags": ["CRUD"],
+        "summary": "Créer une ligne (INSERT)",
+        "parameters": [
+          { "$ref": "#/components/parameters/database" },
+          { "$ref": "#/components/parameters/schema" },
+          { "$ref": "#/components/parameters/table" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericRow" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Ligne créée.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericRow" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      },
+      "put": {
+        "tags": ["CRUD"],
+        "summary": "Remplacer des lignes (UPDATE inconditionnel ou filtré)",
+        "description": "⚠️ Sans filtre en query string, l'UPDATE s'applique à toutes les lignes de la table.",
+        "parameters": [
+          { "$ref": "#/components/parameters/database" },
+          { "$ref": "#/components/parameters/schema" },
+          { "$ref": "#/components/parameters/table" },
+          { "$ref": "#/components/parameters/filterExample" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericRow" } } }
+        },
+        "responses": {
+          "200": { "description": "Lignes mises à jour." },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      },
+      "patch": {
+        "tags": ["CRUD"],
+        "summary": "Modifier partiellement des lignes (UPDATE inconditionnel ou filtré)",
+        "description": "⚠️ Sans filtre en query string, l'UPDATE s'applique à toutes les lignes de la table.",
+        "parameters": [
+          { "$ref": "#/components/parameters/database" },
+          { "$ref": "#/components/parameters/schema" },
+          { "$ref": "#/components/parameters/table" },
+          { "$ref": "#/components/parameters/filterExample" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericRow" } } }
+        },
+        "responses": {
+          "200": { "description": "Lignes mises à jour." },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      },
+      "delete": {
+        "tags": ["CRUD"],
+        "summary": "Supprimer des lignes (DELETE inconditionnel ou filtré)",
+        "description": "⚠️ Sans filtre en query string, le DELETE s'applique à toutes les lignes de la table.",
+        "parameters": [
+          { "$ref": "#/components/parameters/database" },
+          { "$ref": "#/components/parameters/schema" },
+          { "$ref": "#/components/parameters/table" },
+          { "$ref": "#/components/parameters/filterExample" }
+        ],
+        "responses": {
+          "200": { "description": "Lignes supprimées." },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/batch/{database}/{schema}/{table}": {
+      "post": {
+        "tags": ["Lot"],
+        "summary": "Insertion en lot",
+        "parameters": [
+          { "$ref": "#/components/parameters/database" },
+          { "$ref": "#/components/parameters/schema" },
+          { "$ref": "#/components/parameters/table" },
+          {
+            "name": "Prest-Batch-Method",
+            "in": "header",
+            "required": false,
+            "description": "Mettre `copy` pour une insertion volumineuse via COPY (aucune ligne n'est retournée). Par défaut : insertion multi-valeurs classique (les lignes insérées sont retournées).",
+            "schema": { "type": "string", "enum": ["copy"] }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/GenericRow" } } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Lignes insérées (vide si `Prest-Batch-Method: copy`).",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/GenericRow" } } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/_QUERIES/{folder}/{query}": {
+      "get": {
+        "tags": ["Requêtes personnalisées"],
+        "summary": "Exécuter un script *.read.sql",
+        "parameters": [
+          { "$ref": "#/components/parameters/queryFolder" },
+          { "$ref": "#/components/parameters/queryName" },
+          { "$ref": "#/components/parameters/customQueryParam" }
+        ],
+        "responses": { "200": { "description": "Résultat du script SQL." } }
+      },
+      "post": {
+        "tags": ["Requêtes personnalisées"],
+        "summary": "Exécuter un script *.write.sql",
+        "parameters": [
+          { "$ref": "#/components/parameters/queryFolder" },
+          { "$ref": "#/components/parameters/queryName" }
+        ],
+        "requestBody": {
+          "content": { "application/json": { "schema": { "type": "object", "additionalProperties": true } } }
+        },
+        "responses": { "200": { "description": "Résultat du script SQL." } }
+      },
+      "put": {
+        "tags": ["Requêtes personnalisées"],
+        "summary": "Exécuter un script *.update.sql",
+        "parameters": [
+          { "$ref": "#/components/parameters/queryFolder" },
+          { "$ref": "#/components/parameters/queryName" }
+        ],
+        "requestBody": {
+          "content": { "application/json": { "schema": { "type": "object", "additionalProperties": true } } }
+        },
+        "responses": { "200": { "description": "Résultat du script SQL." } }
+      },
+      "patch": {
+        "tags": ["Requêtes personnalisées"],
+        "summary": "Exécuter un script *.update.sql",
+        "parameters": [
+          { "$ref": "#/components/parameters/queryFolder" },
+          { "$ref": "#/components/parameters/queryName" }
+        ],
+        "requestBody": {
+          "content": { "application/json": { "schema": { "type": "object", "additionalProperties": true } } }
+        },
+        "responses": { "200": { "description": "Résultat du script SQL." } }
+      },
+      "delete": {
+        "tags": ["Requêtes personnalisées"],
+        "summary": "Exécuter un script *.delete.sql",
+        "parameters": [
+          { "$ref": "#/components/parameters/queryFolder" },
+          { "$ref": "#/components/parameters/queryName" },
+          { "$ref": "#/components/parameters/customQueryParam" }
+        ],
+        "responses": { "200": { "description": "Résultat du script SQL." } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" },
+      "basicAuth": { "type": "http", "scheme": "basic" }
+    },
+    "parameters": {
+      "database": { "name": "database", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Nom de la base de données (ou de l'alias configuré)." },
+      "schema": { "name": "schema", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Schéma PostgreSQL, ex. public." },
+      "table": { "name": "table", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Nom de la table ou de la vue." },
+      "queryFolder": { "name": "folder", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Dossier contenant le script SQL (relatif à [queries].location dans prest.toml)." },
+      "queryName": { "name": "query", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Nom du script, sans le suffixe .read/.write/.update/.delete.sql." },
+      "customQueryParam": {
+        "name": "params",
+        "in": "query",
+        "required": false,
+        "description": "Paramètres libres transmis au template SQL (accessibles via {{.nomDuParametre}}). OpenAPI ne permet pas de lister des noms de champs arbitraires : ajoutez ici autant de paires clé/valeur que votre script en attend.",
+        "schema": { "type": "object", "additionalProperties": { "type": "string" } },
+        "style": "form",
+        "explode": true
+      },
+      "filterExample": {
+        "name": "filterExample",
+        "in": "query",
+        "required": false,
+        "description": "Représente le filtrage par champ arbitraire de prestd : `?{champ}={valeur}` (égalité directe) ou `?{champ}=$operateur.{valeur}`. Opérateurs disponibles : $eq, $gt, $gte, $lt, $lte, $ne, $in, $nin, $null, $notnull, $true, $nottrue, $false, $notfalse, $like, $ilike, $nlike, $nilike, $ltreelanc, $ltreerdesc, $ltreematch, $ltreematchtxt. Ce paramètre est un exemple documentaire ; substituez-le par le(s) vrai(s) nom(s) de champ de votre table.",
+        "schema": { "type": "string" },
+        "example": "$gte.100"
+      },
+      "page": { "name": "_page", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1 }, "description": "Numéro de page (pagination)." },
+      "pageSize": { "name": "_page_size", "in": "query", "required": false, "schema": { "type": "integer", "default": 10 }, "description": "Nombre de lignes par page." },
+      "select": { "name": "_select", "in": "query", "required": false, "schema": { "type": "string" }, "description": "Champs à retourner, séparés par des virgules. Supporte les agrégats sum:, avg:, max:, min:, stddev:, variance:.", "example": "id,name,sum:amount" },
+      "count": { "name": "_count", "in": "query", "required": false, "schema": { "type": "string" }, "description": "Compte par champ, ou * pour tous les champs." },
+      "countFirst": { "name": "_count_first", "in": "query", "required": false, "schema": { "type": "boolean", "default": false }, "description": "Retourne le résultat de _count comme objet unique plutôt que comme liste." },
+      "renderer": { "name": "_renderer", "in": "query", "required": false, "schema": { "type": "string", "enum": ["json", "xml"], "default": "json" } },
+      "distinct": { "name": "_distinct", "in": "query", "required": false, "schema": { "type": "boolean" }, "description": "Ajoute DISTINCT à la requête." },
+      "order": { "name": "_order", "in": "query", "required": false, "schema": { "type": "string" }, "description": "Tri. Préfixer un champ par - pour un ordre descendant. Plusieurs champs séparés par des virgules.", "example": "-created_at,name" },
+      "groupby": { "name": "_groupby", "in": "query", "required": false, "schema": { "type": "string" }, "description": "GROUP BY, avec support de having: pour filtrer sur un agrégat." },
+      "or": { "name": "_or", "in": "query", "required": false, "schema": { "type": "string" }, "description": "Groupe de conditions combinées en OR (séparées par ||), puis liées en AND avec le reste des filtres.", "example": "status=$eq.active||status=$eq.pending" },
+      "join": { "name": "_join", "in": "query", "required": false, "schema": { "type": "string" }, "description": "Jointure sur 1 niveau : {type}:{table}:{table.champ}:{operateur}:{table2.champ}.", "example": "inner:users:friends.userid:$eq:users.id" }
+    },
+    "responses": {
+      "BadRequest": { "description": "Requête invalide (paramètre, opérateur ou identifiant de champ non reconnu)." },
+      "NotFound": { "description": "Ressource introuvable (base, schéma ou table inexistante)." }
+    },
+    "schemas": {
+      "GenericRow": {
+        "type": "object",
+        "description": "Le schéma réel dépend des colonnes de la table ciblée ; consultez GET /show/{database}/{schema}/{table} pour la structure exacte.",
+        "additionalProperties": true
+      }
+    }
+  }
+}

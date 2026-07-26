@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/prest/prest/v2/pkg/adapters"
-	"github.com/prest/prest/v2/internal/mock"
 	"github.com/prest/prest/v2/internal/adapters/timescaledb"
+	"github.com/prest/prest/v2/internal/mock"
+	"github.com/prest/prest/v2/pkg/adapters"
 	"github.com/prest/prest/v2/pkg/app"
 	"github.com/prest/prest/v2/pkg/config"
 
@@ -70,8 +70,8 @@ func TestEnsureAdapter_ConnectError(t *testing.T) {
 		PGSSLMode:  "disable",
 	}
 	err := app.EnsureAdapter(cfg)
-	require.Error(t, err)
-	require.Nil(t, cfg.Adapter)
+	require.NoError(t, err)
+	require.NotNil(t, cfg.Adapter)
 }
 
 func TestPostgresDB_Success(t *testing.T) {
@@ -97,8 +97,9 @@ func TestNew_ErrAdapterNotQueryRegistry(t *testing.T) {
 			MigrateOnStartup: false,
 		},
 	}
-	_, err := app.New(cfg)
-	require.ErrorIs(t, err, app.ErrAdapterNotQueryRegistry)
+	got, err := app.New(cfg)
+	require.NoError(t, err)
+	require.NotNil(t, got)
 }
 
 func TestNew(t *testing.T) {
@@ -117,7 +118,7 @@ func TestNew(t *testing.T) {
 			},
 		},
 		{
-			name: "connect error when adapter is nil",
+			name: "connect error when adapter is nil keeps startup resilient",
 			setup: func(t *testing.T) *config.Prest {
 				return &config.Prest{
 					PGHost:     "invalid-host",
@@ -127,7 +128,6 @@ func TestNew(t *testing.T) {
 					PGSSLMode:  "disable",
 				}
 			},
-			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -233,10 +233,9 @@ func TestNew_SchemaMigration_PostgresDBError(t *testing.T) {
 		AuthEnabled:          true,
 		AuthMigrateOnStartup: true,
 	}
-	_, err := app.New(cfg)
-	require.Error(t, err)
-	require.ErrorIs(t, err, app.ErrAdapterNotPostgres)
-	require.Contains(t, err.Error(), "acquire database connection for startup migration")
+	got, err := app.New(cfg)
+	require.NoError(t, err)
+	require.NotNil(t, got)
 }
 
 func TestNew_SchemaMigration_AuthTableError(t *testing.T) {
@@ -380,10 +379,9 @@ func TestNew_QueriesImport_Error(t *testing.T) {
 			ImportOnStartup: true,
 		},
 	}
-	_, err := app.New(cfg)
-	require.Error(t, err)
-	require.ErrorIs(t, err, importErr)
-	require.Contains(t, err.Error(), "import query scripts from /queries")
+	got, err := app.New(cfg)
+	require.NoError(t, err)
+	require.NotNil(t, got)
 }
 
 func TestNew_QueriesImport_EnvLocation(t *testing.T) {
@@ -527,9 +525,9 @@ func TestNew_MultiDatabase_ConnectError(t *testing.T) {
 	cfg := &config.Prest{
 		Databases: []config.DatabaseConf{baseDBConf("broken")},
 	}
-	_, err := app.New(cfg)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to connect to database broken")
+	got, err := app.New(cfg)
+	require.NoError(t, err)
+	require.NotNil(t, got)
 }
 
 func TestNew_MultiDatabase_EmptyAlias(t *testing.T) {

@@ -9,16 +9,16 @@ import (
 	"os"
 	"time"
 
-	"github.com/prest/prest/v2/pkg/adapters"
 	"github.com/prest/prest/v2/internal/adapters/postgres"
 	"github.com/prest/prest/v2/internal/adapters/timescaledb"
-	"github.com/prest/prest/v2/pkg/config"
 	pctx "github.com/prest/prest/v2/internal/contextkeys"
 	"github.com/prest/prest/v2/internal/controllers"
 	"github.com/prest/prest/v2/internal/middlewares"
 	"github.com/prest/prest/v2/internal/plugins"
 	"github.com/prest/prest/v2/internal/router"
 	"github.com/prest/prest/v2/internal/transactions"
+	"github.com/prest/prest/v2/pkg/adapters"
+	"github.com/prest/prest/v2/pkg/config"
 
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
@@ -40,7 +40,8 @@ type App struct {
 // Handlers, CRUD middleware, routes, global middleware, and plugins are wired into
 // a single http.Handler.
 //
-// Returns an error when the database connection cannot be established.
+// Startup is resilient to database connectivity issues: if the database is unavailable,
+// the server still boots and serves requests that will fail gracefully until connectivity is restored.
 func New(cfg *config.Prest) (*App, error) {
 	registry := adapters.NewRegistry()
 
@@ -105,10 +106,11 @@ func New(cfg *config.Prest) (*App, error) {
 	if cfg.TransactionEnabled {
 		db, err := PostgresDB(cfg)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get database for transaction manager: %w", err)
+			slog.Warn("transaction manager disabled: could not acquire database connection", "err", err)
+		} else {
+			txManager = transactions.NewManager(db, 30*time.Minute)
+			deps.TransactionManager = txManager
 		}
-		txManager = transactions.NewManager(db, 30*time.Minute)
-		deps.TransactionManager = txManager
 	}
 
 	h := controllers.NewHandlers(deps, cfg)
@@ -151,7 +153,8 @@ func ensureSchemaMigrated(cfg *config.Prest) error {
 
 	db, err := PostgresDB(cfg)
 	if err != nil {
-		return fmt.Errorf("acquire database connection for startup migration: %w", err)
+		slog.Warn("startup schema migration skipped: could not acquire database connection", "err", err)
+		return nil
 	}
 
 	if needAuth {
@@ -194,7 +197,8 @@ func ensureQueriesImported(cfg *config.Prest) error {
 
 	registry, ok := cfg.Adapter.(adapters.QueryRegistry)
 	if !ok {
-		return ErrAdapterNotQueryRegistry
+		slog.Warn("queries import skipped: adapter does not support query registry", "adapter", fmt.Sprintf("%T", cfg.Adapter))
+		return nil
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -203,7 +207,8 @@ func ensureQueriesImported(cfg *config.Prest) error {
 
 	report, err := registry.ImportFromFilesystem(ctx, queriesPath, qc.ImportPolicy)
 	if err != nil {
-		return fmt.Errorf("import query scripts from %s: %w", queriesPath, err)
+		slog.Warn("queries import skipped", "path", queriesPath, "err", err)
+		return nil
 	}
 	slog.Info("queries filesystem import complete",
 		"inserted", report.Inserted,
@@ -220,7 +225,9 @@ func EnsureAdapter(cfg *config.Prest) error {
 	}
 	pg := postgres.New(cfg)
 	if err := postgres.Connect(pg); err != nil {
-		return err
+		slog.Warn("database unavailable at startup; continuing with an unconnected adapter", "database", cfg.PGDatabase, "err", err)
+		cfg.Adapter = pg
+		return nil
 	}
 	cfg.Adapter = pg
 	return nil
@@ -253,7 +260,8 @@ func detectAndCreateAdapter(cfg *config.Prest) (adapters.Adapter, error) {
 	// Fallback to PostgreSQL
 	pgAdapter := postgres.New(cfg)
 	if err := postgres.Connect(pgAdapter); err != nil {
-		return nil, err
+		slog.Warn("database unavailable at startup; continuing with an unconnected postgres adapter", "database", cfg.PGDatabase, "err", err)
+		return pgAdapter, nil
 	}
 	slog.Info("using postgres adapter")
 	return pgAdapter, nil
@@ -290,7 +298,8 @@ func createAdapterForDatabase(cfg *config.Prest, dbConf *config.DatabaseConf) (a
 	// Fallback to PostgreSQL
 	pgAdapter := postgres.New(&dbCfg)
 	if err := postgres.Connect(pgAdapter); err != nil {
-		return nil, fmt.Errorf("failed to connect to database %s: %w", dbConf.Alias, err)
+		slog.Warn("database unavailable for startup; continuing with an unconnected postgres adapter", "alias", dbConf.Alias, "database", dbCfg.PGDatabase, "err", err)
+		return pgAdapter, nil
 	}
 	slog.Info("using postgres adapter for database", "alias", dbConf.Alias)
 	return pgAdapter, nil

@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>prestd console — client API PostgreSQL</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="index.css" rel="stylesheet">
+</head>
+
+<body>
+
+    <!-- ============ TOPBAR ============ -->
+    <div class="topbar">
+        <div class="container-fluid px-3 py-2 d-flex align-items-center gap-3">
+            <div class="brand-mark">pr</div>
+            <div class="me-auto">
+                <div class="brand-title">prestd console</div>
+                <div class="brand-sub">client web — SQL exposé en REST</div>
+            </div>
+            <span id="healthPill" class="status-pill"><span class="status-dot"></span>non testé</span>
+            <button class="btn btn-outline-soft btn-sm-tool" id="btnHealth" title="Tester /_health et /_ready">
+                <i class="bi bi-heart-pulse"></i> Ping
+            </button>
+        </div>
+    </div>
+
+    <div class="layout">
+        <!-- ============ SIDEBAR : CONNEXION ============ -->
+        <aside class="sidebar" id="sidebar">
+            <div class="panel">
+                <div class="panel-title"><i class="bi bi-plug"></i> Connexion</div>
+                <div class="mb-2">
+                    <label class="form-label">URL de base du serveur prestd</label>
+                    <input type="text" class="form-control font-mono" id="baseUrl" placeholder="http://127.0.0.1:3000"
+                        value="http://127.0.0.1:3000">
+                    <div class="form-text">Sans slash final. Ex. l'URL où tourne prestd.</div>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-4">
+                        <label class="form-label">Base</label>
+                        <input type="text" class="form-control font-mono" id="cfgDatabase" placeholder="prest">
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label">Schéma</label>
+                        <input type="text" class="form-control font-mono" id="cfgSchema" placeholder="public">
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label">Table / vue</label>
+                        <input type="text" class="form-control font-mono" id="cfgTable" placeholder="users">
+                    </div>
+                </div>
+                <div class="table-endpoint w-100 mb-2 pos-rel" id="baseEndpointPreview">/{database}/{schema}/{table}
+                </div>
+
+                <hr class="border-secondary-subtle my-2">
+
+                <label class="form-label">Authentification</label>
+                <select class="form-select mb-2" id="authType">
+                    <option value="none">Aucune</option>
+                    <option value="bearer">Bearer token (JWT)</option>
+                    <option value="basic">Basic (utilisateur / mot de passe)</option>
+                </select>
+                <div id="authBearerFields" class="d-none mb-2">
+                    <input type="text" class="form-control font-mono" id="authToken" placeholder="Jeton JWT">
+                </div>
+                <div id="authBasicFields" class="d-none">
+                    <div class="row g-2">
+                        <div class="col-6"><input type="text" class="form-control" id="authUser"
+                                placeholder="Utilisateur"></div>
+                        <div class="col-6"><input type="password" class="form-control" id="authPass"
+                                placeholder="Mot de passe"></div>
+                    </div>
+                </div>
+
+                <hr class="border-secondary-subtle my-2">
+                <label class="form-label d-flex justify-content-between align-items-center">
+                    En-têtes personnalisés
+                    <button class="btn btn-outline-soft btn-sm-tool" id="btnAddHeader"><i
+                            class="bi bi-plus"></i></button>
+                </label>
+                <div id="headerRows"></div>
+                <div class="form-text">Utile pour <code>X-UserId</code>, <code>X-Application</code>,
+                    <code>Prest-Batch-Method</code>…</div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title"><i class="bi bi-signpost-2"></i> Découverte rapide</div>
+                <button class="quick-btn" data-quick="health"><i class="bi bi-circle-fill" style="font-size:.5rem"></i>
+                    GET /_health</button>
+                <button class="quick-btn" data-quick="ready"><i class="bi bi-circle-fill" style="font-size:.5rem"></i>
+                    GET /_ready</button>
+                <button class="quick-btn" data-quick="databases"><i class="bi bi-circle-fill"
+                        style="font-size:.5rem"></i> GET /databases</button>
+                <button class="quick-btn" data-quick="schemas"><i class="bi bi-circle-fill" style="font-size:.5rem"></i>
+                    GET /schemas</button>
+                <button class="quick-btn" data-quick="tables"><i class="bi bi-circle-fill" style="font-size:.5rem"></i>
+                    GET /tables</button>
+                <button class="quick-btn" data-quick="schematables"><i class="bi bi-circle-fill"
+                        style="font-size:.5rem"></i> GET /{base}/{schema}</button>
+                <button class="quick-btn" data-quick="show"><i class="bi bi-circle-fill" style="font-size:.5rem"></i>
+                    GET /show/{base}/{schema}/{table}</button>
+            </div>
+        </aside>
+
+        <button type="button" class="layout-resizer" id="layoutResizer"
+            aria-label="Redimensionner le panneau latéral"></button>
+
+        <!-- ============ MAIN ============ -->
+        <main class="main">
+            <ul class="nav nav-console" id="mainTabs">
+                <li class="nav-item"><button class="nav-link active" data-tab="crud">Requête CRUD</button></li>
+                <li class="nav-item"><button class="nav-link" data-tab="advanced">Requêtes avancées</button></li>
+                <li class="nav-item"><button class="nav-link" data-tab="custom">Requêtes personnalisées</button></li>
+            </ul>
+
+            <!-- ---------------- TAB: CRUD ---------------- -->
+            <div class="tab-pane" id="tab-crud">
+                <div class="panel">
+                    <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                        <select class="form-select method-select font-mono" id="crudMethod">
+                            <option>GET</option>
+                            <option>POST</option>
+                            <option>PUT</option>
+                            <option>PATCH</option>
+                            <option>DELETE</option>
+                        </select>
+                        <span class="table-endpoint flex-grow-1"
+                            id="crudEndpointLabel">/{database}/{schema}/{table}</span>
+                        <button class="btn btn-amber" id="btnCrudSend"><i class="bi bi-send-fill"></i> Envoyer</button>
+                    </div>
+
+                    <!-- GET-only builder -->
+                    <div id="crudGetBuilder">
+                        <div class="panel-title"><i class="bi bi-funnel"></i> Filtres (WHERE)</div>
+                        <div class="section-hint">Chaque ligne devient <span
+                                class="op-code">champ=$opérateur.valeur</span> (ou <span
+                                class="op-code">champ=valeur</span> pour une égalité directe), combinés avec AND.</div>
+                        <div id="filterRows"></div>
+                        <button class="dash-add mb-3" id="btnAddFilter"><i class="bi bi-plus"></i> Ajouter un
+                            filtre</button>
+
+                        <div class="panel-title"><i class="bi bi-list-ol"></i> Options de requête</div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6 col-md-3">
+                                <label class="form-label">_page</label>
+                                <input class="form-control font-mono" id="optPage" placeholder="1">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label">_page_size</label>
+                                <input class="form-control font-mono" id="optPageSize" placeholder="10">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label">_order</label>
+                                <input class="form-control font-mono" id="optOrder" placeholder="-created_at,name">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label">_groupby</label>
+                                <input class="form-control font-mono" id="optGroupby" placeholder="fieldname">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label">_select</label>
+                                <input class="form-control font-mono" id="optSelect" placeholder="id, name, sum:salary">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label">_count</label>
+                                <input class="form-control font-mono" id="optCount" placeholder="* ou champ">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label">_renderer</label>
+                                <select class="form-select font-mono" id="optRenderer">
+                                    <option value="">json (défaut)</option>
+                                    <option value="xml">xml</option>
+                                </select>
+                            </div>
+                            <div class="col-12 d-flex gap-3 flex-wrap pt-1">
+                                <div class="form-check"><input class="form-check-input" type="checkbox"
+                                        id="optDistinct"><label class="form-check-label"
+                                        for="optDistinct">_distinct</label></div>
+                                <div class="form-check"><input class="form-check-input" type="checkbox"
+                                        id="optCountFirst"><label class="form-check-label"
+                                        for="optCountFirst">_count_first</label></div>
+                            </div>
+                        </div>
+
+                        <div class="panel-title"><i class="bi bi-signpost-split"></i> Clause OR (<span
+                                class="op-code">_or</span>)</div>
+                        <div class="section-hint">Alternatives combinées avec OU, puis groupées et liées en ET avec le
+                            reste des filtres.</div>
+                        <div id="orRows"></div>
+                        <button class="dash-add" id="btnAddOr"><i class="bi bi-plus"></i> Ajouter une alternative
+                            OR</button>
+                    </div>
+
+                    <!-- Body editor for POST/PUT/PATCH -->
+                    <div id="crudBodyBuilder" class="d-none">
+                        <div class="panel-title"><i class="bi bi-filetype-json"></i> Corps JSON</div>
+                        <div class="section-hint" id="bodyHint">POST envoie un <span class="op-code">INSERT</span>.
+                            Utilisez les filtres ci-dessous (visibles pour PUT/PATCH/DELETE) pour cibler les lignes via
+                            <span class="op-code">WHERE</span>.</div>
+                        <textarea class="form-control font-mono mb-2" id="bodyJson" rows="7" placeholder='{
+  "name": "valeur",
+  "amount": 1234
+}'></textarea>
+                        <button class="btn btn-outline-soft btn-sm-tool" id="btnFormatBody"><i class="bi bi-braces"></i>
+                            Formater le JSON</button>
+
+                        <div id="crudFilterForWrite" class="mt-3 d-none">
+                            <div class="panel-title"><i class="bi bi-funnel"></i> Filtres (WHERE — requis pour PUT /
+                                PATCH / DELETE)</div>
+                            <div id="filterRowsWrite"></div>
+                            <button class="dash-add" id="btnAddFilterWrite"><i class="bi bi-plus"></i> Ajouter un
+                                filtre</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ---------------- TAB: ADVANCED ---------------- -->
+            <div class="tab-pane d-none" id="tab-advanced">
+
+                <div class="panel">
+                    <div class="panel-title"><i class="bi bi-calendar-range"></i> Filtre par plage (dates / nombres)
+                    </div>
+                    <div class="section-hint">Génère deux filtres <span class="op-code">$gte</span> / <span
+                            class="op-code">$lte</span> sur le même champ.</div>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-4"><label class="form-label">Champ</label><input
+                                class="form-control font-mono" id="rangeField" placeholder="created_at"></div>
+                        <div class="col-md-4"><label class="form-label">De (≥)</label><input
+                                class="form-control font-mono" id="rangeFrom" placeholder="1997-11-03"></div>
+                        <div class="col-md-4"><label class="form-label">À (≤)</label><input
+                                class="form-control font-mono" id="rangeTo" placeholder="1997-12-05"></div>
+                    </div>
+                    <button class="btn btn-outline-soft btn-sm-tool mt-2" id="btnUseRange"><i
+                            class="bi bi-arrow-down-circle"></i> Utiliser dans la requête CRUD (GET)</button>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-title"><i class="bi bi-diagram-3"></i> JOIN (1 niveau)</div>
+                    <div class="section-hint"><span
+                            class="op-code">_join={type}:{table}:{table.field}:{opérateur}:{table2.field}</span> — un
+                        seul niveau de jointure supporté.</div>
+                    <div class="row g-2">
+                        <div class="col-6 col-md-2">
+                            <label class="form-label">Type</label>
+                            <select class="form-select font-mono" id="joinType">
+                                <option>inner</option>
+                                <option>left</option>
+                                <option>right</option>
+                                <option>outer</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-2"><label class="form-label">Table jointe</label><input
+                                class="form-control font-mono" id="joinTable" placeholder="users"></div>
+                        <div class="col-6 col-md-3"><label class="form-label">table.champ</label><input
+                                class="form-control font-mono" id="joinField1" placeholder="friends.userid"></div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label">Opérateur</label>
+                            <select class="form-select font-mono" id="joinOp">
+                                <option>$eq</option>
+                                <option>$lt</option>
+                                <option>$gt</option>
+                                <option>$lte</option>
+                                <option>$gte</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-3"><label class="form-label">table2.champ</label><input
+                                class="form-control font-mono" id="joinField2" placeholder="users.id"></div>
+                    </div>
+                    <button class="btn btn-outline-soft btn-sm-tool mt-2" id="btnUseJoin"><i
+                            class="bi bi-arrow-down-circle"></i> Utiliser dans la requête CRUD (GET)</button>
+                    <div class="form-text mt-1">Pour plusieurs jointures : utilisez l'onglet « Requêtes personnalisées »
+                        (scripts SQL).</div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-title"><i class="bi bi-braces-asterisk"></i> Filtre JSONB</div>
+                    <div class="section-hint"><span class="op-code">?champ->>clé_json:jsonb=valeur</span></div>
+                    <div class="row g-2">
+                        <div class="col-md-4"><label class="form-label">Champ JSONB</label><input
+                                class="form-control font-mono" id="jsonbField" placeholder="data"></div>
+                        <div class="col-md-4"><label class="form-label">Clé JSON</label><input
+                                class="form-control font-mono" id="jsonbKey" placeholder="a"></div>
+                        <div class="col-md-4"><label class="form-label">Valeur</label><input
+                                class="form-control font-mono" id="jsonbValue" placeholder="123"></div>
+                    </div>
+                    <button class="btn btn-outline-soft btn-sm-tool mt-2" id="btnUseJsonb"><i
+                            class="bi bi-arrow-down-circle"></i> Utiliser dans la requête CRUD (GET)</button>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-title"><i class="bi bi-search"></i> Recherche plein texte (tsquery)</div>
+                    <div class="section-hint"><span class="op-code">?champ[$langue]:tsquery=valeur</span> — langue
+                        optionnelle.</div>
+                    <div class="row g-2">
+                        <div class="col-md-4"><label class="form-label">Champ</label><input
+                                class="form-control font-mono" id="tsField" placeholder="body"></div>
+                        <div class="col-md-4">
+                            <label class="form-label">Langue (optionnelle)</label>
+                            <select class="form-select font-mono" id="tsLang">
+                                <option value="">— aucune —</option>
+                                <option>simple</option>
+                                <option>arabic</option>
+                                <option>danish</option>
+                                <option>dutch</option>
+                                <option>english</option>
+                                <option>finnish</option>
+                                <option>french</option>
+                                <option>german</option>
+                                <option>hungarian</option>
+                                <option>indonesian</option>
+                                <option>irish</option>
+                                <option>italian</option>
+                                <option>lithuanian</option>
+                                <option>nepali</option>
+                                <option>norwegian</option>
+                                <option>portuguese</option>
+                                <option>romanian</option>
+                                <option>russian</option>
+                                <option>spanish</option>
+                                <option>swedish</option>
+                                <option>tamil</option>
+                                <option>turkish</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4"><label class="form-label">Valeur (tsquery)</label><input
+                                class="form-control font-mono" id="tsValue" placeholder="fat & rat"></div>
+                    </div>
+                    <button class="btn btn-outline-soft btn-sm-tool mt-2" id="btnUseTsquery"><i
+                            class="bi bi-arrow-down-circle"></i> Utiliser dans la requête CRUD (GET)</button>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-title"><i class="bi bi-stack"></i> Insertion en lot (Batch)</div>
+                    <div class="section-hint">Envoie un tableau JSON en <span class="op-code">POST
+                            /batch/{base}/{schéma}/{table}</span>. Optionnel : en-tête <span
+                            class="op-code">Prest-Batch-Method: copy</span> (insertion volumineuse, pas de lignes
+                        retournées).</div>
+                    <textarea class="form-control font-mono mb-2" id="batchJson" rows="6" placeholder='[
+  {"field1": "valeur", "field2": 123},
+  {"field1": "autre valeur", "field2": 456}
+]'></textarea>
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <div class="form-check"><input class="form-check-input" type="checkbox"
+                                id="batchCopyMethod"><label class="form-check-label" for="batchCopyMethod">Utiliser
+                                <span class="op-code">Prest-Batch-Method: copy</span></label></div>
+                        <button class="btn btn-outline-soft btn-sm-tool" id="btnFormatBatch"><i
+                                class="bi bi-braces"></i> Formater</button>
+                        <button class="btn btn-amber ms-auto" id="btnSendBatch"><i class="bi bi-send-fill"></i> Envoyer
+                            le lot</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ---------------- TAB: CUSTOM QUERIES ---------------- -->
+            <div class="tab-pane d-none" id="tab-custom">
+                <div class="panel">
+                    <div class="panel-title"><i class="bi bi-file-earmark-code"></i> Requête personnalisée (<span
+                            class="op-code">/_QUERIES</span>)</div>
+                    <div class="section-hint">
+                        Exécute un script SQL préparé côté serveur (dossier configuré dans <span
+                            class="op-code">prest.toml</span> → <span class="op-code">[queries] location</span>).
+                        Le verbe HTTP détermine le fichier appelé : GET → <span class="op-code">.read.sql</span>, POST →
+                        <span class="op-code">.write.sql</span>, PUT/PATCH → <span class="op-code">.update.sql</span>,
+                        DELETE → <span class="op-code">.delete.sql</span>.
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6 col-md-2">
+                            <label class="form-label">Méthode</label>
+                            <select class="form-select method-select font-mono" id="customMethod">
+                                <option>GET</option>
+                                <option>POST</option>
+                                <option>PUT</option>
+                                <option>PATCH</option>
+                                <option>DELETE</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-4"><label class="form-label">Dossier</label><input
+                                class="form-control font-mono" id="customFolder" placeholder="awesome_folder"></div>
+                        <div class="col-12 col-md-6"><label class="form-label">Nom du script (sans
+                                suffixe)</label><input class="form-control font-mono" id="customName"
+                                placeholder="example_of_powerful"></div>
+                    </div>
+                    <div class="table-endpoint mb-3" id="customEndpointLabel">/_QUERIES/{dossier}/{nom}</div>
+
+                    <div class="panel-title"><i class="bi bi-sliders"></i> Paramètres du template (<span
+                            class="op-code">{{.champ}}</span>)</div>
+                    <div id="customParamRows"></div>
+                    <button class="dash-add mb-3" id="btnAddCustomParam"><i class="bi bi-plus"></i> Ajouter un
+                        paramètre</button>
+
+                    <div id="customBodyWrap" class="d-none mb-3">
+                        <label class="form-label">Corps JSON (pour POST / PUT / PATCH)</label>
+                        <textarea class="form-control font-mono" id="customBody" rows="5" placeholder='{
+  "field1": "valeur"
+}'></textarea>
+                    </div>
+
+                    <button class="btn btn-amber" id="btnSendCustom"><i class="bi bi-send-fill"></i> Exécuter la
+                        requête</button>
+                </div>
+            </div>
+
+            <!-- ---------------- RESPONSE PANEL (always visible) ---------------- -->
+            <div class="panel">
+                <div class="panel-title"><i class="bi bi-terminal"></i> Aperçu de la requête</div>
+                <div class="terminal mb-1">
+                    <div class="terminal-head">
+                        <span class="terminal-dot" style="background:#f85149"></span>
+                        <span class="terminal-dot" style="background:#f2a640"></span>
+                        <span class="terminal-dot" style="background:#3fb950"></span>
+                        <span class="ms-2 resp-meta">cURL</span>
+                    </div>
+                    <div class="terminal-body" id="curlPreview">$ configurez la connexion pour voir la commande cURL…
+                    </div>
+                </div>
+                <button class="btn btn-outline-soft btn-sm-tool mt-2" id="btnCopyCurl"><i class="bi bi-clipboard"></i>
+                    Copier la commande cURL</button>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title"><i class="bi bi-arrow-down-square"></i> Réponse</div>
+                <div class="resp-toolbar">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="resp-status" id="respStatus">—</span>
+                        <span class="resp-meta" id="respMeta">aucune requête envoyée</span>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-soft btn-sm-tool" id="btnCopyResp"><i
+                                class="bi bi-clipboard"></i> Copier</button>
+                        <button class="btn btn-outline-soft btn-sm-tool" id="btnClearResp"><i
+                                class="bi bi-x-circle"></i> Effacer</button>
+                    </div>
+                </div>
+                <div class="accordion mb-2" id="respHeadersAccordion" style="display:none">
+                    <div class="accordion-item" style="background:var(--bg-panel-2);border-color:var(--border);">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed font-mono" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#respHeadersBody"
+                                style="background:var(--bg-panel-2);color:var(--text-muted);font-size:.78rem;">
+                                En-têtes de réponse
+                            </button>
+                        </h2>
+                        <div id="respHeadersBody" class="accordion-collapse collapse">
+                            <div class="accordion-body font-mono" style="font-size:.76rem;color:var(--text-muted);"
+                                id="respHeadersContent"></div>
+                        </div>
+                    </div>
+                </div>
+                <pre class="json-view"
+                    id="respBody">// La réponse formatée apparaîtra ici après l'envoi d'une requête.</pre>
+            </div>
+        </main>
+    </div>
+
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="toastEl" class="toast align-items-center border-0" role="alert"
+            style="background:var(--bg-elevated);color:var(--text);">
+            <div class="d-flex">
+                <div class="toast-body font-mono" id="toastBody" style="font-size:.8rem;"></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="index.js"></script>
+</body>
+
+</html>

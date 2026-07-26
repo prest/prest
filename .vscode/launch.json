@@ -5,11 +5,21 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch Package",
+            "name": "Launch Prest",
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd/prestd/main.go"
+            "program": "${workspaceFolder}/cmd/prestd/main.go",
+            "env": {
+                "PREST_CONF": "${workspaceFolder}/testdata/prest.toml"
+            }
+        },
+        {
+            "name": "Launch Swagger UI",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/testdata/www/main.go"
         }
     ]
 }
