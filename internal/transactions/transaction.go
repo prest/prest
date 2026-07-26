@@ -10,8 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 
-	"github.com/prest/prest/v2/pkg/adapters"
 	"github.com/prest/prest/v2/internal/adapters/postgres"
+	"github.com/prest/prest/v2/pkg/adapters"
 )
 
 type TxStatus int
@@ -36,20 +36,20 @@ func (s TxStatus) String() string {
 }
 
 type ManagedTx struct {
-	ID        string
-	Database  string
-	Schema    string
-	CreatedAt time.Time
-	Status    TxStatus
+	ID        string    `db:"id"`
+	Database  string    `db:"database"`
+	Schema    string    `db:"schema"`
+	CreatedAt time.Time `db:"created_at"`
+	Status    TxStatus  `db:"status"`
 }
 
 type TxInfo struct {
-	ID        string    `json:"id"`
-	Database  string    `json:"database"`
-	Schema    string    `json:"schema"`
-	Status    string    `json:"status"`
-	Operation int       `json:"operation_count"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        string    `json:"id" db:"id"`
+	Database  string    `json:"database" db:"database"`
+	Schema    string    `json:"schema" db:"schema"`
+	Status    string    `json:"status" db:"status"`
+	Operation int       `json:"operation_count" db:"operation"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
 }
 
 type Operation struct {

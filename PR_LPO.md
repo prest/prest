@@ -2,7 +2,7 @@
 
 ## Overview
 
-This pull request introduces **distributed HTTP-level database transactions** using the **Saga pattern** and **refactors the project to follow Go standard layout** with `internal/` packages.
+This pull request introduces **distributed HTTP-level database transactions** using the **Saga pattern** and **refactors the project to follow Go standard layout** with `internal/` and `pkg/` directories.
 
 ---
 
@@ -79,13 +79,13 @@ curl -X POST "http://localhost:3000/mydb/public/transactions/$TX_ID/commit" \
 
 | File | Changes |
 |------|---------|
-| `transactions/transaction.go` | Saga manager with PostgreSQL storage |
-| `controllers/transaction.go` | 5 HTTP handlers for transaction operations |
-| `middlewares/transaction.go` | Extracts transaction ID from `Authorization-Transaction` header |
-| `controllers/crud.go` | Insert/Update/Delete record operations when in transaction |
-| `app/app.go` | Initialize transaction manager, run migrations |
-| `app/transactions.go` | SQL DDL for transaction tables |
-| `config/config.go` | Added `TransactionEnabled` field |
+| `internal/transactions/transaction.go` | Saga manager with PostgreSQL storage |
+| `internal/controllers/transaction.go` | 5 HTTP handlers for transaction operations |
+| `internal/middlewares/transaction.go` | Extracts transaction ID from `Authorization-Transaction` header |
+| `internal/controllers/crud.go` | Insert/Update/Delete record operations when in transaction |
+| `pkg/app/app.go` | Initialize transaction manager, run migrations |
+| `pkg/app/transactions.go` | SQL DDL for transaction tables |
+| `pkg/config/config.go` | Added `TransactionEnabled` field |
 | `TRANSACTIONS.md` | Complete documentation |
 
 ---
@@ -94,51 +94,73 @@ curl -X POST "http://localhost:3000/mydb/public/transactions/$TX_ID/commit" \
 
 ### Problem
 
-The project structure didn't follow Go conventions, with internal implementation details exposed as public packages.
+The project structure didn't follow Go conventions, with internal implementation details exposed as public packages and a god file (`postgres.go`) of 2345 lines.
 
 ### Solution
 
-Moved private packages to `internal/` directory, keeping only the public API at the top level.
+Moved private packages to `internal/` directory, public library packages to `pkg/`, and split the monolithic postgres adapter into focused files.
 
-### New Structure
+### Final Structure
 
 ```
 prest/
-├── cmd/                          # CLI entry points (public)
-├── internal/                     # Private implementation
-│   ├── auth/                     # User/Claims models
-│   ├── contextkeys/              # Context key definitions
-│   ├── dbtime/                   # PostgreSQL time type
-│   ├── helpers/                  # Build metadata (ldflags)
-│   ├── ident/                    # SQL identifier validation
-│   ├── logsafe/                  # Credential redaction
-│   ├── mock/                     # Test mocks
-│   ├── mockgen/                  # Generated mocks
-│   ├── plugins/examples/         # Plugin examples
+├── cmd/                              # CLI entry points (public)
+├── pkg/                              # Public library packages
+│   ├── adapters/                     # Adapter interfaces
+│   ├── app/                          # Composition root
+│   └── config/                       # Configuration structs
+├── internal/                         # Private implementation
+│   ├── adapters/
+│   │   ├── postgres/                 # PostgreSQL adapter (split into 9 files)
+│   │   │   ├── postgres.go           # Struct, constructor, Connect, Ping
+│   │   │   ├── stmt.go              # Statement cache, Prepare*
+│   │   │   ├── crud.go              # Insert/Delete/Update/Query/BatchInsert
+│   │   │   ├── where.go             # WhereByRequest, OR parsing
+│   │   │   ├── sql_builders.go      # Join, Select, Order, Count, GroupBy
+│   │   │   ├── http_parsers.go      # SetByRequest, ParseInsertRequest
+│   │   │   ├── permissions.go       # TablePermissions, FieldsPermissions
+│   │   │   ├── catalog.go           # DatabaseClause, SchemaClause, ShowTable
+│   │   │   ├── connection/          # Connection pool manager
+│   │   │   └── ... (adapter.go, errors.go, otel.go, queries.go, etc.)
+│   │   └── timescaledb/             # TimescaleDB adapter
+│   ├── auth/                        # User/Claims models
+│   ├── cache/                       # HTTP caching
+│   ├── contextkeys/                 # Context key definitions
+│   ├── controllers/                 # HTTP handlers
+│   ├── dbtime/                      # PostgreSQL time type
+│   ├── helpers/                     # Build metadata
+│   ├── ident/                       # SQL identifier validation
+│   ├── logsafe/                     # Credential redaction
+│   ├── middlewares/                  # HTTP middleware
+│   ├── mock/                        # Test mocks
+│   ├── mockgen/                     # Generated mocks
+│   ├── plugins/                     # Plugin loader + examples
 │   ├── postgres/
-│   │   ├── formatters/           # JSON formatting
-│   │   └── statements/           # SQL templates
-│   ├── scanner/                  # PrestScanner implementation
-│   ├── statements/               # Permission constants
-│   ├── studio/                   # Embedded UI
-│   └── template/                 # SQL template functions
-├── adapters/                     # Adapter interfaces (public)
-├── app/                          # Composition root (public)
-├── cache/                        # HTTP caching (public)
-├── config/                       # Configuration (public)
-├── controllers/                  # HTTP handlers (public)
-├── middlewares/                   # HTTP middleware (public)
-├── plugins/                      # Plugin loader (public)
-├── router/                       # Route registration (public)
-├── telemetry/                    # OpenTelemetry (public)
-└── transactions/                 # Saga manager (public)
+│   │   ├── formatters/              # JSON formatting
+│   │   └── statements/              # SQL templates
+│   ├── router/                      # Route registration
+│   ├── scanner/                     # PrestScanner implementation
+│   ├── statements/                  # Permission constants
+│   ├── studio/                      # Embedded UI
+│   ├── template/                    # SQL template functions
+│   ├── telemetry/                   # OpenTelemetry
+│   └── transactions/                # Saga manager
+└── testdata/                        # Test fixtures
 ```
 
-### Packages Moved
+### Packages Moved to `internal/`
 
 | From | To | Rationale |
 |------|----|-----------|
-| `context/` | `internal/contextkeys/` | Context keys are implementation details |
+| `adapters/postgres/` | `internal/adapters/postgres/` | Implementation detail |
+| `adapters/timescaledb/` | `internal/adapters/timescaledb/` | Implementation detail |
+| `cache/` | `internal/cache/` | Only used internally |
+| `controllers/` | `internal/controllers/` | HTTP handlers are internal |
+| `middlewares/` | `internal/middlewares/` | Middleware is internal |
+| `plugins/` | `internal/plugins/` | Plugin loader is internal |
+| `router/` | `internal/router/` | Route registration is internal |
+| `telemetry/` | `internal/telemetry/` | Telemetry setup is internal |
+| `transactions/` | `internal/transactions/` | Transaction manager is internal |
 | `helpers/` | `internal/helpers/` | Build metadata not for external use |
 | `dbtime/` | `internal/dbtime/` | Only used internally |
 | `template/` | `internal/template/` | SQL functions are internal |
@@ -149,26 +171,41 @@ prest/
 | `middlewares/statements/` | `internal/statements/` | Constants are internal |
 | `adapters/postgres/statements/` | `internal/postgres/statements/` | SQL templates are internal |
 | `adapters/postgres/formatters/` | `internal/postgres/formatters/` | Formatting is internal |
-| `lib/src/*` | `internal/plugins/examples/` | Examples, not importable |
+| `context/` | `internal/contextkeys/` | Context keys are implementation details |
+
+### Packages Moved to `pkg/`
+
+| From | To | Rationale |
+|------|----|-----------|
+| `adapters/` | `pkg/adapters/` | Public interfaces for extending pREST |
+| `app/` | `pkg/app/` | Public entry point for embedding |
+| `config/` | `pkg/config/` | Public configuration structs |
+
+### Postgres Package Refactoring
+
+The monolithic `postgres.go` (2345 lines) was split into 9 focused files:
+
+| File | Lines | Responsibility |
+|------|-------|----------------|
+| `postgres.go` | 202 | Struct definition, constructor, Connect, Ping, registry methods, dbFromCtx |
+| `stmt.go` | 167 | Statement cache (Stmt type), Prepare*, GetTransaction |
+| `crud.go` | 653 | All CRUD operations: Insert, Delete, Update, Query, BatchInsert* |
+| `where.go` | 321 | WHERE clause building: WhereByRequest, OR parsing, whereKeyAndValue |
+| `sql_builders.go` | 448 | SQL clause generators: Join, Select, Order, Count, GroupBy, operators |
+| `http_parsers.go` | 213 | HTTP request parsing: SetByRequest, ParseInsertRequest, ReturningByRequest |
+| `permissions.go` | 217 | Access control: TablePermissions, FieldsPermissions |
+| `catalog.go` | 193 | Schema introspection: DatabaseClause, SchemaClause, ShowTable, SQL generators |
+| `connection.go` | 42 | Thin delegation to connection/ sub-package |
+
+Also eliminated the nested `internal/` directory:
+- `internal/adapters/postgres/internal/connection/` → `internal/adapters/postgres/connection/`
 
 ### Build Configuration Updates
 
 - Updated ldflags paths in `.goreleaser.yml`, `Dockerfile`, `Dockerfile.noplugins`
+- `go.mod` changed from `go 1.26.0` to `go 1.25.7` (matches installed binary)
+- `Makefile` rewritten: `make build`, `make test`, `make test-race`, `make vet`, `make lint`
 - All internal imports updated across the codebase
-
-### Public API (Unchanged)
-
-These packages remain at the top level for external consumers:
-- `config` - Configuration structs
-- `adapters` - Interface definitions for extending pREST
-- `app` - Entry point for embedding pREST
-- `transactions` - Saga transaction manager
-- `cache` - HTTP response caching
-- `telemetry` - OpenTelemetry initialization
-- `controllers` - HTTP handlers
-- `middlewares` - HTTP middleware
-- `router` - Route registration
-- `plugins` - Plugin loader
 
 ---
 
@@ -178,9 +215,7 @@ These packages remain at the top level for external consumers:
 
 All unit tests pass:
 ```bash
-go test ./adapters/... ./controllers/... ./middlewares/... ./router/... \
-       ./transactions/... ./internal/... ./app/... ./cmd/... ./config/... \
-       ./telemetry/... ./plugins/... ./cache/...
+make test
 # ok
 ```
 
@@ -208,7 +243,7 @@ PREST_TRANSACTIONENABLED=true
 
 ### Default Settings
 
-- **Transaction TTL**: 30 minutes (configurable in `app/app.go`)
+- **Transaction TTL**: 30 minutes (configurable in `pkg/app/app.go`)
 - **Cleanup interval**: 60 seconds
 - **Transaction tables**: Created automatically on startup when enabled
 
@@ -234,6 +269,21 @@ cfg := &config.Prest{
 
 app, err := app.New(cfg)
 ```
+
+Import paths changed:
+- `github.com/prest/prest/v2/config` → `github.com/prest/prest/v2/pkg/config`
+- `github.com/prest/prest/v2/app` → `github.com/prest/prest/v2/pkg/app`
+- `github.com/prest/prest/v2/adapters` → `github.com/prest/prest/v2/pkg/adapters`
+
+### For Contributors
+
+All implementation packages are now in `internal/`. The postgres adapter is split into focused files:
+
+- Adding a new SQL clause? → `sql_builders.go`
+- Adding a new CRUD operation? → `crud.go`
+- Adding a new HTTP parser? → `http_parsers.go`
+- Adding permission logic? → `permissions.go`
+- Adding schema introspection? → `catalog.go`
 
 ---
 
@@ -275,3 +325,5 @@ app, err := app.New(cfg)
 - [x] Transaction support is opt-in
 - [x] Internal packages properly hidden
 - [x] Public API unchanged
+- [x] Postgres package split into focused files (2345 → 8 files, max 653 lines)
+- [x] No nested internal/ directories

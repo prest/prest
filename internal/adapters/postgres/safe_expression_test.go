@@ -25,6 +25,7 @@ func TestIsSafeSQLExpression(t *testing.T) {
 		{"time_bucket('1 minute'--comment)", false},
 		{"upper(name)--x", false},
 		{"pg_sleep(1)", false},
+		{"coalesce(pg_sleep(10), 1)", false},
 		{"pg_read_file('/etc/passwd')", false},
 		{"unknown_func(name)", false},
 		{"time_bucket('1 minute', time", false},

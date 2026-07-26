@@ -15,9 +15,9 @@ import (
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
 	"github.com/prest/prest/v2/internal/adapters/postgres/connection"
+	pctx "github.com/prest/prest/v2/internal/contextkeys"
 	"github.com/prest/prest/v2/internal/postgres/statements"
 	"github.com/prest/prest/v2/pkg/config"
-	pctx "github.com/prest/prest/v2/internal/contextkeys"
 	"github.com/stretchr/testify/require"
 )
 
@@ -574,6 +574,24 @@ func TestParseBatchInsertRequest(t *testing.T) {
 	require.Contains(t, colsName, "age")
 	require.NotEmpty(t, placeholders)
 	require.Len(t, values, 4)
+}
+
+func TestParseBatchInsertRequestRejectsInvalidColumnName(t *testing.T) {
+	t.Parallel()
+
+	adapter := testAdapter()
+
+	body := []map[string]interface{}{
+		{"bad\"name": "a"},
+	}
+	raw, err := json.Marshal(body)
+	require.NoError(t, err)
+	req, err := http.NewRequest(http.MethodPost, "/", bytes.NewReader(raw))
+	require.NoError(t, err)
+
+	_, _, _, err = adapter.ParseBatchInsertRequest(req)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrInvalidIdentifier)
 }
 
 func TestReturningByRequest(t *testing.T) {

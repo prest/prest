@@ -275,6 +275,15 @@ var allowedGroupByFunctions = map[string]struct{}{
 	"ceil":        {},
 }
 
+func collectFunctionNames(expr string) []string {
+	matches := regexp.MustCompile(`([A-Za-z_][A-Za-z0-9_]*)\s*\(`).FindAllStringSubmatch(expr, -1)
+	funcNames := make([]string, 0, len(matches))
+	for _, match := range matches {
+		funcNames = append(funcNames, strings.ToLower(match[1]))
+	}
+	return funcNames
+}
+
 // isSafeSQLExpression validates that a SQL expression used in GROUP BY is an
 // allowlisted function call with safe characters (no comments, no pg_* funcs).
 func isSafeSQLExpression(expr string) bool {
@@ -286,12 +295,13 @@ func isSafeSQLExpression(expr string) bool {
 	if idx <= 0 {
 		return false
 	}
-	funcName := strings.ToLower(strings.TrimSpace(expr[:idx]))
-	if strings.HasPrefix(funcName, "pg_") {
-		return false
-	}
-	if _, ok := allowedGroupByFunctions[funcName]; !ok {
-		return false
+	for _, funcName := range collectFunctionNames(expr) {
+		if strings.HasPrefix(funcName, "pg_") {
+			return false
+		}
+		if _, ok := allowedGroupByFunctions[funcName]; !ok {
+			return false
+		}
 	}
 
 	for _, ch := range expr {

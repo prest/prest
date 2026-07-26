@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"reflect"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/prest/prest/v2/internal/ident"
@@ -128,8 +127,20 @@ func (adapter *postgres) ParseBatchInsertRequest(r *http.Request) (colsName stri
 		err = ErrBodyEmpty
 		return
 	}
-	recordKeys := adapter.tableKeys(recordSet[0])
-	colsName = strings.Join(recordKeys, ",")
+	recordKeys, err := adapter.tableKeys(recordSet[0])
+	if err != nil {
+		return
+	}
+	quotedKeys := make([]string, 0, len(recordKeys))
+	for _, key := range recordKeys {
+		quoted, qErr := ident.Quote(key)
+		if qErr != nil {
+			err = errors.Wrap(ErrInvalidIdentifier, "BatchInsert")
+			return
+		}
+		quotedKeys = append(quotedKeys, quoted)
+	}
+	colsName = strings.Join(quotedKeys, ",")
 	values, placeholders, err = adapter.operationValues(recordSet, recordKeys)
 	return
 }
@@ -138,10 +149,6 @@ func (adapter *postgres) operationValues(recordSet []map[string]interface{}, rec
 	for i, record := range recordSet {
 		initPH := len(values) + 1
 		for _, key := range recordKeys {
-			key, err = strconv.Unquote(key)
-			if err != nil {
-				return
-			}
 			value := record[key]
 			switch value.(type) {
 			case []interface{}:
@@ -159,9 +166,13 @@ func (adapter *postgres) operationValues(recordSet []map[string]interface{}, rec
 	return
 }
 
-func (adapter *postgres) tableKeys(json map[string]interface{}) (keys []string) {
+func (adapter *postgres) tableKeys(json map[string]interface{}) (keys []string, err error) {
 	for key := range json {
-		keys = append(keys, strconv.Quote(key))
+		if !ident.IsValid(key) {
+			err = errors.Wrap(ErrInvalidIdentifier, "BatchInsert")
+			return
+		}
+		keys = append(keys, key)
 	}
 	sort.Strings(keys)
 	return
