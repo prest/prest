@@ -60,3 +60,41 @@ func TestError_unchanged(t *testing.T) {
 	err := errors.New("connection refused")
 	require.Same(t, err, Error(err))
 }
+
+// TestError_passwordContainingAt guards against the greedy-vs-first-match
+// regex bug: a password containing "@" must be fully redacted, not just up
+// to its first "@" (which used to leave the tail of the real password, e.g.
+// "ss@word", in the clear).
+func TestError_passwordContainingAt(t *testing.T) {
+	t.Parallel()
+
+	err := errors.New("dial: postgres://user:p@ss@word@host/db failed")
+	redacted := Error(err)
+	require.Equal(t, "dial: postgres://user:***@host/db failed", redacted.Error())
+	require.NotContains(t, redacted.Error(), "ss@word")
+}
+
+func TestRedact_plainURL(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t,
+		"postgres://admin:***@db.example.com:5432/app",
+		Redact("postgresql://admin:supersecret@db.example.com:5432/app"),
+	)
+}
+
+func TestRedact_unchanged(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "no credentials here", Redact("no credentials here"))
+}
+
+// TestRedact_uppercaseScheme guards against a case-sensitive scheme match:
+// URL schemes are case-insensitive, so "POSTGRES://" must be redacted the
+// same as "postgres://" instead of leaking the password unredacted.
+func TestRedact_uppercaseScheme(t *testing.T) {
+	t.Parallel()
+
+	redacted := Redact("POSTGRES://admin:supersecret@db.example.com:5432/app")
+	require.NotContains(t, redacted, "supersecret")
+}

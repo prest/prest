@@ -412,9 +412,12 @@ func (h *MCPHandler) describeTable(r *http.Request, args mcpDescribeArgs) (any, 
 		return nil, err
 	}
 
-	columns, err := h.describeColumns(r, args.Database, args.Schema, args.Table)
+	columns, err := h.selectableColumns(r, args.Database, args.Schema, args.Table)
 	if err != nil {
 		return nil, err
+	}
+	if len(columns) == 0 {
+		return nil, fmt.Errorf("you don't have permission for this action, please check the permitted fields for this table")
 	}
 
 	return map[string]any{

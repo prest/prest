@@ -26,7 +26,26 @@ expected outcome, and why each request matters without decoding URLs alone.
 
 - Wire-compatible HTTP E2E → `integration/suites/` (Postgres job owns these)
 - Engine- or stack-specific → `integration/<db>/` (e.g. `postgres/`, `timescaledb/`)
-- Controller behavior changes need unit **and** integration coverage
 
 Templates and gold-file walkthrough: skill `prest-integration-tests` (+ `examples.md`).
 Layout/CI contract: `integration-layout.mdc`.
+
+## MUST: every application behavior change ships with an integration test
+
+A unit test with mocks proves a code path *can* be reached and returns the
+right value in isolation; only an integration test proves it *is* reached
+through real HTTP routing and behaves correctly end-to-end. Unit coverage
+(`unit-tests-tdd.mdc`) is necessary but not sufficient — do not consider a
+behavior change (controller, adapter, middleware, query-param parsing, SQL
+building, etc.) done without a paired integration test in `integration/suites/`
+or `integration/<db>/`.
+
+**Precedent:** `_select`'s SQL-injection fix (GHSA-qvx3-q8vx-9q3c) landed with
+unit coverage for its own validator (`sanitizeSelectField`). The sibling
+`_groupby` path used a separate, weaker validator (`isSafeSQLExpression`) that
+no integration test ever exercised end-to-end — the gap went unnoticed until a
+dedicated audit found it. Unit tests alone did not — and structurally could
+not — catch a *sibling* code path being missed entirely; only an HTTP-level
+test asserting the actual response for both `_select` and `_groupby` would
+have. See `integration/suites/controllers/crud_test.go` (`_groupby
+subquery/UNION injection` cases) for the test that now guards it.

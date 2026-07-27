@@ -383,6 +383,72 @@ func TestMCPHandler_RPC_DescribeTable(t *testing.T) {
 	require.Contains(t, rec.Body.String(), `"name":"id"`)
 }
 
+// TestMCPHandler_DescribeTable_NoPermission guards against describe_table
+// exposing full table schema (column names/types) regardless of per-user
+// permissions. Unlike selectTable, describeTable used to call describeColumns
+// directly with no selectableColumns/TablePermissions/FieldsPermissions
+// check, so it leaked schema metadata even when the user has no read access
+// to the table.
+func TestMCPHandler_DescribeTable_NoPermission(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	db := mockDatabaseRegistry(ctrl)
+
+	showScanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(showScanner)
+	showScanner.EXPECT().Err().Return(nil)
+	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","data_type":"integer","position":1}]`))
+	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(false)
+
+	h := NewMCPHandler(Deps{Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	_, err := h.describeTable(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpDescribeArgs{
+		Database: "prest-test", Schema: "public", Table: "users",
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "permission")
+}
+
+// TestMCPHandler_DescribeTable_FiltersColumnsByFieldPermissions guards the
+// column-level half of the same gap: even when a user has table-level read
+// access, describe_table must only report the columns FieldsPermissions
+// actually grants, not the full schema.
+func TestMCPHandler_DescribeTable_FiltersColumnsByFieldPermissions(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	db := mockDatabaseRegistry(ctrl)
+
+	showScanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(showScanner)
+	showScanner.EXPECT().Err().Return(nil)
+	showScanner.EXPECT().Bytes().Return([]byte(
+		`[{"column_name":"id","data_type":"integer","position":1},{"column_name":"ssn","data_type":"text","position":2}]`,
+	))
+	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(true)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "users", "read", "").Return([]string{"id"}, nil)
+
+	h := NewMCPHandler(Deps{Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	result, err := h.describeTable(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpDescribeArgs{
+		Database: "prest-test", Schema: "public", Table: "users",
+	})
+	require.NoError(t, err)
+
+	payload := result.(map[string]any)
+	require.Equal(t, 1, payload["count"])
+	columns := payload["columns"].([]mcpColumn)
+	require.Len(t, columns, 1)
+	require.Equal(t, "id", columns[0].Name)
+}
+
 func TestMCPHandler_RPC_SelectTable(t *testing.T) {
 	t.Parallel()
 

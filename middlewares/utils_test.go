@@ -20,11 +20,24 @@ func Test_getVars(t *testing.T) {
 	require.Equal(t, "public", got["schema"])
 	require.Equal(t, "users", got["table"])
 
-	got = getVars("prest/public/users/extra")
-	require.Equal(t, "public", got["database"])
-	require.Equal(t, "users", got["schema"])
-	require.Equal(t, "extra", got["table"])
+	// A real http.Request.URL.Path always carries the leading slash.
+	got = getVars("/prest/public/users")
+	require.Equal(t, "prest", got["database"])
+	require.Equal(t, "public", got["schema"])
+	require.Equal(t, "users", got["table"])
 
+	// /batch/{database}/{schema}/{table}: the shape that used to fall through
+	// to nil (any 4-element split was treated as "drop the first element",
+	// which only makes sense when that first element is the leading "").
+	got = getVars("/batch/prest/public/users")
+	require.Equal(t, "prest", got["database"])
+	require.Equal(t, "public", got["schema"])
+	require.Equal(t, "users", got["table"])
+
+	// A genuinely malformed 4-segment path with neither a leading slash nor a
+	// "batch" prefix has no valid interpretation and must be rejected, not
+	// have an arbitrary segment dropped.
+	require.Nil(t, getVars("prest/public/users/extra"))
 	require.Nil(t, getVars("/prest/public/users/extra"))
 }
 

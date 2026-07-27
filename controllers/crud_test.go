@@ -13,6 +13,7 @@ import (
 	"github.com/prest/prest/v2/adapters/mockgen"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
+	"github.com/prest/prest/v2/middlewares"
 	"github.com/stretchr/testify/require"
 )
 
@@ -375,7 +376,7 @@ func TestCRUDHandler_Select_WithCache(t *testing.T) {
 	h.Select(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code)
-	require.Equal(t, url, cacher.key)
+	require.Equal(t, middlewares.CacheKey(req), cacher.key)
 	require.Contains(t, cacher.value, "cached")
 }
 

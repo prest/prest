@@ -61,7 +61,6 @@ func Execute(ctx context.Context, cfg *config.Prest) {
 	migrateCmd.AddCommand(resetCmd)
 	RootCmd.AddCommand(versionCmd)
 	RootCmd.AddCommand(migrateCmd)
-	migrateCmd.PersistentFlags().StringVar(&urlConn, "url", driverURL(cfg), "Database driver url")
 	migrateCmd.PersistentFlags().StringVar(&path, "path", cfg.MigrationsPath, "Migrations directory")
 
 	RootCmd.SetContext(withConfig(ctx, cfg))

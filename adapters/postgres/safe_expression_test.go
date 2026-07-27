@@ -29,6 +29,15 @@ func TestIsSafeSQLExpression(t *testing.T) {
 		{"unknown_func(name)", false},
 		{"time_bucket('1 minute', time", false},
 		{"time_bucket)('1 minute', time)", false},
+
+		// Nested subquery / trailing statement injection attempts (CWE-89 sibling
+		// to the _select fix): a balanced-paren, comment-free expression that
+		// smuggles a subquery or an extra statement past the outer allowlisted call.
+		{"upper((SELECT 1))", false},
+		{"upper((SELECT 1)) UNION SELECT current_user", false},
+		{"abs((SELECT 1 FROM pg_sleep(3)))", false},
+		{"upper(name) UNION SELECT current_user", false},
+		{"coalesce(nullif(name, ''), 'x')", false},
 	}
 
 	for _, tt := range tests {

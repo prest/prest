@@ -43,6 +43,15 @@ INSERT INTO test_group_by_table(name, age, salary) VALUES('gopher', 20, 100);
 INSERT INTO test_group_by_table(name, age, salary) VALUES('guitarra humana', 19, 3998);
 INSERT INTO prest_users(username, password) VALUES('test@postgres.rest', 'e10adc3949ba59abbe56e057f20f883e');
 
+-- Seed row and second user for the cache per-identity scoping integration
+-- test (see testdata/prest_cache.toml and cache_scope_test.go). test6 is
+-- otherwise unused. cache-scope-user-b has no [[access.users]] override in
+-- prest_cache.toml, so it falls back to the generic (more restricted) field
+-- permissions on test6 -- unlike test@postgres.rest, which is granted an
+-- extra column there.
+INSERT INTO test6(name, celphone) VALUES('cache-scope-test', '5551234');
+INSERT INTO prest_users(username, password) VALUES('cache-scope-user-b@postgres.rest', 'e10adc3949ba59abbe56e057f20f883e');
+
 -- Views
 CREATE TABLE table_to_view(id serial, name text, celphone text);
 INSERT INTO table_to_view (name, celphone) VALUES ('gopher', '8888888');

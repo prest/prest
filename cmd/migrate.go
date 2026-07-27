@@ -23,6 +23,13 @@ var (
 	ErrURLNotSet  = errors.New("Database URL not set. \nPlease set it using --url flag or configure it on your prest config file")
 )
 
+func init() {
+	// Empty default, not a DSN built from cfg: a credential-bearing DSN must
+	// never be baked into a cobra flag default, since cobra prints defaults
+	// verbatim in --help. resolveURLConn fills it from cfg at PreRunE time.
+	migrateCmd.PersistentFlags().StringVar(&urlConn, "url", "", "Database driver url (defaults to the configured Postgres connection)")
+}
+
 // migrateCmd represents the migrate command
 var migrateCmd = &cobra.Command{
 	Use:   "migrate",
@@ -34,11 +41,12 @@ func checkTable(cmd *cobra.Command, args []string) error {
 	if path == "" {
 		return ErrPathNotSet
 	}
+	cfg := configFrom(cmd)
+	resolveURLConn(cfg)
 	if urlConn == "" {
 		return ErrURLNotSet
 	}
 	cmd.SilenceUsage = true
-	cfg := configFrom(cmd)
 	if err := app.EnsureAdapter(cfg); err != nil {
 		return err
 	}
@@ -71,6 +79,17 @@ func checkTable(cmd *cobra.Command, args []string) error {
 		}
 	}
 	return nil
+}
+
+// resolveURLConn fills urlConn from the configured Postgres connection when
+// the --url flag was left unset. The flag itself is registered with an empty
+// default (not a DSN built with the plaintext password), so `prestd migrate
+// --help` never echoes the credential back to the terminal; this is where
+// that default gets resolved instead, once flag parsing has already run.
+func resolveURLConn(cfg *config.Prest) {
+	if urlConn == "" {
+		urlConn = driverURL(cfg)
+	}
 }
 
 func driverURL(cfg *config.Prest) string {

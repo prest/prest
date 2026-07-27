@@ -114,6 +114,13 @@ func TestSelectFromTables(t *testing.T) {
 		{"execute select rejects _select projection injection", "/%s/public/test?_select=(1)\"x\"", "GET", http.StatusBadRequest, ""},
 		// Same class through the second sink: _select interpolated into SELECT COUNT(...) when _count is set.
 		{"execute select rejects _select injection via the _count sink", "/%s/public/test?_count=*&_select=pg_read_file('/etc/passwd')\"f\"", "GET", http.StatusBadRequest, ""},
+		// _groupby sibling of GHSA-qvx3-q8vx-9q3c: the raw-SQL-expression branch used to accept a
+		// balanced-paren subquery/UNION riding past the outer allowlisted function. GroupByClause now
+		// rejects it and drops the clause entirely, so pairing it with an aggregate _select surfaces
+		// as a "column must appear in GROUP BY" error instead of executing the injected UNION SELECT.
+		{"execute select rejects _groupby subquery/UNION injection", "/%s/public/test_group_by_table?_select=age,sum:salary&_groupby=upper((SELECT+1))+UNION+SELECT+current_user", "GET", http.StatusBadRequest, ""},
+		// Nested pg_* call as a function argument (pg_sleep DoS primitive) must be rejected the same way.
+		{"execute select rejects _groupby nested pg_* call injection", "/%s/public/test_group_by_table?_select=age,sum:salary&_groupby=abs((SELECT+1+FROM+pg_sleep(3)))", "GET", http.StatusBadRequest, ""},
 		{"execute select in a view with an other column", "/%s/public/view_test?_select=celphone", "GET", http.StatusBadRequest, ""},
 		{"execute select in a view with where and column invalid", "/%s/public/view_test?0celphone=$eq.888888", "GET", http.StatusBadRequest, ""},
 		{"execute select in a view with custom join clause invalid", "/%s/public/view_test?_join=inner:test2.name:eq:view_test.player", "GET", http.StatusBadRequest, ""},

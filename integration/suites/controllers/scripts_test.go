@@ -55,6 +55,61 @@ func TestExecuteFromScripts(t *testing.T) {
 	}
 }
 
+// TestExecuteFromScripts_RejectsHeaderInjection guards the unauthenticated SQL
+// injection where get_header.read.sql interpolates the X-Application header
+// directly into `SELECT '{{index .header "X-Application"}}'` with no
+// sanitization, unlike query parameters which already go through
+// sanitizeScriptParam. A header carrying a quote breakout used to let an
+// unauthenticated request UNION in arbitrary rows (e.g. pg_authid password
+// hashes). extractHeaders now routes header values through the same
+// sanitizeScriptParam gate as query parameters, so the payload is neutralized
+// to an empty string instead of breaking out of the SQL literal.
+func TestExecuteFromScripts_RejectsHeaderInjection(t *testing.T) {
+	base := helpers.ServerURL(t)
+
+	headers := map[string]string{
+		"X-Application": "' UNION SELECT rolpassword::text FROM pg_authid WHERE rolname='postgres' -- ",
+	}
+	testutils.DoRequestWithHeaders(
+		t, base+"/_QUERIES/fulltable/get_header", nil, "GET", http.StatusOK,
+		"ExecuteFromScripts", headers, `[{"?column?": ""}]`,
+	)
+}
+
+// TestExecuteFromScripts_RejectsUnregisteredDatabase guards against
+// ScriptHandler.Execute reaching the connection layer with an arbitrary,
+// attacker-chosen database name via /_QUERIES/{database}/{queriesLocation}/{script}.
+// Every other controller validates the database against the registry before
+// touching the connection layer; Execute used to skip that check, so
+// dbFromCtx would attempt a real outbound Postgres connection for any name in
+// the path. It also skipped validatePathSegments entirely, so an unsafe
+// queriesLocation/script segment used to reach ResolveScript unchecked.
+func TestExecuteFromScripts_RejectsUnregisteredDatabase(t *testing.T) {
+	base := helpers.ServerURL(t)
+
+	var testCases = []struct {
+		description string
+		url         string
+		status      int
+	}{
+		{
+			"GET _QUERIES with an unregistered database name is rejected, not attempted as a connection",
+			"/_QUERIES/evil-db-does-not-exist/fulltable/get_all?field1=gopher",
+			http.StatusBadRequest,
+		},
+		{
+			"GET _QUERIES with an unsafe script segment is rejected",
+			"/_QUERIES/fulltable/evil'name",
+			http.StatusBadRequest,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		testutils.DoRequest(t, base+tc.url, nil, "GET", tc.status, "ExecuteFromScripts")
+	}
+}
+
 func TestRenderWithXML(t *testing.T) {
 	base := helpers.ServerURL(t)
 

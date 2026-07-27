@@ -376,6 +376,34 @@ func withUser(ctx context.Context, user auth.User) context.Context {
 	return context.WithValue(ctx, pctx.UserInfoKey, user)
 }
 
+// TestAccessControl_EnforcesBatchInsertRoute guards the getVars gap where
+// /batch/{database}/{schema}/{table} (a real 5-element split once the leading
+// "/" is accounted for) fell outside getVars' handled shapes and returned nil,
+// which AccessControl treats as "not a table path" and lets through
+// unconditionally — silently skipping TablePermissions for batch inserts.
+func TestAccessControl_EnforcesBatchInsertRoute(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	perms.EXPECT().TablePermissions("prest-test", "public", "test", "write", "").Return(false)
+
+	called := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+	})
+
+	handler := AccessControl(perms)
+	req := httptest.NewRequest(http.MethodPost, "/batch/prest-test/public/test", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req, next.ServeHTTP)
+
+	require.False(t, called)
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
 func TestAccessControl_SkipsNonTablePaths(t *testing.T) {
 	t.Parallel()
 

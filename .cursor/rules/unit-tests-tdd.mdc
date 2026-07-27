@@ -36,5 +36,9 @@ Fail the task if package coverage is under 80%.
 
 ## Controllers / HTTP
 
-TDD unit tests do **not** replace E2E. Controller/HTTP behavior also needs integration coverage —
-see `integration-tests.mdc` and skill `prest-integration-tests`.
+TDD unit tests do **not** replace E2E. Every behavior change MUST also ship an
+integration test — this is not optional for controller/HTTP-adjacent code, it
+is the gate that catches a sibling code path a mocked unit test structurally
+cannot see (e.g. a second query-param builder reusing weaker validation than
+the one under test). See `integration-tests.mdc` (MUST section) and skill
+`prest-integration-tests`.
