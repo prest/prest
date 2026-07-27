@@ -1,0 +1,13 @@
+[http]
+port = 3005
+
+[access]
+restrict = false
+
+# Query Guard enabled with a single rule so the HTTP behaviour is deterministic:
+# every test table is unindexed, so reads are planned as sequential scans and are
+# refused, except the ones opted out through allow_tables.
+[query_guard]
+enabled = true
+reject_seq_scan = true
+allow_tables = ["test2"]

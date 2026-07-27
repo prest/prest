@@ -23,6 +23,7 @@ import (
 	"github.com/prest/prest/v2/adapters/postgres/formatters"
 	"github.com/prest/prest/v2/adapters/postgres/internal/connection"
 	"github.com/prest/prest/v2/adapters/postgres/statements"
+	"github.com/prest/prest/v2/adapters/queryplan"
 	"github.com/prest/prest/v2/adapters/scanner"
 	"github.com/prest/prest/v2/config"
 	pctx "github.com/prest/prest/v2/context"
@@ -41,6 +42,17 @@ type postgres struct {
 	conn    *connection.Manager
 	stmts   *Stmt
 	stmtsMu sync.Mutex
+	planner queryplan.Planner
+}
+
+// Option customizes an adapter built by New.
+type Option func(*postgres)
+
+// WithQueryPlanner injects the execution plan source. New installs the postgres
+// planner by default; override it for engines whose EXPLAIN output differs, or to
+// supply a stub in tests.
+func WithQueryPlanner(planner queryplan.Planner) Option {
+	return func(p *postgres) { p.planner = planner }
 }
 
 const (
@@ -73,11 +85,18 @@ var (
 )
 
 // New creates a Postgres adapter without connecting.
-func New(cfg *config.Prest) adapters.Adapter {
-	return &postgres{
+func New(cfg *config.Prest, opts ...Option) adapters.Adapter {
+	adapter := &postgres{
 		cfg:  cfg,
 		conn: connection.NewManager(cfg, otelManagerOptions(cfg)...),
 	}
+	// The planner reaches the database through the adapter's own pool, so it is
+	// wired after construction and can be replaced by an option.
+	adapter.planner = queryplan.NewPostgres(adapter)
+	for _, opt := range opts {
+		opt(adapter)
+	}
+	return adapter
 }
 
 // Connect initializes the database connection pool and verifies connectivity.

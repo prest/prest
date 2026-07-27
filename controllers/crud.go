@@ -9,6 +9,7 @@ import (
 	"github.com/prest/prest/v2/adapters"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
+	"github.com/prest/prest/v2/queryguard"
 	"github.com/prest/prest/v2/middlewares"
 
 	"github.com/structy/log"
@@ -26,11 +27,18 @@ type CRUDHandler struct {
 }
 
 // NewCRUDHandler creates a CRUDHandler.
+//
+// Table statements run through deps.TableExecutor, which Query Guard decorates
+// when enabled; callers that build Deps by hand fall back to deps.Executor.
 func NewCRUDHandler(deps Deps) *CRUDHandler {
+	executor := deps.TableExecutor
+	if executor == nil {
+		executor = deps.Executor
+	}
 	return &CRUDHandler{
 		builder:  deps.Builder,
 		sql:      deps.SQL,
-		executor: deps.Executor,
+		executor: executor,
 		perms:    deps.Perms,
 		db:       deps.DB,
 		cache:    deps.Cache,
@@ -177,6 +185,10 @@ func (h *CRUDHandler) Select(w http.ResponseWriter, r *http.Request) {
 	sc := runQuery(ctx, sqlSelect, values...)
 	if err = sc.Err(); err != nil {
 		log.Errorln(err)
+		if rejection, ok := queryguard.Rejection(err); ok {
+			jsonGuardError(w, rejection)
+			return
+		}
 		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
 			jsonError(w, err.Error(), http.StatusNotFound)
 			return

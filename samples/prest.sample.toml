@@ -268,3 +268,38 @@ enabled = false                # PREST_OTEL_ENABLED; master switch (zero overhea
 # metrics_interval = "15s"     # PREST_OTEL_METRICS_INTERVAL; metric export period
 # insecure = false             # PREST_OTEL_INSECURE; disable TLS to collector (local/dev only)
 # db_statement = false         # PREST_OTEL_DB_STATEMENT; record SQL text on DB spans (trusted envs only)
+
+
+# ------------------------------------------------------------------------
+# [query_guard] - Reject expensive queries before they reach the database.
+# ------------------------------------------------------------------------
+# Opt-in and disabled by default. When enabled, every statement generated from a
+# table CRUD read is first planned with EXPLAIN (FORMAT JSON) - never EXPLAIN
+# ANALYZE, so nothing is executed - and refused when the plan violates the rules
+# below. Refused requests answer 422 Unprocessable Entity with the rule and the
+# reason; accepted ones run unchanged, at the cost of one extra planning round
+# trip. Auth, catalog and /_QUERIES scripts are never plan-checked: that SQL is
+# written by pREST or by you, not by API clients.
+#
+# Intended for installations exposed to third parties (vendors, BI tools, AI
+# agents) where protecting the database matters more than query flexibility.
+#
+# Enabling this requires an adapter that can produce execution plans (postgres
+# and its wire-compatible variants). pREST fails to start otherwise, rather than
+# serving an installation that believes it is protected.
+[query_guard]
+enabled = false                     # PREST_QUERY_GUARD_ENABLED; master switch
+# reject_seq_scan = true            # PREST_QUERY_GUARD_REJECT_SEQ_SCAN; refuse full table scans
+# reject_parallel_seq_scan = true   # PREST_QUERY_GUARD_REJECT_PARALLEL_SEQ_SCAN
+# max_cost = 50000                  # PREST_QUERY_GUARD_MAX_COST; planner total cost ceiling (0 = no limit)
+# max_rows = 100000                 # PREST_QUERY_GUARD_MAX_ROWS; estimated rows ceiling (0 = no limit)
+# require_index_usage = true        # PREST_QUERY_GUARD_REQUIRE_INDEX_USAGE; plan must read through an index
+# max_joins = 3                     # PREST_QUERY_GUARD_MAX_JOINS; join nodes ceiling (0 = no limit)
+# allow_tables = ["lookup", "countries"]  # tables exempt from the scan rules above
+#
+# Per-database overrides start from the settings above and replace only the keys
+# they set, so an analytical database can be looser than the default policy.
+#
+# [query_guard.databases.analytics]
+# reject_seq_scan = false
+# max_cost = 200000

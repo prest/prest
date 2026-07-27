@@ -28,6 +28,7 @@ type Deps struct {
 	Catalog            adapters.CatalogQuerier
 	Builder            adapters.RequestQueryBuilder
 	Executor           adapters.QueryExecutor
+	TableExecutor      adapters.QueryExecutor
 	SQL                adapters.SQLBuilder
 	Perms              adapters.PermissionsChecker
 	Scripts            adapters.ScriptRunner
@@ -61,6 +62,7 @@ func NewDepsFromConfig(p *config.Prest) Deps {
 		Catalog:       p.Adapter,
 		Builder:       p.Adapter,
 		Executor:      p.Adapter,
+		TableExecutor: p.Adapter,
 		SQL:           p.Adapter,
 		Perms:         p.Adapter,
 		Scripts:       p.Adapter,

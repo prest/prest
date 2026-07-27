@@ -35,6 +35,13 @@ func QueriesServerURL(t *testing.T) string {
 	return envURL(t, "PREST_QUERIES_TEST_URL")
 }
 
+// QueryGuardServerURL returns the base URL for the prestd service running with
+// Query Guard enabled (see testdata/prest_query_guard.toml).
+func QueryGuardServerURL(t *testing.T) string {
+	t.Helper()
+	return envURL(t, "PREST_QUERY_GUARD_TEST_URL")
+}
+
 // CacheServerURL returns the base URL for the cache+auth+ACL-enabled prestd
 // service (testdata/prest_cache.toml), used to test per-identity cache scoping.
 func CacheServerURL(t *testing.T) string {

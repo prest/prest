@@ -98,6 +98,9 @@ func New(cfg *config.Prest) (*App, error) {
 
 	deps := controllers.NewDepsFromConfig(cfg)
 	deps.AdapterRegistry = registry // Inject registry into deps
+	if err := applyQueryGuard(cfg, &deps); err != nil {
+		return nil, err
+	}
 	h := controllers.NewHandlers(deps, cfg)
 
 	plg := plugins.New(cfg)
