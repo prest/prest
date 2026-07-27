@@ -1,6 +1,8 @@
 package middlewares
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -140,9 +142,18 @@ func TestCacheKey_rawQueryCannotForgeIdentity(t *testing.T) {
 	victimReq = victimReq.WithContext(withUser(victimReq.Context(), auth.User{Username: "admin"}))
 	victimKey := CacheKey(victimReq)
 
+	// Reuse the production digest mechanism to pin down what the suffix must
+	// actually contain, not just that two keys differ.
+	sum := sha256.Sum256([]byte("admin"))
+	adminDigest := hex.EncodeToString(sum[:])
+	require.Contains(t, victimKey, adminDigest)
+
 	forgedPath := "/prest/public/test?__prest_user=admin"
 	attackerReq := httptest.NewRequest(http.MethodGet, forgedPath, nil)
 	attackerReq = attackerReq.WithContext(withUser(attackerReq.Context(), auth.User{Username: "eve"}))
+	attackerKey := CacheKey(attackerReq)
 
-	require.NotEqual(t, victimKey, CacheKey(attackerReq))
+	require.NotEqual(t, victimKey, attackerKey)
+	require.NotContains(t, attackerKey, adminDigest,
+		"attacker's key must not carry the victim's identity digest despite echoing their username in RawQuery")
 }
