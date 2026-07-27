@@ -54,6 +54,9 @@ Contributions are welcome. See the [Development Guide](https://docs.prestd.com/g
 
 Questions? [GitHub Discussions](https://github.com/prest/prest/discussions) or [Discord](https://discord.gg/JnRjvu39w8).
 
+Testing-related adapter notes:
+- [Mock adapter usage](./adapters/mock/README.md)
+
 ## Testing
 
 Run unit tests locally:
