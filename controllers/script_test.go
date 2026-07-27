@@ -179,6 +179,24 @@ func TestExtractHeaders(t *testing.T) {
 	require.Equal(t, []string{"a", "b"}, headers["X-Multi"])
 }
 
+func TestExtractHeaders_SanitizesUnsafeValues(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("X-Safe", "prest")
+	req.Header.Set("X-Injection", "' UNION SELECT rolpassword::text FROM pg_authid WHERE rolname='postgres' -- ")
+	req.Header.Add("X-Multi", "good")
+	req.Header.Add("X-Multi", "'; DROP TABLE users; --")
+
+	data := map[string]interface{}{}
+	extractHeaders(req, data)
+
+	headers := data["header"].(map[string]interface{})
+	require.Equal(t, "prest", headers["X-Safe"])
+	require.Equal(t, "", headers["X-Injection"])
+	require.Equal(t, []string{"good", ""}, headers["X-Multi"])
+}
+
 func TestExtractQueryParameters(t *testing.T) {
 	t.Parallel()
 

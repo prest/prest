@@ -88,15 +88,21 @@ func (h *ScriptHandler) ExecuteScriptQuery(rq *http.Request, queriesPath string,
 }
 
 // extractHeaders gets from the given request the headers and populate the provided templateData accordingly.
+// Values are routed through sanitizeScriptParam, the same gate used for query
+// parameters, since templates interpolate headers into SQL exactly the same way.
 func extractHeaders(rq *http.Request, templateData map[string]interface{}) {
 	headers := map[string]interface{}{}
 
 	for key, value := range rq.Header {
 		if len(value) == 1 {
-			headers[key] = value[0]
+			headers[key] = sanitizeScriptParam(value[0])
 			continue
 		}
-		headers[key] = value
+		sanitized := make([]string, 0, len(value))
+		for _, v := range value {
+			sanitized = append(sanitized, sanitizeScriptParam(v))
+		}
+		headers[key] = sanitized
 	}
 
 	templateData["header"] = headers

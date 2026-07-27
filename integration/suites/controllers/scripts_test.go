@@ -55,6 +55,27 @@ func TestExecuteFromScripts(t *testing.T) {
 	}
 }
 
+// TestExecuteFromScripts_RejectsHeaderInjection guards the unauthenticated SQL
+// injection where get_header.read.sql interpolates the X-Application header
+// directly into `SELECT '{{index .header "X-Application"}}'` with no
+// sanitization, unlike query parameters which already go through
+// sanitizeScriptParam. A header carrying a quote breakout used to let an
+// unauthenticated request UNION in arbitrary rows (e.g. pg_authid password
+// hashes). extractHeaders now routes header values through the same
+// sanitizeScriptParam gate as query parameters, so the payload is neutralized
+// to an empty string instead of breaking out of the SQL literal.
+func TestExecuteFromScripts_RejectsHeaderInjection(t *testing.T) {
+	base := helpers.ServerURL(t)
+
+	headers := map[string]string{
+		"X-Application": "' UNION SELECT rolpassword::text FROM pg_authid WHERE rolname='postgres' -- ",
+	}
+	testutils.DoRequestWithHeaders(
+		t, base+"/_QUERIES/fulltable/get_header", nil, "GET", http.StatusOK,
+		"ExecuteFromScripts", headers, `[{"?column?": ""}]`,
+	)
+}
+
 func TestRenderWithXML(t *testing.T) {
 	base := helpers.ServerURL(t)
 
