@@ -127,3 +127,22 @@ func TestCacheMiddleware_CacheLookup(t *testing.T) {
 		require.Empty(t, rec.Header().Get("Cache-Server"))
 	})
 }
+
+// TestCacheKey_rawQueryCannotForgeIdentity guards against key collisions via
+// RawQuery: Go preserves an unescaped "?" in it, so URL.String() can echo the
+// literal "__prest_user=<name>" suffix pREST itself appends. The identity
+// suffix must be a digest of the authenticated username, not the raw value,
+// so embedding another user's name in RawQuery can't reproduce their key.
+func TestCacheKey_rawQueryCannotForgeIdentity(t *testing.T) {
+	t.Parallel()
+
+	victimReq := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
+	victimReq = victimReq.WithContext(withUser(victimReq.Context(), auth.User{Username: "admin"}))
+	victimKey := CacheKey(victimReq)
+
+	forgedPath := "/prest/public/test?__prest_user=admin"
+	attackerReq := httptest.NewRequest(http.MethodGet, forgedPath, nil)
+	attackerReq = attackerReq.WithContext(withUser(attackerReq.Context(), auth.User{Username: "eve"}))
+
+	require.NotEqual(t, victimKey, CacheKey(attackerReq))
+}

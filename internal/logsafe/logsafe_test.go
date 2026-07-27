@@ -88,3 +88,13 @@ func TestRedact_unchanged(t *testing.T) {
 
 	require.Equal(t, "no credentials here", Redact("no credentials here"))
 }
+
+// TestRedact_uppercaseScheme guards against a case-sensitive scheme match:
+// URL schemes are case-insensitive, so "POSTGRES://" must be redacted the
+// same as "postgres://" instead of leaking the password unredacted.
+func TestRedact_uppercaseScheme(t *testing.T) {
+	t.Parallel()
+
+	redacted := Redact("POSTGRES://admin:supersecret@db.example.com:5432/app")
+	require.NotContains(t, redacted, "supersecret")
+}

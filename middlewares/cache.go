@@ -1,6 +1,8 @@
 package middlewares
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 
@@ -22,6 +24,13 @@ import (
 // cache.Config.BuntSet recovers the endpoint path for its own cache-rule
 // lookup via strings.Split(key, "?")[0], so whatever follows the first "?"
 // — real query string or not — must stay irrelevant to that split.
+//
+// The identity suffix is a SHA-256 digest, not the raw username: a raw
+// username is forgeable when RawQuery is attacker-controlled (Go preserves
+// unescaped "?" in RawQuery), letting a user whose own username is a suffix
+// of a target's craft a request URL that reconstructs the target's exact
+// key. A fixed-length digest closes that off — matching it back to a
+// different real username requires a SHA-256 preimage.
 func CacheKey(r *http.Request) string {
 	userName := ""
 	if userInfo := r.Context().Value(pctx.UserInfoKey); userInfo != nil {
@@ -29,7 +38,8 @@ func CacheKey(r *http.Request) string {
 			userName = user.Username
 		}
 	}
-	return r.URL.String() + "?__prest_user=" + userName
+	sum := sha256.Sum256([]byte(userName))
+	return r.URL.String() + "?__prest_user=" + hex.EncodeToString(sum[:])
 }
 
 // CacheMiddleware simple caching to avoid equal queries to the database

@@ -11,7 +11,7 @@ var (
 	// the host rather than the first: a password containing "@" (e.g.
 	// postgres://user:p@ss@word@host/db) would otherwise leave everything
 	// after its first "@" ("ss@word") unredacted.
-	pgURLCreds = regexp.MustCompile(`postgres(?:ql)?://([^:@/]+):(.+)@`)
+	pgURLCreds = regexp.MustCompile(`(?i)postgres(?:ql)?://([^:@/]+):(.+)@`)
 )
 
 // Redact returns s with database credentials removed, suitable for safe
