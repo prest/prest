@@ -31,7 +31,7 @@ TIMESCALEDB_COMPOSE=docker compose -f integration/timescaledb/docker-compose.yml
 test-integration: test-integration-postgres
 
 test-integration-postgres:
-	$(POSTGRES_COMPOSE) up -d --wait postgres postgres-b db-init prestd prestd-multicluster prestd-auth prestd-queries && \
+	$(POSTGRES_COMPOSE) up -d --wait postgres postgres-b db-init prestd prestd-multicluster prestd-auth prestd-queries prestd-cache && \
 	$(POSTGRES_COMPOSE) run --rm --no-deps tests; \
 	status=$$?; \
 	$(POSTGRES_COMPOSE) down -v --remove-orphans; \

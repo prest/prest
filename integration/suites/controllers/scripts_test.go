@@ -76,6 +76,40 @@ func TestExecuteFromScripts_RejectsHeaderInjection(t *testing.T) {
 	)
 }
 
+// TestExecuteFromScripts_RejectsUnregisteredDatabase guards against
+// ScriptHandler.Execute reaching the connection layer with an arbitrary,
+// attacker-chosen database name via /_QUERIES/{database}/{queriesLocation}/{script}.
+// Every other controller validates the database against the registry before
+// touching the connection layer; Execute used to skip that check, so
+// dbFromCtx would attempt a real outbound Postgres connection for any name in
+// the path. It also skipped validatePathSegments entirely, so an unsafe
+// queriesLocation/script segment used to reach ResolveScript unchecked.
+func TestExecuteFromScripts_RejectsUnregisteredDatabase(t *testing.T) {
+	base := helpers.ServerURL(t)
+
+	var testCases = []struct {
+		description string
+		url         string
+		status      int
+	}{
+		{
+			"GET _QUERIES with an unregistered database name is rejected, not attempted as a connection",
+			"/_QUERIES/evil-db-does-not-exist/fulltable/get_all?field1=gopher",
+			http.StatusBadRequest,
+		},
+		{
+			"GET _QUERIES with an unsafe script segment is rejected",
+			"/_QUERIES/fulltable/evil'name",
+			http.StatusBadRequest,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		testutils.DoRequest(t, base+tc.url, nil, "GET", tc.status, "ExecuteFromScripts")
+	}
+}
+
 func TestRenderWithXML(t *testing.T) {
 	base := helpers.ServerURL(t)
 

@@ -35,6 +35,13 @@ func QueriesServerURL(t *testing.T) string {
 	return envURL(t, "PREST_QUERIES_TEST_URL")
 }
 
+// CacheServerURL returns the base URL for the cache+auth+ACL-enabled prestd
+// service (testdata/prest_cache.toml), used to test per-identity cache scoping.
+func CacheServerURL(t *testing.T) string {
+	t.Helper()
+	return envURL(t, "PREST_CACHE_TEST_URL")
+}
+
 func envURL(t *testing.T, key string) string {
 	t.Helper()
 	u := strings.TrimSpace(os.Getenv(key))

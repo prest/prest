@@ -1,0 +1,38 @@
+[auth]
+table = "prest_users"
+username = "username"
+password = "password"
+
+[jwt]
+key = "integration-test-secret"
+algo = "HS256"
+whitelist = ["^\\/auth$"]
+
+[http]
+port = 3004
+
+[cache]
+enabled = true
+
+    [[cache.endpoints]]
+    endpoint = "/prest-test/public/test6"
+    time = 5
+
+[access]
+restrict = true
+
+# Generic (anonymous / any other user) access: id and name only.
+[[access.tables]]
+name = "test6"
+permissions = ["read", "write", "delete"]
+fields = ["id", "name"]
+
+# test@postgres.rest gets an extra column (celphone) on the same table, so a
+# response cached under their identity must never be served back to an
+# anonymous request on the identical URL.
+[[access.users]]
+name = "test@postgres.rest"
+[[access.users.tables]]
+name = "test6"
+permissions = ["read"]
+fields = ["id", "name", "celphone"]
