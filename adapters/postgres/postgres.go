@@ -2059,8 +2059,16 @@ var allowedGroupByFunctions = map[string]struct{}{
 
 // isSafeSQLExpression validates that a SQL expression used in GROUP BY is an
 // allowlisted function call with safe characters (no comments, no pg_* funcs).
+// The expression must be exactly one allowlisted call with no nested parens in
+// its arguments and nothing trailing after the closing paren: this is what
+// rules out subqueries (which always need their own parens), inner function
+// calls (e.g. pg_sleep(...) used as an argument), and appended statements
+// (e.g. a trailing "UNION SELECT ...") from riding along in the same field.
 func isSafeSQLExpression(expr string) bool {
 	if strings.Contains(expr, "--") || strings.Contains(expr, ";") || strings.Contains(expr, "/*") {
+		return false
+	}
+	if !strings.HasSuffix(expr, ")") {
 		return false
 	}
 
@@ -2076,28 +2084,21 @@ func isSafeSQLExpression(expr string) bool {
 		return false
 	}
 
-	for _, ch := range expr {
+	args := expr[idx+1 : len(expr)-1]
+	if strings.ContainsAny(args, "()") {
+		return false
+	}
+
+	for _, ch := range args {
 		if !((ch >= 'a' && ch <= 'z') ||
 			(ch >= 'A' && ch <= 'Z') ||
 			(ch >= '0' && ch <= '9') ||
-			ch == '_' || ch == '(' || ch == ')' || ch == ',' ||
+			ch == '_' || ch == ',' ||
 			ch == '\'' || ch == ' ' || ch == '.' || ch == '-') {
 			return false
 		}
 	}
-
-	balance := 0
-	for _, ch := range expr {
-		if ch == '(' {
-			balance++
-		} else if ch == ')' {
-			balance--
-		}
-		if balance < 0 {
-			return false
-		}
-	}
-	return balance == 0
+	return true
 }
 
 // quotedAggRegex matches a NormalizeGroupFunction-produced aggregate expression:
