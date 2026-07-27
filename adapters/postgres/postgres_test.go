@@ -949,6 +949,10 @@ func TestSelectFields_Injection(t *testing.T) {
 		`(SELECT pg_read_file('/etc/passwd'))"f"`,
 		`(SELECT version())"v"`,
 		`pg_sleep(5)"s"`,
+		// Subquery-close-and-comment: closes the wrapping subquery early and
+		// comments out the real FROM clause, redirecting the SELECT to an
+		// arbitrary table (e.g. "id" FROM "public"."secret") s --).
+		`"id" FROM "public"."secret") s --`,
 	}
 	for _, p := range payloads {
 		_, err := adapter.SelectFields([]string{p})
@@ -1038,6 +1042,10 @@ func TestCountByRequest_Injection(t *testing.T) {
 		`pg_sleep(5)"s"`,
 		`celphone,(SELECT 1)"x"`,
 		`pg_sleep("x")`,
+		// Comment-based FROM-clause hijack: `* FROM pg_stat_activity--` etc.
+		`* FROM pg_stat_activity--`,
+		`* FROM pg_shadow--`,
+		`table_name FROM information_schema.tables--`,
 	}
 	for _, p := range payloads {
 		req, err := http.NewRequest(http.MethodGet,
