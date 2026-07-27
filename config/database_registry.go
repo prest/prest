@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/prest/prest/v2/internal/ident"
+	"github.com/prest/prest/v2/internal/logsafe"
 	"github.com/spf13/viper"
 )
 
@@ -162,11 +163,13 @@ func applyURLToDatabaseConf(db *DatabaseConf) {
 	}
 	u, err := url.Parse(db.URL)
 	if err != nil {
+		// url.Parse embeds the full original URL (credentials included) in its
+		// own error message, so err must be redacted too, not just the url field.
 		slog.Warn(
 			"database URL invalid, using defaults for connection fields",
 			"alias", db.Alias,
-			"url", db.URL,
-			"err", err,
+			"url", logsafe.Redact(db.URL),
+			"err", logsafe.Error(err),
 		)
 		return
 	}

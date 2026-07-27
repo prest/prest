@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	"github.com/prest/prest/v2/adapters"
+	"github.com/prest/prest/v2/middlewares"
 
 	"github.com/gorilla/mux"
 )
@@ -17,6 +18,7 @@ type ScriptHandler struct {
 	db       adapters.DatabaseRegistry
 	cache    ResponseCacher
 	pgDB     string
+	singleDB bool
 }
 
 // NewScriptHandler creates a ScriptHandler.
@@ -27,6 +29,7 @@ func NewScriptHandler(deps Deps) *ScriptHandler {
 		db:       deps.DB,
 		cache:    deps.Cache,
 		pgDB:     deps.PGDatabase,
+		singleDB: deps.SingleDB,
 	}
 }
 
@@ -41,6 +44,18 @@ func (h *ScriptHandler) Execute(w http.ResponseWriter, r *http.Request) {
 		database = h.db.GetDatabase()
 	}
 
+	// Same gate every other controller applies before touching the connection
+	// layer: reject an unregistered/attacker-chosen database name here, rather
+	// than letting dbFromCtx open a real outbound connection for it.
+	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if !validatePathSegments(database, queriesPath, script) {
+		jsonError(w, "invalid identifier in path", http.StatusBadRequest)
+		return
+	}
+
 	ctx, cancel := requestContext(r, database)
 	defer cancel()
 
@@ -51,7 +66,7 @@ func (h *ScriptHandler) Execute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "GET" && h.cache != nil {
-		h.cache.BuntSet(r.URL.String(), string(result))
+		h.cache.BuntSet(middlewares.CacheKey(r), string(result))
 	}
 	//nolint
 	w.Write(result)

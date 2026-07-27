@@ -1,11 +1,40 @@
 package config
 
 import (
+	"bytes"
+	"log/slog"
 	"testing"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
+
+// TestApplyURLToDatabaseConf_RedactsInvalidURLInLog guards against logging a
+// raw, credential-bearing connection URL when it fails to parse (an easy
+// config-typo trigger, e.g. a non-numeric port). The warning must still
+// surface the alias and error for debugging, but the password must never
+// appear in the clear in the log line.
+//
+// Mutates the process-wide slog default logger, so this test cannot run in
+// parallel with anything else that does the same.
+func TestApplyURLToDatabaseConf_RedactsInvalidURLInLog(t *testing.T) {
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	var buf bytes.Buffer
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+
+	db := &DatabaseConf{
+		Alias: "broken",
+		URL:   "postgres://admin:TOP_SECRET_PASSWORD@host:not-a-port/app",
+	}
+	applyURLToDatabaseConf(db)
+
+	logged := buf.String()
+	require.Contains(t, logged, "broken")
+	require.NotContains(t, logged, "TOP_SECRET_PASSWORD")
+	require.Contains(t, logged, "admin:***@")
+}
 
 func resetViperForTest(t *testing.T) {
 	t.Helper()

@@ -25,20 +25,30 @@ var (
 </errors>`
 )
 
+// getVars extracts {database}/{schema}/{table} from a request path. A real
+// http.Request.URL.Path always starts with "/", so a 3-segment resource route
+// splits into 4 elements (leading "") and a "/batch/..." route (one extra
+// literal segment) splits into 5. Both prefixes are stripped explicitly here
+// rather than inferred from segment count alone — that used to make any
+// 4-element split fall through to "not a table path" (nil, which
+// AccessControl treats as unenforced), silently skipping TablePermissions on
+// /batch/{database}/{schema}/{table}.
 func getVars(path string) (paths map[string]string) {
-	pathList := strings.Split(path, "/")
-
-	if len(pathList) < 3 || len(pathList) > 4 {
-		return nil
-	} else if len(pathList) == 4 {
-		pathList = pathList[1:]
+	segments := strings.Split(path, "/")
+	if len(segments) > 0 && segments[0] == "" {
+		segments = segments[1:]
 	}
-	paths = make(map[string]string, 0)
-	paths["database"] = pathList[0]
-	paths["schema"] = pathList[1]
-	paths["table"] = pathList[2]
-
-	return
+	if len(segments) == 4 && segments[0] == "batch" {
+		segments = segments[1:]
+	}
+	if len(segments) != 3 {
+		return nil
+	}
+	return map[string]string{
+		"database": segments[0],
+		"schema":   segments[1],
+		"table":    segments[2],
+	}
 }
 
 func permissionByMethod(method string) (permission string) {

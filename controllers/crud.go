@@ -9,6 +9,7 @@ import (
 	"github.com/prest/prest/v2/adapters"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
+	"github.com/prest/prest/v2/middlewares"
 
 	"github.com/structy/log"
 )
@@ -185,7 +186,7 @@ func (h *CRUDHandler) Select(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "GET" && h.cache != nil {
-		h.cache.BuntSet(r.URL.String(), string(sc.Bytes()))
+		h.cache.BuntSet(middlewares.CacheKey(r), string(sc.Bytes()))
 	}
 	//nolint
 	w.Write(sc.Bytes())

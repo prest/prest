@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/prest/prest/v2/cache"
+	"github.com/prest/prest/v2/controllers/auth"
 	"github.com/stretchr/testify/require"
 )
 
@@ -87,9 +88,9 @@ func TestCacheMiddleware_CacheLookup(t *testing.T) {
 
 	t.Run("hit", func(t *testing.T) {
 		cfg := newCfg(t)
-		cfg.BuntSet(path, `[{"cached":true}]`)
-
 		req := httptest.NewRequest(http.MethodGet, path, nil)
+		cfg.BuntSet(CacheKey(req), `[{"cached":true}]`)
+
 		rec, called := serveMiddleware(CacheMiddleware(cfg, nil), req)
 
 		require.False(t, called)
@@ -106,6 +107,23 @@ func TestCacheMiddleware_CacheLookup(t *testing.T) {
 
 		require.True(t, called)
 		require.Equal(t, http.StatusOK, rec.Code)
+		require.Empty(t, rec.Header().Get("Cache-Server"))
+	})
+
+	// A cache entry populated under one user's identity must not be served to
+	// a different user hitting the identical URL: FieldsPermissions can differ
+	// per user, and the handler that would recompute it never runs on a hit.
+	t.Run("does not leak across users on the same URL", func(t *testing.T) {
+		cfg := newCfg(t)
+		userAReq := httptest.NewRequest(http.MethodGet, path, nil)
+		userAReq = userAReq.WithContext(withUser(userAReq.Context(), auth.User{Username: "alice"}))
+		cfg.BuntSet(CacheKey(userAReq), `[{"ssn":"redacted-for-alice-only"}]`)
+
+		userBReq := httptest.NewRequest(http.MethodGet, path, nil)
+		userBReq = userBReq.WithContext(withUser(userBReq.Context(), auth.User{Username: "bob"}))
+		rec, called := serveMiddleware(CacheMiddleware(cfg, nil), userBReq)
+
+		require.True(t, called, "bob must recompute the response, not receive alice's cached one")
 		require.Empty(t, rec.Header().Get("Cache-Server"))
 	})
 }
