@@ -28,7 +28,7 @@ import (
 const testJWTHS256Key = "test-jwt-hmac-secret-key-32bytes"
 
 // testJWTHS512Key meets go-jose/v4's RFC 7518 minimum (64 bytes) for HS512.
-const testJWTHS512Key = "test-jwt-hmac-secret-key-64bytes-xxxxxxxxxxxxxxxxxxxxxxx"
+const testJWTHS512Key = "test-jwt-hmac-secret-key-64bytes-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 func validClaims() auth.Claims {
 	return auth.Claims{
@@ -57,6 +57,13 @@ func serveMiddleware(h negroni.Handler, req *http.Request) (*httptest.ResponseRe
 		called = true
 	})
 	return rec, called
+}
+
+func mustJWTMiddleware(t *testing.T, key, jwkSet, algo string, whitelist []string) negroni.Handler {
+	t.Helper()
+	h, err := JwtMiddleware(key, jwkSet, algo, whitelist)
+	require.NoError(t, err)
+	return h
 }
 
 func TestHandlerSet_JSONResponse(t *testing.T) {
@@ -280,11 +287,32 @@ func TestAuthMiddleware_WrongSigningKey(t *testing.T) {
 func TestJwtAlgo(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, jose.HS256, jwtAlgo("HS256"))
-	require.Equal(t, jose.HS512, jwtAlgo("HS512"))
-	require.Equal(t, jose.RS256, jwtAlgo("RS256"))
-	require.Equal(t, jose.EdDSA, jwtAlgo("EdDSA"))
-	require.Equal(t, jose.HS256, jwtAlgo("unknown"))
+	for _, tc := range []struct {
+		input string
+		want  jose.SignatureAlgorithm
+	}{
+		{input: "HS256", want: jose.HS256},
+		{input: "HS512", want: jose.HS512},
+		{input: "RS256", want: jose.RS256},
+		{input: "EdDSA", want: jose.EdDSA},
+	} {
+		got, err := jwtAlgo(tc.input)
+		require.NoError(t, err)
+		require.Equal(t, tc.want, got)
+	}
+
+	for _, input := range []string{"unknown", "hs512", ""} {
+		_, err := jwtAlgo(input)
+		require.ErrorIs(t, err, ErrJWTUnsupportedAlgorithm)
+	}
+}
+
+func TestJwtMiddlewareRejectsUnsupportedAlgorithm(t *testing.T) {
+	t.Parallel()
+
+	h, err := JwtMiddleware(testJWTHS256Key, "", "hs512", nil)
+	require.Nil(t, h)
+	require.ErrorIs(t, err, ErrJWTUnsupportedAlgorithm)
 }
 
 func TestAccessControl_Denied(t *testing.T) {
@@ -435,7 +463,7 @@ func TestJwtMiddleware_WhitelistedURL(t *testing.T) {
 	t.Parallel()
 
 	req := httptest.NewRequest(http.MethodGet, "/auth", nil)
-	rec, called := serveMiddleware(JwtMiddleware(testJWTHS256Key, "", "HS256", []string{`\/auth`}), req)
+	rec, called := serveMiddleware(mustJWTMiddleware(t, testJWTHS256Key, "", "HS256", []string{`\/auth`}), req)
 
 	require.True(t, called)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -448,7 +476,26 @@ func TestJwtMiddleware_ValidHMACKey(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	rec, called := serveMiddleware(JwtMiddleware(testJWTHS256Key, "", "HS256", nil), req)
+	rec, called := serveMiddleware(mustJWTMiddleware(t, testJWTHS256Key, "", "HS256", nil), req)
+
+	require.True(t, called)
+	require.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestJwtMiddleware_ValidHS512Key(t *testing.T) {
+	t.Parallel()
+
+	sig, err := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.HS512, Key: []byte(testJWTHS512Key)},
+		(&jose.SignerOptions{}).WithType("JWT"))
+	require.NoError(t, err)
+	token, err := jwt.Signed(sig).Claims(validClaims()).Serialize()
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec, called := serveMiddleware(
+		mustJWTMiddleware(t, testJWTHS512Key, "", "HS512", nil), req)
 
 	require.True(t, called)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -458,7 +505,7 @@ func TestJwtMiddleware_EmptyToken(t *testing.T) {
 	t.Parallel()
 
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
-	rec, called := serveMiddleware(JwtMiddleware(testJWTHS256Key, "", "HS256", nil), req)
+	rec, called := serveMiddleware(mustJWTMiddleware(t, testJWTHS256Key, "", "HS256", nil), req)
 
 	require.False(t, called)
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -471,7 +518,7 @@ func TestJwtMiddleware_InvalidToken(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer bad-token")
 
-	rec, called := serveMiddleware(JwtMiddleware(testJWTHS256Key, "", "HS256", nil), req)
+	rec, called := serveMiddleware(mustJWTMiddleware(t, testJWTHS256Key, "", "HS256", nil), req)
 
 	require.False(t, called)
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -489,7 +536,7 @@ func TestJwtMiddleware_ExpiredClaims(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	rec, called := serveMiddleware(JwtMiddleware(testJWTHS256Key, "", "HS256", nil), req)
+	rec, called := serveMiddleware(mustJWTMiddleware(t, testJWTHS256Key, "", "HS256", nil), req)
 
 	require.False(t, called)
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -503,7 +550,7 @@ func TestJwtMiddleware_WrongKey(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	rec, called := serveMiddleware(JwtMiddleware(testJWTHS256Key, "", "HS256", nil), req)
+	rec, called := serveMiddleware(mustJWTMiddleware(t, testJWTHS256Key, "", "HS256", nil), req)
 
 	require.False(t, called)
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -839,7 +886,7 @@ func TestJWKSetRSANoKey(t *testing.T) {
 func TestJWTEmptyKeyRejectsForgedToken(t *testing.T) {
 	t.Parallel()
 
-	mw := JwtMiddleware("", "", "HS256", nil)
+	mw := mustJWTMiddleware(t, "", "", "HS256", nil)
 
 	token := signTestJWT(t, testJWTHS256Key, validClaims())
 
@@ -877,7 +924,7 @@ func TestJWTJWKSWithoutMatchingKidRejected(t *testing.T) {
 	jwksJSON, err := json.Marshal(pub)
 	require.NoError(t, err)
 
-	mw := JwtMiddleware("", string(jwksJSON), "HS256", nil)
+	mw := mustJWTMiddleware(t, "", string(jwksJSON), "HS256", nil)
 
 	// Token whose kid does not match anything in the JWKS.
 	sig, err := jose.NewSigner(

@@ -18,6 +18,7 @@ import (
 	"github.com/prest/prest/v2/controllers"
 	"github.com/prest/prest/v2/controllers/auth"
 	"github.com/prest/prest/v2/integration/helpers"
+	"github.com/prest/prest/v2/integration/testutils"
 	"github.com/prest/prest/v2/middlewares"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/negroni/v3"
@@ -178,14 +179,7 @@ func TestJWTIsRequired(t *testing.T) {
 }
 
 func TestJWTSignatureOk(t *testing.T) {
-	const jwtKey = "test-jwt-hmac-secret-key-32bytes"
-	t.Setenv("PREST_JWT_DEFAULT", "true")
-	t.Setenv("PREST_DEBUG", "false")
-	t.Setenv("PREST_JWT_KEY", jwtKey)
-	t.Setenv("PREST_JWT_ALGO", "HS256")
-	nd := appTestWithJwt(t)
-	serverd := httptest.NewServer(nd)
-	defer serverd.Close()
+	const jwtKey = "integration-test-secret-key-32b!!"
 
 	sig, err := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.HS256, Key: []byte(jwtKey)},
@@ -197,20 +191,20 @@ func TestJWTSignatureOk(t *testing.T) {
 	}).Serialize()
 	require.NoError(t, err)
 
-	req, err := http.NewRequest("GET", serverd.URL, nil)
-	require.NoError(t, err)
-	req.Header.Add("authorization", "Bearer "+bearer)
-
-	// GET / with a valid HS256 JWT.
-	// Expected to succeed with HTTP status OK.
-	client := http.Client{}
-	respd, err := client.Do(req)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, respd.StatusCode)
+	// GET a protected table through the deployed auth-enabled PostgreSQL service.
+	// Expected to succeed because the HS256 token uses the configured key.
+	testutils.DoRequestWithHeaders(
+		t,
+		helpers.AuthServerURL(t)+"/prest-test/public/test",
+		nil,
+		http.MethodGet,
+		http.StatusOK,
+		"valid HS256 token reaches protected table",
+		map[string]string{"Authorization": "Bearer " + bearer},
+	)
 }
 
 func TestJWTSignatureKo(t *testing.T) {
-	bearer := "Bearer: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImpvaG4uZG9lQHNvbWV3aGVyZS5jb20iLCJleHAiOjE1MjUzMzk2MTYsImlhdCI6MTUxNzU2MzYxNiwiaXNzIjoicHJpdmF0ZSIsImp0aSI6ImNlZmE3NGZlLTg5NGMtZmY2My1kODE2LTQ2MjBiOGNkOTJlZSIsIm9yZyI6InByaXZhdGUiLCJzdWIiOiJqb2huLmRvZSJ9.zGP1Xths2bK2r9FN0Gv1SzyoisO0dhRwvqrPvunGxUyU5TbkfdnTcQRJNYZzJfGILeQ9r3tbuakWm-NIoDlbbA"
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
 	t.Setenv("PREST_JWT_KEY", "test-jwt-hmac-secret-key-32bytes")
@@ -219,13 +213,24 @@ func TestJWTSignatureKo(t *testing.T) {
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
 
+	const differentHS512Key = "test-jwt-hmac-secret-key-64bytes-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+	sig, err := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.HS512, Key: []byte(differentHS512Key)},
+		(&jose.SignerOptions{}).WithType("JWT"))
+	require.NoError(t, err)
+	bearer, err := jwt.Signed(sig).Claims(auth.Claims{
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-time.Minute)),
+		Expiry:    jwt.NewNumericDate(time.Now().Add(time.Minute)),
+	}).Serialize()
+	require.NoError(t, err)
+
 	req, err := http.NewRequest("GET", serverd.URL, nil)
 	require.NoError(t, err)
 
-	req.Header.Add("authorization", bearer)
+	req.Header.Add("authorization", "Bearer "+bearer)
 
-	// GET / with a malformed/invalid bearer token under HS256.
-	// Expected to fail with HTTP status Unauthorized.
+	// GET / with a valid HS512 token while only HS256 is configured.
+	// Expected to fail because the algorithm allowlist rejects HS512.
 	client := http.Client{}
 	respd, err := client.Do(req)
 	require.NoError(t, err)

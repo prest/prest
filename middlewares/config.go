@@ -32,9 +32,13 @@ func New(cfg *config.Prest) *negroni.Negroni {
 			}))
 	}
 	if !cfg.Debug && cfg.EnableDefaultJWT {
-		stack = append(
-			stack,
-			JwtMiddleware(cfg.JWTKey, cfg.JWTJWKS, cfg.JWTAlgo, cfg.JWTWhiteList))
+		jwtMiddleware, err := JwtMiddleware(
+			cfg.JWTKey, cfg.JWTJWKS, cfg.JWTAlgo, cfg.JWTWhiteList)
+		if err != nil {
+			stack = append(stack, invalidJWTConfigMiddleware(err))
+		} else {
+			stack = append(stack, jwtMiddleware)
+		}
 	}
 	if cfg.Cache.Enabled {
 		stack = append(stack, CacheMiddleware(&cfg.Cache, cfg.JWTWhiteList))

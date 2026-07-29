@@ -23,14 +23,15 @@ import (
 )
 
 var (
-	jsonErrFormat        = `{"error": "%s"}`
-	ErrJWTParseFail      = errors.New("failed JWT token parser")
-	ErrJWTValidate       = errors.New("failed JWT claims validated")
-	ErrAuthRequired      = errors.New("authorization required")
-	ErrAuthIsEmpty       = errors.New("authorization token is empty")
-	ErrJWKSetParse       = errors.New("failed to parse JWKSet JSON string")
-	ErrJWKSetCreate      = errors.New("failed to create public key")
-	ErrJWKSetKeyNotFound = errors.New("the token's key was not found in the JWKS")
+	jsonErrFormat              = `{"error": "%s"}`
+	ErrJWTParseFail            = errors.New("failed JWT token parser")
+	ErrJWTValidate             = errors.New("failed JWT claims validated")
+	ErrAuthRequired            = errors.New("authorization required")
+	ErrAuthIsEmpty             = errors.New("authorization token is empty")
+	ErrJWKSetParse             = errors.New("failed to parse JWKSet JSON string")
+	ErrJWKSetCreate            = errors.New("failed to create public key")
+	ErrJWKSetKeyNotFound       = errors.New("the token's key was not found in the JWKS")
+	ErrJWTUnsupportedAlgorithm = errors.New("unsupported JWT signature algorithm")
 	// ErrJWTEmptyKey is returned when the middleware would otherwise validate a
 	// bearer token using an empty HMAC key — that path lets clients forge
 	// tokens against `[]byte("")`. We fail closed instead. See GHSA-fj7v-859r-2fm4.
@@ -157,9 +158,13 @@ func AccessControl(perms adapters.PermissionsChecker) negroni.Handler {
 	})
 }
 
-// JwtMiddleware check if actual request have JWT
-func JwtMiddleware(key string, JWKSet, algo string, whitelist []string) negroni.Handler {
-	allowedAlgs := []jose.SignatureAlgorithm{jwtAlgo(algo)}
+// JwtMiddleware check if actual request have JWT.
+func JwtMiddleware(key string, JWKSet, algo string, whitelist []string) (negroni.Handler, error) {
+	signatureAlgorithm, err := jwtAlgo(algo)
+	if err != nil {
+		return nil, err
+	}
+	allowedAlgs := []jose.SignatureAlgorithm{signatureAlgorithm}
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		match, err := MatchURL(r.URL.String(), whitelist)
 		if err != nil {
@@ -246,6 +251,12 @@ func JwtMiddleware(key string, JWKSet, algo string, whitelist []string) negroni.
 			return
 		}
 		next(w, r)
+	}), nil
+}
+
+func invalidJWTConfigMiddleware(err error) negroni.Handler {
+	return negroni.HandlerFunc(func(w http.ResponseWriter, _ *http.Request, _ http.HandlerFunc) {
+		http.Error(w, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusInternalServerError)
 	})
 }
 
@@ -293,36 +304,35 @@ func ExposureMiddleware(expose config.ExposeConf) negroni.Handler {
 	})
 }
 
-// nolint
-func jwtAlgo(algo string) jose.SignatureAlgorithm {
+func jwtAlgo(algo string) (jose.SignatureAlgorithm, error) {
 	switch algo {
 	case "EdDSA":
-		return jose.EdDSA
+		return jose.EdDSA, nil
 	case "HS256":
-		return jose.HS256
+		return jose.HS256, nil
 	case "HS384":
-		return jose.HS384
+		return jose.HS384, nil
 	case "HS512":
-		return jose.HS512
+		return jose.HS512, nil
 	case "RS256":
-		return jose.RS256
+		return jose.RS256, nil
 	case "RS384":
-		return jose.RS384
+		return jose.RS384, nil
 	case "RS512":
-		return jose.RS512
+		return jose.RS512, nil
 	case "ES256":
-		return jose.ES256
+		return jose.ES256, nil
 	case "ES384":
-		return jose.ES384
+		return jose.ES384, nil
 	case "ES512":
-		return jose.ES512
+		return jose.ES512, nil
 	case "PS256":
-		return jose.PS256
+		return jose.PS256, nil
 	case "PS384":
-		return jose.PS384
+		return jose.PS384, nil
 	case "PS512":
-		return jose.PS512
+		return jose.PS512, nil
 	default:
-		return jose.HS256
+		return "", fmt.Errorf("%w: %q", ErrJWTUnsupportedAlgorithm, algo)
 	}
 }

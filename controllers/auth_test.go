@@ -263,6 +263,16 @@ func TestAuthHandler_token(t *testing.T) {
 	require.Equal(t, "HS256", string(sig.Signatures[0].Header.Algorithm))
 }
 
+func TestAuthHandler_tokenWrapsSerializeError(t *testing.T) {
+	t.Parallel()
+
+	h := NewAuthHandler(nil, AuthConfig{JWTKey: "too-short"})
+	_, err := h.token(auth.User{Username: "jwt-user"})
+
+	require.ErrorIs(t, err, jose.ErrInvalidKeySize)
+	require.ErrorContains(t, err, "serialize JWT")
+}
+
 func Test_getSelectQueryByUsername(t *testing.T) {
 	t.Parallel()
 
