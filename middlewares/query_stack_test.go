@@ -120,7 +120,7 @@ func TestNewQueryStack_RestrictRequiresAuthMiddleware(t *testing.T) {
 
 	cfg := &config.Prest{
 		AuthEnabled: true,
-		JWTKey:      "secret",
+		JWTKey:      "test-jwt-hmac-secret-key-32bytes",
 		QueriesConf: config.QueriesConf{Restrict: true},
 	}
 	stack := NewQueryStack(cfg, stubScriptPerms{allow: true})
@@ -132,7 +132,7 @@ func TestNewQueryStack_AuthOnly(t *testing.T) {
 
 	cfg := &config.Prest{
 		AuthEnabled: true,
-		JWTKey:      "secret",
+		JWTKey:      "test-jwt-hmac-secret-key-32bytes",
 		QueriesConf: config.QueriesConf{Restrict: false},
 	}
 	stack := NewQueryStack(cfg, stubScriptPerms{allow: true})
@@ -166,7 +166,7 @@ func TestQueryStack_Handlers(t *testing.T) {
 
 	cfg := &config.Prest{
 		AuthEnabled: true,
-		JWTKey:      "secret",
+		JWTKey:      "test-jwt-hmac-secret-key-32bytes",
 		QueriesConf: config.QueriesConf{Restrict: true},
 	}
 	stack := NewQueryStack(cfg, stubScriptPerms{allow: true})
@@ -180,7 +180,7 @@ func TestNewAdminQueryStack(t *testing.T) {
 
 	cfg := &config.Prest{
 		AuthEnabled: true,
-		JWTKey:      "secret",
+		JWTKey:      "test-jwt-hmac-secret-key-32bytes",
 		QueriesConf: config.QueriesConf{RegisterAdmins: []string{"admin"}},
 	}
 	stack := NewAdminQueryStack(cfg)
@@ -192,7 +192,7 @@ func TestAdminQueryStack_Handlers(t *testing.T) {
 
 	cfg := &config.Prest{
 		AuthEnabled: true,
-		JWTKey:      "secret",
+		JWTKey:      "test-jwt-hmac-secret-key-32bytes",
 		QueriesConf: config.QueriesConf{RegisterAdmins: []string{"admin"}},
 	}
 	stack := NewAdminQueryStack(cfg)

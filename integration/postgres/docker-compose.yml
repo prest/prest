@@ -127,7 +127,7 @@ services:
       PREST_JWT_DEFAULT: "false"
       PREST_CACHE_ENABLED: "false"
       PREST_AUTH_ENABLED: "true"
-      PREST_JWT_KEY: integration-test-secret
+      PREST_JWT_KEY: integration-test-secret-key-32b!!
       PREST_PG_SINGLE: "false"
       PREST_HTTP_PORT: "3002"
     command: >-
@@ -152,7 +152,7 @@ services:
       PREST_DEBUG: "true"
       PREST_JWT_DEFAULT: "false"
       PREST_AUTH_ENABLED: "true"
-      PREST_JWT_KEY: integration-test-secret
+      PREST_JWT_KEY: integration-test-secret-key-32b!!
       PREST_PG_SINGLE: "false"
       PREST_HTTP_PORT: "3004"
     command: >-
@@ -178,7 +178,7 @@ services:
       PREST_JWT_DEFAULT: "false"
       PREST_CACHE_ENABLED: "false"
       PREST_AUTH_ENABLED: "true"
-      PREST_JWT_KEY: integration-test-secret
+      PREST_JWT_KEY: integration-test-secret-key-32b!!
       PREST_PG_SINGLE: "false"
       PREST_HTTP_PORT: "3003"
     command: >-

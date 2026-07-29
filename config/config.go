@@ -248,6 +248,13 @@ func ensureCacheStorage(cfg *Prest) {
 }
 
 func ensureJWTConfig(cfg *Prest) {
+	if min := hmacMinKeyBytes(cfg.JWTAlgo); min > 0 && cfg.JWTKey != "" && len(cfg.JWTKey) < min {
+		slog.Error("jwt.key too short for HMAC algorithm",
+			"algo", cfg.JWTAlgo, "got", len(cfg.JWTKey), "want", min, "err", ErrJWTKeyTooShort)
+		// Treat an undersized HMAC key as unusable verification material so
+		// go-jose/v4 cannot reject (or worse, surprise) at request time.
+		cfg.JWTKey = ""
+	}
 	if cfg.AuthEnabled && cfg.JWTKey == "" {
 		slog.Error("auth disabled: jwt.key is empty", "err", ErrAuthEnabledNoJWTKey)
 		cfg.AuthEnabled = false
@@ -262,6 +269,22 @@ func ensureJWTConfig(cfg *Prest) {
 		"default JWT middleware disabled: no verification material",
 		"err", ErrJWTDefaultEnabledNoKey)
 	cfg.EnableDefaultJWT = false
+}
+
+// hmacMinKeyBytes returns the RFC 7518 minimum HMAC key size for algo, or 0
+// when algo is not HMAC (RS*/ES*/PS*/EdDSA) and jwt.key is not used as a MAC key.
+func hmacMinKeyBytes(algo string) int {
+	switch strings.ToUpper(algo) {
+	case "HS384":
+		return 48
+	case "HS512":
+		return 64
+	case "HS256", "":
+		// Empty matches viper default jwt.algo = HS256.
+		return 32
+	default:
+		return 0
+	}
 }
 
 func defaultQueriesPath() string {
@@ -540,6 +563,12 @@ var ErrJWTDefaultEnabledNoKey = errors.New(
 // middleware. See GHSA-fj7v-859r-2fm4.
 var ErrAuthEnabledNoJWTKey = errors.New(
 	"auth.enabled is true but jwt.key is empty (required to verify HS256 tokens)")
+
+// ErrJWTKeyTooShort is returned when jwt.key is shorter than the RFC 7518
+// minimum for the configured HMAC algorithm (HS256: 32 bytes, HS384: 48,
+// HS512: 64). go-jose/v4 rejects undersized HMAC keys at sign/verify time.
+var ErrJWTKeyTooShort = errors.New(
+	"jwt.key is shorter than the minimum required for the configured HMAC algorithm")
 
 // fetchJWKS tries to get the JWKS from the URL in the config
 // redactURL returns a log-safe "scheme://host/path" form of raw, dropping

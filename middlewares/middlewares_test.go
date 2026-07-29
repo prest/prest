@@ -15,14 +15,20 @@ import (
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
 
+	jose "github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/negroni/v3"
-	jose "gopkg.in/square/go-jose.v2"
-	"gopkg.in/square/go-jose.v2/jwt"
 )
+
+// testJWTHS256Key meets go-jose/v4's RFC 7518 minimum (32 bytes) for HS256.
+const testJWTHS256Key = "test-jwt-hmac-secret-key-32bytes"
+
+// testJWTHS512Key meets go-jose/v4's RFC 7518 minimum (64 bytes) for HS512.
+const testJWTHS512Key = "test-jwt-hmac-secret-key-64bytes-xxxxxxxxxxxxxxxxxxxxxxx"
 
 func validClaims() auth.Claims {
 	return auth.Claims{
@@ -39,7 +45,7 @@ func signTestJWT(t *testing.T, key string, claims auth.Claims) string {
 		(&jose.SignerOptions{}).WithType("JWT"),
 	)
 	require.NoError(t, err)
-	token, err := jwt.Signed(sig).Claims(claims).CompactSerialize()
+	token, err := jwt.Signed(sig).Claims(claims).Serialize()
 	require.NoError(t, err)
 	return token
 }
@@ -197,13 +203,13 @@ func TestAuthMiddleware_EmptyToken(t *testing.T) {
 func TestAuthMiddleware_ValidToken(t *testing.T) {
 	t.Parallel()
 
-	token := signTestJWT(t, "secret", validClaims())
+	token := signTestJWT(t, testJWTHS256Key, validClaims())
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	var user auth.User
 	rec := httptest.NewRecorder()
-	AuthMiddleware(AuthSettings{Enabled: true, JWTKey: "secret"}).ServeHTTP(rec, req, func(_ http.ResponseWriter, r *http.Request) {
+	AuthMiddleware(AuthSettings{Enabled: true, JWTKey: testJWTHS256Key}).ServeHTTP(rec, req, func(_ http.ResponseWriter, r *http.Request) {
 		u, ok := r.Context().Value(pctx.UserInfoKey).(auth.User)
 		require.True(t, ok)
 		user = u
@@ -216,7 +222,7 @@ func TestAuthMiddleware_ValidToken(t *testing.T) {
 func TestAuthMiddleware_EmptyKeyRejected(t *testing.T) {
 	t.Parallel()
 
-	token := signTestJWT(t, "", validClaims())
+	token := signTestJWT(t, testJWTHS256Key, validClaims())
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
@@ -234,11 +240,11 @@ func TestAuthMiddleware_ExpiredToken(t *testing.T) {
 		NotBefore: jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
 		Expiry:    jwt.NewNumericDate(time.Now().Add(-time.Hour)),
 	}
-	token := signTestJWT(t, "secret", claims)
+	token := signTestJWT(t, testJWTHS256Key, claims)
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	rec, called := serveMiddleware(AuthMiddleware(AuthSettings{Enabled: true, JWTKey: "secret"}), req)
+	rec, called := serveMiddleware(AuthMiddleware(AuthSettings{Enabled: true, JWTKey: testJWTHS256Key}), req)
 
 	require.False(t, called)
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -251,7 +257,7 @@ func TestAuthMiddleware_InvalidToken(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer not-a-jwt")
 
-	rec, called := serveMiddleware(AuthMiddleware(AuthSettings{Enabled: true, JWTKey: "secret"}), req)
+	rec, called := serveMiddleware(AuthMiddleware(AuthSettings{Enabled: true, JWTKey: testJWTHS256Key}), req)
 
 	require.False(t, called)
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -261,11 +267,11 @@ func TestAuthMiddleware_InvalidToken(t *testing.T) {
 func TestAuthMiddleware_WrongSigningKey(t *testing.T) {
 	t.Parallel()
 
-	token := signTestJWT(t, "other", validClaims())
+	token := signTestJWT(t, "other-jwt-hmac-secret-key-32byte!", validClaims())
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	rec, called := serveMiddleware(AuthMiddleware(AuthSettings{Enabled: true, JWTKey: "secret"}), req)
+	rec, called := serveMiddleware(AuthMiddleware(AuthSettings{Enabled: true, JWTKey: testJWTHS256Key}), req)
 
 	require.False(t, called)
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -429,7 +435,7 @@ func TestJwtMiddleware_WhitelistedURL(t *testing.T) {
 	t.Parallel()
 
 	req := httptest.NewRequest(http.MethodGet, "/auth", nil)
-	rec, called := serveMiddleware(JwtMiddleware("secret", "", "HS256", []string{`\/auth`}), req)
+	rec, called := serveMiddleware(JwtMiddleware(testJWTHS256Key, "", "HS256", []string{`\/auth`}), req)
 
 	require.True(t, called)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -438,11 +444,11 @@ func TestJwtMiddleware_WhitelistedURL(t *testing.T) {
 func TestJwtMiddleware_ValidHMACKey(t *testing.T) {
 	t.Parallel()
 
-	token := signTestJWT(t, "secret", validClaims())
+	token := signTestJWT(t, testJWTHS256Key, validClaims())
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	rec, called := serveMiddleware(JwtMiddleware("secret", "", "HS256", nil), req)
+	rec, called := serveMiddleware(JwtMiddleware(testJWTHS256Key, "", "HS256", nil), req)
 
 	require.True(t, called)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -452,7 +458,7 @@ func TestJwtMiddleware_EmptyToken(t *testing.T) {
 	t.Parallel()
 
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
-	rec, called := serveMiddleware(JwtMiddleware("secret", "", "HS256", nil), req)
+	rec, called := serveMiddleware(JwtMiddleware(testJWTHS256Key, "", "HS256", nil), req)
 
 	require.False(t, called)
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -465,7 +471,7 @@ func TestJwtMiddleware_InvalidToken(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer bad-token")
 
-	rec, called := serveMiddleware(JwtMiddleware("secret", "", "HS256", nil), req)
+	rec, called := serveMiddleware(JwtMiddleware(testJWTHS256Key, "", "HS256", nil), req)
 
 	require.False(t, called)
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -479,11 +485,11 @@ func TestJwtMiddleware_ExpiredClaims(t *testing.T) {
 		NotBefore: jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
 		Expiry:    jwt.NewNumericDate(time.Now().Add(-time.Hour)),
 	}
-	token := signTestJWT(t, "secret", claims)
+	token := signTestJWT(t, testJWTHS256Key, claims)
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	rec, called := serveMiddleware(JwtMiddleware("secret", "", "HS256", nil), req)
+	rec, called := serveMiddleware(JwtMiddleware(testJWTHS256Key, "", "HS256", nil), req)
 
 	require.False(t, called)
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -493,11 +499,11 @@ func TestJwtMiddleware_ExpiredClaims(t *testing.T) {
 func TestJwtMiddleware_WrongKey(t *testing.T) {
 	t.Parallel()
 
-	token := signTestJWT(t, "other", validClaims())
+	token := signTestJWT(t, "other-jwt-hmac-secret-key-32byte!", validClaims())
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	rec, called := serveMiddleware(JwtMiddleware("secret", "", "HS256", nil), req)
+	rec, called := serveMiddleware(JwtMiddleware(testJWTHS256Key, "", "HS256", nil), req)
 
 	require.False(t, called)
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -633,8 +639,8 @@ func appTestWithJwt(t *testing.T) (*negroni.Negroni, *config.Prest) {
 func TestJWTClaimsOk(t *testing.T) {
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
-	t.Setenv("PREST_JWT_KEY", "s3cr3t")
-	t.Setenv("PREST_JWT_ALGO", "HS512")
+	t.Setenv("PREST_JWT_KEY", testJWTHS256Key)
+	t.Setenv("PREST_JWT_ALGO", "HS256")
 	config.Load()
 	nd, cfg := appTestWithJwt(t)
 	serverd := httptest.NewServer(nd)
@@ -658,7 +664,7 @@ func TestJWTClaimsOk(t *testing.T) {
 		NotBefore: jwt.NewNumericDate(getToken),
 		Expiry:    jwt.NewNumericDate(expireToken),
 	}
-	bearer, err := jwt.Signed(sig).Claims(cl).CompactSerialize()
+	bearer, err := jwt.Signed(sig).Claims(cl).Serialize()
 	require.NoError(t, err)
 	req.Header.Add("authorization", bearer)
 
@@ -671,7 +677,7 @@ func TestJWTClaimsOk(t *testing.T) {
 func TestJWTClaimsNotOk(t *testing.T) {
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
-	t.Setenv("PREST_JWT_KEY", "s3cr3t")
+	t.Setenv("PREST_JWT_KEY", testJWTHS256Key)
 	t.Setenv("PREST_JWT_ALGO", "HS256")
 	config.Load()
 	nd, cfg := appTestWithJwt(t)
@@ -696,7 +702,7 @@ func TestJWTClaimsNotOk(t *testing.T) {
 		NotBefore: jwt.NewNumericDate(getToken),
 		Expiry:    jwt.NewNumericDate(expireToken),
 	}
-	bearer, err := jwt.Signed(sig).Claims(cl).CompactSerialize()
+	bearer, err := jwt.Signed(sig).Claims(cl).Serialize()
 	require.NoError(t, err)
 
 	req.Header.Add("authorization", bearer)
@@ -729,6 +735,7 @@ func TestJWKSetRSAOk(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Setenv("PREST_JWT_JWKS", string(jwkSetJSON))
+	t.Setenv("PREST_JWT_ALGO", "RS256")
 
 	config.Load()
 	nd, _ := appTestWithJwt(t)
@@ -753,7 +760,7 @@ func TestJWKSetRSAOk(t *testing.T) {
 		NotBefore: jwt.NewNumericDate(getToken),
 		Expiry:    jwt.NewNumericDate(expireToken),
 	}
-	bearer, err := jwt.Signed(sig).Claims(cl).CompactSerialize()
+	bearer, err := jwt.Signed(sig).Claims(cl).Serialize()
 	require.NoError(t, err)
 	req.Header.Add("authorization", bearer)
 
@@ -785,6 +792,7 @@ func TestJWKSetRSANoKey(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Setenv("PREST_JWT_JWKS", string(jwkSetJSON))
+	t.Setenv("PREST_JWT_ALGO", "RS256")
 
 	//Generate wrong key
 	raw, err = rsa.GenerateKey(rand.Reader, 2048)
@@ -813,7 +821,7 @@ func TestJWKSetRSANoKey(t *testing.T) {
 		NotBefore: jwt.NewNumericDate(getToken),
 		Expiry:    jwt.NewNumericDate(expireToken),
 	}
-	bearer, err := jwt.Signed(sig).Claims(cl).CompactSerialize()
+	bearer, err := jwt.Signed(sig).Claims(cl).Serialize()
 	require.NoError(t, err)
 	req.Header.Add("authorization", bearer)
 
@@ -824,32 +832,19 @@ func TestJWKSetRSANoKey(t *testing.T) {
 	require.Equal(t, http.StatusUnauthorized, respd.StatusCode)
 }
 
-// Regression coverage for GHSA-fj7v-859r-2fm4: an HS256 token signed with the
-// empty HMAC key must be rejected when JwtMiddleware is configured without
-// verification material. Before the fix the middleware called
-// `tok.Claims([]byte(""), &out)` which jose's HMAC implementation accepts,
-// granting access to any caller able to forge `HMAC-SHA256("", header.payload)`.
+// Regression coverage for GHSA-fj7v-859r-2fm4: when JwtMiddleware is configured
+// without verification material it must refuse the request instead of verifying
+// against []byte(""). Token content is irrelevant — the empty-key guard runs
+// before signature verification.
 func TestJWTEmptyKeyRejectsForgedToken(t *testing.T) {
 	t.Parallel()
 
 	mw := JwtMiddleware("", "", "HS256", nil)
 
-	// Forge a token signed with the empty secret. NotBefore/Expiry are valid,
-	// so the only thing that should reject this request is the empty-key guard.
-	sig, err := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.HS256, Key: []byte("")},
-		(&jose.SignerOptions{}).WithType("JWT"))
-	require.NoError(t, err)
-
-	cl := auth.Claims{
-		NotBefore: jwt.NewNumericDate(time.Now().Add(-time.Minute)),
-		Expiry:    jwt.NewNumericDate(time.Now().Add(time.Minute)),
-	}
-	forged, err := jwt.Signed(sig).Claims(cl).CompactSerialize()
-	require.NoError(t, err)
+	token := signTestJWT(t, testJWTHS256Key, validClaims())
 
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)
-	req.Header.Set("Authorization", "Bearer "+forged)
+	req.Header.Set("Authorization", "Bearer "+token)
 	rec := httptest.NewRecorder()
 
 	mw.ServeHTTP(rec, req, func(http.ResponseWriter, *http.Request) {
@@ -884,16 +879,16 @@ func TestJWTJWKSWithoutMatchingKidRejected(t *testing.T) {
 
 	mw := JwtMiddleware("", string(jwksJSON), "HS256", nil)
 
-	// Forge a token whose kid does not match anything in the JWKS.
+	// Token whose kid does not match anything in the JWKS.
 	sig, err := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.HS256, Key: []byte("")},
+		jose.SigningKey{Algorithm: jose.HS256, Key: []byte(testJWTHS256Key)},
 		(&jose.SignerOptions{}).WithType("JWT").WithHeader("kid", "missing"))
 	require.NoError(t, err)
 	cl := auth.Claims{
 		NotBefore: jwt.NewNumericDate(time.Now().Add(-time.Minute)),
 		Expiry:    jwt.NewNumericDate(time.Now().Add(time.Minute)),
 	}
-	forged, err := jwt.Signed(sig).Claims(cl).CompactSerialize()
+	forged, err := jwt.Signed(sig).Claims(cl).Serialize()
 	require.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/prest/public/test", nil)

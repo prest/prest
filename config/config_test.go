@@ -273,7 +273,7 @@ func TestEnsureJWTConfig(t *testing.T) {
 		},
 		{
 			name:           "default JWT on, HMAC key set → unchanged",
-			cfg:            Prest{EnableDefaultJWT: true, JWTKey: "s3cr3t"},
+			cfg:            Prest{EnableDefaultJWT: true, JWTKey: "test-jwt-hmac-secret-key-32bytes"},
 			wantDefaultJWT: true,
 		},
 		{
@@ -303,8 +303,23 @@ func TestEnsureJWTConfig(t *testing.T) {
 		},
 		{
 			name:            "auth enabled, key set → unchanged",
-			cfg:             Prest{AuthEnabled: true, JWTKey: "s3cr3t"},
+			cfg:             Prest{AuthEnabled: true, JWTKey: "test-jwt-hmac-secret-key-32bytes"},
 			wantAuthEnabled: true,
+		},
+		{
+			name:           "default JWT on, short HMAC key → cleared and disabled",
+			cfg:            Prest{EnableDefaultJWT: true, JWTKey: "s3cr3t", JWTAlgo: "HS256"},
+			wantDefaultJWT: false,
+		},
+		{
+			name:            "auth enabled, short HMAC key → auth disabled",
+			cfg:             Prest{AuthEnabled: true, JWTKey: "s3cr3t", JWTAlgo: "HS256"},
+			wantAuthEnabled: false,
+		},
+		{
+			name:           "short HMAC key with JWKS → key cleared, JWT stays on via JWKS",
+			cfg:            Prest{EnableDefaultJWT: true, JWTKey: "s3cr3t", JWTAlgo: "HS256", JWTJWKS: `{"keys":[]}`},
+			wantDefaultJWT: true,
 		},
 	}
 

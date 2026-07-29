@@ -16,10 +16,10 @@ import (
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
 
+	jose "github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/urfave/negroni/v3"
-	jose "gopkg.in/square/go-jose.v2"
-	"gopkg.in/square/go-jose.v2/jwt"
 )
 
 var (
@@ -83,7 +83,7 @@ func AuthMiddleware(settings AuthSettings) negroni.Handler {
 				return
 			}
 
-			tok, err := jwt.ParseSigned(token)
+			tok, err := jwt.ParseSigned(token, []jose.SignatureAlgorithm{jose.HS256})
 			if err != nil {
 				http.Error(rw, fmt.Sprintf(jsonErrFormat, ErrJWTParseFail.Error()), http.StatusUnauthorized)
 				return
@@ -158,7 +158,8 @@ func AccessControl(perms adapters.PermissionsChecker) negroni.Handler {
 }
 
 // JwtMiddleware check if actual request have JWT
-func JwtMiddleware(key string, JWKSet, _ string, whitelist []string) negroni.Handler {
+func JwtMiddleware(key string, JWKSet, algo string, whitelist []string) negroni.Handler {
+	allowedAlgs := []jose.SignatureAlgorithm{jwtAlgo(algo)}
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		match, err := MatchURL(r.URL.String(), whitelist)
 		if err != nil {
@@ -176,7 +177,7 @@ func JwtMiddleware(key string, JWKSet, _ string, whitelist []string) negroni.Han
 			http.Error(w, fmt.Sprintf(jsonErrFormat, ErrAuthIsEmpty.Error()), http.StatusUnauthorized)
 			return
 		}
-		tok, err := jwt.ParseSigned(token)
+		tok, err := jwt.ParseSigned(token, allowedAlgs)
 		if err != nil {
 			http.Error(w, fmt.Sprintf(jsonErrFormat, ErrJWTParseFail.Error()), http.StatusUnauthorized)
 			return

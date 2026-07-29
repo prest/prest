@@ -8,11 +8,15 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
+	jose "github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/v2/app"
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers"
+	"github.com/prest/prest/v2/controllers/auth"
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/middlewares"
 	"github.com/stretchr/testify/require"
@@ -161,7 +165,7 @@ func TestEnableDefaultJWT(t *testing.T) {
 func TestJWTIsRequired(t *testing.T) {
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
-	t.Setenv("PREST_JWT_KEY", "s3cr3t")
+	t.Setenv("PREST_JWT_KEY", "test-jwt-hmac-secret-key-32bytes")
 	nd := appTestWithJwt(t)
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
@@ -174,21 +178,30 @@ func TestJWTIsRequired(t *testing.T) {
 }
 
 func TestJWTSignatureOk(t *testing.T) {
-	bearer := "Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImpvaG4uZG9lQHNvbWV3aGVyZS5jb20iLCJpYXQiOjE1MTc1NjM2MTYsImlzcyI6InByaXZhdGUiLCJqdGkiOiJjZWZhNzRmZS04OTRjLWZmNjMtZDgxNi00NjIwYjhjZDkyZWUiLCJvcmciOiJwcml2YXRlIiwic3ViIjoiam9obi5kb2UifQ.zLWkEd4hP4XdCD_DlRy6mgPeKwEl1dcdtx5A_jHSfmc87EsrGgNSdi8eBTzCgSU0jgV6ssTgQwzY6x4egze2xA"
+	const jwtKey = "test-jwt-hmac-secret-key-32bytes"
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
-	t.Setenv("PREST_JWT_KEY", "s3cr3t")
-	t.Setenv("PREST_JWT_ALGO", "HS512")
+	t.Setenv("PREST_JWT_KEY", jwtKey)
+	t.Setenv("PREST_JWT_ALGO", "HS256")
 	nd := appTestWithJwt(t)
 	serverd := httptest.NewServer(nd)
 	defer serverd.Close()
 
-	req, err := http.NewRequest("GET", serverd.URL, nil)
+	sig, err := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.HS256, Key: []byte(jwtKey)},
+		(&jose.SignerOptions{}).WithType("JWT"))
+	require.NoError(t, err)
+	bearer, err := jwt.Signed(sig).Claims(auth.Claims{
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-time.Minute)),
+		Expiry:    jwt.NewNumericDate(time.Now().Add(time.Minute)),
+	}).Serialize()
 	require.NoError(t, err)
 
-	req.Header.Add("authorization", bearer)
+	req, err := http.NewRequest("GET", serverd.URL, nil)
+	require.NoError(t, err)
+	req.Header.Add("authorization", "Bearer "+bearer)
 
-	// GET / with a valid HS512 JWT.
+	// GET / with a valid HS256 JWT.
 	// Expected to succeed with HTTP status OK.
 	client := http.Client{}
 	respd, err := client.Do(req)
@@ -200,7 +213,7 @@ func TestJWTSignatureKo(t *testing.T) {
 	bearer := "Bearer: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImpvaG4uZG9lQHNvbWV3aGVyZS5jb20iLCJleHAiOjE1MjUzMzk2MTYsImlhdCI6MTUxNzU2MzYxNiwiaXNzIjoicHJpdmF0ZSIsImp0aSI6ImNlZmE3NGZlLTg5NGMtZmY2My1kODE2LTQ2MjBiOGNkOTJlZSIsIm9yZyI6InByaXZhdGUiLCJzdWIiOiJqb2huLmRvZSJ9.zGP1Xths2bK2r9FN0Gv1SzyoisO0dhRwvqrPvunGxUyU5TbkfdnTcQRJNYZzJfGILeQ9r3tbuakWm-NIoDlbbA"
 	t.Setenv("PREST_JWT_DEFAULT", "true")
 	t.Setenv("PREST_DEBUG", "false")
-	t.Setenv("PREST_JWT_KEY", "s3cr3t")
+	t.Setenv("PREST_JWT_KEY", "test-jwt-hmac-secret-key-32bytes")
 	t.Setenv("PREST_JWT_ALGO", "HS256")
 	nd := appTestWithJwt(t)
 	serverd := httptest.NewServer(nd)
