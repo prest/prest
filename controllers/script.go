@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/middlewares"
@@ -125,13 +126,53 @@ func extractHeaders(rq *http.Request, templateData map[string]interface{}) {
 
 var safeScriptParamRegex = regexp.MustCompile(`^[a-zA-Z0-9_.:@/\\ -]+$`)
 
+// scriptParamWordRegex extracts the word tokens of a value so they can be
+// screened against SQL keywords. Splitting on every non-letter keeps
+// `0-union`, `a/select` and similar from smuggling a keyword past the check.
+var scriptParamWordRegex = regexp.MustCompile(`[a-zA-Z_]+`)
+
+// scriptParamSQLKeywords are the tokens that make SQL composition possible once
+// a value lands in an unquoted template context. Values carrying any of them
+// are rejected outright.
+var scriptParamSQLKeywords = map[string]struct{}{
+	"all": {}, "alter": {}, "and": {}, "any": {}, "as": {}, "between": {},
+	"by": {}, "call": {}, "case": {}, "cast": {}, "copy": {}, "create": {},
+	"database": {}, "delete": {}, "distinct": {}, "do": {}, "drop": {},
+	"except": {}, "exec": {}, "execute": {}, "exists": {}, "fetch": {},
+	"from": {}, "grant": {}, "group": {}, "having": {}, "ilike": {},
+	"insert": {}, "intersect": {}, "into": {}, "join": {}, "lateral": {},
+	"like": {}, "limit": {}, "not": {}, "null": {}, "offset": {}, "only": {},
+	"or": {}, "order": {}, "over": {}, "returning": {}, "revoke": {},
+	"schema": {}, "select": {}, "set": {}, "similar": {}, "table": {},
+	"then": {}, "truncate": {}, "union": {}, "update": {}, "using": {},
+	"values": {}, "when": {}, "where": {}, "window": {}, "with": {},
+}
+
 // sanitizeScriptParam sanitizes the given value to be used as a script parameter.
 // This is used to prevent SQL injection.
+//
+// The character allow-list alone is not enough: it keeps quotes, commas and
+// parentheses out, but letters, digits and space are already sufficient to
+// compose a read-only injection such as
+// `0 UNION SELECT users::text FROM users` whenever a template interpolates the
+// value in an unquoted context (`WHERE id = {{.id}}`). SQL comment (`--`) and
+// cast (`::`) tokens plus any SQL keyword are therefore rejected as well.
+//
+// Templates that need to interpolate free-form values should use the `sqlVal`
+// / `sqlList` helpers, which bind them as query parameters instead.
 func sanitizeScriptParam(value string) string {
-	if safeScriptParamRegex.MatchString(value) {
-		return value
+	if !safeScriptParamRegex.MatchString(value) {
+		return ""
 	}
-	return ""
+	if strings.Contains(value, "--") || strings.Contains(value, "::") {
+		return ""
+	}
+	for _, word := range scriptParamWordRegex.FindAllString(value, -1) {
+		if _, ok := scriptParamSQLKeywords[strings.ToLower(word)]; ok {
+			return ""
+		}
+	}
+	return value
 }
 
 // extractQueryParameters gets from the given request the query parameters and populate the provided templateData

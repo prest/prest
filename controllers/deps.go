@@ -41,6 +41,7 @@ type Deps struct {
 	SingleDB           bool
 	PGDatabase         string
 	Auth               AuthConfig
+	Expose             config.ExposeConf
 }
 
 // NewDepsFromConfig builds handler dependencies from application config.
@@ -72,6 +73,7 @@ func NewDepsFromConfig(p *config.Prest) Deps {
 		Cache:         cacher,
 		SingleDB:      p.SingleDB,
 		PGDatabase:    p.PGDatabase,
+		Expose:        p.ExposeConf,
 		Auth: AuthConfig{
 			Enabled:  p.AuthEnabled,
 			AuthType: p.AuthType,

@@ -279,6 +279,35 @@ func TestSanitizeScriptParam(t *testing.T) {
 	require.Equal(t, "", sanitizeScriptParam(`" OR 1=1`))
 }
 
+// The character allow-list permits letters, digits and space, which is enough
+// to compose a read-only injection when a template interpolates the value in an
+// unquoted context (`WHERE id = {{.id}}`) — no quote, comma or parenthesis
+// required. These payloads must be blanked, not returned verbatim.
+func TestSanitizeScriptParam_RejectsUnquotedContextInjection(t *testing.T) {
+	t.Parallel()
+
+	unsafe := []string{
+		"0 OR true",
+		"0 UNION SELECT users::text FROM users",
+		"0 union select passwd from pg_shadow",
+		"0 UNION SELECT table_name FROM information_schema.tables",
+		"0 UNION SELECT query FROM pg_stat_activity",
+		"1 -- comment",
+		"1::text",
+		"0 Union Select 1",
+	}
+	for _, value := range unsafe {
+		require.Equal(t, "", sanitizeScriptParam(value), "value must be rejected: %s", value)
+	}
+
+	// Values that carry no SQL keyword or comment/cast token stay untouched, so
+	// existing quoted-context templates keep working.
+	safe := []string{"gopher", "42", "2024-01-01", "user@example.com", "John Doe", "a/b.c"}
+	for _, value := range safe {
+		require.Equal(t, value, sanitizeScriptParam(value), "value must be preserved: %s", value)
+	}
+}
+
 func TestExtractQueryParameters_SanitizesUnsafeValues(t *testing.T) {
 	t.Parallel()
 

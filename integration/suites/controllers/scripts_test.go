@@ -3,6 +3,7 @@ package controllers_test
 
 import (
 	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/prest/prest/v2/integration/helpers"
@@ -74,6 +75,56 @@ func TestExecuteFromScripts_RejectsHeaderInjection(t *testing.T) {
 		t, base+"/_QUERIES/fulltable/get_header", nil, "GET", http.StatusOK,
 		"ExecuteFromScripts", headers, `[{"?column?": ""}]`,
 	)
+}
+
+// TestExecuteFromScripts_RejectsUnquotedContextInjection guards the
+// unauthenticated read-only SQL injection that survived the CVE-2025-58450 fix:
+// sanitizeScriptParam's character allow-list blocks quotes, commas and
+// parentheses, but letters, digits and space alone compose
+// `0 UNION SELECT <col> FROM <table>` once a template interpolates the value in
+// an unquoted context (get_unquoted.read.sql: `WHERE 1 = {{.field1}}`).
+// A keyword/comment/cast screen now blanks those payloads, so the query never
+// composes and the request fails instead of dumping the catalog.
+func TestExecuteFromScripts_RejectsUnquotedContextInjection(t *testing.T) {
+	base := helpers.ServerURL(t)
+
+	var testCases = []struct {
+		description string
+		url         string
+		status      int
+	}{
+		// Baseline: a plain numeric value still reaches the query and succeeds.
+		{
+			"GET unquoted-context script with a benign value returns OK",
+			"/_QUERIES/fulltable/get_unquoted?field1=1",
+			http.StatusOK,
+		},
+		// UNION arm dumping every column of a table via the whole-row ::text cast.
+		{
+			"GET unquoted-context script with a UNION payload is neutralized",
+			"/_QUERIES/fulltable/get_unquoted?field1=" +
+				url.QueryEscape("1 UNION SELECT test7::text FROM test7"),
+			http.StatusBadRequest,
+		},
+		// Role password hashes from the catalog (superuser default in Docker).
+		{
+			"GET unquoted-context script reading pg_shadow is neutralized",
+			"/_QUERIES/fulltable/get_unquoted?field1=" +
+				url.QueryEscape("1 UNION SELECT passwd FROM pg_shadow"),
+			http.StatusBadRequest,
+		},
+		// Row-filter bypass needing no UNION at all.
+		{
+			"GET unquoted-context script with an OR-true row filter bypass is neutralized",
+			"/_QUERIES/fulltable/get_unquoted?field1=" + url.QueryEscape("1 OR true"),
+			http.StatusBadRequest,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		testutils.DoRequest(t, base+tc.url, nil, "GET", tc.status, "ExecuteFromScripts")
+	}
 }
 
 // TestExecuteFromScripts_RejectsUnregisteredDatabase guards against

@@ -59,6 +59,27 @@ type ExposeConf struct {
 	TableListing    bool
 }
 
+// The listing predicates below are the single definition of what [expose]
+// permits. Every surface that returns catalog metadata — the REST routes via
+// ExposureMiddleware and the /_mcp tools — must consult them, so a new
+// discovery endpoint cannot silently escape the control. When the section is
+// disabled the flags carry no meaning and everything is listable.
+
+// DatabaseListingAllowed reports whether database names may be listed.
+func (e ExposeConf) DatabaseListingAllowed() bool {
+	return !e.Enabled || e.DatabaseListing
+}
+
+// SchemaListingAllowed reports whether schema names may be listed.
+func (e ExposeConf) SchemaListingAllowed() bool {
+	return !e.Enabled || e.SchemaListing
+}
+
+// TableListingAllowed reports whether table names may be listed.
+func (e ExposeConf) TableListingAllowed() bool {
+	return !e.Enabled || e.TableListing
+}
+
 // StudioConf controls the embedded pREST Studio UI.
 type StudioConf struct {
 	Enabled bool

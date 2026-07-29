@@ -273,17 +273,17 @@ func ExposureMiddleware(expose config.ExposeConf) negroni.Handler {
 	return negroni.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
 		url := rq.URL.Path
 
-		if strings.HasPrefix(url, "/databases") && !expose.DatabaseListing {
+		if strings.HasPrefix(url, "/databases") && !expose.DatabaseListingAllowed() {
 			http.Error(rw, fmt.Sprintf(jsonErrFormat, "unauthorized listing"), http.StatusUnauthorized)
 			return
 		}
 
-		if strings.HasPrefix(url, "/tables") && !expose.TableListing {
+		if strings.HasPrefix(url, "/tables") && !expose.TableListingAllowed() {
 			http.Error(rw, fmt.Sprintf(jsonErrFormat, "unauthorized listing"), http.StatusUnauthorized)
 			return
 		}
 
-		if strings.HasPrefix(url, "/schemas") && !expose.SchemaListing {
+		if strings.HasPrefix(url, "/schemas") && !expose.SchemaListingAllowed() {
 			http.Error(rw, fmt.Sprintf(jsonErrFormat, "unauthorized listing"), http.StatusUnauthorized)
 			return
 		}
