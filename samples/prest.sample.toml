@@ -172,6 +172,10 @@ ignore_table = []
 # ------------------------------------------------------------------------
 # [expose] - control discovery/listing endpoints (as opposed to [access],
 # which controls whether data can be read/written).
+# Covers the REST catalog routes (/databases, /schemas, /tables) and the
+# catalog surface of the MCP endpoint (/_mcp): its list tools are refused and
+# the discovery payload stops advertising per-table tools whose names and
+# descriptions would otherwise disclose table and column names.
 # ------------------------------------------------------------------------
 [expose]
 enabled = false

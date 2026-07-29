@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/prest/prest/v2/adapters"
+	"github.com/prest/prest/v2/config"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
 
@@ -38,6 +39,7 @@ type MCPHandler struct {
 	perms    adapters.PermissionsChecker
 	singleDB bool
 	pgDB     string
+	expose   config.ExposeConf
 }
 
 // NewMCPHandler creates an MCPHandler.
@@ -50,6 +52,7 @@ func NewMCPHandler(deps Deps) *MCPHandler {
 		perms:    deps.Perms,
 		singleDB: deps.SingleDB,
 		pgDB:     deps.PGDatabase,
+		expose:   deps.Expose,
 	}
 }
 
@@ -324,7 +327,15 @@ func (h *MCPHandler) callTool(r *http.Request, params json.RawMessage) (result a
 	}
 }
 
+// errUnauthorizedListing mirrors the message ExposureMiddleware returns for the
+// REST catalog routes, so a caller denied at /databases sees the same refusal
+// through /_mcp.
+var errUnauthorizedListing = fmt.Errorf("unauthorized listing")
+
 func (h *MCPHandler) listDatabases(r *http.Request) (any, error) {
+	if !h.expose.DatabaseListingAllowed() {
+		return nil, errUnauthorizedListing
+	}
 	aliases := h.databaseAliases()
 	if len(aliases) > 0 {
 		rows := make([]map[string]any, 0, len(aliases))
@@ -344,6 +355,9 @@ func (h *MCPHandler) listDatabases(r *http.Request) (any, error) {
 }
 
 func (h *MCPHandler) listSchemas(r *http.Request, args mcpListSchemasArgs) (any, error) {
+	if !h.expose.SchemaListingAllowed() {
+		return nil, errUnauthorizedListing
+	}
 	if args.Database == "" {
 		args.Database = h.defaultDatabase()
 	}
@@ -392,6 +406,9 @@ func (h *MCPHandler) listSchemas(r *http.Request, args mcpListSchemasArgs) (any,
 }
 
 func (h *MCPHandler) listTables(r *http.Request, args mcpListTablesArgs) (any, error) {
+	if !h.expose.TableListingAllowed() {
+		return nil, errUnauthorizedListing
+	}
 	if args.Database == "" {
 		args.Database = h.defaultDatabase()
 	}
@@ -519,15 +536,34 @@ func (h *MCPHandler) selectTable(r *http.Request, args mcpSelectArgs) (any, erro
 
 func (h *MCPHandler) tools(r *http.Request) ([]mcpTool, error) {
 	tools := []mcpTool{
-		{Name: "prest.list_databases", Description: "List accessible databases.", InputSchema: emptyObjectSchema()},
-		{Name: "prest.list_schemas", Description: "List readable schemas for a database alias.", InputSchema: mcpListSchemasSchema()},
-		{Name: "prest.list_tables", Description: "List readable tables for a database alias and optional schema.", InputSchema: mcpListTablesSchema()},
 		{Name: "prest.describe_table", Description: "Describe a table and return its columns.", InputSchema: mcpDescribeSchema()},
 		{Name: "prest.select_table", Description: "Read rows from a table in a read-only way.", InputSchema: mcpSelectSchema()},
+	}
+	// A listing tool the caller is not allowed to invoke is not advertised.
+	if h.expose.DatabaseListingAllowed() {
+		tools = append(tools, mcpTool{Name: "prest.list_databases", Description: "List accessible databases.", InputSchema: emptyObjectSchema()})
+	}
+	if h.expose.SchemaListingAllowed() {
+		tools = append(tools, mcpTool{Name: "prest.list_schemas", Description: "List readable schemas for a database alias.", InputSchema: mcpListSchemasSchema()})
+	}
+	if h.expose.TableListingAllowed() {
+		tools = append(tools, mcpTool{Name: "prest.list_tables", Description: "List readable tables for a database alias and optional schema.", InputSchema: mcpListTablesSchema()})
+	}
+
+	// The per-table select tools below are themselves a catalog dump: each name
+	// carries database.schema.table and each description carries the column
+	// names, so a bare GET /_mcp discloses everything [expose] was set to hide
+	// without a single tools/call. Only enumerate them when the catalog is
+	// listable; the generic prest.select_table tool still serves callers that
+	// already know the target.
+	if !h.expose.DatabaseListingAllowed() || !h.expose.SchemaListingAllowed() || !h.expose.TableListingAllowed() {
+		sort.SliceStable(tools, func(i, j int) bool { return tools[i].Name < tools[j].Name })
+		return tools, nil
 	}
 
 	aliases := h.databaseAliases()
 	if len(aliases) == 0 {
+		sort.SliceStable(tools, func(i, j int) bool { return tools[i].Name < tools[j].Name })
 		return tools, nil
 	}
 

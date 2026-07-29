@@ -551,7 +551,7 @@ func TestExposureMiddleware_DatabasesDenied(t *testing.T) {
 	t.Parallel()
 
 	req := httptest.NewRequest(http.MethodGet, "/databases", nil)
-	rec, called := serveMiddleware(ExposureMiddleware(config.ExposeConf{DatabaseListing: false}), req)
+	rec, called := serveMiddleware(ExposureMiddleware(config.ExposeConf{Enabled: true, DatabaseListing: false}), req)
 
 	require.False(t, called)
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -562,7 +562,7 @@ func TestExposureMiddleware_SchemasDenied(t *testing.T) {
 	t.Parallel()
 
 	req := httptest.NewRequest(http.MethodGet, "/schemas", nil)
-	rec, called := serveMiddleware(ExposureMiddleware(config.ExposeConf{SchemaListing: false}), req)
+	rec, called := serveMiddleware(ExposureMiddleware(config.ExposeConf{Enabled: true, SchemaListing: false}), req)
 
 	require.False(t, called)
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -572,7 +572,7 @@ func TestExposureMiddleware_TablesDenied(t *testing.T) {
 	t.Parallel()
 
 	req := httptest.NewRequest(http.MethodGet, "/tables", nil)
-	rec, called := serveMiddleware(ExposureMiddleware(config.ExposeConf{TableListing: false}), req)
+	rec, called := serveMiddleware(ExposureMiddleware(config.ExposeConf{Enabled: true, TableListing: false}), req)
 
 	require.False(t, called)
 	require.Equal(t, http.StatusUnauthorized, rec.Code)

@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/prest/prest/v2/adapters/mockgen"
+	"github.com/prest/prest/v2/config"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
 	"github.com/stretchr/testify/require"
@@ -1923,4 +1924,90 @@ func TestMCPHandler_ListSchemas_AccessibleSchemasError(t *testing.T) {
 	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, DB: db, PGDatabase: "prest-test"})
 	_, err := h.listSchemas(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpListSchemasArgs{Database: "prest-test"})
 	require.Error(t, err)
+}
+
+// hiddenCatalogExpose is the configuration of an operator who enabled [expose]
+// specifically to hide catalog discovery while still allowing known tables to
+// be queried directly.
+var hiddenCatalogExpose = config.ExposeConf{Enabled: true}
+
+// The /_mcp endpoint used to bypass ExposureMiddleware entirely: it is not one
+// of the three literal prefixes (/databases, /tables, /schemas) that middleware
+// gates, and the MCP catalog tools never consulted [expose]. A caller denied at
+// GET /databases could therefore read the whole catalog through the MCP tools.
+func TestMCPHandler_ListToolsRespectExposeConf(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// No catalog/executor expectations: enforcement must reject before any
+	// query reaches the database.
+	h := NewMCPHandler(Deps{DB: mockDatabaseRegistry(ctrl), PGDatabase: "prest-test", Expose: hiddenCatalogExpose})
+
+	var testCases = []struct {
+		description string
+		call        func() (any, error)
+	}{
+		{"prest.list_databases is denied when expose.databases=false", func() (any, error) {
+			return h.listDatabases(httptest.NewRequest(http.MethodPost, "/_mcp", nil))
+		}},
+		{"prest.list_schemas is denied when expose.schemas=false", func() (any, error) {
+			return h.listSchemas(httptest.NewRequest(http.MethodPost, "/_mcp", nil), mcpListSchemasArgs{Database: "prest-test"})
+		}},
+		{"prest.list_tables is denied when expose.tables=false", func() (any, error) {
+			return h.listTables(httptest.NewRequest(http.MethodPost, "/_mcp", nil), mcpListTablesArgs{Database: "prest-test"})
+		}},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		result, err := tc.call()
+		require.Nil(t, result)
+		require.ErrorIs(t, err, errUnauthorizedListing)
+	}
+}
+
+// A bare GET /_mcp returns the tool catalog, whose per-table tool names carry
+// database.schema.table and whose descriptions carry column names — the exact
+// data [expose] was set to hide, disclosed with no tools/call at all.
+func TestMCPHandler_GetDiscovery_RespectsExposeConf(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	h := NewMCPHandler(Deps{DB: mockDatabaseRegistry(ctrl), PGDatabase: "prest-test", Expose: hiddenCatalogExpose})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/_mcp", nil))
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+	// No catalog names leak, and the listing tools are not advertised at all.
+	require.NotContains(t, body, "prest.select.prest-test.public.users")
+	require.NotContains(t, body, "prest.list_databases")
+	require.NotContains(t, body, "prest.list_schemas")
+	require.NotContains(t, body, "prest.list_tables")
+	// Direct access to an already-known table stays available: [expose] governs
+	// discovery, [access] governs reads.
+	require.Contains(t, body, "prest.select_table")
+	require.Contains(t, body, "prest.describe_table")
+}
+
+// With [expose] disabled the flags carry no meaning, so nothing changes for the
+// default configuration.
+func TestMCPHandler_ExposeDisabledKeepsListing(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	db := mockgen.NewMockDatabaseRegistry(ctrl)
+	db.EXPECT().Aliases().Return([]string{"prest-test"}).AnyTimes()
+	db.EXPECT().PhysicalName("prest-test").Return("prest-test")
+
+	h := NewMCPHandler(Deps{DB: db, PGDatabase: "prest-test", Expose: config.ExposeConf{Enabled: false}})
+	result, err := h.listDatabases(httptest.NewRequest(http.MethodPost, "/_mcp", nil))
+	require.NoError(t, err)
+	require.NotNil(t, result)
 }

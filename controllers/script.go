@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/middlewares"
@@ -125,13 +126,65 @@ func extractHeaders(rq *http.Request, templateData map[string]interface{}) {
 
 var safeScriptParamRegex = regexp.MustCompile(`^[a-zA-Z0-9_.:@/\\ -]+$`)
 
+// scriptParamWordRegex extracts the word tokens of a value so they can be
+// screened against SQL keywords. Tokens are whole alphanumeric runs, so
+// `order66` or `table9` stay intact instead of matching on an `order`/`table`
+// prefix, while `0-union` and `a/select` still split on the separator and get
+// caught.
+var scriptParamWordRegex = regexp.MustCompile(`[a-zA-Z0-9_]+`)
+
+// scriptParamLeadingDigits matches the numeric prefix of a token. PostgreSQL
+// before v15 lexes `0union` as `0` followed by the keyword, so the digits are
+// stripped before the keyword lookup; `order66` has no numeric prefix and is
+// unaffected.
+var scriptParamLeadingDigits = regexp.MustCompile(`^[0-9]+`)
+
+// scriptParamSQLKeywords are the tokens that make SQL composition possible once
+// a value lands in an unquoted template context. Values carrying any of them
+// are rejected outright.
+var scriptParamSQLKeywords = map[string]struct{}{
+	"all": {}, "alter": {}, "and": {}, "any": {}, "as": {}, "between": {},
+	"by": {}, "call": {}, "case": {}, "cast": {}, "copy": {}, "create": {},
+	"database": {}, "delete": {}, "distinct": {}, "do": {}, "drop": {},
+	"except": {}, "exec": {}, "execute": {}, "exists": {}, "fetch": {},
+	"from": {}, "grant": {}, "group": {}, "having": {}, "ilike": {},
+	"insert": {}, "intersect": {}, "into": {}, "join": {}, "lateral": {},
+	"like": {}, "limit": {}, "not": {}, "null": {}, "offset": {}, "only": {},
+	"or": {}, "order": {}, "over": {}, "returning": {}, "revoke": {},
+	"schema": {}, "select": {}, "set": {}, "similar": {}, "table": {},
+	"then": {}, "truncate": {}, "union": {}, "update": {}, "using": {},
+	"values": {}, "when": {}, "where": {}, "window": {}, "with": {},
+}
+
 // sanitizeScriptParam sanitizes the given value to be used as a script parameter.
 // This is used to prevent SQL injection.
+//
+// The character allow-list alone is not enough: it keeps quotes, commas and
+// parentheses out, but letters, digits and space are already sufficient to
+// compose a read-only injection such as
+// `0 UNION SELECT users::text FROM users` whenever a template interpolates the
+// value in an unquoted context (`WHERE id = {{.id}}`). SQL comment (`--`) and
+// cast (`::`) tokens plus any SQL keyword are therefore rejected as well.
+//
+// Templates that need to interpolate free-form values should use the `sqlVal`
+// / `sqlList` helpers, which bind them as query parameters instead.
 func sanitizeScriptParam(value string) string {
-	if safeScriptParamRegex.MatchString(value) {
-		return value
+	if !safeScriptParamRegex.MatchString(value) {
+		return ""
 	}
-	return ""
+	if strings.Contains(value, "--") || strings.Contains(value, "::") {
+		return ""
+	}
+	for _, word := range scriptParamWordRegex.FindAllString(value, -1) {
+		word = strings.ToLower(word)
+		if _, ok := scriptParamSQLKeywords[word]; ok {
+			return ""
+		}
+		if _, ok := scriptParamSQLKeywords[scriptParamLeadingDigits.ReplaceAllString(word, "")]; ok {
+			return ""
+		}
+	}
+	return value
 }
 
 // extractQueryParameters gets from the given request the query parameters and populate the provided templateData

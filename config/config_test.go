@@ -810,3 +810,25 @@ func inaccessiblePath(t *testing.T) string {
 	t.Cleanup(func() { _ = os.Chmod(restricted, 0700) })
 	return target
 }
+
+// The listing predicates are the shared definition of [expose] consumed by both
+// ExposureMiddleware and the /_mcp catalog tools; the section only carries
+// meaning while it is enabled.
+func TestExposeConf_ListingPredicates(t *testing.T) {
+	t.Parallel()
+
+	disabled := ExposeConf{Enabled: false}
+	require.True(t, disabled.DatabaseListingAllowed())
+	require.True(t, disabled.SchemaListingAllowed())
+	require.True(t, disabled.TableListingAllowed())
+
+	hidden := ExposeConf{Enabled: true}
+	require.False(t, hidden.DatabaseListingAllowed())
+	require.False(t, hidden.SchemaListingAllowed())
+	require.False(t, hidden.TableListingAllowed())
+
+	partial := ExposeConf{Enabled: true, SchemaListing: true}
+	require.False(t, partial.DatabaseListingAllowed())
+	require.True(t, partial.SchemaListingAllowed())
+	require.False(t, partial.TableListingAllowed())
+}

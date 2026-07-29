@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/gorilla/mux"
@@ -316,4 +317,67 @@ func TestExposeTablesMiddleware(t *testing.T) {
 	// Expected to fail with HTTP status Unauthorized.
 	resp, _ = http.Get(server.URL + "/schemas")
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+}
+
+// TestExposeMCPEndpoint guards the /_mcp bypass of [expose]: the endpoint is
+// not one of the three literal prefixes ExposureMiddleware gates
+// (/databases, /tables, /schemas), so an operator who set
+// expose.databases/schemas/tables = false to hide catalog discovery still had
+// the full database, schema, table and column catalog served through /_mcp —
+// via the JSON-RPC list tools and, with no call at all, via the GET discovery
+// payload whose per-table tool names and descriptions embed those names.
+// The MCP catalog tools now consult the same [expose] predicates as the REST
+// routes.
+func TestExposeMCPEndpoint(t *testing.T) {
+	t.Setenv("PREST_DEBUG", "true")
+	t.Setenv("PREST_CONF", helpers.TestExposeConfigPath())
+	cfg, err := config.Load()
+	require.NoError(t, err)
+	require.NoError(t, app.EnsureAdapter(cfg))
+
+	h := controllers.NewHandlersFromConfig(cfg)
+	r := mux.NewRouter()
+	r.Handle("/_mcp", h.MCP.Handler()).Methods("GET", "POST")
+	n := middlewares.New(cfg)
+	n.UseHandler(r)
+	server := httptest.NewServer(n)
+	defer server.Close()
+
+	// Baseline: the REST catalog route is denied, which is the operator intent
+	// /_mcp must not contradict.
+	resp, err := http.Get(server.URL + "/tables")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+
+	// GET /_mcp discovery must not enumerate the catalog it was set to hide:
+	// no per-table select tools and no listing tools advertised.
+	resp, err = http.Get(server.URL + "/_mcp")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	discovery := string(body)
+	require.NotContains(t, discovery, "prest.select.")
+	require.NotContains(t, discovery, "prest.list_databases")
+	require.NotContains(t, discovery, "prest.list_schemas")
+	require.NotContains(t, discovery, "prest.list_tables")
+
+	// Each catalog tool is refused with the same "unauthorized listing" message
+	// ExposureMiddleware returns for the REST routes.
+	for _, tool := range []string{"prest.list_databases", "prest.list_schemas", "prest.list_tables"} {
+		t.Log("tools/call " + tool + " must be denied while [expose] hides the catalog")
+		call := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"` + tool + `"}}`
+		resp, err := http.Post(server.URL+"/_mcp", "application/json", strings.NewReader(call))
+		require.NoError(t, err)
+
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		resp.Body.Close()
+
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		require.Contains(t, string(body), "unauthorized listing")
+	}
 }
