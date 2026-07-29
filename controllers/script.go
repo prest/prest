@@ -127,9 +127,17 @@ func extractHeaders(rq *http.Request, templateData map[string]interface{}) {
 var safeScriptParamRegex = regexp.MustCompile(`^[a-zA-Z0-9_.:@/\\ -]+$`)
 
 // scriptParamWordRegex extracts the word tokens of a value so they can be
-// screened against SQL keywords. Splitting on every non-letter keeps
-// `0-union`, `a/select` and similar from smuggling a keyword past the check.
-var scriptParamWordRegex = regexp.MustCompile(`[a-zA-Z_]+`)
+// screened against SQL keywords. Tokens are whole alphanumeric runs, so
+// `order66` or `table9` stay intact instead of matching on an `order`/`table`
+// prefix, while `0-union` and `a/select` still split on the separator and get
+// caught.
+var scriptParamWordRegex = regexp.MustCompile(`[a-zA-Z0-9_]+`)
+
+// scriptParamLeadingDigits matches the numeric prefix of a token. PostgreSQL
+// before v15 lexes `0union` as `0` followed by the keyword, so the digits are
+// stripped before the keyword lookup; `order66` has no numeric prefix and is
+// unaffected.
+var scriptParamLeadingDigits = regexp.MustCompile(`^[0-9]+`)
 
 // scriptParamSQLKeywords are the tokens that make SQL composition possible once
 // a value lands in an unquoted template context. Values carrying any of them
@@ -168,7 +176,11 @@ func sanitizeScriptParam(value string) string {
 		return ""
 	}
 	for _, word := range scriptParamWordRegex.FindAllString(value, -1) {
-		if _, ok := scriptParamSQLKeywords[strings.ToLower(word)]; ok {
+		word = strings.ToLower(word)
+		if _, ok := scriptParamSQLKeywords[word]; ok {
+			return ""
+		}
+		if _, ok := scriptParamSQLKeywords[scriptParamLeadingDigits.ReplaceAllString(word, "")]; ok {
 			return ""
 		}
 	}

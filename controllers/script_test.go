@@ -295,6 +295,9 @@ func TestSanitizeScriptParam_RejectsUnquotedContextInjection(t *testing.T) {
 		"1 -- comment",
 		"1::text",
 		"0 Union Select 1",
+		// PostgreSQL before v15 accepts `0union` as `0` + keyword, so a token's
+		// numeric prefix must not hide the keyword behind it.
+		"0union select 1",
 	}
 	for _, value := range unsafe {
 		require.Equal(t, "", sanitizeScriptParam(value), "value must be rejected: %s", value)
@@ -302,7 +305,10 @@ func TestSanitizeScriptParam_RejectsUnquotedContextInjection(t *testing.T) {
 
 	// Values that carry no SQL keyword or comment/cast token stay untouched, so
 	// existing quoted-context templates keep working.
-	safe := []string{"gopher", "42", "2024-01-01", "user@example.com", "John Doe", "a/b.c"}
+	// A keyword is only a keyword as a whole token: identifiers that merely
+	// start with one (order66, select2, table9) must survive.
+	safe := []string{"gopher", "42", "2024-01-01", "user@example.com", "John Doe", "a/b.c",
+		"order66", "select2", "table9", "union_member"}
 	for _, value := range safe {
 		require.Equal(t, value, sanitizeScriptParam(value), "value must be preserved: %s", value)
 	}

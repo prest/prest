@@ -348,6 +348,7 @@ func TestExposeMCPEndpoint(t *testing.T) {
 	resp, err := http.Get(server.URL + "/tables")
 	require.NoError(t, err)
 	defer resp.Body.Close()
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
 	// GET /_mcp discovery must not enumerate the catalog it was set to hide:
 	// no per-table select tools and no listing tools advertised.
