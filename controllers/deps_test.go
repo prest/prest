@@ -23,7 +23,7 @@ func TestNewDepsFromConfig(t *testing.T) {
 		PGDatabase:   "prest-test",
 		AuthEnabled:  true,
 		AuthType:     "body",
-		JWTKey:       "secret",
+		JWTKey:       "test-jwt-hmac-secret-key-32bytes",
 		AuthSchema:   "public",
 		AuthTable:    "users",
 		AuthUsername: "username",
@@ -41,7 +41,7 @@ func TestNewDepsFromConfig(t *testing.T) {
 	require.NotNil(t, deps.Cache)
 	require.True(t, deps.Auth.Enabled)
 	require.Equal(t, "body", deps.Auth.AuthType)
-	require.Equal(t, "secret", deps.Auth.JWTKey)
+	require.Equal(t, "test-jwt-hmac-secret-key-32bytes", deps.Auth.JWTKey)
 }
 
 func TestNewDepsFromConfig_CacheDisabled(t *testing.T) {

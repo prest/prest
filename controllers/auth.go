@@ -14,8 +14,8 @@ import (
 	"github.com/prest/prest/v2/controllers/auth"
 	"golang.org/x/crypto/bcrypt"
 
-	jose "gopkg.in/square/go-jose.v2"
-	"gopkg.in/square/go-jose.v2/jwt"
+	jose "github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 )
 
 // Response representation
@@ -111,7 +111,11 @@ func (h *AuthHandler) token(u auth.User) (t string, err error) {
 		NotBefore: jwt.NewNumericDate(getToken),
 		Expiry:    jwt.NewNumericDate(expireToken),
 	}
-	return jwt.Signed(sig).Claims(cl).CompactSerialize()
+	token, err := jwt.Signed(sig).Claims(cl).Serialize()
+	if err != nil {
+		return "", fmt.Errorf("serialize JWT: %w", err)
+	}
+	return token, nil
 }
 
 func (h *AuthHandler) basicPasswordCheck(user, password string) (obj auth.User, err error) {

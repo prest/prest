@@ -9,7 +9,7 @@ encrypt = "md5"
 type = "body"
 
 [jwt]
-key = "integration-test-secret"
+key = "integration-test-secret-key-32b!!"
 algo = "HS256"
 whitelist = ["^\\/auth$"]
 

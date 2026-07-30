@@ -14,7 +14,7 @@ import (
 const (
 	queriesAdminUser = "test@postgres.rest"
 	queriesAdminPass = "123456"
-	queriesJWTKey    = "integration-test-secret"
+	queriesJWTKey    = "integration-test-secret-key-32b!!"
 )
 
 func TestQueryRegistryAuthGuards(t *testing.T) {

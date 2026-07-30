@@ -10,14 +10,16 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	jose "github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/golang/mock/gomock"
 	"github.com/prest/prest/v2/adapters/mockgen"
 	"github.com/prest/prest/v2/controllers/auth"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
-	jose "gopkg.in/square/go-jose.v2"
-	"gopkg.in/square/go-jose.v2/jwt"
 )
+
+const testAuthJWTKey = "test-jwt-hmac-secret-key-32bytes"
 
 func testAuthHandler() *AuthHandler {
 	return NewAuthHandler(nil, AuthConfig{
@@ -32,7 +34,7 @@ func testAuthHandler() *AuthHandler {
 func testAuthConfig() AuthConfig {
 	return AuthConfig{
 		AuthType: "body",
-		JWTKey:   "test-secret",
+		JWTKey:   testAuthJWTKey,
 		Schema:   "public",
 		Table:    "prest_users",
 		Username: "username",
@@ -131,10 +133,10 @@ func TestAuthHandler_Login_BodySuccess(t *testing.T) {
 	require.NotEmpty(t, resp.Token)
 	require.Equal(t, "alice", resp.LoggedUser.(map[string]interface{})["username"])
 
-	parsed, err := jwt.ParseSigned(resp.Token)
+	parsed, err := jwt.ParseSigned(resp.Token, []jose.SignatureAlgorithm{jose.HS256})
 	require.NoError(t, err)
 	var claims auth.Claims
-	require.NoError(t, parsed.Claims([]byte("test-secret"), &claims))
+	require.NoError(t, parsed.Claims([]byte(testAuthJWTKey), &claims))
 	require.Equal(t, "alice", claims.UserInfo.Username)
 }
 
@@ -239,26 +241,36 @@ func TestAuthHandler_Login_BasicSuccess(t *testing.T) {
 func TestAuthHandler_token(t *testing.T) {
 	t.Parallel()
 
-	h := NewAuthHandler(nil, AuthConfig{JWTKey: "signing-key"})
+	h := NewAuthHandler(nil, AuthConfig{JWTKey: testAuthJWTKey})
 	user := auth.User{ID: 9, Username: "jwt-user", Name: "JWT User"}
 
 	token, err := h.token(user)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 
-	parsed, err := jwt.ParseSigned(token)
+	parsed, err := jwt.ParseSigned(token, []jose.SignatureAlgorithm{jose.HS256})
 	require.NoError(t, err)
 
 	var claims auth.Claims
-	require.NoError(t, parsed.Claims([]byte("signing-key"), &claims))
+	require.NoError(t, parsed.Claims([]byte(testAuthJWTKey), &claims))
 	require.Equal(t, user.ID, claims.UserInfo.ID)
 	require.Equal(t, user.Username, claims.UserInfo.Username)
 	require.NotNil(t, claims.Expiry)
 	require.NotNil(t, claims.NotBefore)
 
-	sig, err := jose.ParseSigned(token)
+	sig, err := jose.ParseSigned(token, []jose.SignatureAlgorithm{jose.HS256})
 	require.NoError(t, err)
 	require.Equal(t, "HS256", string(sig.Signatures[0].Header.Algorithm))
+}
+
+func TestAuthHandler_tokenWrapsSerializeError(t *testing.T) {
+	t.Parallel()
+
+	h := NewAuthHandler(nil, AuthConfig{JWTKey: "too-short"})
+	_, err := h.token(auth.User{Username: "jwt-user"})
+
+	require.ErrorIs(t, err, jose.ErrInvalidKeySize)
+	require.ErrorContains(t, err, "serialize JWT")
 }
 
 func Test_getSelectQueryByUsername(t *testing.T) {
@@ -421,14 +433,14 @@ func TestToken(t *testing.T) {
 	t.Parallel()
 
 	user := auth.User{ID: 7, Username: "legacy"}
-	token, err := Token(user, "legacy-key")
+	token, err := Token(user, testAuthJWTKey)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 
-	parsed, err := jwt.ParseSigned(token)
+	parsed, err := jwt.ParseSigned(token, []jose.SignatureAlgorithm{jose.HS256})
 	require.NoError(t, err)
 	var claims auth.Claims
-	require.NoError(t, parsed.Claims([]byte("legacy-key"), &claims))
+	require.NoError(t, parsed.Claims([]byte(testAuthJWTKey), &claims))
 	require.Equal(t, user.Username, claims.UserInfo.Username)
 }
 

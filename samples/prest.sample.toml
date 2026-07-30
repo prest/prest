@@ -136,7 +136,9 @@ type = "body"
 # jwks or wellknownurl below to be set; otherwise it is auto-disabled.
 default = false
 # HMAC secret used to sign/verify HS256 tokens (also used by [auth] above).
-# key = "change-me-to-a-long-random-secret"
+# Must be at least 32 bytes for HS256 (48 for HS384, 64 for HS512) — go-jose/v4
+# enforces RFC 7518 key sizes and shorter keys are rejected at startup.
+# key = "change-me-to-a-long-random-secret-32b"
 algo = "HS256"
 # Alternative to `key`: a raw JWKS document, or a URL to fetch one from.
 # jwks = ""

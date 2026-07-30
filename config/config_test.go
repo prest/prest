@@ -265,6 +265,7 @@ func TestEnsureJWTConfig(t *testing.T) {
 		cfg             Prest
 		wantAuthEnabled bool
 		wantDefaultJWT  bool
+		wantJWTKey      string
 	}{
 		{
 			name:           "default JWT on, no material → disabled",
@@ -273,8 +274,9 @@ func TestEnsureJWTConfig(t *testing.T) {
 		},
 		{
 			name:           "default JWT on, HMAC key set → unchanged",
-			cfg:            Prest{EnableDefaultJWT: true, JWTKey: "s3cr3t"},
+			cfg:            Prest{EnableDefaultJWT: true, JWTKey: "test-jwt-hmac-secret-key-32bytes"},
 			wantDefaultJWT: true,
+			wantJWTKey:     "test-jwt-hmac-secret-key-32bytes",
 		},
 		{
 			name:           "default JWT on, JWKS set → unchanged",
@@ -303,8 +305,56 @@ func TestEnsureJWTConfig(t *testing.T) {
 		},
 		{
 			name:            "auth enabled, key set → unchanged",
-			cfg:             Prest{AuthEnabled: true, JWTKey: "s3cr3t"},
+			cfg:             Prest{AuthEnabled: true, JWTKey: "test-jwt-hmac-secret-key-32bytes"},
 			wantAuthEnabled: true,
+			wantJWTKey:      "test-jwt-hmac-secret-key-32bytes",
+		},
+		{
+			name:           "default JWT on, short HMAC key → cleared and disabled",
+			cfg:            Prest{EnableDefaultJWT: true, JWTKey: "s3cr3t", JWTAlgo: "HS256"},
+			wantDefaultJWT: false,
+		},
+		{
+			name:            "auth enabled, short HMAC key → auth disabled",
+			cfg:             Prest{AuthEnabled: true, JWTKey: "s3cr3t", JWTAlgo: "HS256"},
+			wantAuthEnabled: false,
+		},
+		{
+			name:           "short HMAC key with JWKS → key cleared, JWT stays on via JWKS",
+			cfg:            Prest{EnableDefaultJWT: true, JWTKey: "s3cr3t", JWTAlgo: "HS256", JWTJWKS: `{"keys":[]}`},
+			wantDefaultJWT: true,
+		},
+		{
+			name:           "HS384 exact 48-byte key → unchanged",
+			cfg:            Prest{EnableDefaultJWT: true, JWTKey: "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh", JWTAlgo: "HS384"},
+			wantDefaultJWT: true,
+			wantJWTKey:     "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
+		},
+		{
+			name:           "HS384 47-byte key → cleared and disabled",
+			cfg:            Prest{EnableDefaultJWT: true, JWTKey: "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh", JWTAlgo: "HS384"},
+			wantDefaultJWT: false,
+		},
+		{
+			name:           "HS384 47-byte key with JWKS → cleared, JWT stays on via JWKS",
+			cfg:            Prest{EnableDefaultJWT: true, JWTKey: "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh", JWTAlgo: "HS384", JWTJWKS: `{"keys":[]}`},
+			wantDefaultJWT: true,
+		},
+		{
+			name:           "HS512 exact 64-byte key → unchanged",
+			cfg:            Prest{EnableDefaultJWT: true, JWTKey: "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh", JWTAlgo: "HS512"},
+			wantDefaultJWT: true,
+			wantJWTKey:     "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
+		},
+		{
+			name:           "HS512 63-byte key → cleared and disabled",
+			cfg:            Prest{EnableDefaultJWT: true, JWTKey: "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh", JWTAlgo: "HS512"},
+			wantDefaultJWT: false,
+		},
+		{
+			name:           "HS512 63-byte key with JWKS → cleared, JWT stays on via JWKS",
+			cfg:            Prest{EnableDefaultJWT: true, JWTKey: "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh", JWTAlgo: "HS512", JWTJWKS: `{"keys":[]}`},
+			wantDefaultJWT: true,
 		},
 	}
 
@@ -314,6 +364,7 @@ func TestEnsureJWTConfig(t *testing.T) {
 			ensureJWTConfig(&cfg)
 			require.Equal(t, tc.wantAuthEnabled, cfg.AuthEnabled)
 			require.Equal(t, tc.wantDefaultJWT, cfg.EnableDefaultJWT)
+			require.Equal(t, tc.wantJWTKey, cfg.JWTKey)
 		})
 	}
 }
