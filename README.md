@@ -85,6 +85,9 @@ Postgres compose runs `./integration/suites/...` and `./integration/postgres/...
 TimescaleDB compose runs `./integration/timescaledb/...` only (see `.github/workflows/test-integration-timescaledb.yml`).
 Network tests require `PREST_TEST_URL` (and flavor-specific URLs for the Postgres job); outside Compose those tests skip when the URLs are unset.
 
+For adapter-dependent unit tests that should not open PostgreSQL connections,
+see the [`adapters/mock`](adapters/mock/README.md) test adapter documentation.
+
 ## Example: Docker Build
 
 Build the Docker image locally for development (compiles from source):
