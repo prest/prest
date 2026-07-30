@@ -205,14 +205,6 @@ func TestJWTSignatureOk(t *testing.T) {
 }
 
 func TestJWTSignatureKo(t *testing.T) {
-	t.Setenv("PREST_JWT_DEFAULT", "true")
-	t.Setenv("PREST_DEBUG", "false")
-	t.Setenv("PREST_JWT_KEY", "test-jwt-hmac-secret-key-32bytes")
-	t.Setenv("PREST_JWT_ALGO", "HS256")
-	nd := appTestWithJwt(t)
-	serverd := httptest.NewServer(nd)
-	defer serverd.Close()
-
 	const differentHS512Key = "test-jwt-hmac-secret-key-64bytes-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 	sig, err := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.HS512, Key: []byte(differentHS512Key)},
@@ -224,17 +216,18 @@ func TestJWTSignatureKo(t *testing.T) {
 	}).Serialize()
 	require.NoError(t, err)
 
-	req, err := http.NewRequest("GET", serverd.URL, nil)
-	require.NoError(t, err)
-
-	req.Header.Add("authorization", "Bearer "+bearer)
-
-	// GET / with a valid HS512 token while only HS256 is configured.
+	// GET a protected table through the deployed auth-enabled PostgreSQL service
+	// with a valid HS512 token while only HS256 is accepted.
 	// Expected to fail because the algorithm allowlist rejects HS512.
-	client := http.Client{}
-	respd, err := client.Do(req)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusUnauthorized, respd.StatusCode)
+	testutils.DoRequestWithHeaders(
+		t,
+		helpers.AuthServerURL(t)+"/prest-test/public/test",
+		nil,
+		http.MethodGet,
+		http.StatusUnauthorized,
+		"HS512 token is rejected by HS256 auth middleware",
+		map[string]string{"Authorization": "Bearer " + bearer},
+	)
 }
 
 func appTest(t *testing.T) *negroni.Negroni {
