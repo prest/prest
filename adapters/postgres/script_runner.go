@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	gotemplate "text/template"
 
 	"github.com/prest/prest/v2/adapters"
@@ -109,14 +110,34 @@ func (adapter *postgres) GetScript(verb, folder, scriptName string) (script stri
 	return adapter.getScriptPath(verb, folder, scriptName)
 }
 
+// withinBase reports whether path resolves inside base. Both are expected to be
+// cleaned already; a path that escapes yields a relative path of ".." or one
+// rooted at "..", and an unrelated volume yields an error from filepath.Rel.
+func withinBase(base, path string) bool {
+	rel, err := filepath.Rel(base, path)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
 func (adapter *postgres) getScriptPath(verb, folder, scriptName string) (string, error) {
 	suffix, ok := scriptVerbSuffixes[verb]
 	if !ok {
 		return "", fmt.Errorf("invalid http method %s", verb)
 	}
 
-	base := queriesBasePath(adapter.cfg)
+	base := filepath.Clean(queriesBasePath(adapter.cfg))
 	script := filepath.Join(base, folder, fmt.Sprint(scriptName, suffix))
+
+	// folder and scriptName come from the request path. Controllers gate them
+	// through validatePathSegments, but the containment check belongs here too so
+	// the adapter cannot be made to read outside the queries directory by a caller
+	// that skips that gate. filepath.Join has already normalized any "..", so a
+	// path that escapes the base is visible as a relative path starting with "..".
+	if !withinBase(base, script) {
+		return "", fmt.Errorf("invalid script path: %s/%s", folder, scriptName)
+	}
 
 	if _, err := os.Stat(script); os.IsNotExist(err) {
 		slog.Error("could not load script", "script", script)

@@ -53,6 +53,51 @@ func TestGetScript_Success(t *testing.T) {
 	require.Equal(t, scriptPath, got)
 }
 
+// TestGetScript_RejectsTraversal keeps the path barrier inside the adapter
+// rather than relying on the controller's validatePathSegments gate: getScriptPath
+// joins caller-supplied folder and name onto the queries directory, so any caller
+// that skips that gate could otherwise read arbitrary files (CodeQL go/path-injection).
+func TestGetScript_RejectsTraversal(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	// A readable file one level above the queries directory: the target an
+	// escaping path would reach if the join were unchecked.
+	outside := filepath.Join(dir, "secret.read.sql")
+	require.NoError(t, os.WriteFile(outside, []byte("SELECT 'pwned'"), 0o644))
+
+	queries := filepath.Join(dir, "queries")
+	require.NoError(t, os.MkdirAll(queries, 0o755))
+
+	cfg := defaultTestConf()
+	cfg.QueriesPath = queries
+	adapter := testAdapter(cfg)
+
+	var testCases = []struct {
+		description string
+		folder      string
+		script      string
+	}{
+		{"parent traversal in the folder segment", "..", "secret"},
+		{"parent traversal in the script segment", ".", "../secret"},
+		{"nested traversal that normalizes above the base", "sub/../..", "secret"},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		_, err := adapter.GetScript("GET", tc.folder, tc.script)
+		require.Error(t, err, tc.description)
+		require.Contains(t, err.Error(), "invalid script path", tc.description)
+	}
+
+	// An absolute folder segment is not an escape: filepath.Join drops the leading
+	// separator, re-rooting it under the queries directory. It fails as a missing
+	// file rather than as a rejected path, and must not reach the outside file.
+	_, err := adapter.GetScript("GET", dir, "secret")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "could not load script")
+}
+
 func TestParseScript_Template(t *testing.T) {
 	t.Parallel()
 

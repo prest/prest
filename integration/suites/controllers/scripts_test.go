@@ -77,6 +77,68 @@ func TestExecuteFromScripts_RejectsHeaderInjection(t *testing.T) {
 	)
 }
 
+// TestExecuteFromScripts_RejectsPathTraversal guards the path-injection alert
+// (CodeQL go/path-injection): the queries location and script name are joined onto
+// the configured queries directory to locate a .sql file on disk. A traversing
+// segment must never resolve to a file outside that directory — the request is
+// rejected, not served.
+func TestExecuteFromScripts_RejectsPathTraversal(t *testing.T) {
+	base := helpers.ServerURL(t)
+
+	var testCases = []struct {
+		description string
+		url         string
+		status      int
+	}{
+		// Backslash traversal: not a URL path separator, so unlike "../.." this
+		// reaches the handler as a literal segment instead of being path-cleaned
+		// into a redirect by the router. IsSafeSegment rejects it.
+		{
+			"GET script with backslash traversal in the location is rejected",
+			"/_QUERIES/" + url.PathEscape(`..\..`) + "/get_all?field1=gopher",
+			http.StatusBadRequest,
+		},
+		{
+			"GET script with backslash traversal in the name is rejected",
+			"/_QUERIES/fulltable/" + url.PathEscape(`..\..\get_all`),
+			http.StatusBadRequest,
+		},
+		// A dot is outside IsSafeSegment's allow-list, so a caller cannot name the
+		// on-disk file directly (get_all.read.sql) to sidestep the verb suffixing.
+		{
+			"GET script with a dotted segment is rejected",
+			"/_QUERIES/fulltable/get_all.read",
+			http.StatusBadRequest,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Log(tc.description)
+		testutils.DoRequest(t, base+tc.url, nil, "GET", tc.status, "ExecuteFromScripts")
+	}
+}
+
+// TestExecuteFromScripts_DropsCredentialHeaders guards the credential leak where
+// a script template referencing a credential header interpolated the caller's
+// bearer token into the SQL text, which the adapter then logged at debug level
+// (CodeQL go/clear-text-logging, adapters/postgres/postgres.go QueryCtx).
+// sanitizeScriptParam does not help here: a JWT is plain base64url and passes its
+// allow-list untouched. extractHeaders now blanks credential headers, so the
+// template renders an empty literal and the token never reaches the SQL string.
+func TestExecuteFromScripts_DropsCredentialHeaders(t *testing.T) {
+	base := helpers.ServerURL(t)
+
+	token := "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJnb3BoZXIifQ.c2ln"
+
+	// get_auth_header.read.sql is `SELECT '{{index .header "Authorization"}}'`.
+	// The request still succeeds; the echoed column is empty, not the token.
+	testutils.DoRequestWithHeaders(
+		t, base+"/_QUERIES/fulltable/get_auth_header", nil, "GET", http.StatusOK,
+		"ExecuteFromScripts", map[string]string{"Authorization": token},
+		`[{"?column?": ""}]`,
+	)
+}
+
 // TestExecuteFromScripts_RejectsUnquotedContextInjection guards the
 // unauthenticated read-only SQL injection that survived the CVE-2025-58450 fix:
 // sanitizeScriptParam's character allow-list blocks quotes, commas and

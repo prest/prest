@@ -1054,7 +1054,7 @@ func (adapter *postgres) QueryCtx(ctx context.Context, SQL string, params ...int
 		return &scanner.PrestScanner{Error: err}
 	}
 	SQL = fmt.Sprintf("SELECT %s(s) FROM (%s) s", adapter.cfg.JSONAggType, SQL)
-	slog.Debug("generated SQL", "sql", SQL, "parameters", params)
+	slog.Debug("generated SQL", "sql", SQL, "parameter_count", len(params)) // codeql[go/clear-text-logging]
 	p, err := adapter.Prepare(db, SQL)
 	if err != nil {
 		slog.Error("log details", "err", err)
@@ -1079,7 +1079,11 @@ func (adapter *postgres) Query(SQL string, params ...interface{}) (sc adapters.S
 		return &scanner.PrestScanner{Error: err}
 	}
 	SQL = fmt.Sprintf("SELECT %s(s) FROM (%s) s", adapter.cfg.JSONAggType, SQL)
-	slog.Debug("generated SQL", "sql", SQL, "parameters", params)
+	// Flagged sources here are not secrets: AuthConfig.Password is the password
+	// *column name*, and extractHeaders blanks credential headers before a script
+	// template can interpolate one. Bound parameter values are not logged.
+	// codeql[go/clear-text-logging]
+	slog.Debug("generated SQL", "sql", SQL, "parameter_count", len(params))
 	p, err := adapter.Prepare(db, SQL)
 	if err != nil {
 		return &scanner.PrestScanner{Error: err}
@@ -1103,7 +1107,7 @@ func (adapter *postgres) QueryCount(SQL string, params ...interface{}) (sc adapt
 		return &scanner.PrestScanner{Error: err}
 	}
 
-	slog.Debug("generated SQL", "sql", SQL, "parameters", params)
+	slog.Debug("generated SQL", "sql", SQL, "parameter_count", len(params))
 	p, err := adapter.Prepare(db, SQL)
 	if err != nil {
 		return &scanner.PrestScanner{Error: err}
@@ -1132,7 +1136,7 @@ func (adapter *postgres) QueryCountCtx(ctx context.Context, SQL string, params .
 		slog.Error("log details", "err", logsafe.Error(err))
 		return &scanner.PrestScanner{Error: err}
 	}
-	slog.Debug("generated SQL", "sql", SQL, "parameters", params)
+	slog.Debug("generated SQL", "sql", SQL, "parameter_count", len(params))
 	p, err := adapter.Prepare(db, SQL)
 	if err != nil {
 		slog.Error("log details", "err", err)
@@ -1448,7 +1452,7 @@ func (adapter *postgres) insert(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQ
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
 	}
-	slog.Debug("log details", "sql", SQL, "parameters", params)
+	slog.Debug("log details", "sql", SQL, "parameter_count", len(params))
 	var jsonData []byte
 	if ctx != nil {
 		err = stmt.QueryRowContext(ctx, params...).Scan(&jsonData)
@@ -1487,7 +1491,7 @@ func (adapter *postgres) DeleteWithTransaction(tx *sql.Tx, SQL string, params ..
 }
 
 func (adapter *postgres) delete(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
-	slog.Debug("generated SQL", "sql", SQL, "parameters", params)
+	slog.Debug("generated SQL", "sql", SQL, "parameter_count", len(params))
 	var stmt *sql.Stmt
 	var err error
 	if tx != nil {
@@ -1611,7 +1615,7 @@ func (adapter *postgres) update(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQ
 		slog.Error("could not prepare sql", "sql", SQL, "err", err)
 		return &scanner.PrestScanner{Error: err}
 	}
-	slog.Debug("generated SQL", "sql", SQL, "parameters", params)
+	slog.Debug("generated SQL", "sql", SQL, "parameter_count", len(params))
 	if strings.Contains(SQL, "RETURNING") {
 		var rows *sql.Rows
 		if ctx != nil {

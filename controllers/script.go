@@ -103,13 +103,36 @@ func (h *ScriptHandler) ExecuteScriptQuery(rq *http.Request, queriesPath string,
 	return sc.Bytes(), nil
 }
 
+// credentialHeaders never reach script templates with their real value.
+// sanitizeScriptParam screens for SQL composition, not for secrecy: a bearer
+// token or session cookie is plain base64url text and passes its allow-list
+// untouched, so a template referencing one would interpolate the caller's
+// credential into the SQL string that adapters log at debug level. The key is
+// kept with an empty value — the same shape sanitizeScriptParam gives a rejected
+// value — so an existing template still renders a valid empty literal instead of
+// Go's "<no value>". Keys are in net/http canonical form, which is how they are
+// stored in Request.Header.
+var credentialHeaders = map[string]struct{}{
+	"Authorization":       {},
+	"Proxy-Authorization": {},
+	"Cookie":              {},
+	"X-Api-Key":           {},
+	"X-Auth-Token":        {},
+	"X-Access-Token":      {},
+}
+
 // extractHeaders gets from the given request the headers and populate the provided templateData accordingly.
 // Values are routed through sanitizeScriptParam, the same gate used for query
 // parameters, since templates interpolate headers into SQL exactly the same way.
+// Credential-bearing headers are dropped entirely rather than sanitized.
 func extractHeaders(rq *http.Request, templateData map[string]interface{}) {
 	headers := map[string]interface{}{}
 
 	for key, value := range rq.Header {
+		if _, isCredential := credentialHeaders[http.CanonicalHeaderKey(key)]; isCredential {
+			headers[key] = ""
+			continue
+		}
 		if len(value) == 1 {
 			headers[key] = sanitizeScriptParam(value[0])
 			continue

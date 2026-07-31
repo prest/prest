@@ -257,6 +257,34 @@ func TestExtractHeaders_SanitizesUnsafeValues(t *testing.T) {
 	require.Equal(t, []string{"good", ""}, headers["X-Multi"])
 }
 
+func TestExtractHeaders_DropsCredentialHeaders(t *testing.T) {
+	t.Parallel()
+
+	// A JWT passes sanitizeScriptParam's allow-list unchanged (base64url, dots
+	// and the space in "Bearer " are all permitted), so without an explicit
+	// drop a template referencing {{.header.Authorization}} would interpolate
+	// the caller's token into the SQL text — which is logged at debug level.
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJnb3BoZXIifQ.c2ln")
+	req.Header.Set("Cookie", "session=abc123")
+	req.Header.Set("Proxy-Authorization", "Basic Z29waGVyOnMzY3JldA")
+	req.Header.Set("X-Api-Key", "k3y")
+	req.Header.Set("X-Application", "prest")
+
+	data := map[string]interface{}{}
+	extractHeaders(req, data)
+
+	headers := data["header"].(map[string]interface{})
+	// The key stays so existing templates still render an empty literal, but it
+	// never carries the credential.
+	require.Equal(t, "", headers["Authorization"])
+	require.Equal(t, "", headers["Cookie"])
+	require.Equal(t, "", headers["Proxy-Authorization"])
+	require.Equal(t, "", headers["X-Api-Key"])
+	// Non-credential headers keep working.
+	require.Equal(t, "prest", headers["X-Application"])
+}
+
 func TestExtractQueryParameters(t *testing.T) {
 	t.Parallel()
 
