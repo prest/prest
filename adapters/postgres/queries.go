@@ -32,7 +32,7 @@ func (adapter *postgres) WriteSQL(sql string, values []interface{}) (sc adapters
 	}
 	stmt, err := adapter.Prepare(db, sql)
 	if err != nil {
-		slog.Error("could not prepare sql", "err", err)
+		slog.Error("could not prepare sql", "err", logsafe.Error(err))
 		logFailedSQL(sql)
 		sc = &scanner.PrestScanner{Error: fmt.Errorf("could not prepare sql: %w", err)}
 		return
@@ -47,7 +47,7 @@ func (adapter *postgres) WriteSQL(sql string, values []interface{}) (sc adapters
 	if err != nil {
 		slog.Error("could not execute sql", "err", logsafe.Error(err))
 		logFailedSQL(sql)
-		err = fmt.Errorf("could not peform sql: %v", err)
+		err = fmt.Errorf("could not peform sql: %w", err)
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
@@ -95,7 +95,7 @@ func (adapter *postgres) WriteSQLCtx(ctx context.Context, sql string, values []i
 	if err != nil {
 		slog.Error("could not execute sql", "err", logsafe.Error(err))
 		logFailedSQL(sql)
-		err = fmt.Errorf("could not peform sql: %v", err)
+		err = fmt.Errorf("could not peform sql: %w", err)
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}

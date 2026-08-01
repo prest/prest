@@ -98,6 +98,57 @@ func TestGetScript_RejectsTraversal(t *testing.T) {
 	require.Contains(t, err.Error(), "could not load script")
 }
 
+// TestGetScript_RejectsSymlinkEscape covers what the lexical containment check
+// cannot see: a symlink that sits inside the queries directory but resolves to a
+// file outside it. The joined path looks contained, so only resolving the link
+// catches the escape.
+func TestGetScript_RejectsSymlinkEscape(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	outside := filepath.Join(dir, "secret.read.sql")
+	require.NoError(t, os.WriteFile(outside, []byte("SELECT 'pwned'"), 0o644))
+
+	queries := filepath.Join(dir, "queries", "fulltable")
+	require.NoError(t, os.MkdirAll(queries, 0o755))
+	// escape.read.sql lives inside the queries tree but points above it.
+	require.NoError(t, os.Symlink(outside, filepath.Join(queries, "escape.read.sql")))
+
+	cfg := defaultTestConf()
+	cfg.QueriesPath = filepath.Join(dir, "queries")
+	adapter := testAdapter(cfg)
+
+	_, err := adapter.GetScript("GET", "fulltable", "escape")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid script path")
+}
+
+// TestGetScript_AllowsSymlinkWithinBase confirms the symlink resolution does not
+// break the legitimate case of a link that stays inside the queries directory,
+// which operators use to share one script across folders.
+func TestGetScript_AllowsSymlinkWithinBase(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	shared := filepath.Join(base, "shared")
+	require.NoError(t, os.MkdirAll(shared, 0o755))
+	target := filepath.Join(shared, "list.read.sql")
+	require.NoError(t, os.WriteFile(target, []byte("SELECT 1"), 0o644))
+
+	folder := filepath.Join(base, "fulltable")
+	require.NoError(t, os.MkdirAll(folder, 0o755))
+	link := filepath.Join(folder, "list.read.sql")
+	require.NoError(t, os.Symlink(target, link))
+
+	cfg := defaultTestConf()
+	cfg.QueriesPath = base
+	adapter := testAdapter(cfg)
+
+	got, err := adapter.GetScript("GET", "fulltable", "list")
+	require.NoError(t, err)
+	require.Equal(t, link, got)
+}
+
 func TestParseScript_Template(t *testing.T) {
 	t.Parallel()
 

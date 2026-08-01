@@ -110,15 +110,32 @@ func (adapter *postgres) GetScript(verb, folder, scriptName string) (script stri
 	return adapter.getScriptPath(verb, folder, scriptName)
 }
 
-// withinBase reports whether path resolves inside base. Both are expected to be
+// withinBase reports whether path lies inside base. Both are expected to be
 // cleaned already; a path that escapes yields a relative path of ".." or one
 // rooted at "..", and an unrelated volume yields an error from filepath.Rel.
+// This is a lexical check only — see resolvedWithinBase for symlinks.
 func withinBase(base, path string) bool {
 	rel, err := filepath.Rel(base, path)
 	if err != nil {
 		return false
 	}
 	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+// resolvedWithinBase repeats the containment check with symlinks resolved, so a
+// link inside the queries directory cannot point outside it. Both paths must
+// already exist: EvalSymlinks fails on a missing path, which is why callers run
+// this after confirming the file is there rather than before.
+func resolvedWithinBase(base, path string) bool {
+	realBase, err := filepath.EvalSymlinks(base)
+	if err != nil {
+		return false
+	}
+	realPath, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return false
+	}
+	return withinBase(filepath.Clean(realBase), filepath.Clean(realPath))
 }
 
 func (adapter *postgres) getScriptPath(verb, folder, scriptName string) (string, error) {
@@ -142,6 +159,12 @@ func (adapter *postgres) getScriptPath(verb, folder, scriptName string) (string,
 	if _, err := os.Stat(script); os.IsNotExist(err) {
 		slog.Error("could not load script", "script", script)
 		return "", fmt.Errorf("could not load script: %w", err)
+	}
+
+	// The file exists, so links can now be resolved: a symlink inside the queries
+	// directory that targets a file outside it passes the lexical check above.
+	if !resolvedWithinBase(base, script) {
+		return "", fmt.Errorf("invalid script path: %s/%s", folder, scriptName)
 	}
 	return script, nil
 }

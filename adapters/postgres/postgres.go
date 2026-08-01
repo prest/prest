@@ -1506,7 +1506,8 @@ func (adapter *postgres) delete(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQ
 		stmt, err = adapter.Prepare(db, SQL)
 	}
 	if err != nil {
-		slog.Error("could not prepare sql", "sql", SQL, "err", err)
+		slog.Error("could not prepare sql", "err", logsafe.Error(err))
+		logFailedSQL(SQL)
 		return &scanner.PrestScanner{Error: err}
 	}
 	if strings.Contains(SQL, "RETURNING") {
@@ -1612,7 +1613,8 @@ func (adapter *postgres) update(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQ
 		stmt, err = adapter.Prepare(db, SQL)
 	}
 	if err != nil {
-		slog.Error("could not prepare sql", "sql", SQL, "err", err)
+		slog.Error("could not prepare sql", "err", logsafe.Error(err))
+		logFailedSQL(SQL)
 		return &scanner.PrestScanner{Error: err}
 	}
 	slog.Debug("generated SQL", "sql", SQL, "parameter_count", len(params))
@@ -1661,12 +1663,14 @@ func (adapter *postgres) update(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQ
 		result, err = stmt.Exec(params...)
 	}
 	if err != nil {
-		slog.Error("could not execute sql", "sql", SQL, "err", err)
+		slog.Error("could not execute sql", "err", logsafe.Error(err))
+		logFailedSQL(SQL)
 		return &scanner.PrestScanner{Error: err}
 	}
 	rowsAffected, err = result.RowsAffected()
 	if err != nil {
-		slog.Error("could not get rows affected", "sql", SQL, "err", err)
+		slog.Error("could not get rows affected", "err", logsafe.Error(err))
+		logFailedSQL(SQL)
 		return &scanner.PrestScanner{Error: err}
 	}
 	data := make(map[string]interface{})
