@@ -8,13 +8,21 @@ on:
     tags:
       - 'v*'
 
+# Nothing is writable by default; the one job that needs write declares it below.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
     environment: build
+    # GoReleaser reads GITHUB_TOKEN (the job token) to create the GitHub release
+    # on tag pushes, so contents must be writable here — `contents: read` alone
+    # would break releases. Registry pushes authenticate with
+    # GORELEASER_GITHUB_TOKEN / DOCKER_PASSWORD via docker/login-action rather
+    # than the job token, so no packages permission is needed.
+    permissions:
+      contents: write
     defaults:
       run:
         shell: bash
