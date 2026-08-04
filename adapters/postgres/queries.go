@@ -13,11 +13,13 @@ import (
 	"log/slog"
 )
 
-// logFailedSQL emits the statement that failed at debug level only. Script
-// templates interpolate request headers and query parameters straight into the
-// SQL text, so a rendered statement carries caller-supplied data; keeping it off
-// the always-on error path means an operator opts in to seeing it.
-// codeql[go/clear-text-logging]
+// logFailedSQL emits the statement that failed at debug level only.
+//
+// Call it solely from paths a script template cannot reach — the CRUD
+// insert/update/delete builders. WriteSQL and WriteSQLCtx are excluded: scripts
+// render request headers and query parameters straight into the statements those
+// two execute, so the SQL text there is caller-controlled data, not a fixed
+// pREST-built statement.
 func logFailedSQL(sql string) {
 	slog.Debug("failed sql", "sql", sql)
 }
@@ -33,7 +35,6 @@ func (adapter *postgres) WriteSQL(sql string, values []interface{}) (sc adapters
 	stmt, err := adapter.Prepare(db, sql)
 	if err != nil {
 		slog.Error("could not prepare sql", "err", logsafe.Error(err))
-		logFailedSQL(sql)
 		sc = &scanner.PrestScanner{Error: fmt.Errorf("could not prepare sql: %w", err)}
 		return
 	}
@@ -46,7 +47,6 @@ func (adapter *postgres) WriteSQL(sql string, values []interface{}) (sc adapters
 	result, err := stmt.Exec(valuesAux...)
 	if err != nil {
 		slog.Error("could not execute sql", "err", logsafe.Error(err))
-		logFailedSQL(sql)
 		err = fmt.Errorf("could not peform sql: %w", err)
 		sc = &scanner.PrestScanner{Error: err}
 		return
@@ -81,7 +81,6 @@ func (adapter *postgres) WriteSQLCtx(ctx context.Context, sql string, values []i
 	stmt, err := adapter.PrepareContext(ctx, db, sql)
 	if err != nil {
 		slog.Error("could not prepare sql", "err", logsafe.Error(err))
-		logFailedSQL(sql)
 		sc = &scanner.PrestScanner{Error: fmt.Errorf("could not prepare sql: %w", err)}
 		return
 	}
@@ -94,7 +93,6 @@ func (adapter *postgres) WriteSQLCtx(ctx context.Context, sql string, values []i
 	result, err := stmt.ExecContext(ctx, valuesAux...)
 	if err != nil {
 		slog.Error("could not execute sql", "err", logsafe.Error(err))
-		logFailedSQL(sql)
 		err = fmt.Errorf("could not peform sql: %w", err)
 		sc = &scanner.PrestScanner{Error: err}
 		return

@@ -1054,7 +1054,12 @@ func (adapter *postgres) QueryCtx(ctx context.Context, SQL string, params ...int
 		return &scanner.PrestScanner{Error: err}
 	}
 	SQL = fmt.Sprintf("SELECT %s(s) FROM (%s) s", adapter.cfg.JSONAggType, SQL)
-	slog.Debug("generated SQL", "sql", SQL, "parameter_count", len(params)) // codeql[go/clear-text-logging]
+	// The statement itself is deliberately not logged here. Script templates render
+	// request headers and query parameters directly into the SQL text before it
+	// reaches this function, so the string is caller-controlled data rather than a
+	// fixed pREST-built statement. INSERT/UPDATE/DELETE, which scripts cannot reach
+	// through this path, still log their SQL at debug level.
+	slog.Debug("generated SQL", "parameter_count", len(params))
 	p, err := adapter.Prepare(db, SQL)
 	if err != nil {
 		slog.Error("log details", "err", err)
@@ -1079,11 +1084,9 @@ func (adapter *postgres) Query(SQL string, params ...interface{}) (sc adapters.S
 		return &scanner.PrestScanner{Error: err}
 	}
 	SQL = fmt.Sprintf("SELECT %s(s) FROM (%s) s", adapter.cfg.JSONAggType, SQL)
-	// Flagged sources here are not secrets: AuthConfig.Password is the password
-	// *column name*, and extractHeaders blanks credential headers before a script
-	// template can interpolate one. Bound parameter values are not logged.
-	// codeql[go/clear-text-logging]
-	slog.Debug("generated SQL", "sql", SQL, "parameter_count", len(params))
+	// Not logged, for the same reason as QueryCtx above: scripts render request
+	// data into this statement before it arrives.
+	slog.Debug("generated SQL", "parameter_count", len(params))
 	p, err := adapter.Prepare(db, SQL)
 	if err != nil {
 		return &scanner.PrestScanner{Error: err}
