@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -117,6 +118,92 @@ func TestScriptHandler_Execute_WithCache(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, middlewares.CacheKey(req), cacher.key)
 	require.Equal(t, "cached", cacher.value)
+}
+
+// TestScriptHandler_Execute_RejectsInterpolatedRejectedParam is the fix for the
+// silent-failure half of issue #1030: a parameter the screen refuses used to be
+// blanked, leaving the query to run with ” and return rows for a different
+// record under HTTP 200. Interpolating it must now fail the request outright.
+func TestScriptHandler_Execute_RejectsInterpolatedRejectedParam(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	scripts := mockgen.NewMockScriptRunner(ctrl)
+	scripts.EXPECT().
+		ResolveScript(gomock.Any(), http.MethodGet, "queries", "list", "prest-test").
+		Return(adapters.ScriptSource{Name: "list.read.sql", Content: `SELECT '{{.slug}}'`}, nil)
+	// The template renders the marker, which is what makes the request fail. The
+	// executor must never be reached.
+	scripts.EXPECT().
+		ParseScriptTemplate("list.read.sql", `SELECT '{{.slug}}'`, gomock.Any()).
+		DoAndReturn(func(_, _ string, data map[string]interface{}) (string, []interface{}, error) {
+			return fmt.Sprintf("SELECT '%v'", data["slug"]), nil, nil
+		})
+
+	db := mockgen.NewMockDatabaseRegistry(ctrl)
+	db.EXPECT().IsRegistered("prest-test").Return(true)
+
+	h := NewScriptHandler(Deps{
+		Scripts:  scripts,
+		Executor: mockgen.NewMockQueryExecutor(ctrl),
+		DB:       db,
+	})
+	req := httptest.NewRequest(http.MethodGet, "/prest-test/queries/list?slug=compra+do+mes", nil)
+	req = mux.SetURLVars(req, map[string]string{"database": "prest-test", "queriesLocation": "queries", "script": "list"})
+	req = req.WithContext(withTestTimeout(req.Context()))
+	rec := httptest.NewRecorder()
+
+	h.Execute(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Contains(t, rec.Body.String(), "slug")
+	require.NotContains(t, rec.Body.String(), "compra do mes")
+}
+
+// A value that reaches sqlVal instead of being interpolated is bound by the
+// driver, so the screen has nothing to protect against and the request succeeds.
+func TestScriptHandler_Execute_AllowsRejectedParamWhenOnlyBound(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	scripts := mockgen.NewMockScriptRunner(ctrl)
+	scripts.EXPECT().
+		ResolveScript(gomock.Any(), http.MethodGet, "queries", "list", "prest-test").
+		Return(adapters.ScriptSource{Name: "list.read.sql", Content: `SELECT {{sqlVal "slug"}}`}, nil)
+	// Stands in for the real registry: binds the raw value, never renders the marker.
+	scripts.EXPECT().
+		ParseScriptTemplate("list.read.sql", gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_, _ string, data map[string]interface{}) (string, []interface{}, error) {
+			raw := data[rawParamKey].(map[string]interface{})
+			return "SELECT $1", []interface{}{raw["slug"]}, nil
+		})
+
+	scanner := mockgen.NewMockScanner(ctrl)
+	scanner.EXPECT().Err().Return(nil)
+	scanner.EXPECT().Bytes().Return([]byte(`[{"?column?":"compra do mes"}]`))
+
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	executor.EXPECT().
+		ExecuteScriptsCtx(gomock.Any(), http.MethodGet, "SELECT $1", []interface{}{"compra do mes"}).
+		Return(scanner)
+
+	db := mockgen.NewMockDatabaseRegistry(ctrl)
+	db.EXPECT().IsRegistered("prest-test").Return(true)
+
+	h := NewScriptHandler(Deps{Scripts: scripts, Executor: executor, DB: db})
+	req := httptest.NewRequest(http.MethodGet, "/prest-test/queries/list?slug=compra+do+mes", nil)
+	req = mux.SetURLVars(req, map[string]string{"database": "prest-test", "queriesLocation": "queries", "script": "list"})
+	req = req.WithContext(withTestTimeout(req.Context()))
+	rec := httptest.NewRecorder()
+
+	h.Execute(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), "compra do mes")
 }
 
 // TestScriptHandler_Execute_RejectsUnregisteredDatabase guards against an
@@ -342,16 +429,126 @@ func TestSanitizeScriptParam_RejectsUnquotedContextInjection(t *testing.T) {
 	}
 }
 
-func TestExtractQueryParameters_SanitizesUnsafeValues(t *testing.T) {
+// Composing SQL in an unquoted context requires separating tokens, and space is
+// the only separator the character allow-list permits. A single-token value can
+// therefore carry a keyword harmlessly — `WHERE 1 = teste-do-abc` is a syntax
+// error, not an injection — so screening it as SQL only blanks legitimate data.
+// Portuguese slugs are the reported casualty: `do` appears in a large share of
+// them (issue #1030).
+func TestSanitizeScriptParam_PreservesSingleTokenValues(t *testing.T) {
 	t.Parallel()
 
-	req := httptest.NewRequest(http.MethodGet, "/?safe=ok&tag=good&tag=bad%27%3B--", nil)
-	req.URL.RawQuery = "safe=ok&unsafe=%27%3BDROP&tag=good&tag=bad%27%3B--"
+	safe := []string{
+		"teste-do-abc",
+		"compra-do-mes",
+		"estatua-do-diabo",
+		"significado-do-yom-kippur",
+		"trombetas-do-apocalipse",
+		"teste-select-abc",
+		"teste-as-abc",
+		// Whole-token keywords with no separator at all must survive too, since
+		// they still cannot compose anything on their own.
+		"do",
+		"select",
+	}
+	for _, value := range safe {
+		require.Equal(t, value, sanitizeScriptParam(value), "value must be preserved: %s", value)
+	}
+}
+
+// A rejected value renders empty, exactly as before, but reports itself so the
+// request can fail rather than return rows for a different record. Rendering is
+// what triggers it: a value that only ever reaches sqlVal is never interpolated
+// and must not fail anything.
+func TestExtractQueryParameters_RejectedValueFailsOnlyWhenInterpolated(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.URL.RawQuery = "safe=ok&unsafe=%27%3BDROP"
 
 	data := map[string]interface{}{}
-	extractQueryParameters(req, data)
+	rejected := extractQueryParameters(req, data)
+
+	// Nothing rendered yet, so nothing to report.
+	require.NoError(t, rejected.err())
+
+	// Interpolating it is what text/template does via fmt.Stringer.
+	require.Equal(t, "", fmt.Sprint(data["unsafe"]))
+
+	err := rejected.err()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unsafe")
+	require.NotContains(t, err.Error(), "DROP", "the rejected value must never be echoed back")
+}
+
+func TestExtractQueryParameters_RejectsUnsafeValueInMultiValueParam(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.URL.RawQuery = "tag=good&tag=bad%27%3B--"
+
+	data := map[string]interface{}{}
+	rejected := extractQueryParameters(req, data)
+
+	values := data["tag"].([]interface{})
+	require.Equal(t, "good", fmt.Sprint(values[0]))
+	require.Equal(t, "", fmt.Sprint(values[1]))
+
+	err := rejected.err()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "tag")
+}
+
+func TestExtractQueryParameters_KeepsSafeValues(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.URL.RawQuery = "safe=ok&slug=teste-do-abc&tag=good&tag=fine"
+
+	data := map[string]interface{}{}
+	rejected := extractQueryParameters(req, data)
 
 	require.Equal(t, "ok", data["safe"])
-	require.Equal(t, "", data["unsafe"])
-	require.Equal(t, []string{"good", ""}, data["tag"])
+	require.Equal(t, "teste-do-abc", data["slug"])
+	// Stays a []string so inFormat and sqlList keep working.
+	require.Equal(t, []string{"good", "fine"}, data["tag"])
+	require.NoError(t, rejected.err())
+}
+
+// Values reach the binding helpers unscreened: sqlVal passes them to the driver
+// as a bound parameter, where SQL composition is impossible by construction.
+func TestExtractQueryParameters_ExposesRawValues(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.URL.RawQuery = "phrase=compra+do+mes&tag=a+or+b&tag=plain"
+
+	data := map[string]interface{}{}
+	require.NoError(t, extractQueryParameters(req, data).err())
+
+	raw := data[rawParamKey].(map[string]interface{})
+	require.Equal(t, "compra do mes", raw["phrase"])
+	require.Equal(t, []string{"a or b", "plain"}, raw["tag"])
+
+	// The inline value is still screened, so un-migrated templates are unchanged:
+	// it renders empty (and, being rejected, would then fail the request).
+	require.Equal(t, "", fmt.Sprint(data["phrase"]))
+}
+
+// Credential blanking is about secrecy, not SQL composition, so binding must not
+// become a way around it.
+func TestExtractHeaders_RawMapStillBlanksCredentials(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJnb3BoZXIifQ.c2ln")
+	req.Header.Set("X-Application", "compra do mes")
+
+	data := map[string]interface{}{}
+	extractHeaders(req, data)
+
+	raw := data[rawHeaderKey].(map[string]interface{})
+	require.Equal(t, "", raw["Authorization"])
+	// A non-credential header keeps its unscreened value for binding.
+	require.Equal(t, "compra do mes", raw["X-Application"])
 }
