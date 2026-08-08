@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/adapters/scanner"
@@ -13,6 +12,17 @@ import (
 
 	"log/slog"
 )
+
+// logFailedSQL emits the statement that failed at debug level only.
+//
+// Call it solely from paths a script template cannot reach — the CRUD
+// insert/update/delete builders. WriteSQL and WriteSQLCtx are excluded: scripts
+// render request headers and query parameters straight into the statements those
+// two execute, so the SQL text there is caller-controlled data, not a fixed
+// pREST-built statement.
+func logFailedSQL(sql string) {
+	slog.Debug("failed sql", "sql", sql)
+}
 
 // WriteSQL perform INSERT's, UPDATE's, DELETE's operations
 func (adapter *postgres) WriteSQL(sql string, values []interface{}) (sc adapters.Scanner) {
@@ -24,7 +34,7 @@ func (adapter *postgres) WriteSQL(sql string, values []interface{}) (sc adapters
 	}
 	stmt, err := adapter.Prepare(db, sql)
 	if err != nil {
-		slog.Error("could not prepare sql", "sql", sql, "err", err)
+		slog.Error("could not prepare sql", "err", logsafe.Error(err))
 		sc = &scanner.PrestScanner{Error: fmt.Errorf("could not prepare sql: %w", err)}
 		return
 	}
@@ -36,8 +46,8 @@ func (adapter *postgres) WriteSQL(sql string, values []interface{}) (sc adapters
 
 	result, err := stmt.Exec(valuesAux...)
 	if err != nil {
-		log.Printf("sql = %v\n", sql)
-		err = fmt.Errorf("could not peform sql: %v", err)
+		slog.Error("could not execute sql", "err", logsafe.Error(err))
+		err = fmt.Errorf("could not peform sql: %w", err)
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}
@@ -70,7 +80,7 @@ func (adapter *postgres) WriteSQLCtx(ctx context.Context, sql string, values []i
 	}
 	stmt, err := adapter.PrepareContext(ctx, db, sql)
 	if err != nil {
-		slog.Error("could not prepare sql", "sql", sql, "err", logsafe.Error(err))
+		slog.Error("could not prepare sql", "err", logsafe.Error(err))
 		sc = &scanner.PrestScanner{Error: fmt.Errorf("could not prepare sql: %w", err)}
 		return
 	}
@@ -82,8 +92,8 @@ func (adapter *postgres) WriteSQLCtx(ctx context.Context, sql string, values []i
 
 	result, err := stmt.ExecContext(ctx, valuesAux...)
 	if err != nil {
-		log.Printf("sql = %v\n", sql)
-		err = fmt.Errorf("could not peform sql: %v", err)
+		slog.Error("could not execute sql", "err", logsafe.Error(err))
+		err = fmt.Errorf("could not peform sql: %w", err)
 		sc = &scanner.PrestScanner{Error: err}
 		return
 	}

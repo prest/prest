@@ -1054,7 +1054,12 @@ func (adapter *postgres) QueryCtx(ctx context.Context, SQL string, params ...int
 		return &scanner.PrestScanner{Error: err}
 	}
 	SQL = fmt.Sprintf("SELECT %s(s) FROM (%s) s", adapter.cfg.JSONAggType, SQL)
-	slog.Debug("generated SQL", "sql", SQL, "parameters", params)
+	// The statement itself is deliberately not logged here. Script templates render
+	// request headers and query parameters directly into the SQL text before it
+	// reaches this function, so the string is caller-controlled data rather than a
+	// fixed pREST-built statement. INSERT/UPDATE/DELETE, which scripts cannot reach
+	// through this path, still log their SQL at debug level.
+	slog.Debug("generated SQL", "parameter_count", len(params))
 	p, err := adapter.Prepare(db, SQL)
 	if err != nil {
 		slog.Error("log details", "err", err)
@@ -1079,7 +1084,9 @@ func (adapter *postgres) Query(SQL string, params ...interface{}) (sc adapters.S
 		return &scanner.PrestScanner{Error: err}
 	}
 	SQL = fmt.Sprintf("SELECT %s(s) FROM (%s) s", adapter.cfg.JSONAggType, SQL)
-	slog.Debug("generated SQL", "sql", SQL, "parameters", params)
+	// Not logged, for the same reason as QueryCtx above: scripts render request
+	// data into this statement before it arrives.
+	slog.Debug("generated SQL", "parameter_count", len(params))
 	p, err := adapter.Prepare(db, SQL)
 	if err != nil {
 		return &scanner.PrestScanner{Error: err}
@@ -1103,7 +1110,7 @@ func (adapter *postgres) QueryCount(SQL string, params ...interface{}) (sc adapt
 		return &scanner.PrestScanner{Error: err}
 	}
 
-	slog.Debug("generated SQL", "sql", SQL, "parameters", params)
+	slog.Debug("generated SQL", "sql", SQL, "parameter_count", len(params))
 	p, err := adapter.Prepare(db, SQL)
 	if err != nil {
 		return &scanner.PrestScanner{Error: err}
@@ -1132,7 +1139,7 @@ func (adapter *postgres) QueryCountCtx(ctx context.Context, SQL string, params .
 		slog.Error("log details", "err", logsafe.Error(err))
 		return &scanner.PrestScanner{Error: err}
 	}
-	slog.Debug("generated SQL", "sql", SQL, "parameters", params)
+	slog.Debug("generated SQL", "sql", SQL, "parameter_count", len(params))
 	p, err := adapter.Prepare(db, SQL)
 	if err != nil {
 		slog.Error("log details", "err", err)
@@ -1448,7 +1455,7 @@ func (adapter *postgres) insert(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQ
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
 	}
-	slog.Debug("log details", "sql", SQL, "parameters", params)
+	slog.Debug("log details", "sql", SQL, "parameter_count", len(params))
 	var jsonData []byte
 	if ctx != nil {
 		err = stmt.QueryRowContext(ctx, params...).Scan(&jsonData)
@@ -1487,7 +1494,7 @@ func (adapter *postgres) DeleteWithTransaction(tx *sql.Tx, SQL string, params ..
 }
 
 func (adapter *postgres) delete(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQL string, params ...interface{}) (sc adapters.Scanner) {
-	slog.Debug("generated SQL", "sql", SQL, "parameters", params)
+	slog.Debug("generated SQL", "sql", SQL, "parameter_count", len(params))
 	var stmt *sql.Stmt
 	var err error
 	if tx != nil {
@@ -1502,7 +1509,8 @@ func (adapter *postgres) delete(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQ
 		stmt, err = adapter.Prepare(db, SQL)
 	}
 	if err != nil {
-		slog.Error("could not prepare sql", "sql", SQL, "err", err)
+		slog.Error("could not prepare sql", "err", logsafe.Error(err))
+		logFailedSQL(SQL)
 		return &scanner.PrestScanner{Error: err}
 	}
 	if strings.Contains(SQL, "RETURNING") {
@@ -1608,10 +1616,11 @@ func (adapter *postgres) update(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQ
 		stmt, err = adapter.Prepare(db, SQL)
 	}
 	if err != nil {
-		slog.Error("could not prepare sql", "sql", SQL, "err", err)
+		slog.Error("could not prepare sql", "err", logsafe.Error(err))
+		logFailedSQL(SQL)
 		return &scanner.PrestScanner{Error: err}
 	}
-	slog.Debug("generated SQL", "sql", SQL, "parameters", params)
+	slog.Debug("generated SQL", "sql", SQL, "parameter_count", len(params))
 	if strings.Contains(SQL, "RETURNING") {
 		var rows *sql.Rows
 		if ctx != nil {
@@ -1657,12 +1666,14 @@ func (adapter *postgres) update(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQ
 		result, err = stmt.Exec(params...)
 	}
 	if err != nil {
-		slog.Error("could not execute sql", "sql", SQL, "err", err)
+		slog.Error("could not execute sql", "err", logsafe.Error(err))
+		logFailedSQL(SQL)
 		return &scanner.PrestScanner{Error: err}
 	}
 	rowsAffected, err = result.RowsAffected()
 	if err != nil {
-		slog.Error("could not get rows affected", "sql", SQL, "err", err)
+		slog.Error("could not get rows affected", "err", logsafe.Error(err))
+		logFailedSQL(SQL)
 		return &scanner.PrestScanner{Error: err}
 	}
 	data := make(map[string]interface{})
