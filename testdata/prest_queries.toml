@@ -38,6 +38,26 @@ location = "itest"
 name = "ephemeral"
 permissions = ["read"]
 
+# Templates registered at runtime by the script-parameter tests
+# (integration/postgres/controllers/queries_database_params_test.go). They verify
+# that the parameter screen and the sqlVal binding helpers behave identically when
+# a template lives in prest_queries instead of on disk. Grants are per
+# location+name, so each needs an entry.
+[[queries.scripts]]
+location = "itest"
+name = "screened"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "itest"
+name = "bound"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "itest"
+name = "rawreach"
+permissions = ["read"]
+
 [[queries.users]]
 name = "test@postgres.rest"
   [[queries.users.scripts]]
@@ -47,4 +67,16 @@ name = "test@postgres.rest"
   [[queries.users.scripts]]
   location = "itest"
   name = "ephemeral"
+  permissions = ["read"]
+  [[queries.users.scripts]]
+  location = "itest"
+  name = "screened"
+  permissions = ["read"]
+  [[queries.users.scripts]]
+  location = "itest"
+  name = "bound"
+  permissions = ["read"]
+  [[queries.users.scripts]]
+  location = "itest"
+  name = "rawreach"
   permissions = ["read"]

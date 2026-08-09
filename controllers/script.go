@@ -18,6 +18,8 @@ import (
 // widening the ScriptRunner port, and are namespaced with a leading underscore
 // so an ordinary query parameter is unlikely to collide.
 const (
+	// headerKey holds the screened headers templates interpolate inline.
+	headerKey    = "header"
 	rawParamKey  = "_param"
 	rawHeaderKey = "_header"
 )
@@ -88,6 +90,13 @@ func (h *ScriptHandler) Execute(w http.ResponseWriter, r *http.Request) {
 // A rejected parameter only fails the request if the template interpolated it
 // into the SQL text. Had it been passed to sqlVal instead, it would be bound
 // and safe, so there is nothing to reject.
+//
+// A template error embeds both the template's internals and the value that
+// tripped it — `ident` reports `invalid identifier: <the caller's string>`,
+// so returning it verbatim reflects attacker-controlled input straight back
+// and into the logs. Report it the way SQL failures are already reported:
+// detail to the operator, a safe summary to the caller. The cause stays
+// wrapped so errors.Is/As still work.
 func (h *ScriptHandler) ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]byte, error) {
 	vars := mux.Vars(rq)
 	database := vars["database"] // empty = default prest_queries.database_alias
@@ -104,8 +113,12 @@ func (h *ScriptHandler) ExecuteScriptQuery(rq *http.Request, queriesPath string,
 
 	sql, values, err := h.scripts.ParseScriptTemplate(source.Name, source.Content, templateData)
 	if err != nil {
-		err = fmt.Errorf("could not parse script %s/%s, %v", queriesPath, script, err)
-		return nil, err
+		slog.Error("could not parse script",
+			"location", queriesPath, "script", script, "err", err)
+		return nil, scriptError{
+			public: fmt.Sprintf("could not parse script %s/%s, check your prest logs", queriesPath, script),
+			cause:  err,
+		}
 	}
 
 	if err := rejected.err(); err != nil {
@@ -120,6 +133,16 @@ func (h *ScriptHandler) ExecuteScriptQuery(rq *http.Request, queriesPath string,
 
 	return sc.Bytes(), nil
 }
+
+// scriptError carries a message safe to return to the caller while keeping the
+// underlying cause for logs and for errors.Is/As.
+type scriptError struct {
+	public string
+	cause  error
+}
+
+func (e scriptError) Error() string { return e.public }
+func (e scriptError) Unwrap() error { return e.cause }
 
 // isCredentialHeader reports whether a header carries a caller credential, which
 // must never reach a script template with its real value.
@@ -185,7 +208,7 @@ func extractHeaders(rq *http.Request, templateData map[string]interface{}) {
 		raw[key] = append([]string(nil), value...)
 	}
 
-	templateData["header"] = headers
+	templateData[headerKey] = headers
 	templateData[rawHeaderKey] = raw
 }
 
@@ -287,6 +310,14 @@ func extractQueryParameters(rq *http.Request, templateData map[string]interface{
 	usage := &rejectedUsage{}
 	raw := map[string]interface{}{}
 	for key, value := range rq.URL.Query() {
+		// These names belong to pREST, not to the caller. Letting a query
+		// parameter land on one replaced the map the extractors put there:
+		// `?header=x` broke every `{{index .header "..."}}` template with a 400,
+		// and `?_header=x` made the binding helpers fall back to screened values,
+		// silently binding "" for any header the charset screen rejects.
+		if isReservedTemplateKey(key) {
+			continue
+		}
 		if len(value) == 1 {
 			templateData[key] = screenedValue(key, value[0], usage)
 			raw[key] = value[0]
@@ -317,6 +348,18 @@ func extractQueryParameters(rq *http.Request, templateData map[string]interface{
 	}
 	templateData[rawParamKey] = raw
 	return usage
+}
+
+// isReservedTemplateKey reports whether key names one of the template-data slots
+// pREST populates itself: the screened header map and the two unscreened maps the
+// binding helpers read. A caller-supplied value must never occupy one.
+func isReservedTemplateKey(key string) bool {
+	switch key {
+	case headerKey, rawHeaderKey, rawParamKey:
+		return true
+	default:
+		return false
+	}
 }
 
 // screenedValue returns the value to interpolate inline: the sanitized string

@@ -88,7 +88,7 @@ func (adapter *postgres) resolveScriptDatabase(ctx context.Context, verb, locati
 
 // ParseScriptTemplate renders a SQL template string.
 func (adapter *postgres) ParseScriptTemplate(name, content string, templateData map[string]interface{}) (sqlQuery string, values []interface{}, err error) {
-	funcs := &template.FuncRegistry{TemplateData: templateData}
+	funcs := template.NewFuncRegistry(templateData)
 	tpl := gotemplate.New(name).Funcs(funcs.RegistryAllFuncs())
 
 	tpl, err = tpl.Parse(content)

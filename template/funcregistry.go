@@ -10,11 +10,54 @@ import (
 	"github.com/prest/prest/v2/internal/ident"
 )
 
+// Keys under which the controller hands over the caller's unscreened values.
+// NewFuncRegistry removes them from TemplateData immediately, so they exist only
+// in transit. Kept in sync with controllers.rawParamKey / rawHeaderKey.
+const (
+	rawParamKey  = "_param"
+	rawHeaderKey = "_header"
+	// headerKeyPrefix addresses a header from the binding helpers, e.g.
+	// {{sqlVal "header.X-Application"}}, mirroring the `header` map templates read
+	// for inline interpolation.
+	headerKeyPrefix = "header."
+)
+
 // FuncRegistry registry func for templates
 type FuncRegistry struct {
 	TemplateData map[string]interface{}
 	Args         []interface{}
 	next         int
+
+	// Unscreened request values, reachable only through the binding helpers.
+	// Deliberately not in TemplateData: that map is the template's dot, so a
+	// template could otherwise reach them with `{{index ._param "x"}}` and
+	// interpolate an unscreened value straight into the SQL text — silently
+	// bypassing the very screen the helpers exist to make unnecessary.
+	rawParams  map[string]interface{}
+	rawHeaders map[string]interface{}
+}
+
+// NewFuncRegistry builds a registry for templateData, moving the reserved raw
+// value maps out of it so they can be bound but never interpolated.
+func NewFuncRegistry(templateData map[string]interface{}) *FuncRegistry {
+	fr := &FuncRegistry{TemplateData: templateData}
+	fr.rawParams = takeRawMap(templateData, rawParamKey)
+	fr.rawHeaders = takeRawMap(templateData, rawHeaderKey)
+	return fr
+}
+
+// takeRawMap removes key from data and returns it as a map.
+func takeRawMap(data map[string]interface{}, key string) map[string]interface{} {
+	if data == nil {
+		return nil
+	}
+	value, ok := data[key]
+	if !ok {
+		return nil
+	}
+	delete(data, key)
+	m, _ := value.(map[string]interface{})
+	return m
 }
 
 // RegistryAllFuncs for template
@@ -92,18 +135,6 @@ func (fr *FuncRegistry) limitOffset(pageNumber, pageSize string) (value string) 
 	return
 }
 
-// Reserved TemplateData keys holding the caller's unscreened values, published by
-// the controller. Kept in sync with controllers.rawParamKey / rawHeaderKey.
-const (
-	rawParamKey  = "_param"
-	rawHeaderKey = "_header"
-)
-
-// headerKeyPrefix addresses a header from the binding helpers, e.g.
-// {{sqlVal "header.X-Application"}}, mirroring the `header` map templates read
-// for inline interpolation.
-const headerKeyPrefix = "header."
-
 // boundValue resolves the value to bind for key.
 //
 // The controller screens values for SQL syntax before a template sees them,
@@ -118,20 +149,16 @@ const headerKeyPrefix = "header."
 // binding cannot be used to smuggle one into a query.
 func (fr *FuncRegistry) boundValue(key string) interface{} {
 	if name, ok := strings.CutPrefix(key, headerKeyPrefix); ok {
-		if headers, ok := fr.TemplateData[rawHeaderKey].(map[string]interface{}); ok {
-			if v, ok := headers[name]; ok {
-				return v
-			}
+		if v, ok := fr.rawHeaders[name]; ok {
+			return v
 		}
 		if headers, ok := fr.TemplateData["header"].(map[string]interface{}); ok {
 			return headers[name]
 		}
 		return nil
 	}
-	if params, ok := fr.TemplateData[rawParamKey].(map[string]interface{}); ok {
-		if v, ok := params[key]; ok {
-			return v
-		}
+	if v, ok := fr.rawParams[key]; ok {
+		return v
 	}
 	return fr.TemplateData[key]
 }

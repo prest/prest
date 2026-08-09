@@ -552,3 +552,51 @@ func TestExtractHeaders_RawMapStillBlanksCredentials(t *testing.T) {
 	// A non-credential header keeps its unscreened value for binding.
 	require.Equal(t, "compra do mes", raw["X-Application"])
 }
+
+// Query parameters must not be able to overwrite the keys pREST reserves for its
+// own template data. `header` holds the screened header map, `_header` and
+// `_param` the unscreened maps the binding helpers read. All three are assigned
+// by the extractors, and the query-parameter loop used to run over them:
+//
+//   - `?header=x` replaced the header map with a string, so every template doing
+//     `{{index .header "X"}}` failed to render — a 400 any client could trigger
+//     on any header-reading script.
+//   - `?_header=x` replaced the raw header map, so `{{sqlVal "header.X"}}`
+//     silently fell back to the screened value and bound "" for any header the
+//     charset screen rejects. Wrong rows under HTTP 200 — the exact failure class
+//     of issue #1030, reintroduced through a name collision.
+func TestExtractQueryParameters_IgnoresReservedKeys(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("X-Application", "prest")
+	req.URL.RawQuery = "header=x&_header=x&_param=x&slug=keep-me"
+
+	data := map[string]interface{}{}
+	extractHeaders(req, data)
+	rejected := extractQueryParameters(req, data)
+	require.NoError(t, rejected.err())
+
+	// The screened header map survives, so inline header templates still render.
+	headers, ok := data["header"].(map[string]interface{})
+	require.True(t, ok, "the header map must not be replaced by a query parameter")
+	require.Equal(t, "prest", headers["X-Application"])
+
+	// The raw maps survive, so binding still reaches unscreened values.
+	rawHeaders, ok := data[rawHeaderKey].(map[string]interface{})
+	require.True(t, ok, "the raw header map must not be replaced by a query parameter")
+	require.Equal(t, "prest", rawHeaders["X-Application"])
+
+	rawParams, ok := data[rawParamKey].(map[string]interface{})
+	require.True(t, ok)
+	require.Equal(t, "keep-me", rawParams["slug"])
+
+	// The reserved names are pREST's namespace: a caller sending them is ignored
+	// rather than served, so they never reach a template as caller data.
+	require.NotContains(t, rawParams, "header")
+	require.NotContains(t, rawParams, rawHeaderKey)
+	require.NotContains(t, rawParams, rawParamKey)
+
+	// Ordinary parameters are unaffected.
+	require.Equal(t, "keep-me", data["slug"])
+}

@@ -25,8 +25,8 @@ const (
 func jsonError(writer http.ResponseWriter, message string, status int) {
 	encoded, err := json.Marshal(message)
 	if err != nil {
-		// json.Marshal only fails here on invalid UTF-8, which a caller-supplied
-		// message can carry; fall back to a fixed, certainly-valid body.
+		// Marshalling a string is not expected to fail; fall back to a fixed,
+		// certainly-valid body rather than emitting an unchecked one.
 		http.Error(writer, fmt.Sprintf(jsonErrorMsg, "request failed"), status)
 		return
 	}
