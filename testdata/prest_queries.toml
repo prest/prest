@@ -38,6 +38,168 @@ location = "itest"
 name = "ephemeral"
 permissions = ["read"]
 
+# Templates registered at runtime by the script-parameter tests
+# (integration/postgres/controllers/queries_database_params_test.go). They verify
+# that the parameter screen and the sqlVal binding helpers behave identically when
+# a template lives in prest_queries instead of on disk. Grants are per
+# location+name, so each needs an entry.
+[[queries.scripts]]
+location = "itest"
+name = "screened"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "itest"
+name = "bound"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "itest"
+name = "rawreach"
+permissions = ["read"]
+
+# Templates imported from testdata/queries at startup (import_on_startup) and
+# executed in database mode by integration/postgres/controllers/queries_database_test.go,
+# which mirrors the filesystem-mode coverage in integration/suites/controllers/scripts_test.go.
+# Grants are per location+name and default-deny, so every template exercised needs
+# an entry here. Only the global block is needed: a [[queries.users.scripts]] rule
+# replaces the global verdict when it matches, and none of the names below match one.
+#
+# fulltable/write_all deliberately stays ungranted — queries_acl_test.go asserts
+# that POST on it is refused. The interpolated write verbs are covered with
+# runtime-registered itest templates instead.
+[[queries.scripts]]
+location = "fulltable"
+name = "get_bound"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "fulltable"
+name = "get_bound_two"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "fulltable"
+name = "get_bound_list"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "fulltable"
+name = "get_bound_header"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "fulltable"
+name = "get_bound_auth_header"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "fulltable"
+name = "get_all_slice"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "fulltable"
+name = "get_header"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "fulltable"
+name = "get_auth_header"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "fulltable"
+name = "get_ident"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "fulltable"
+name = "get_limitoffset_params"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "fulltable"
+name = "limitoffset"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "fulltable"
+name = "funcs"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "fulltable"
+name = "get_unescape"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "fulltable"
+name = "get_unquoted"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "fulltable"
+name = "get_raw_param_dot"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "fulltable"
+name = "get_raw_param_index"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "fulltable"
+name = "get_raw_header_index"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "fulltable"
+name = "parse_syntax_invalid"
+permissions = ["read"]
+
+[[queries.scripts]]
+location = "error"
+name = "query_w_error"
+permissions = ["read"]
+
+# Write verbs through bound parameters. PUT and PATCH resolve the update_sql
+# column but ask for the "write" permission — there is no "update" permission
+# string (middlewares/statements/permissions.go) — so update_bound is granted write.
+[[queries.scripts]]
+location = "fulltable"
+name = "write_bound"
+permissions = ["write"]
+
+[[queries.scripts]]
+location = "fulltable"
+name = "update_bound"
+permissions = ["write"]
+
+[[queries.scripts]]
+location = "fulltable"
+name = "delete_bound"
+permissions = ["delete"]
+
+# Registered at runtime by queries_database_test.go: wverbs carries all four verb
+# columns (the interpolated write-verb shapes), readonly carries read_sql only so
+# a POST reaches the resolver and fails on the missing column, and ddl reproduces
+# create_table.write.sql.
+[[queries.scripts]]
+location = "itest"
+name = "wverbs"
+permissions = ["read", "write", "delete"]
+
+[[queries.scripts]]
+location = "itest"
+name = "readonly"
+permissions = ["read", "write"]
+
+[[queries.scripts]]
+location = "itest"
+name = "ddl"
+permissions = ["write"]
+
 [[queries.users]]
 name = "test@postgres.rest"
   [[queries.users.scripts]]
@@ -47,4 +209,16 @@ name = "test@postgres.rest"
   [[queries.users.scripts]]
   location = "itest"
   name = "ephemeral"
+  permissions = ["read"]
+  [[queries.users.scripts]]
+  location = "itest"
+  name = "screened"
+  permissions = ["read"]
+  [[queries.users.scripts]]
+  location = "itest"
+  name = "bound"
+  permissions = ["read"]
+  [[queries.users.scripts]]
+  location = "itest"
+  name = "rawreach"
   permissions = ["read"]
