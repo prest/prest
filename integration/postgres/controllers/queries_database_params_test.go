@@ -2,7 +2,6 @@
 package controllers_test
 
 import (
-	"io"
 	"net/http"
 	"net/url"
 	"testing"
@@ -45,18 +44,7 @@ func deleteQuery(t *testing.T, base, token, name string) {
 func authBody(t *testing.T, url, token string) (int, string) {
 	t.Helper()
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	require.NoError(t, err)
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("X-Application", "prest")
-
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	return resp.StatusCode, string(body)
+	return queriesRequest(t, http.MethodGet, url, token, nil)
 }
 
 // TestQueriesDatabase_ParameterScreenApplies proves a database-stored template is
