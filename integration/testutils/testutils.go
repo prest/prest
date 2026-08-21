@@ -101,12 +101,12 @@ func DoRequestJSON(
 	where string,
 	target interface{},
 ) {
-	DoRequestJSONWithHeaders(
-		t, url, r, method, expectedStatus, where, nil, target)
+	DoRequestJSONWithHeaders(t, url, r, method, expectedStatus, where, nil, target)
 }
 
-// DoRequestJSONWithHeaders behaves like DoRequestJSON and additionally sets the
-// given headers on the request, e.g. an Authorization bearer token.
+// DoRequestJSONWithHeaders is DoRequestJSON with extra request headers, so
+// callers that need an Authorization header can still assert on the decoded
+// body instead of on substrings.
 func DoRequestJSONWithHeaders(
 	t *testing.T,
 	url string,

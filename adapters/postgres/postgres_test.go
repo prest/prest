@@ -972,6 +972,7 @@ func Test_sanitizeSelectField(t *testing.T) {
 	}{
 		{"asterisk passes through", "*", "*", false},
 		{"table qualified asterisk is quoted", "employee.*", `"employee".*`, false},
+		{"schema qualified asterisk is quoted per segment", "public.employee.*", `"public"."employee".*`, false},
 		{"invalid table qualified asterisk is rejected", "0bad.*", "", true},
 		{"plain identifier is quoted", "name", `"name"`, false},
 		{"dotted identifier is quoted per segment", "public.age", `"public"."age"`, false},
@@ -1479,182 +1480,6 @@ func TestFieldsPermissions_RestrictBranches(t *testing.T) {
 	require.NoError(t, err)
 	_, err = adapter.FieldsPermissions(req, "", "public", "test_readonly_access", "read", "")
 	require.Error(t, err)
-}
-
-func TestFieldsPermissions_Join(t *testing.T) {
-	t.Parallel()
-
-	adapter := testAdapter(&config.Prest{
-		AccessConf: config.AccessConf{
-			Restrict:    true,
-			IgnoreTable: []string{"unrestricted"},
-			Tables: []config.TablesConf{
-				{Name: "department", Permissions: []string{"read"}, Fields: []string{"d_id", "dept", "emp_id"}},
-				{Name: "employee", Permissions: []string{"read"}, Fields: []string{"id", "name"}},
-				{Name: "salary", Permissions: []string{"write"}, Fields: []string{"amount"}},
-			},
-		},
-	})
-
-	testCases := []struct {
-		description string
-		url         string
-		want        []string
-	}{
-		{
-			"joined table readable fields are added to the select list",
-			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id",
-			[]string{"department.d_id", "department.dept", "department.emp_id", "employee.id", "employee.name"},
-		},
-		{
-			"schema qualified join resolves the joined table permissions",
-			"/public/department?_join=inner:public.employee:department.emp_id:$eq:employee.id",
-			[]string{"department.d_id", "department.dept", "department.emp_id", "employee.id", "employee.name"},
-		},
-		{
-			"_select accepts qualified fields of both tables",
-			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id&_select=dept,employee.name",
-			[]string{"dept", "employee.name"},
-		},
-		{
-			"_select of a joined field without read permission is dropped",
-			"/public/department?_join=inner:salary:department.d_id:$eq:salary.d_id&_select=dept,salary.amount",
-			[]string{"dept"},
-		},
-		{
-			"joined table without read permission adds no field",
-			"/public/department?_join=inner:salary:department.d_id:$eq:salary.d_id",
-			[]string{"department.d_id", "department.dept", "department.emp_id"},
-		},
-		{
-			"ignored joined table is selected in full",
-			"/public/department?_join=inner:unrestricted:department.d_id:$eq:unrestricted.d_id",
-			[]string{"department.d_id", "department.dept", "department.emp_id", "unrestricted.*"},
-		},
-		{
-			"_select of a field of an ignored joined table is kept",
-			"/public/department?_join=inner:unrestricted:department.d_id:$eq:unrestricted.d_id&_select=dept,unrestricted.total",
-			[]string{"dept", "unrestricted.total"},
-		},
-		{
-			"malformed join keeps the main table fields",
-			"/public/department?_join=inner:employee",
-			[]string{"d_id", "dept", "emp_id"},
-		},
-		{
-			"join target with too many identifier segments keeps the main table fields",
-			"/public/department?_join=inner:db.public.employee:department.emp_id:$eq:employee.id",
-			[]string{"d_id", "dept", "emp_id"},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.description, func(t *testing.T) {
-			t.Parallel()
-
-			req, err := http.NewRequest(http.MethodGet, tc.url, nil)
-			require.NoError(t, err)
-
-			fields, err := adapter.FieldsPermissions(req, "", "public", "department", "read", "")
-			require.NoError(t, err)
-			require.Equal(t, tc.want, fields)
-		})
-	}
-}
-
-func TestFieldsPermissions_JoinWildcardTable(t *testing.T) {
-	t.Parallel()
-
-	adapter := testAdapter(&config.Prest{
-		AccessConf: config.AccessConf{
-			Restrict:    true,
-			IgnoreTable: []string{"unrestricted"},
-			Tables: []config.TablesConf{
-				{Name: "department", Permissions: []string{"read"}, Fields: []string{"*"}},
-				{Name: "employee", Permissions: []string{"read"}, Fields: []string{"id", "name"}},
-				{Name: "salary", Permissions: []string{"write"}, Fields: []string{"amount"}},
-			},
-		},
-	})
-
-	testCases := []struct {
-		description string
-		url         string
-		want        []string
-	}{
-		{
-			"wildcard access without join keeps the unqualified wildcard",
-			"/public/department",
-			[]string{"*"},
-		},
-		{
-			"wildcard access is restricted to the main table when a joined table has no read permission",
-			"/public/department?_join=inner:salary:department.d_id:$eq:salary.d_id",
-			[]string{"department.*"},
-		},
-		{
-			"wildcard access adds the readable fields of the joined table",
-			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id",
-			[]string{"department.*", "employee.id", "employee.name"},
-		},
-		{
-			"_select of a joined field without read permission is dropped under wildcard access",
-			"/public/department?_join=inner:salary:department.d_id:$eq:salary.d_id&_select=dept,salary.amount",
-			[]string{"department.dept"},
-		},
-		{
-			"_select=* is restricted to the main table when a join is present",
-			"/public/department?_join=inner:salary:department.d_id:$eq:salary.d_id&_select=*",
-			[]string{"department.*"},
-		},
-		{
-			"_select of a readable joined field is kept under wildcard access",
-			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id&_select=dept,employee.name",
-			[]string{"department.dept", "employee.name"},
-		},
-		{
-			"_select of an aggregate is dropped under wildcard access because its column cannot be qualified",
-			"/public/department?_join=inner:salary:department.d_id:$eq:salary.d_id&_groupby=dept&_select=avg:amount",
-			nil,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.description, func(t *testing.T) {
-			t.Parallel()
-
-			req, err := http.NewRequest(http.MethodGet, tc.url, nil)
-			require.NoError(t, err)
-
-			fields, err := adapter.FieldsPermissions(req, "", "public", "department", "read", "")
-			require.NoError(t, err)
-			require.Equal(t, tc.want, fields)
-		})
-	}
-}
-
-func Test_qualifyFields(t *testing.T) {
-	t.Parallel()
-
-	require.Nil(t, qualifyFields("employee", nil))
-	require.Equal(t,
-		[]string{"employee.id", "public.employee.name", `MAX("age")`},
-		qualifyFields("employee", []string{"id", "public.employee.name", `MAX("age")`}))
-	require.Equal(t, []string{"id"}, qualifyFields("my-table", []string{"id"}))
-	require.Equal(t, []string{"employee.*"}, qualifyFields("employee", []string{"*"}))
-	require.Equal(t, []string{"*"}, qualifyFields("my-table", []string{"*"}))
-}
-
-func Test_qualifiedAsterisk(t *testing.T) {
-	t.Parallel()
-
-	qualified, ok := qualifiedAsterisk("employee")
-	require.True(t, ok)
-	require.Equal(t, "employee.*", qualified)
-
-	qualified, ok = qualifiedAsterisk("my-table")
-	require.False(t, ok)
-	require.Empty(t, qualified)
 }
 
 func TestFieldsByPermission(t *testing.T) {
@@ -3824,4 +3649,192 @@ func TestDbFromCtx_AddDatabaseToPoolFailure(t *testing.T) {
 	sc := adapter.QueryCtx(ctx, "SELECT 1")
 	require.Error(t, sc.Err())
 	require.Contains(t, sc.Err().Error(), "pool add failed")
+}
+
+// joinPermissionTestConf mirrors the ACL of issue #364: two tables the caller
+// may read, one it may only write to, one ignored by the ACL entirely, and one
+// that grants every column.
+func joinPermissionTestConf() *config.Prest {
+	cfg := defaultTestConf()
+	cfg.AccessConf = config.AccessConf{
+		Restrict:    true,
+		IgnoreTable: []string{"ignored_table"},
+		Tables: []config.TablesConf{
+			{Name: "department", Permissions: []string{"read"}, Fields: []string{"d_id", "dept", "emp_id"}},
+			{Name: "employee", Permissions: []string{"read"}, Fields: []string{"id", "name"}},
+			{Name: "employee_secret", Permissions: []string{"write"}, Fields: []string{"emp_id", "ssn"}},
+			{Name: "open_table", Permissions: []string{"read"}, Fields: []string{"*"}},
+		},
+	}
+	return cfg
+}
+
+// TestFieldsPermissions_Join covers issue #364: with access.restrict = true the
+// select list was built from the queried table's permitted fields only, so a
+// _join returned no column of the joined table even when the config granted
+// read access to it.
+func TestFieldsPermissions_Join(t *testing.T) {
+	t.Parallel()
+
+	adapter := testAdapter(joinPermissionTestConf())
+
+	testCases := []struct {
+		description string
+		table       string
+		url         string
+		want        []string
+	}{
+		{
+			"issue #364: the joined table's permitted columns join the select list",
+			"department",
+			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id",
+			[]string{"department.d_id", "department.dept", "department.emp_id", "employee.id", "employee.name"},
+		},
+		{
+			"a schema qualified join target resolves that schema's permissions",
+			"department",
+			"/public/department?_join=inner:public.employee:department.emp_id:$eq:employee.id",
+			[]string{"department.d_id", "department.dept", "department.emp_id", "employee.id", "employee.name"},
+		},
+		{
+			"a joined table without read permission contributes no column",
+			"department",
+			"/public/department?_join=inner:employee_secret:department.emp_id:$eq:employee_secret.emp_id",
+			[]string{"department.d_id", "department.dept", "department.emp_id"},
+		},
+		{
+			"an ignored joined table contributes every column as table.*",
+			"department",
+			"/public/department?_join=inner:ignored_table:department.d_id:$eq:ignored_table.d_id",
+			[]string{"department.d_id", "department.dept", "department.emp_id", "ignored_table.*"},
+		},
+		{
+			"a table allowed * is narrowed to table.* so the joined table keeps its own restrictions",
+			"open_table",
+			"/public/open_table?_join=inner:employee_secret:open_table.id:$eq:employee_secret.emp_id",
+			[]string{"open_table.*"},
+		},
+		{
+			"_select accepts a qualified column of either side of the join",
+			"department",
+			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id&_select=dept,employee.name",
+			[]string{"department.dept", "employee.name"},
+		},
+		{
+			"_select of a joined column without read permission is dropped",
+			"department",
+			"/public/department?_join=inner:employee_secret:department.emp_id:$eq:employee_secret.emp_id&_select=dept,employee_secret.ssn",
+			[]string{"department.dept"},
+		},
+		{
+			"_select of a column qualified with neither table is dropped",
+			"department",
+			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id&_select=dept,other.name",
+			[]string{"department.dept"},
+		},
+		{
+			"_select=* expands to the permitted columns of both tables, never a bare *",
+			"department",
+			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id&_select=*",
+			[]string{"department.d_id", "department.dept", "department.emp_id", "employee.id", "employee.name"},
+		},
+		{
+			"an aggregate over a table allowed * is kept unqualified",
+			"open_table",
+			"/public/open_table?_join=inner:employee:open_table.id:$eq:employee.id&_select=max:id",
+			[]string{"max:id"},
+		},
+		{
+			"a malformed join leaves the queried table's fields untouched",
+			"department",
+			"/public/department?_join=inner:employee",
+			[]string{"d_id", "dept", "emp_id"},
+		},
+		{
+			"a join target with more than two identifier segments is not resolved",
+			"department",
+			"/public/department?_join=inner:db.public.employee:department.emp_id:$eq:employee.id",
+			[]string{"d_id", "dept", "emp_id"},
+		},
+		{
+			"a join target that is not a valid identifier is not resolved",
+			"department",
+			"/public/department?_join=inner:0bad:department.emp_id:$eq:employee.id",
+			[]string{"d_id", "dept", "emp_id"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			t.Parallel()
+
+			req, err := http.NewRequest(http.MethodGet, tc.url, nil)
+			require.NoError(t, err)
+
+			fields, err := adapter.FieldsPermissions(req, "", "public", tc.table, "read", "")
+			require.NoError(t, err)
+			require.Equal(t, tc.want, fields)
+		})
+	}
+}
+
+// TestFieldsPermissions_JoinUnrestricted asserts the join branch stays inert
+// when access.restrict is off: the request alone decides the select list.
+func TestFieldsPermissions_JoinUnrestricted(t *testing.T) {
+	t.Parallel()
+
+	cfg := joinPermissionTestConf()
+	cfg.AccessConf.Restrict = false
+	adapter := testAdapter(cfg)
+
+	req, err := http.NewRequest(http.MethodGet,
+		"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id", nil)
+	require.NoError(t, err)
+
+	fields, err := adapter.FieldsPermissions(req, "", "public", "department", "read", "")
+	require.NoError(t, err)
+	require.Equal(t, []string{"*"}, fields)
+}
+
+func Test_joinTargetByRequest(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		description string
+		join        string
+		want        joinTarget
+		wantOK      bool
+	}{
+		{"bare table inherits the request schema", "inner:employee:a.b:$eq:c.d", joinTarget{"public", "employee"}, true},
+		{"schema qualified table keeps its own schema", "inner:other.employee:a.b:$eq:c.d", joinTarget{"other", "employee"}, true},
+		{"missing clause is not a join", "", joinTarget{}, false},
+		{"wrong number of arguments is not resolved", "inner:employee:a.b", joinTarget{}, false},
+		{"three segment target is not resolved", "inner:db.public.employee:a.b:$eq:c.d", joinTarget{}, false},
+		{"invalid identifier is not resolved", "inner:0bad:a.b:$eq:c.d", joinTarget{}, false},
+		{"empty segment is not resolved", "inner:.employee:a.b:$eq:c.d", joinTarget{}, false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			t.Parallel()
+
+			req, err := http.NewRequest(http.MethodGet, "/public/department?_join="+url.QueryEscape(tc.join), nil)
+			require.NoError(t, err)
+
+			got, ok := joinTargetByRequest(req, "public")
+			require.Equal(t, tc.wantOK, ok)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func Test_qualifyField(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "employee.id", qualifyField("employee", "id"))
+	// already qualified fields and aggregates are left as the caller wrote them
+	require.Equal(t, "public.employee.name", qualifyField("employee", "public.employee.name"))
+	require.Equal(t, `MAX("age")`, qualifyField("employee", `MAX("age")`))
+	// a table name that is not a valid identifier can never be quoted safely
+	require.Equal(t, "id", qualifyField("my-table", "id"))
 }

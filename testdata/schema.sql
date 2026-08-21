@@ -56,3 +56,14 @@ INSERT INTO prest_users(username, password) VALUES('cache-scope-user-b@postgres.
 CREATE TABLE table_to_view(id serial, name text, celphone text);
 INSERT INTO table_to_view (name, celphone) VALUES ('gopher', '8888888');
 CREATE VIEW view_test AS SELECT name AS player from table_to_view;
+
+-- Restricted join fixtures (issue #364). The tables and columns mirror the
+-- issue report: department is queried, employee is joined and readable, and
+-- employee_secret is joinable but write-only in prest.toml, so none of its
+-- columns may ever reach the response.
+CREATE TABLE employee(id serial primary key not null, name text);
+CREATE TABLE department(d_id serial primary key not null, dept text not null, emp_id int references employee(id));
+CREATE TABLE employee_secret(emp_id int, ssn text);
+INSERT INTO employee (name) VALUES ('gopher'), ('rustacean');
+INSERT INTO department (dept, emp_id) VALUES ('Computer', 1), ('Maths', 2);
+INSERT INTO employee_secret (emp_id, ssn) VALUES (1, 'ssn-top-secret-1'), (2, 'ssn-top-secret-2');
