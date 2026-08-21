@@ -822,6 +822,26 @@ func TestJoinByRequest_Repeated(t *testing.T) {
 	require.ErrorIs(t, err, ErrInvalidJoinClause)
 	require.Nil(t, joins)
 
+	// The same table joined twice would build a statement Postgres refuses
+	// ("table name %q specified more than once"), so it is rejected here.
+	req, err = http.NewRequest(http.MethodGet,
+		"/public/test?_join=inner:test2:test2.name:$eq:test.name"+
+			"&_join=left:test2:test2.name:$eq:test.name", nil)
+	require.NoError(t, err)
+	joins, err = adapter.JoinByRequest(req)
+	require.ErrorIs(t, err, ErrInvalidJoinClause)
+	require.Contains(t, err.Error(), `table "test2" is joined more than once`)
+	require.Nil(t, joins)
+
+	// The same table under two schemas still exposes one name in the statement.
+	req, err = http.NewRequest(http.MethodGet,
+		"/public/test?_join=inner:test2:test2.name:$eq:test.name"+
+			"&_join=left:public.test2:test2.name:$eq:test.name", nil)
+	require.NoError(t, err)
+	joins, err = adapter.JoinByRequest(req)
+	require.ErrorIs(t, err, ErrInvalidJoinClause)
+	require.Nil(t, joins)
+
 	// An empty clause is skipped, as it always was when it was the only one.
 	req, err = http.NewRequest(http.MethodGet,
 		"/public/test?_join=&_join=inner:test2:test2.name:$eq:test.name", nil)
@@ -3772,6 +3792,36 @@ func TestFieldsPermissions_Join(t *testing.T) {
 			[]string{"department.dept"},
 		},
 		{
+			"_select of table.* does not expand a table pinned to a field list",
+			"department",
+			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id&_select=employee.*",
+			nil,
+		},
+		{
+			"_select of table.* does not expand a table without read permission",
+			"department",
+			"/public/department?_join=inner:employee_secret:department.emp_id:$eq:employee_secret.emp_id&_select=employee_secret.*",
+			nil,
+		},
+		{
+			"_select of table.* does not expand the queried table past its field list",
+			"department",
+			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id&_select=department.*",
+			nil,
+		},
+		{
+			"_select of table.* does expand a table allowed every column",
+			"department",
+			"/public/department?_join=inner:ignored_table:department.d_id:$eq:ignored_table.d_id&_select=dept,ignored_table.*",
+			[]string{"department.dept", "ignored_table.*"},
+		},
+		{
+			"an unreadable column cannot be reached by dropping its qualifier",
+			"department",
+			"/public/department?_join=inner:employee_secret:department.emp_id:$eq:employee_secret.emp_id&_select=dept,ssn",
+			[]string{"department.dept"},
+		},
+		{
 			"_select=* expands to the permitted columns of both tables, never a bare *",
 			"department",
 			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id&_select=*",
@@ -3804,13 +3854,6 @@ func TestFieldsPermissions_Join(t *testing.T) {
 				"&_join=left:employee_secret:department.emp_id:$eq:employee_secret.emp_id" +
 				"&_select=dept,employee.name,employee_secret.ssn",
 			[]string{"department.dept", "employee.name"},
-		},
-		{
-			"a table joined twice contributes its columns once",
-			"department",
-			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id" +
-				"&_join=left:employee:department.d_id:$eq:employee.id",
-			[]string{"department.d_id", "department.dept", "department.emp_id", "employee.id", "employee.name"},
 		},
 		{
 			"a malformed join leaves the queried table's fields untouched",
@@ -3846,6 +3889,25 @@ func TestFieldsPermissions_Join(t *testing.T) {
 	}
 }
 
+// TestFieldsPermissions_JoinDuplicateTable: a _join carries no alias, so the
+// same table joined twice is a statement Postgres refuses. FieldsPermissions
+// is the first thing a select request runs, so it rejects the request there
+// rather than resolving columns for a query that can never be built.
+func TestFieldsPermissions_JoinDuplicateTable(t *testing.T) {
+	t.Parallel()
+
+	adapter := testAdapter(joinPermissionTestConf())
+
+	req, err := http.NewRequest(http.MethodGet,
+		"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id"+
+			"&_join=left:employee:department.d_id:$eq:employee.id", nil)
+	require.NoError(t, err)
+
+	fields, err := adapter.FieldsPermissions(req, "", "public", "department", "read", "")
+	require.ErrorIs(t, err, ErrInvalidJoinClause)
+	require.Nil(t, fields)
+}
+
 // TestFieldsPermissions_JoinUnrestricted asserts the join branch stays inert
 // when access.restrict is off: the request alone decides the select list.
 func TestFieldsPermissions_JoinUnrestricted(t *testing.T) {
@@ -3871,31 +3933,32 @@ func Test_joinTargetsByRequest(t *testing.T) {
 		description string
 		joins       []string
 		want        []joinTarget
+		wantErr     bool
 	}{
 		{"bare table inherits the request schema",
 			[]string{"inner:employee:a.b:$eq:c.d"},
-			[]joinTarget{{"public", "employee"}}},
+			[]joinTarget{{"public", "employee"}}, false},
 		{"schema qualified table keeps its own schema",
 			[]string{"inner:other.employee:a.b:$eq:c.d"},
-			[]joinTarget{{"other", "employee"}}},
+			[]joinTarget{{"other", "employee"}}, false},
 		{"every repeated clause contributes a target, in request order",
 			[]string{"inner:employee:a.b:$eq:c.d", "left:employee_secret:c.d:$eq:e.f"},
-			[]joinTarget{{"public", "employee"}, {"public", "employee_secret"}}},
-		{"a table joined twice is kept once",
+			[]joinTarget{{"public", "employee"}, {"public", "employee_secret"}}, false},
+		{"a table joined twice is rejected",
 			[]string{"inner:employee:a.b:$eq:c.d", "left:employee:c.d:$eq:e.f"},
-			[]joinTarget{{"public", "employee"}}},
-		{"a table joined twice is kept once even under another schema",
+			nil, true},
+		{"a table joined twice is rejected even under another schema, since SQL exposes one name",
 			[]string{"inner:employee:a.b:$eq:c.d", "left:other.employee:c.d:$eq:e.f"},
-			[]joinTarget{{"public", "employee"}}},
+			nil, true},
 		{"an unresolvable clause does not hide the clauses around it",
 			[]string{"inner:0bad:a.b:$eq:c.d", "left:employee:c.d:$eq:e.f"},
-			[]joinTarget{{"public", "employee"}}},
-		{"missing clause is not a join", []string{""}, nil},
-		{"no clause at all is not a join", nil, nil},
-		{"wrong number of arguments is not resolved", []string{"inner:employee:a.b"}, nil},
-		{"three segment target is not resolved", []string{"inner:db.public.employee:a.b:$eq:c.d"}, nil},
-		{"invalid identifier is not resolved", []string{"inner:0bad:a.b:$eq:c.d"}, nil},
-		{"empty segment is not resolved", []string{"inner:.employee:a.b:$eq:c.d"}, nil},
+			[]joinTarget{{"public", "employee"}}, false},
+		{"missing clause is not a join", []string{""}, nil, false},
+		{"no clause at all is not a join", nil, nil, false},
+		{"wrong number of arguments is not resolved", []string{"inner:employee:a.b"}, nil, false},
+		{"three segment target is not resolved", []string{"inner:db.public.employee:a.b:$eq:c.d"}, nil, false},
+		{"invalid identifier is not resolved", []string{"inner:0bad:a.b:$eq:c.d"}, nil, false},
+		{"empty segment is not resolved", []string{"inner:.employee:a.b:$eq:c.d"}, nil, false},
 	}
 
 	for _, tc := range testCases {
@@ -3905,7 +3968,13 @@ func Test_joinTargetsByRequest(t *testing.T) {
 			req, err := http.NewRequest(http.MethodGet, "/public/department?"+joinQuery(tc.joins), nil)
 			require.NoError(t, err)
 
-			require.Equal(t, tc.want, joinTargetsByRequest(req, "public"))
+			targets, err := joinTargetsByRequest(req, "public")
+			if tc.wantErr {
+				require.ErrorIs(t, err, ErrInvalidJoinClause)
+			} else {
+				require.NoError(t, err)
+			}
+			require.Equal(t, tc.want, targets)
 		})
 	}
 }
