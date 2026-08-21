@@ -971,10 +971,11 @@ func Test_sanitizeSelectField(t *testing.T) {
 		wantErr     bool
 	}{
 		{"asterisk passes through", "*", "*", false},
+		{"table qualified asterisk is quoted", "employee.*", `"employee".*`, false},
+		{"invalid table qualified asterisk is rejected", "0bad.*", "", true},
 		{"plain identifier is quoted", "name", `"name"`, false},
 		{"dotted identifier is quoted per segment", "public.age", `"public"."age"`, false},
-		{"colon-syntax aggregate is normalized", "avg:age", `AVG("age")`, false},
-		{"bare aggregate keyword is a plain field", "sum", `"sum"`, false},
+		{"colon-syntax aggregate is normalized", "avg:age", `AVG("age")`, false},		{"bare aggregate keyword is a plain field", "sum", `"sum"`, false},
 		{"pre-quoted aggregate is accepted", `SUM("salary")`, `SUM("salary")`, false},
 		{"pre-quoted aggregate with alias is accepted", `MAX("age") AS "m"`, `MAX("age") AS "m"`, false},
 		{"invalid identifier is rejected", "0bad", "", true},
@@ -1479,9 +1480,94 @@ func TestFieldsPermissions_RestrictBranches(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestFieldsByPermission(t *testing.T) {
+func TestFieldsPermissions_Join(t *testing.T) {
 	t.Parallel()
 
+	adapter := testAdapter(&config.Prest{
+		AccessConf: config.AccessConf{
+			Restrict:    true,
+			IgnoreTable: []string{"unrestricted"},
+			Tables: []config.TablesConf{
+				{Name: "department", Permissions: []string{"read"}, Fields: []string{"d_id", "dept", "emp_id"}},
+				{Name: "employee", Permissions: []string{"read"}, Fields: []string{"id", "name"}},
+				{Name: "salary", Permissions: []string{"write"}, Fields: []string{"amount"}},
+			},
+		},
+	})
+
+	testCases := []struct {
+		description string
+		url         string
+		want        []string
+	}{
+		{
+			"joined table readable fields are added to the select list",
+			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id",
+			[]string{"department.d_id", "department.dept", "department.emp_id", "employee.id", "employee.name"},
+		},
+		{
+			"schema qualified join resolves the joined table permissions",
+			"/public/department?_join=inner:public.employee:department.emp_id:$eq:employee.id",
+			[]string{"department.d_id", "department.dept", "department.emp_id", "employee.id", "employee.name"},
+		},
+		{
+			"_select accepts qualified fields of both tables",
+			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id&_select=dept,employee.name",
+			[]string{"dept", "employee.name"},
+		},
+		{
+			"_select of a joined field without read permission is dropped",
+			"/public/department?_join=inner:salary:department.d_id:$eq:salary.d_id&_select=dept,salary.amount",
+			[]string{"dept"},
+		},
+		{
+			"joined table without read permission adds no field",
+			"/public/department?_join=inner:salary:department.d_id:$eq:salary.d_id",
+			[]string{"department.d_id", "department.dept", "department.emp_id"},
+		},
+		{
+			"ignored joined table is selected in full",
+			"/public/department?_join=inner:unrestricted:department.d_id:$eq:unrestricted.d_id",
+			[]string{"department.d_id", "department.dept", "department.emp_id", "unrestricted.*"},
+		},
+		{
+			"malformed join keeps the main table fields",
+			"/public/department?_join=inner:employee",
+			[]string{"d_id", "dept", "emp_id"},
+		},
+		{
+			"join target with too many identifier segments keeps the main table fields",
+			"/public/department?_join=inner:db.public.employee:department.emp_id:$eq:employee.id",
+			[]string{"d_id", "dept", "emp_id"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			t.Parallel()
+
+			req, err := http.NewRequest(http.MethodGet, tc.url, nil)
+			require.NoError(t, err)
+
+			fields, err := adapter.FieldsPermissions(req, "", "public", "department", "read", "")
+			require.NoError(t, err)
+			require.Equal(t, tc.want, fields)
+		})
+	}
+}
+
+func Test_qualifyFields(t *testing.T) {
+	t.Parallel()
+
+	require.Nil(t, qualifyFields("employee", nil))
+	require.Equal(t,
+		[]string{"employee.id", "public.employee.name", `MAX("age")`},
+		qualifyFields("employee", []string{"id", "public.employee.name", `MAX("age")`}))
+	require.Equal(t, []string{"id"}, qualifyFields("my-table", []string{"id"}))
+}
+
+func TestFieldsByPermission(t *testing.T) {
+	t.Parallel()
 	adapter := testAdapter(permissionTestConf())
 
 	fields := adapter.fieldsByPermission("", "public", "test_fields_access", "read", "")
