@@ -101,6 +101,22 @@ func DoRequestJSON(
 	where string,
 	target interface{},
 ) {
+	DoRequestJSONWithHeaders(t, url, r, method, expectedStatus, where, nil, target)
+}
+
+// DoRequestJSONWithHeaders is DoRequestJSON with extra request headers, so
+// callers that need an Authorization header can still assert on the decoded
+// body instead of on substrings.
+func DoRequestJSONWithHeaders(
+	t *testing.T,
+	url string,
+	r interface{},
+	method string,
+	expectedStatus int,
+	where string,
+	headers map[string]string,
+	target interface{},
+) {
 	var byt []byte
 	var err error
 	if r != nil {
@@ -119,6 +135,9 @@ func DoRequestJSON(
 	req.Header.Add("X-Application", "prest")
 	if r != nil {
 		req.Header.Set("Content-Type", "application/json")
+	}
+	for k, v := range headers {
+		req.Header.Set(k, v)
 	}
 
 	client := &http.Client{}
