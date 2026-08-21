@@ -99,6 +99,11 @@ name = "employee_secret"
 permissions = ["write"]
 fields = ["emp_id", "ssn"]
 
+[[access.tables]]
+name = "employee_badge"
+permissions = ["read"]
+fields = ["emp_id", "badge"]
+
 
 # Access for user
 [[access.tables]]

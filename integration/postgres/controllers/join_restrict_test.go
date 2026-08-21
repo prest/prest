@@ -178,6 +178,53 @@ func TestJoinRestricted_SelectQualifiedColumns(t *testing.T) {
 	require.Equal(t, "gopher", rows[0]["name"])
 }
 
+// TestJoinRestricted_RepeatedJoin covers a request that repeats _join: every
+// clause has to reach both the FROM clause and the permitted-column list, so
+// the readable joined table contributes its columns while the unreadable one
+// still contributes none.
+func TestJoinRestricted_RepeatedJoin(t *testing.T) {
+	base := helpers.AuthServerURL(t)
+	token := helpers.LoginToken(t, base, "test@postgres.rest", "123456")
+
+	// department joined to employee and employee_badge (both readable) and to
+	// employee_secret (write-only). Expected: the columns of the first three,
+	// none of employee_secret's. badge only appears if the *second* clause
+	// reached both the FROM clause and the permitted-column list.
+	var rows []joinRow
+	helpers.DoAuthRequestJSON(
+		t, base+"/prest-test/public/department"+
+			"?_join=inner:employee:department.emp_id:$eq:employee.id"+
+			"&_join=inner:employee_badge:department.emp_id:$eq:employee_badge.emp_id"+
+			"&_join=inner:employee_secret:department.emp_id:$eq:employee_secret.emp_id"+
+			"&_order=d_id",
+		nil, http.MethodGet, token, http.StatusOK, "JoinRestrictedRepeated", &rows)
+
+	require.Equal(t, []string{"badge", "d_id", "dept", "emp_id", "id", "name"}, sortedKeys(keysOf(t, rows)))
+	require.Equal(t, "Computer", rows[0]["dept"])
+	require.Equal(t, "gopher", rows[0]["name"])
+	require.Equal(t, "badge-001", rows[0]["badge"])
+}
+
+// TestJoinUnrestricted_RepeatedJoin is the same request on the server that runs
+// with restrict = false: the second _join must reach the FROM clause there too,
+// which is what makes employee_secret's columns show up.
+func TestJoinUnrestricted_RepeatedJoin(t *testing.T) {
+	base := helpers.ServerURL(t)
+
+	var rows []joinRow
+	testutils.DoRequestJSON(
+		t, base+"/prest-test/public/department"+
+			"?_join=inner:employee:department.emp_id:$eq:employee.id"+
+			"&_join=inner:employee_secret:department.emp_id:$eq:employee_secret.emp_id"+
+			"&_order=d_id",
+		nil, http.MethodGet, http.StatusOK, "JoinUnrestrictedRepeated", &rows)
+
+	keys := keysOf(t, rows)
+	for _, col := range []string{"d_id", "dept", "id", "name", "ssn"} {
+		require.True(t, keys[col], "column %q missing from unrestricted repeated join: %v", col, rows)
+	}
+}
+
 // TestJoinRestricted_QueriedTableIsUnreadable: reversing the join does not
 // widen anything. employee_secret has no read permission, so querying it
 // directly is rejected by the access control middleware, join or not.
