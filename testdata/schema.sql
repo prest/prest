@@ -64,6 +64,8 @@ CREATE VIEW view_test AS SELECT name AS player from table_to_view;
 CREATE TABLE employee(id serial primary key not null, name text);
 CREATE TABLE department(d_id serial primary key not null, dept text not null, emp_id int references employee(id));
 CREATE TABLE employee_secret(emp_id int, ssn text);
+CREATE TABLE employee_badge(emp_id int, badge text);
 INSERT INTO employee (name) VALUES ('gopher'), ('rustacean');
 INSERT INTO department (dept, emp_id) VALUES ('Computer', 1), ('Maths', 2);
 INSERT INTO employee_secret (emp_id, ssn) VALUES (1, 'ssn-top-secret-1'), (2, 'ssn-top-secret-2');
+INSERT INTO employee_badge (emp_id, badge) VALUES (1, 'badge-001'), (2, 'badge-002');
