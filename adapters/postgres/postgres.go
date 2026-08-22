@@ -1863,11 +1863,27 @@ func containsAsterisk(arr []string) bool {
 func intersection(set, other []string) (intersection []string) {
 	for _, field := range set {
 		pField := checkField(field, other)
+		if pField == "" && matchesQualifiedAsterisk(field, other) {
+			pField = field
+		}
 		if pField != "" {
 			intersection = append(intersection, pField)
 		}
 	}
 	return
+}
+
+func matchesQualifiedAsterisk(col string, fields []string) bool {
+	if !ident.IsValid(col) {
+		return false
+	}
+	for _, field := range fields {
+		prefix, found := strings.CutSuffix(field, ".*")
+		if found && strings.HasPrefix(col, prefix+".") {
+			return true
+		}
+	}
+	return false
 }
 
 // FieldsPermissions get fields permissions based in prest configuration
@@ -1887,14 +1903,26 @@ func (adapter *postgres) FieldsPermissions(r *http.Request, database, schema, ta
 		return
 	}
 	allowedFields := adapter.fieldsByPermission(database, schema, table, op, userName)
+	joinFields, joined := adapter.joinFieldsPermissions(r, database, schema, op, userName)
 	if containsAsterisk(allowedFields) {
-		fields = []string{"*"}
-		if len(cols) > 0 {
-			fields = cols
+		if !joined {
+			fields = []string{"*"}
+			if len(cols) > 0 {
+				fields = cols
+			}
+			return
 		}
+		selectable := joinFields
+		if base, ok := qualifiedAsterisk(table); ok {
+			selectable = append([]string{base}, joinFields...)
+		}
+		if len(cols) == 0 {
+			fields = selectable
+			return
+		}
+		fields = intersection(qualifyFields(table, cols), selectable)
 		return
 	}
-	joinFields, joined := adapter.joinFieldsPermissions(r, database, schema, op, userName)
 	if len(cols) > 0 {
 		selectable := allowedFields
 		if joined {
@@ -1950,6 +1978,10 @@ func qualifyFields(table string, fields []string) (qualified []string) {
 		return slices.Clone(fields)
 	}
 	for _, field := range fields {
+		if field == "*" {
+			qualified = append(qualified, table+".*")
+			continue
+		}
 		if strings.Contains(field, ".") || !ident.IsValid(field) {
 			qualified = append(qualified, field)
 			continue
@@ -1957,6 +1989,13 @@ func qualifyFields(table string, fields []string) (qualified []string) {
 		qualified = append(qualified, table+"."+field)
 	}
 	return
+}
+
+func qualifiedAsterisk(table string) (qualified string, ok bool) {
+	if !ident.IsValid(table) {
+		return
+	}
+	return table + ".*", true
 }
 
 func checkField(col string, fields []string) (p string) {

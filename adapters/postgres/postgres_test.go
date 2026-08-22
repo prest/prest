@@ -975,7 +975,8 @@ func Test_sanitizeSelectField(t *testing.T) {
 		{"invalid table qualified asterisk is rejected", "0bad.*", "", true},
 		{"plain identifier is quoted", "name", `"name"`, false},
 		{"dotted identifier is quoted per segment", "public.age", `"public"."age"`, false},
-		{"colon-syntax aggregate is normalized", "avg:age", `AVG("age")`, false},		{"bare aggregate keyword is a plain field", "sum", `"sum"`, false},
+		{"colon-syntax aggregate is normalized", "avg:age", `AVG("age")`, false},
+		{"bare aggregate keyword is a plain field", "sum", `"sum"`, false},
 		{"pre-quoted aggregate is accepted", `SUM("salary")`, `SUM("salary")`, false},
 		{"pre-quoted aggregate with alias is accepted", `MAX("age") AS "m"`, `MAX("age") AS "m"`, false},
 		{"invalid identifier is rejected", "0bad", "", true},
@@ -1531,6 +1532,11 @@ func TestFieldsPermissions_Join(t *testing.T) {
 			[]string{"department.d_id", "department.dept", "department.emp_id", "unrestricted.*"},
 		},
 		{
+			"_select of a field of an ignored joined table is kept",
+			"/public/department?_join=inner:unrestricted:department.d_id:$eq:unrestricted.d_id&_select=dept,unrestricted.total",
+			[]string{"dept", "unrestricted.total"},
+		},
+		{
 			"malformed join keeps the main table fields",
 			"/public/department?_join=inner:employee",
 			[]string{"d_id", "dept", "emp_id"},
@@ -1556,6 +1562,77 @@ func TestFieldsPermissions_Join(t *testing.T) {
 	}
 }
 
+func TestFieldsPermissions_JoinWildcardTable(t *testing.T) {
+	t.Parallel()
+
+	adapter := testAdapter(&config.Prest{
+		AccessConf: config.AccessConf{
+			Restrict:    true,
+			IgnoreTable: []string{"unrestricted"},
+			Tables: []config.TablesConf{
+				{Name: "department", Permissions: []string{"read"}, Fields: []string{"*"}},
+				{Name: "employee", Permissions: []string{"read"}, Fields: []string{"id", "name"}},
+				{Name: "salary", Permissions: []string{"write"}, Fields: []string{"amount"}},
+			},
+		},
+	})
+
+	testCases := []struct {
+		description string
+		url         string
+		want        []string
+	}{
+		{
+			"wildcard access without join keeps the unqualified wildcard",
+			"/public/department",
+			[]string{"*"},
+		},
+		{
+			"wildcard access is restricted to the main table when a joined table has no read permission",
+			"/public/department?_join=inner:salary:department.d_id:$eq:salary.d_id",
+			[]string{"department.*"},
+		},
+		{
+			"wildcard access adds the readable fields of the joined table",
+			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id",
+			[]string{"department.*", "employee.id", "employee.name"},
+		},
+		{
+			"_select of a joined field without read permission is dropped under wildcard access",
+			"/public/department?_join=inner:salary:department.d_id:$eq:salary.d_id&_select=dept,salary.amount",
+			[]string{"department.dept"},
+		},
+		{
+			"_select=* is restricted to the main table when a join is present",
+			"/public/department?_join=inner:salary:department.d_id:$eq:salary.d_id&_select=*",
+			[]string{"department.*"},
+		},
+		{
+			"_select of a readable joined field is kept under wildcard access",
+			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id&_select=dept,employee.name",
+			[]string{"department.dept", "employee.name"},
+		},
+		{
+			"_select of an aggregate is dropped under wildcard access because its column cannot be qualified",
+			"/public/department?_join=inner:salary:department.d_id:$eq:salary.d_id&_groupby=dept&_select=avg:amount",
+			nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			t.Parallel()
+
+			req, err := http.NewRequest(http.MethodGet, tc.url, nil)
+			require.NoError(t, err)
+
+			fields, err := adapter.FieldsPermissions(req, "", "public", "department", "read", "")
+			require.NoError(t, err)
+			require.Equal(t, tc.want, fields)
+		})
+	}
+}
+
 func Test_qualifyFields(t *testing.T) {
 	t.Parallel()
 
@@ -1564,10 +1641,25 @@ func Test_qualifyFields(t *testing.T) {
 		[]string{"employee.id", "public.employee.name", `MAX("age")`},
 		qualifyFields("employee", []string{"id", "public.employee.name", `MAX("age")`}))
 	require.Equal(t, []string{"id"}, qualifyFields("my-table", []string{"id"}))
+	require.Equal(t, []string{"employee.*"}, qualifyFields("employee", []string{"*"}))
+	require.Equal(t, []string{"*"}, qualifyFields("my-table", []string{"*"}))
+}
+
+func Test_qualifiedAsterisk(t *testing.T) {
+	t.Parallel()
+
+	qualified, ok := qualifiedAsterisk("employee")
+	require.True(t, ok)
+	require.Equal(t, "employee.*", qualified)
+
+	qualified, ok = qualifiedAsterisk("my-table")
+	require.False(t, ok)
+	require.Empty(t, qualified)
 }
 
 func TestFieldsByPermission(t *testing.T) {
 	t.Parallel()
+
 	adapter := testAdapter(permissionTestConf())
 
 	fields := adapter.fieldsByPermission("", "public", "test_fields_access", "read", "")
