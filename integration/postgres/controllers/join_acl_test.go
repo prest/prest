@@ -1,7 +1,6 @@
 package controllers_test
 
 import (
-	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -87,16 +86,9 @@ func TestSelectJoin_WildcardFieldsStayOnRequestedTable(t *testing.T) {
 func selectJoinRows(t *testing.T, url, token string) []map[string]any {
 	t.Helper()
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	require.NoError(t, err)
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-
 	var rows []map[string]any
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&rows))
+	testutils.DoRequestJSONWithHeaders(t, url, nil, http.MethodGet,
+		http.StatusOK, "SelectJoinRows",
+		map[string]string{"Authorization": "Bearer " + token}, &rows)
 	return rows
 }
