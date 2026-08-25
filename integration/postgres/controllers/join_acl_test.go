@@ -83,6 +83,9 @@ func TestSelectJoin_WildcardFieldsStayOnRequestedTable(t *testing.T) {
 		map[string]string{"Authorization": "Bearer " + token})
 }
 
+// selectJoinRows performs the authenticated GET of the given join read, requires
+// 200 OK, and decodes the rows so callers can assert which fields the ACL kept
+// in the select list.
 func selectJoinRows(t *testing.T, url, token string) []map[string]any {
 	t.Helper()
 
