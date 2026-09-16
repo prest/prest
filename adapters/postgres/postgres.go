@@ -1863,11 +1863,27 @@ func containsAsterisk(arr []string) bool {
 func intersection(set, other []string) (intersection []string) {
 	for _, field := range set {
 		pField := checkField(field, other)
+		if pField == "" && matchesQualifiedAsterisk(field, other) {
+			pField = field
+		}
 		if pField != "" {
 			intersection = append(intersection, pField)
 		}
 	}
 	return
+}
+
+func matchesQualifiedAsterisk(col string, fields []string) bool {
+	if !ident.IsValid(col) {
+		return false
+	}
+	for _, field := range fields {
+		prefix, found := strings.CutSuffix(field, ".*")
+		if found && strings.HasPrefix(col, prefix+".") {
+			return true
+		}
+	}
+	return false
 }
 
 // FieldsPermissions get fields permissions based in prest configuration
@@ -1887,18 +1903,99 @@ func (adapter *postgres) FieldsPermissions(r *http.Request, database, schema, ta
 		return
 	}
 	allowedFields := adapter.fieldsByPermission(database, schema, table, op, userName)
+	joinFields, joined := adapter.joinFieldsPermissions(r, database, schema, op, userName)
 	if containsAsterisk(allowedFields) {
-		fields = []string{"*"}
-		if len(cols) > 0 {
-			fields = cols
+		if !joined {
+			fields = []string{"*"}
+			if len(cols) > 0 {
+				fields = cols
+			}
+			return
 		}
+		selectable := joinFields
+		if base, ok := qualifiedAsterisk(table); ok {
+			selectable = append([]string{base}, joinFields...)
+		}
+		if len(cols) == 0 {
+			fields = selectable
+			return
+		}
+		fields = intersection(qualifyFields(table, cols), selectable)
 		return
 	}
-	fields = intersection(cols, allowedFields)
-	if len(cols) == 0 && len(allowedFields) > 0 {
-		fields = allowedFields
+	if len(cols) > 0 {
+		selectable := allowedFields
+		if joined {
+			selectable = append(qualifyFields(table, allowedFields), allowedFields...)
+			selectable = append(selectable, joinFields...)
+		}
+		fields = intersection(cols, selectable)
+		return
+	}
+	if len(allowedFields) == 0 {
+		return
+	}
+	fields = allowedFields
+	if joined {
+		fields = append(qualifyFields(table, allowedFields), joinFields...)
 	}
 	return
+}
+
+func (adapter *postgres) joinFieldsPermissions(r *http.Request, database, schema, op, userName string) (fields []string, joined bool) {
+	joinSchema, joinTable, ok := joinTableByRequest(r, schema)
+	if !ok {
+		return
+	}
+	joined = true
+	if !adapter.TablePermissions(database, joinSchema, joinTable, op, userName) {
+		return
+	}
+	allowedFields := adapter.fieldsByPermission(database, joinSchema, joinTable, op, userName)
+	if containsAsterisk(allowedFields) {
+		return []string{joinTable + ".*"}, true
+	}
+	return qualifyFields(joinTable, allowedFields), true
+}
+
+func joinTableByRequest(r *http.Request, schema string) (joinSchema, joinTable string, ok bool) {
+	joinArgs := strings.Split(r.URL.Query().Get("_join"), ":")
+	if len(joinArgs) != 5 || !ident.IsValid(joinArgs[1]) {
+		return
+	}
+	parts := strings.Split(joinArgs[1], ".")
+	switch len(parts) {
+	case 1:
+		return schema, parts[0], true
+	case 2:
+		return parts[0], parts[1], true
+	}
+	return
+}
+
+func qualifyFields(table string, fields []string) (qualified []string) {
+	if !ident.IsValid(table) {
+		return slices.Clone(fields)
+	}
+	for _, field := range fields {
+		if field == "*" {
+			qualified = append(qualified, table+".*")
+			continue
+		}
+		if strings.Contains(field, ".") || !ident.IsValid(field) {
+			qualified = append(qualified, field)
+			continue
+		}
+		qualified = append(qualified, table+"."+field)
+	}
+	return
+}
+
+func qualifiedAsterisk(table string) (qualified string, ok bool) {
+	if !ident.IsValid(table) {
+		return
+	}
+	return table + ".*", true
 }
 
 func checkField(col string, fields []string) (p string) {
@@ -2128,6 +2225,13 @@ var quotedAggRegex = regexp.MustCompile(
 func sanitizeSelectField(field string) (string, error) {
 	if field == "*" {
 		return "*", nil
+	}
+	if prefix, found := strings.CutSuffix(field, ".*"); found {
+		q, qerr := ident.Quote(prefix)
+		if qerr != nil {
+			return "", errors.Wrapf(ErrInvalidIdentifier, "%s", field)
+		}
+		return q + ".*", nil
 	}
 	if groupFunc, _ := NormalizeGroupFunction(field); groupFunc != "" {
 		return groupFunc, nil // colon-syntax: already validated + quoted
