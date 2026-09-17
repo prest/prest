@@ -851,6 +851,17 @@ func TestJoinByRequest(t *testing.T) {
 		{"Join invalid operator", "/prest-test/public/test?_join=inner:test2:test2.name:notexist:test.name", []string{}, true},
 		{"Join invalid fields", "/prest-test/public/test?_join=inner:0test2:test2.name:notexist:test.name", []string{}, true},
 		{"Join invalid type", "/prest-test/public/test?_join=weird:test2:test2.name:$eq:test.name", []string{}, true},
+		{"Join two distinct tables", "/prest-test/public/test?_join=inner:test2:test2.name:$eq:test.name&_join=left:test3:test3.name:$eq:test.name", []string{"INNER JOIN", `"test2"."name" = "test"."name"`, "LEFT JOIN", `"test3"."name" = "test"."name"`}, false},
+		{"Join the same table twice", "/prest-test/public/test?_join=inner:test2:test2.name:$eq:test.name&_join=left:test2:test2.name:$eq:test.name", []string{}, true},
+		{"Join the same table twice, one clause naming its schema", "/prest-test/public/test?_join=inner:test2:test2.name:$eq:test.name&_join=left:public.test2:test2.name:$eq:test.name", []string{}, true},
+		{"Join a third clause colliding with the first", "/prest-test/public/test?_join=inner:test2:test2.name:$eq:test.name&_join=left:test3:test3.name:$eq:test.name&_join=inner:test2:test2.name:$eq:test.name", []string{}, true},
+		{"Join an empty clause alongside a valid one", "/prest-test/public/test?_join=&_join=inner:test2:test2.name:$eq:test.name", []string{"INNER JOIN", `"test2"."name" = "test"."name"`}, false},
+		// JoinByRequest is not given the queried table, so it cannot see that
+		// this clause names it: the SQL is built here and the request is
+		// refused later, by FieldsPermissions, which does receive it. Pinned so
+		// that split stays deliberate -- see TestJoin_SelfJoinIsRejected in
+		// integration/postgres/controllers for the end-to-end rejection.
+		{"Join the queried table to itself is not JoinByRequest's to catch", "/prest-test/public/test?_join=inner:test:test.name:$eq:test.name", []string{"INNER JOIN", `"test" ON `}, false},
 	}
 
 	for _, tc := range testCases {

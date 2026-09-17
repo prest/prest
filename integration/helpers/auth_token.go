@@ -57,3 +57,24 @@ func DoAuthRequest(
 	testutils.DoRequestWithHeaders(
 		t, url, r, method, expectedStatus, name, headers, expectedBody...)
 }
+
+// DoAuthRequestJSON sends an authenticated request and decodes the JSON
+// response into target, for assertions that need the response shape (which
+// columns a restricted query returned) rather than a substring match.
+func DoAuthRequestJSON(
+	t *testing.T,
+	url string,
+	r interface{},
+	method, token string,
+	expectedStatus int,
+	name string,
+	target interface{}) {
+
+	t.Helper()
+	headers := map[string]string{}
+	if token != "" {
+		headers["Authorization"] = "Bearer " + token
+	}
+	testutils.DoRequestJSONWithHeaders(
+		t, url, r, method, expectedStatus, name, headers, target)
+}

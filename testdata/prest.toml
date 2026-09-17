@@ -81,6 +81,29 @@ name = "test_group_by_table"
 permissions = ["read"]
 fields = ["id", "name", "age", "salary"]
 
+# Restricted join fixtures (issue #364): department and employee are readable,
+# employee_secret is joinable but never readable, so a join against it must not
+# leak a single column.
+[[access.tables]]
+name = "department"
+permissions = ["read"]
+fields = ["d_id", "dept", "emp_id"]
+
+[[access.tables]]
+name = "employee"
+permissions = ["read"]
+fields = ["id", "name"]
+
+[[access.tables]]
+name = "employee_secret"
+permissions = ["write"]
+fields = ["emp_id", "ssn"]
+
+[[access.tables]]
+name = "employee_badge"
+permissions = ["read"]
+fields = ["emp_id", "badge"]
+
 
 # Access for user
 [[access.tables]]

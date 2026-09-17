@@ -889,55 +889,92 @@ func (adapter *postgres) SchemaClause(req *http.Request) (query string, hasCount
 	return
 }
 
-// JoinByRequest implements join in queries
+// JoinByRequest implements join in queries. A request may repeat _join, and
+// every clause becomes its own JOIN, in the order it was given.
+//
+// This rejects a table two clauses would both bring in, which needs nothing but
+// the clauses themselves. A clause joining the *queried* table is the same kind
+// of collision but needs to know which table that is, so it is rejected by
+// FieldsPermissions instead, which already receives it.
 func (adapter *postgres) JoinByRequest(r *http.Request) (values []string, err error) {
-	queries := r.URL.Query()
-
-	if queries.Get("_join") == "" {
-		return
+	joined := make(map[string]bool)
+	for _, clause := range r.URL.Query()["_join"] {
+		if clause == "" {
+			continue
+		}
+		var joinQuery, exposed string
+		joinQuery, exposed, err = joinClauseSQL(clause)
+		if err != nil {
+			// One bad clause rejects the whole request; a partial join list
+			// would silently widen the result set.
+			return nil, err
+		}
+		if joined[exposed] {
+			return nil, errDuplicateJoin(exposed)
+		}
+		joined[exposed] = true
+		values = append(values, joinQuery)
 	}
+	return
+}
 
-	joinArgs := strings.Split(queries.Get("_join"), ":")
+// errDuplicateJoin reports a table the statement would name more than once --
+// either joined twice, or joined to the very table being queried. A _join
+// carries no alias, so Postgres would reject it as "table name %q specified
+// more than once"; saying so before the query is built keeps the driver's
+// error off the response.
+func errDuplicateJoin(table string) error {
+	return errors.Wrapf(ErrInvalidJoinClause, "table %q is joined more than once", table)
+}
+
+// joinExposedTable is the name a clause's join target answers to in the rest of
+// the statement: the bare table for "table" and "schema.table", and the whole
+// string for anything else, which joinClauseSQL quotes as a single identifier.
+func joinExposedTable(target string) string {
+	if parts := strings.Split(target, "."); len(parts) == 2 {
+		return parts[1]
+	}
+	return target
+}
+
+// joinClauseSQL turns a single _join value into its JOIN ... ON ... fragment,
+// along with the table name that fragment exposes.
+func joinClauseSQL(clause string) (query, exposed string, err error) {
+	joinArgs := strings.Split(clause, ":")
 
 	if len(joinArgs) != 5 {
-		err = ErrJoinInvalidNumberOfArgs
-		return
+		return "", "", ErrJoinInvalidNumberOfArgs
 	}
 
 	// whitelist join types
 	jt := strings.ToUpper(joinArgs[0])
 	allowed := map[string]bool{"INNER": true, "LEFT": true, "RIGHT": true, "FULL": true, "CROSS": true}
 	if !allowed[jt] {
-		err = ErrInvalidJoinClause
-		return
+		return "", "", ErrInvalidJoinClause
 	}
 
 	if !ident.IsValid(joinArgs[1]) || !ident.IsValid(joinArgs[2]) || !ident.IsValid(joinArgs[4]) {
-		err = ErrInvalidIdentifier
-		return
+		return "", "", ErrInvalidIdentifier
 	}
 
 	op, err := GetQueryOperator(joinArgs[3])
 	if err != nil {
-		return
+		return "", "", err
 	}
 	errJoin := ErrInvalidJoinClause
+	exposed = joinExposedTable(joinArgs[1])
 	if joinWith := strings.Split(joinArgs[1], "."); len(joinWith) == 2 {
 		joinArgs[1] = fmt.Sprintf(`%s"."%s`, joinWith[0], joinWith[1])
 	}
 	spl := strings.Split(joinArgs[2], ".")
 	if len(spl) != 2 {
-		err = errJoin
-		return
+		return "", "", errJoin
 	}
 	splj := strings.Split(joinArgs[4], ".")
 	if len(splj) != 2 {
-		err = errJoin
-		return
+		return "", "", errJoin
 	}
-	joinQuery := fmt.Sprintf(` %s JOIN "%s" ON "%s"."%s" %s "%s"."%s" `, jt, joinArgs[1], spl[0], spl[1], op, splj[0], splj[1])
-	values = append(values, joinQuery)
-	return
+	return fmt.Sprintf(` %s JOIN "%s" ON "%s"."%s" %s "%s"."%s" `, jt, joinArgs[1], spl[0], spl[1], op, splj[0], splj[1]), exposed, nil
 }
 
 // SelectFields query
@@ -1863,27 +1900,11 @@ func containsAsterisk(arr []string) bool {
 func intersection(set, other []string) (intersection []string) {
 	for _, field := range set {
 		pField := checkField(field, other)
-		if pField == "" && matchesQualifiedAsterisk(field, other) {
-			pField = field
-		}
 		if pField != "" {
 			intersection = append(intersection, pField)
 		}
 	}
 	return
-}
-
-func matchesQualifiedAsterisk(col string, fields []string) bool {
-	if !ident.IsValid(col) {
-		return false
-	}
-	for _, field := range fields {
-		prefix, found := strings.CutSuffix(field, ".*")
-		if found && strings.HasPrefix(col, prefix+".") {
-			return true
-		}
-	}
-	return false
 }
 
 // FieldsPermissions get fields permissions based in prest configuration
@@ -1893,6 +1914,18 @@ func (adapter *postgres) FieldsPermissions(r *http.Request, database, schema, ta
 		err = fmt.Errorf("error on parse columns from request: %s", err)
 		return
 	}
+	// A _join puts more tables in the FROM clause. Resolving them here, above
+	// the restrict check, serves two purposes: it rejects a join the query
+	// builder could never honour -- one naming the queried table, which
+	// JoinByRequest cannot see -- identically in both restrict modes, and it
+	// gives the restricted branch below the tables whose permitted columns the
+	// select list has to carry. Building that list from the queried table alone
+	// is what made a restricted join return only its own columns (issue #364).
+	targets, err := joinTargetsByRequest(r, schema, table)
+	if err != nil {
+		return nil, err
+	}
+
 	restrict := adapter.cfg.AccessConf.Restrict
 	if !restrict || op == "delete" {
 		if len(cols) > 0 {
@@ -1903,99 +1936,168 @@ func (adapter *postgres) FieldsPermissions(r *http.Request, database, schema, ta
 		return
 	}
 	allowedFields := adapter.fieldsByPermission(database, schema, table, op, userName)
-	joinFields, joined := adapter.joinFieldsPermissions(r, database, schema, op, userName)
+
+	if len(targets) > 0 {
+		fields = adapter.joinedFields(database, table, targets, allowedFields, cols, op, userName)
+		return
+	}
+
 	if containsAsterisk(allowedFields) {
-		if !joined {
-			fields = []string{"*"}
-			if len(cols) > 0 {
-				fields = cols
-			}
-			return
+		fields = []string{"*"}
+		if len(cols) > 0 {
+			fields = cols
 		}
-		selectable := joinFields
-		if base, ok := qualifiedAsterisk(table); ok {
-			selectable = append([]string{base}, joinFields...)
-		}
-		if len(cols) == 0 {
-			fields = selectable
-			return
-		}
-		fields = intersection(qualifyFields(table, cols), selectable)
 		return
 	}
-	if len(cols) > 0 {
-		selectable := allowedFields
-		if joined {
-			selectable = append(qualifyFields(table, allowedFields), allowedFields...)
-			selectable = append(selectable, joinFields...)
-		}
-		fields = intersection(cols, selectable)
-		return
-	}
-	if len(allowedFields) == 0 {
-		return
-	}
-	fields = allowedFields
-	if joined {
-		fields = append(qualifyFields(table, allowedFields), joinFields...)
+	fields = intersection(cols, allowedFields)
+	if len(cols) == 0 && len(allowedFields) > 0 {
+		fields = allowedFields
 	}
 	return
 }
 
-func (adapter *postgres) joinFieldsPermissions(r *http.Request, database, schema, op, userName string) (fields []string, joined bool) {
-	joinSchema, joinTable, ok := joinTableByRequest(r, schema)
-	if !ok {
-		return
-	}
-	joined = true
-	if !adapter.TablePermissions(database, joinSchema, joinTable, op, userName) {
-		return
-	}
-	allowedFields := adapter.fieldsByPermission(database, joinSchema, joinTable, op, userName)
-	if containsAsterisk(allowedFields) {
-		return []string{joinTable + ".*"}, true
-	}
-	return qualifyFields(joinTable, allowedFields), true
+// joinTarget is the table a _join clause brings into the query.
+type joinTarget struct {
+	schema string
+	table  string
 }
 
-func joinTableByRequest(r *http.Request, schema string) (joinSchema, joinTable string, ok bool) {
-	joinArgs := strings.Split(r.URL.Query().Get("_join"), ":")
-	if len(joinArgs) != 5 || !ident.IsValid(joinArgs[1]) {
+// joinTargetsByRequest resolves the tables referenced by the _join clauses, in
+// request order. A target inherits the queried schema unless it names one, and
+// a table the statement would name twice -- joined twice, or joined to the
+// queried table itself -- is rejected the same way JoinByRequest rejects it, so
+// a request the query builder cannot honour never reaches column resolution. A
+// clause that cannot be resolved at all is left alone: JoinByRequest is the
+// single place that turns _join into SQL and rejects the request there.
+func joinTargetsByRequest(r *http.Request, schema, table string) (targets []joinTarget, err error) {
+	for _, clause := range r.URL.Query()["_join"] {
+		target, ok := joinTargetByClause(clause, schema)
+		if !ok {
+			continue
+		}
+		if target.table == table ||
+			slices.ContainsFunc(targets, func(t joinTarget) bool { return t.table == target.table }) {
+			return nil, errDuplicateJoin(target.table)
+		}
+		targets = append(targets, target)
+	}
+	return
+}
+
+func joinTargetByClause(clause, schema string) (target joinTarget, ok bool) {
+	joinArgs := strings.Split(clause, ":")
+	if len(joinArgs) != 5 {
 		return
 	}
 	parts := strings.Split(joinArgs[1], ".")
+	for _, part := range parts {
+		if !ident.IsValid(part) {
+			return
+		}
+	}
 	switch len(parts) {
 	case 1:
-		return schema, parts[0], true
+		return joinTarget{schema: schema, table: parts[0]}, true
 	case 2:
-		return parts[0], parts[1], true
+		return joinTarget{schema: parts[0], table: parts[1]}, true
 	}
 	return
 }
 
-func qualifyFields(table string, fields []string) (qualified []string) {
-	if !ident.IsValid(table) {
-		return slices.Clone(fields)
+// joinedTable is one table of a joined query and the columns its own
+// permissions allow the caller to read.
+type joinedTable struct {
+	table   string
+	allowed []string
+}
+
+// joinedFields builds the select list of a query that carries a _join: every
+// table contributes only the columns its own permissions allow, qualified with
+// its table name so a column present in more than one of them is never
+// ambiguous. The queried table always comes first.
+func (adapter *postgres) joinedFields(database, table string, targets []joinTarget, allowedFields, cols []string, op, userName string) (fields []string) {
+	tables := make([]joinedTable, 0, len(targets)+1)
+	tables = append(tables, joinedTable{table: table, allowed: allowedFields})
+	for _, target := range targets {
+		var joinAllowed []string
+		if adapter.TablePermissions(database, target.schema, target.table, op, userName) {
+			joinAllowed = adapter.fieldsByPermission(database, target.schema, target.table, op, userName)
+		}
+		tables = append(tables, joinedTable{table: target.table, allowed: joinAllowed})
 	}
-	for _, field := range fields {
-		if field == "*" {
-			qualified = append(qualified, table+".*")
+	if len(cols) == 0 {
+		return allJoinedFields(tables)
+	}
+	for _, col := range cols {
+		if col == "*" {
+			fields = append(fields, allJoinedFields(tables)...)
 			continue
 		}
-		if strings.Contains(field, ".") || !ident.IsValid(field) {
-			qualified = append(qualified, field)
-			continue
+		if field, permitted := permittedJoinedField(col, tables); permitted {
+			fields = append(fields, field)
 		}
-		qualified = append(qualified, table+"."+field)
 	}
 	return
 }
 
-func qualifiedAsterisk(table string) (qualified string, ok bool) {
-	if !ident.IsValid(table) {
+// allJoinedFields is the select list of a join without _select: every permitted
+// column of every joined table.
+func allJoinedFields(tables []joinedTable) (fields []string) {
+	for _, t := range tables {
+		fields = append(fields, tableFields(t.table, t.allowed)...)
+	}
+	return
+}
+
+// tableFields renders one side of a join. A table allowed every column yields
+// "<table>.*" rather than a bare "*", which would also expand the other side of
+// the join and defeat its restrictions.
+func tableFields(table string, allowed []string) (fields []string) {
+	if len(allowed) == 0 {
 		return
 	}
-	return table + ".*", true
+	if containsAsterisk(allowed) {
+		return []string{table + ".*"}
+	}
+	for _, field := range allowed {
+		fields = append(fields, qualifyField(table, field))
+	}
+	return
+}
+
+// permittedJoinedField resolves one _select entry against the joined tables. A
+// qualified entry is checked against the table it names; a bare entry belongs
+// to the queried table, so a joined table's columns must be selected as
+// "<table>.<column>".
+func permittedJoinedField(col string, tables []joinedTable) (field string, permitted bool) {
+	queried := tables[0]
+	if checkField(col, queried.allowed) != "" {
+		return qualifyField(queried.table, col), true
+	}
+	if prefix, name, qualified := strings.Cut(col, "."); qualified && !strings.Contains(name, ".") {
+		for _, t := range tables {
+			if t.table == prefix {
+				return col, permits(t.allowed, name)
+			}
+		}
+		return "", false
+	}
+	return qualifyField(queried.table, col), containsAsterisk(queried.allowed)
+}
+
+// permits reports whether an ACL field list covers field.
+func permits(allowed []string, field string) bool {
+	return containsAsterisk(allowed) || checkField(field, allowed) != ""
+}
+
+// qualifyField prefixes a column with the table it belongs to so it cannot be
+// ambiguous in a join. Anything that is not a plain identifier -- an aggregate,
+// an already qualified column -- is kept as the caller wrote it.
+func qualifyField(table, field string) string {
+	if strings.Contains(field, ".") || !ident.IsValid(field) || !ident.IsValid(table) {
+		return field
+	}
+	return table + "." + field
 }
 
 func checkField(col string, fields []string) (p string) {
@@ -2226,6 +2328,7 @@ func sanitizeSelectField(field string) (string, error) {
 	if field == "*" {
 		return "*", nil
 	}
+	// "<table>.*" is how a join asks for every column of one of its tables.
 	if prefix, found := strings.CutSuffix(field, ".*"); found {
 		q, qerr := ident.Quote(prefix)
 		if qerr != nil {
