@@ -1,6 +1,7 @@
 package controllers_test
 
 import (
+	"io"
 	"net/http"
 	"net/url"
 	"sort"
@@ -491,6 +492,86 @@ func TestJoin_SelfJoinIsRejected(t *testing.T) {
 			"?_join=inner:public.department:department.emp_id:$eq:department.d_id",
 		nil, http.MethodGet, http.StatusBadRequest, "JoinSelf",
 		"invalid join clause")
+
+	// The collision does not have to be the first clause: a legitimate join
+	// ahead of it must not carry the request through.
+	testutils.DoRequest(
+		t, helpers.ServerURL(t)+"/prest-test/public/department"+
+			"?_join=inner:employee:department.emp_id:$eq:employee.id"+
+			"&_join=left:department:department.d_id:$eq:department.emp_id",
+		nil, http.MethodGet, http.StatusBadRequest, "JoinSelf",
+		"invalid join clause")
+
+	// _select names only columns the caller may read, so the request would
+	// otherwise be well formed: the join is what refuses it.
+	helpers.DoAuthRequest(
+		t, authBase+"/prest-test/public/department"+
+			"?_join=inner:department:department.emp_id:$eq:department.d_id"+
+			"&_select=dept",
+		nil, http.MethodGet, token, http.StatusBadRequest, "JoinSelf",
+		"invalid join clause")
+}
+
+// TestJoin_CollisionIsRefusedBeforeTheDatabase is the point of catching these
+// up front rather than letting Postgres do it: the caller gets pREST's own
+// error, and no driver internals. If a collision ever slips through to the
+// database again, the body carries "pq: ... specified more than once (42712)"
+// and these assertions fail.
+func TestJoin_CollisionIsRefusedBeforeTheDatabase(t *testing.T) {
+	base := helpers.ServerURL(t)
+
+	var testCases = []struct {
+		description string
+		url         string
+	}{
+		{
+			"the queried table joined to itself",
+			"/prest-test/public/department" +
+				"?_join=inner:department:department.emp_id:$eq:department.d_id",
+		},
+		{
+			"one table joined twice",
+			"/prest-test/public/department" +
+				"?_join=inner:employee:department.emp_id:$eq:employee.id" +
+				"&_join=left:employee:department.d_id:$eq:employee.id",
+		},
+		{
+			"a third clause colliding with the first",
+			"/prest-test/public/department" +
+				"?_join=inner:employee:department.emp_id:$eq:employee.id" +
+				"&_join=left:employee_badge:department.emp_id:$eq:employee_badge.emp_id" +
+				"&_join=inner:employee:department.d_id:$eq:employee.id",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			body := doRequestBody(t, base+tc.url)
+
+			require.Contains(t, body, "invalid join clause",
+				"expected pREST's own join error")
+			require.NotContains(t, body, "pq:",
+				"driver error reached the client: %s", body)
+			require.NotContains(t, body, "42712",
+				"driver SQLSTATE reached the client: %s", body)
+		})
+	}
+}
+
+// doRequestBody performs a GET and returns the raw body, for assertions about
+// what a response must *not* contain -- which the shared helpers, being
+// substring-contains only, cannot express.
+func doRequestBody(t *testing.T, url string) string {
+	t.Helper()
+
+	resp, err := http.Get(url)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode, "body: %s", body)
+	return string(body)
 }
 
 // TestJoinRestricted_QueriedTableIsUnreadable: reversing the join does not

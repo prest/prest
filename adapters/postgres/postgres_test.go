@@ -3925,6 +3925,131 @@ func TestFieldsPermissions_JoinSelfJoin(t *testing.T) {
 	require.Nil(t, fields)
 }
 
+// TestFieldsPermissions_JoinCollisionReachesBothRestrictModes is the guard for
+// where the collision check sits. Resolving the join targets happens *above* the
+// restrict check, so a join the query builder could never honour is refused the
+// same way whether or not access.restrict is on. Move that resolution back below
+// the early return and the unrestricted half of this table goes green in the
+// wrong way: the request reaches Postgres and the caller gets the driver's
+// "table name %q specified more than once" instead.
+func TestFieldsPermissions_JoinCollisionReachesBothRestrictModes(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		description string
+		restrict    bool
+		op          string
+		url         string
+		wantErr     bool
+	}{
+		{
+			"restricted: the queried table joined to itself is refused",
+			true, "read",
+			"/public/department?_join=inner:department:department.emp_id:$eq:department.d_id",
+			true,
+		},
+		{
+			"unrestricted: the queried table joined to itself is refused just the same",
+			false, "read",
+			"/public/department?_join=inner:department:department.emp_id:$eq:department.d_id",
+			true,
+		},
+		{
+			"restricted: one table joined twice is refused",
+			true, "read",
+			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id" +
+				"&_join=left:employee:department.d_id:$eq:employee.id",
+			true,
+		},
+		{
+			"unrestricted: one table joined twice is refused just the same",
+			false, "read",
+			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id" +
+				"&_join=left:employee:department.d_id:$eq:employee.id",
+			true,
+		},
+		{
+			"unrestricted: naming a schema does not make it a different relation",
+			false, "read",
+			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id" +
+				"&_join=left:public.employee:department.d_id:$eq:employee.id",
+			true,
+		},
+		{
+			"unrestricted: the queried table under its schema is still the queried table",
+			false, "read",
+			"/public/department?_join=inner:public.department:department.emp_id:$eq:department.d_id",
+			true,
+		},
+		{
+			// delete returns early too, and that early return is also below the
+			// resolution. No HTTP route reaches this today; pinned so the
+			// behaviour is deliberate rather than incidental.
+			"delete: the early return does not skip the collision check either",
+			true, "delete",
+			"/public/department?_join=inner:department:department.emp_id:$eq:department.d_id",
+			true,
+		},
+		{
+			"unrestricted: distinct tables are not a collision",
+			false, "read",
+			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id" +
+				"&_join=left:employee_badge:department.emp_id:$eq:employee_badge.emp_id",
+			false,
+		},
+		{
+			"restricted: distinct tables are not a collision",
+			true, "read",
+			"/public/department?_join=inner:employee:department.emp_id:$eq:employee.id" +
+				"&_join=left:ignored_table:department.d_id:$eq:ignored_table.d_id",
+			false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := joinPermissionTestConf()
+			cfg.AccessConf.Restrict = tc.restrict
+			adapter := testAdapter(cfg)
+
+			req, err := http.NewRequest(http.MethodGet, tc.url, nil)
+			require.NoError(t, err)
+
+			fields, err := adapter.FieldsPermissions(req, "", "public", "department", tc.op, "")
+			if !tc.wantErr {
+				require.NoError(t, err)
+				require.NotEmpty(t, fields)
+				return
+			}
+			require.ErrorIs(t, err, ErrInvalidJoinClause)
+			require.Contains(t, err.Error(), "is joined more than once")
+			require.Nil(t, fields)
+		})
+	}
+}
+
+// TestFieldsPermissions_JoinCollisionDoesNotMaskColumnErrors: the join targets
+// resolve after the _select columns are parsed, so a request that is malformed
+// in both ways still reports the column error. Swapping the two would change
+// which error a caller sees for an unrelated mistake.
+func TestFieldsPermissions_JoinCollisionDoesNotMaskColumnErrors(t *testing.T) {
+	t.Parallel()
+
+	adapter := testAdapter(joinPermissionTestConf())
+
+	req, err := http.NewRequest(http.MethodGet,
+		"/public/department?_select=invalid:field&_groupby=dept"+
+			"&_join=inner:department:department.emp_id:$eq:department.d_id", nil)
+	require.NoError(t, err)
+
+	fields, err := adapter.FieldsPermissions(req, "", "public", "department", "read", "")
+	require.ErrorContains(t, err, "error on parse columns from request")
+	require.NotErrorIs(t, err, ErrInvalidJoinClause)
+	require.Nil(t, fields)
+}
+
 // TestFieldsPermissions_JoinUnrestricted asserts the join branch stays inert
 // when access.restrict is off: the request alone decides the select list.
 func TestFieldsPermissions_JoinUnrestricted(t *testing.T) {
@@ -3969,6 +4094,12 @@ func Test_joinTargetsByRequest(t *testing.T) {
 			nil, true},
 		{"the queried table joined to itself under its schema is rejected",
 			[]string{"inner:public.department:a.b:$eq:c.d"},
+			nil, true},
+		{"the queried table joined by a later clause is rejected too",
+			[]string{"inner:employee:a.b:$eq:c.d", "left:department:c.d:$eq:e.f"},
+			nil, true},
+		{"a third clause colliding with the first is rejected",
+			[]string{"inner:employee:a.b:$eq:c.d", "left:employee_badge:c.d:$eq:e.f", "inner:employee:e.f:$eq:g.h"},
 			nil, true},
 		{"a table joined twice is rejected even under another schema, since SQL exposes one name",
 			[]string{"inner:employee:a.b:$eq:c.d", "left:other.employee:c.d:$eq:e.f"},
@@ -4020,4 +4151,29 @@ func Test_qualifyField(t *testing.T) {
 	require.Equal(t, `MAX("age")`, qualifyField("employee", `MAX("age")`))
 	// a table name that is not a valid identifier can never be quoted safely
 	require.Equal(t, "id", qualifyField("my-table", "id"))
+}
+
+// Test_joinTargetsByRequest_NoQueriedTable documents the guard on the
+// self-join comparison: with no queried table to compare against, only
+// clause-vs-clause collisions are detectable. FieldsPermissions always passes
+// one, so this is about the helper not misfiring on an empty string.
+func Test_joinTargetsByRequest_NoQueriedTable(t *testing.T) {
+	t.Parallel()
+
+	req, err := http.NewRequest(http.MethodGet,
+		"/public/department?_join=inner:department:a.b:$eq:c.d", nil)
+	require.NoError(t, err)
+
+	targets, err := joinTargetsByRequest(req, "public", "")
+	require.NoError(t, err)
+	require.Equal(t, []joinTarget{{"public", "department"}}, targets)
+
+	// Clause-vs-clause collisions are still caught without a queried table.
+	req, err = http.NewRequest(http.MethodGet,
+		"/public/department?_join=inner:employee:a.b:$eq:c.d&_join=left:employee:c.d:$eq:e.f", nil)
+	require.NoError(t, err)
+
+	targets, err = joinTargetsByRequest(req, "public", "")
+	require.ErrorIs(t, err, ErrInvalidJoinClause)
+	require.Nil(t, targets)
 }
