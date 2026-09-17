@@ -22,13 +22,16 @@ pluginpath = "./lib"
 # Directory of .sql migration files.
 # migrations = "./migrations"
 
-# Custom Go plugin middlewares, loaded from `pluginpath`, run before request
-# handling. Each entry maps to a compiled .so file and the exported function
-# name to call.
+# Custom Go plugin middlewares, loaded from `pluginpath`/middlewares/, run
+# before request handling. Each entry is an array-of-tables item (note the
+# double brackets). `file` is the .so basename; `func` is the prefix of the
+# exported `{func}MiddlewareLoad` symbol (see docs.prestd.com/plugins).
+# Plugins must be built with the same Go version/OS/arch and preferably the
+# same vendor tree as prestd (`go mod vendor` + -trimpath -ldflags "-s -w").
 #
 # [[pluginmiddlewarelist]]
-# file = "custom_auth"
-# func = "Middleware"
+# file = "hello"
+# func = "Hello"
 
 
 # ------------------------------------------------------------------------
