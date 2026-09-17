@@ -20,11 +20,35 @@ Dependencies point **inward**. Handlers depend on ports, not `adapters/postgres`
 ## Adding a feature (checklist)
 
 1. **Failing unit test (TDD)** — see `unit-tests-tdd.mdc`
-2. **Port** — add/extend interface in `adapters/` if needed
+2. **Port** — reuse an existing port if the data is already reachable; if genuinely new behaviour is needed, add a **new narrow interface**. Never change an existing port method's signature — see *Adapter compatibility* below
 3. **Adapter** — implement in `adapters/postgres/` (or other driven adapter)
 4. **Handler** — methods on focused struct; accept port via constructor/`Deps`
 5. **Route** — register in `router/`; middleware in `middlewares/` if needed
 6. **Mocks** — `make mockgen`; unit-test with `adapters/mockgen/`
 7. **Integration** — `integration/` E2E for HTTP/controller behavior
+
+## Adapter compatibility is a hard constraint
+
+`adapters.Adapter` and the narrow ports it embeds are the **public extension point** —
+adapters outside this repo implement them. Changing an existing port method breaks every
+one of them at compile time, with no deprecation path.
+
+| Do | Don't |
+|----|-------|
+| Use data the method already receives (`*http.Request`, or a port that already takes the value) | Add or remove a parameter on an existing port method |
+| Add a **new, narrow, optional** interface and type-assert at the call site | Change a return type or add a return value |
+| Put opt-in behaviour behind a new interface | Add a method to an existing port interface — that breaks implementers too |
+| Land breaking signature changes only in a major release, documented | Treat a green in-repo build as proof of compatibility |
+
+**A green build and `make mockgen` are not evidence.** `adapters/mockgen/*` is regenerated
+from whatever the interface currently says, and `adapters/mock` is hand-edited to match, so
+both always compile. `adapters/compat_test.go` is the contract: a frozen stub written the way
+an out-of-tree adapter writes one. If it stops compiling, the interface change is the bug —
+rework the change, do not update the stub.
+
+Before editing anything in `adapters/*.go`, check whether the value is already reachable.
+Most handlers pass the whole `*http.Request`, and `PermissionsChecker` already receives
+`database, schema, table` — a check needing the queried table belongs there, not on a port
+method that would have to grow a parameter to get it.
 
 Samples and SOLID essay: `@.github/copilot-instructions.md`.

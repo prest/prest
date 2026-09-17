@@ -891,6 +891,11 @@ func (adapter *postgres) SchemaClause(req *http.Request) (query string, hasCount
 
 // JoinByRequest implements join in queries. A request may repeat _join, and
 // every clause becomes its own JOIN, in the order it was given.
+//
+// This rejects a table two clauses would both bring in, which needs nothing but
+// the clauses themselves. A clause joining the *queried* table is the same kind
+// of collision but needs to know which table that is, so it is rejected by
+// FieldsPermissions instead, which already receives it.
 func (adapter *postgres) JoinByRequest(r *http.Request) (values []string, err error) {
 	joined := make(map[string]bool)
 	for _, clause := range r.URL.Query()["_join"] {
@@ -913,10 +918,11 @@ func (adapter *postgres) JoinByRequest(r *http.Request) (values []string, err er
 	return
 }
 
-// errDuplicateJoin reports a table joined more than once. A _join carries no
-// alias, so the statement Postgres would receive names the same table twice and
-// it rejects it as "table name %q specified more than once"; saying so before
-// the query is built keeps the driver's error off the response.
+// errDuplicateJoin reports a table the statement would name more than once --
+// either joined twice, or joined to the very table being queried. A _join
+// carries no alias, so Postgres would reject it as "table name %q specified
+// more than once"; saying so before the query is built keeps the driver's
+// error off the response.
 func errDuplicateJoin(table string) error {
 	return errors.Wrapf(ErrInvalidJoinClause, "table %q is joined more than once", table)
 }
@@ -1908,6 +1914,18 @@ func (adapter *postgres) FieldsPermissions(r *http.Request, database, schema, ta
 		err = fmt.Errorf("error on parse columns from request: %s", err)
 		return
 	}
+	// A _join puts more tables in the FROM clause. Resolving them here, above
+	// the restrict check, serves two purposes: it rejects a join the query
+	// builder could never honour -- one naming the queried table, which
+	// JoinByRequest cannot see -- identically in both restrict modes, and it
+	// gives the restricted branch below the tables whose permitted columns the
+	// select list has to carry. Building that list from the queried table alone
+	// is what made a restricted join return only its own columns (issue #364).
+	targets, err := joinTargetsByRequest(r, schema, table)
+	if err != nil {
+		return nil, err
+	}
+
 	restrict := adapter.cfg.AccessConf.Restrict
 	if !restrict || op == "delete" {
 		if len(cols) > 0 {
@@ -1919,14 +1937,6 @@ func (adapter *postgres) FieldsPermissions(r *http.Request, database, schema, ta
 	}
 	allowedFields := adapter.fieldsByPermission(database, schema, table, op, userName)
 
-	// A _join puts more tables in the FROM clause, so the select list has to
-	// carry their permitted columns as well. Building it from the queried table
-	// alone is what made a restricted join return only the queried table's
-	// columns (issue #364).
-	targets, err := joinTargetsByRequest(r, schema)
-	if err != nil {
-		return nil, err
-	}
 	if len(targets) > 0 {
 		fields = adapter.joinedFields(database, table, targets, allowedFields, cols, op, userName)
 		return
@@ -1954,17 +1964,19 @@ type joinTarget struct {
 
 // joinTargetsByRequest resolves the tables referenced by the _join clauses, in
 // request order. A target inherits the queried schema unless it names one, and
-// a table joined twice is rejected the same way JoinByRequest rejects it, so a
-// request the query builder cannot honour never reaches column resolution. A
+// a table the statement would name twice -- joined twice, or joined to the
+// queried table itself -- is rejected the same way JoinByRequest rejects it, so
+// a request the query builder cannot honour never reaches column resolution. A
 // clause that cannot be resolved at all is left alone: JoinByRequest is the
 // single place that turns _join into SQL and rejects the request there.
-func joinTargetsByRequest(r *http.Request, schema string) (targets []joinTarget, err error) {
+func joinTargetsByRequest(r *http.Request, schema, table string) (targets []joinTarget, err error) {
 	for _, clause := range r.URL.Query()["_join"] {
 		target, ok := joinTargetByClause(clause, schema)
 		if !ok {
 			continue
 		}
-		if slices.ContainsFunc(targets, func(t joinTarget) bool { return t.table == target.table }) {
+		if target.table == table ||
+			slices.ContainsFunc(targets, func(t joinTarget) bool { return t.table == target.table }) {
 			return nil, errDuplicateJoin(target.table)
 		}
 		targets = append(targets, target)

@@ -3908,6 +3908,23 @@ func TestFieldsPermissions_JoinDuplicateTable(t *testing.T) {
 	require.Nil(t, fields)
 }
 
+// TestFieldsPermissions_JoinSelfJoin: the statement already names the queried
+// table, so joining it to itself would name the same relation twice. It is
+// rejected exactly like a table joined twice.
+func TestFieldsPermissions_JoinSelfJoin(t *testing.T) {
+	t.Parallel()
+
+	adapter := testAdapter(joinPermissionTestConf())
+
+	req, err := http.NewRequest(http.MethodGet,
+		"/public/department?_join=inner:department:department.emp_id:$eq:department.d_id", nil)
+	require.NoError(t, err)
+
+	fields, err := adapter.FieldsPermissions(req, "", "public", "department", "read", "")
+	require.ErrorIs(t, err, ErrInvalidJoinClause)
+	require.Nil(t, fields)
+}
+
 // TestFieldsPermissions_JoinUnrestricted asserts the join branch stays inert
 // when access.restrict is off: the request alone decides the select list.
 func TestFieldsPermissions_JoinUnrestricted(t *testing.T) {
@@ -3947,6 +3964,12 @@ func Test_joinTargetsByRequest(t *testing.T) {
 		{"a table joined twice is rejected",
 			[]string{"inner:employee:a.b:$eq:c.d", "left:employee:c.d:$eq:e.f"},
 			nil, true},
+		{"the queried table joined to itself is rejected",
+			[]string{"inner:department:a.b:$eq:c.d"},
+			nil, true},
+		{"the queried table joined to itself under its schema is rejected",
+			[]string{"inner:public.department:a.b:$eq:c.d"},
+			nil, true},
 		{"a table joined twice is rejected even under another schema, since SQL exposes one name",
 			[]string{"inner:employee:a.b:$eq:c.d", "left:other.employee:c.d:$eq:e.f"},
 			nil, true},
@@ -3968,7 +3991,7 @@ func Test_joinTargetsByRequest(t *testing.T) {
 			req, err := http.NewRequest(http.MethodGet, "/public/department?"+joinQuery(tc.joins), nil)
 			require.NoError(t, err)
 
-			targets, err := joinTargetsByRequest(req, "public")
+			targets, err := joinTargetsByRequest(req, "public", "department")
 			if tc.wantErr {
 				require.ErrorIs(t, err, ErrInvalidJoinClause)
 			} else {

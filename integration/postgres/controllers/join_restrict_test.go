@@ -298,8 +298,10 @@ func TestJoinRestricted_SelectCannotWidenPermittedColumns(t *testing.T) {
 			"/prest-test/public/department" + employeeJoin + "&_select=department.*",
 		},
 		{
-			// A bare * is the same request spelled differently.
-			"a bare asterisk does not expand past the field lists",
+			// The same column named without its table qualifier: a bare name
+			// resolves against the queried table, so it must not reach a
+			// joined table the caller may not read.
+			"an unqualified column of a table without read permission is not selectable",
 			"/prest-test/public/department" + secretJoin + "&_select=ssn",
 		},
 	}
@@ -459,6 +461,36 @@ func TestJoin_RequiresAuth(t *testing.T) {
 	helpers.DoAuthRequest(
 		t, base+departmentEmployeeJoin,
 		nil, http.MethodGet, "", http.StatusUnauthorized, "JoinRequiresAuth")
+}
+
+// TestJoin_SelfJoinIsRejected: the statement already names the queried table,
+// so a clause joining it to itself names the same relation twice. Before this
+// was caught up front the request reached the database and answered with the
+// driver's own error; it now fails on the join clause, on both servers.
+func TestJoin_SelfJoinIsRejected(t *testing.T) {
+	selfJoin := "/prest-test/public/department" +
+		"?_join=inner:department:department.emp_id:$eq:department.d_id"
+
+	// restrict = false: rejected while the join clause is built.
+	testutils.DoRequest(
+		t, helpers.ServerURL(t)+selfJoin,
+		nil, http.MethodGet, http.StatusBadRequest, "JoinSelf",
+		"invalid join clause")
+
+	// restrict = true: rejected while the permitted columns are resolved.
+	authBase := helpers.AuthServerURL(t)
+	token := helpers.LoginToken(t, authBase, "test@postgres.rest", "123456")
+	helpers.DoAuthRequest(
+		t, authBase+selfJoin,
+		nil, http.MethodGet, token, http.StatusBadRequest, "JoinSelf",
+		"invalid join clause")
+
+	// Naming the schema does not make it a different relation.
+	testutils.DoRequest(
+		t, helpers.ServerURL(t)+"/prest-test/public/department"+
+			"?_join=inner:public.department:department.emp_id:$eq:department.d_id",
+		nil, http.MethodGet, http.StatusBadRequest, "JoinSelf",
+		"invalid join clause")
 }
 
 // TestJoinRestricted_QueriedTableIsUnreadable: reversing the join does not

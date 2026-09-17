@@ -851,6 +851,7 @@ func TestJoinByRequest(t *testing.T) {
 		{"Join invalid operator", "/prest-test/public/test?_join=inner:test2:test2.name:notexist:test.name", []string{}, true},
 		{"Join invalid fields", "/prest-test/public/test?_join=inner:0test2:test2.name:notexist:test.name", []string{}, true},
 		{"Join invalid type", "/prest-test/public/test?_join=weird:test2:test2.name:$eq:test.name", []string{}, true},
+		{"Join the same table twice", "/prest-test/public/test?_join=inner:test2:test2.name:$eq:test.name&_join=left:test2:test2.name:$eq:test.name", []string{}, true},
 	}
 
 	for _, tc := range testCases {
