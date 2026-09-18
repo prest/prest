@@ -163,15 +163,14 @@ func TestLoadMiddlewareFuncWithFakePlugin(t *testing.T) {
 	soPath := filepath.Join(mwDir, "hello.so")
 	require.NoError(t, os.WriteFile(soPath, []byte("placeholder"), 0o644))
 
-	orig := pluginOpen
 	t.Cleanup(func() {
-		pluginOpen = orig
 		loadedMiddlewareMu.Lock()
 		delete(loadedMiddlewareFunc, soPath)
 		loadedMiddlewareMu.Unlock()
 	})
 
-	pluginOpen = func(path string) (pluginLib, error) {
+	plg := New(&config.Prest{PluginPath: dir})
+	plg.open = func(path string) (pluginLib, error) {
 		assert.Equal(t, soPath, path)
 		return fakePluginLib{symbols: map[string]any{
 			"HelloMiddlewareLoad": func() negroni.Handler {
@@ -182,8 +181,6 @@ func TestLoadMiddlewareFuncWithFakePlugin(t *testing.T) {
 			},
 		}}, nil
 	}
-
-	plg := New(&config.Prest{PluginPath: dir})
 	fn, err := plg.loadMiddlewareFunc("hello", "Hello")
 	require.NoError(t, err)
 	require.NotNil(t, fn)
@@ -205,21 +202,11 @@ func TestMiddlewareLoadsConfiguredPlugin(t *testing.T) {
 	soPath := filepath.Join(mwDir, "hello.so")
 	require.NoError(t, os.WriteFile(soPath, []byte("placeholder"), 0o644))
 
-	orig := pluginOpen
 	t.Cleanup(func() {
-		pluginOpen = orig
 		loadedMiddlewareMu.Lock()
 		delete(loadedMiddlewareFunc, soPath)
 		loadedMiddlewareMu.Unlock()
 	})
-	pluginOpen = func(path string) (pluginLib, error) {
-		return fakePluginLib{symbols: map[string]any{
-			"HelloMiddlewareLoad": func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
-				rw.Header().Set("X-Hello-Middleware", "Hello Middleware")
-				next(rw, rq)
-			},
-		}}, nil
-	}
 
 	plg := New(&config.Prest{
 		PluginPath: dir,
@@ -227,6 +214,14 @@ func TestMiddlewareLoadsConfiguredPlugin(t *testing.T) {
 			{File: "hello", Func: "Hello"},
 		},
 	})
+	plg.open = func(path string) (pluginLib, error) {
+		return fakePluginLib{symbols: map[string]any{
+			"HelloMiddlewareLoad": func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc) {
+				rw.Header().Set("X-Hello-Middleware", "Hello Middleware")
+				next(rw, rq)
+			},
+		}}, nil
+	}
 	h := plg.Middleware()
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil), func(http.ResponseWriter, *http.Request) {})
@@ -238,9 +233,7 @@ func TestLoadFuncWithFakePlugin(t *testing.T) {
 	soPath := filepath.Join(dir, "hello.so")
 	require.NoError(t, os.WriteFile(soPath, []byte("placeholder"), 0o644))
 
-	orig := pluginOpen
 	t.Cleanup(func() {
-		pluginOpen = orig
 		loadedFuncMu.Lock()
 		delete(loadedFunc, soPath)
 		loadedFuncMu.Unlock()
@@ -248,7 +241,8 @@ func TestLoadFuncWithFakePlugin(t *testing.T) {
 
 	httpVars := map[string]string{}
 	urlQuery := map[string][]string{}
-	pluginOpen = func(path string) (pluginLib, error) {
+	plg := New(&config.Prest{PluginPath: dir})
+	plg.open = func(path string) (pluginLib, error) {
 		return fakePluginLib{symbols: map[string]any{
 			"HTTPVars":        &httpVars,
 			"URLQuery":        &urlQuery,
@@ -258,8 +252,6 @@ func TestLoadFuncWithFakePlugin(t *testing.T) {
 			},
 		}}, nil
 	}
-
-	plg := New(&config.Prest{PluginPath: dir})
 	r := mux.SetURLVars(httptest.NewRequest(http.MethodGet, "/_PLUGIN/hello/Hello", nil), map[string]string{
 		"file": "hello", "func": "Hello",
 	})
@@ -320,9 +312,12 @@ func TestMiddlewareMissingPluginFallsBackToNoop(t *testing.T) {
 func TestLoadMiddlewareFuncMissingSO(t *testing.T) {
 	t.Parallel()
 
-	plg := New(&config.Prest{PluginPath: t.TempDir()})
+	dir := t.TempDir()
+	plg := New(&config.Prest{PluginPath: dir})
 	_, err := plg.loadMiddlewareFunc("missing", "Hello")
 	require.Error(t, err)
+	require.ErrorContains(t, err, "plugin open")
+	require.ErrorContains(t, err, filepath.Join(dir, "middlewares", "missing.so"))
 }
 
 func TestHandlerMissingPlugin(t *testing.T) {

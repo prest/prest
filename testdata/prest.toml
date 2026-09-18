@@ -7,6 +7,13 @@ metadata = ["first_name", "last_name", "last_login"]
 [http]
 port = 3000
 
+# Hello middleware plugin used by integration/postgres/plugins tests.
+pluginpath = "./lib"
+
+[[pluginmiddlewarelist]]
+file = "hello"
+func = "Hello"
+
 [cache]
 enabled = true
 

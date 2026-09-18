@@ -25,15 +25,10 @@ type LoadedPlugin struct {
 	Plugin pluginLib
 }
 
-// pluginLib is the subset of *plugin.Plugin used after Open. Tests swap
-// pluginOpen to inject a fake without building a real .so.
+// pluginLib is the subset of *plugin.Plugin used after Open. Tests inject a
+// fake via Plugins.open without building a real .so.
 type pluginLib interface {
 	Lookup(string) (plugin.Symbol, error)
-}
-
-// pluginOpen opens a Go plugin .so. Overridable in unit tests.
-var pluginOpen = func(path string) (pluginLib, error) {
-	return plugin.Open(path)
 }
 
 // PluginFuncReturn structure for holding return value and status of plugin function.
@@ -44,12 +39,18 @@ type PluginFuncReturn struct {
 
 // Plugins holds plugin configuration for handler and middleware loading.
 type Plugins struct {
-	cfg *config.Prest
+	cfg  *config.Prest
+	open func(string) (pluginLib, error)
 }
 
 // New creates a Plugins instance for the given config.
 func New(cfg *config.Prest) *Plugins {
-	return &Plugins{cfg: cfg}
+	return &Plugins{
+		cfg: cfg,
+		open: func(path string) (pluginLib, error) {
+			return plugin.Open(path)
+		},
+	}
 }
 
 // loadedFunc global variable to control plugins loaded, blocking duplicate loading
@@ -83,9 +84,9 @@ func (plg *Plugins) loadFunc(fileName, funcName string, r *http.Request) (ret Pl
 	p := loadedPlugin.Plugin
 	if !loadedPlugin.Loaded {
 		loadedFuncMu.Unlock()
-		p, err = pluginOpen(libPath)
+		p, err = plg.open(libPath)
 		if err != nil {
-			return
+			return ret, fmt.Errorf("plugin open %s: %w", libPath, err)
 		}
 		loadedFuncMu.Lock()
 		if existing, ok := loadedFunc[libPath]; ok && existing.Loaded {
@@ -194,9 +195,9 @@ func (plg *Plugins) loadMiddlewareFunc(fileName, funcName string) (handlerFunc n
 	p := loadedPlugin.Plugin
 	if !loadedPlugin.Loaded {
 		loadedMiddlewareMu.Unlock()
-		p, err = pluginOpen(libPath)
+		p, err = plg.open(libPath)
 		if err != nil {
-			return
+			return nil, fmt.Errorf("plugin open %s: %w", libPath, err)
 		}
 		loadedMiddlewareMu.Lock()
 		if existing, ok := loadedMiddlewareFunc[libPath]; ok && existing.Loaded {

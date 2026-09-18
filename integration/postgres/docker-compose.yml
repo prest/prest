@@ -80,7 +80,7 @@ services:
       PREST_PG_SINGLE: "false"
       PREST_HTTP_PORT: "3000"
     command: >-
-      bash -lc "export PATH=/usr/local/go/bin:/go/bin:$$PATH && apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && go run ./cmd/prestd/main.go"
+      bash -lc "export PATH=/usr/local/go/bin:/go/bin:$$PATH && apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && mkdir -p ./lib/middlewares && go build -buildmode=plugin -o ./lib/middlewares/hello.so ./lib/src/middlewares/hello.go && go run ./cmd/prestd/main.go"
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3000/_health || exit 1"]
       interval: 5s
