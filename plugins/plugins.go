@@ -22,7 +22,13 @@ var (
 // LoadedPlugin structure for controlling the loaded plugin
 type LoadedPlugin struct {
 	Loaded bool
-	Plugin *plugin.Plugin
+	Plugin pluginLib
+}
+
+// pluginLib is the subset of *plugin.Plugin used after Open. Tests inject a
+// fake via Plugins.open without building a real .so.
+type pluginLib interface {
+	Lookup(string) (plugin.Symbol, error)
 }
 
 // PluginFuncReturn structure for holding return value and status of plugin function.
@@ -33,12 +39,18 @@ type PluginFuncReturn struct {
 
 // Plugins holds plugin configuration for handler and middleware loading.
 type Plugins struct {
-	cfg *config.Prest
+	cfg  *config.Prest
+	open func(string) (pluginLib, error)
 }
 
 // New creates a Plugins instance for the given config.
 func New(cfg *config.Prest) *Plugins {
-	return &Plugins{cfg: cfg}
+	return &Plugins{
+		cfg: cfg,
+		open: func(path string) (pluginLib, error) {
+			return plugin.Open(path)
+		},
+	}
 }
 
 // loadedFunc global variable to control plugins loaded, blocking duplicate loading
@@ -72,9 +84,9 @@ func (plg *Plugins) loadFunc(fileName, funcName string, r *http.Request) (ret Pl
 	p := loadedPlugin.Plugin
 	if !loadedPlugin.Loaded {
 		loadedFuncMu.Unlock()
-		p, err = plugin.Open(libPath)
+		p, err = plg.open(libPath)
 		if err != nil {
-			return
+			return ret, fmt.Errorf("plugin open %s: %w", libPath, err)
 		}
 		loadedFuncMu.Lock()
 		if existing, ok := loadedFunc[libPath]; ok && existing.Loaded {
@@ -183,9 +195,9 @@ func (plg *Plugins) loadMiddlewareFunc(fileName, funcName string) (handlerFunc n
 	p := loadedPlugin.Plugin
 	if !loadedPlugin.Loaded {
 		loadedMiddlewareMu.Unlock()
-		p, err = plugin.Open(libPath)
+		p, err = plg.open(libPath)
 		if err != nil {
-			return
+			return nil, fmt.Errorf("plugin open %s: %w", libPath, err)
 		}
 		loadedMiddlewareMu.Lock()
 		if existing, ok := loadedMiddlewareFunc[libPath]; ok && existing.Loaded {
@@ -200,15 +212,33 @@ func (plg *Plugins) loadMiddlewareFunc(fileName, funcName string) (handlerFunc n
 	loadedMiddlewareMu.Unlock()
 	f, err := p.Lookup(fmt.Sprintf("%sMiddlewareLoad", funcName))
 	if err != nil {
-		slog.Error("unable to load middleware plugin function: %s", "funcName", funcName)
+		slog.Error("unable to load middleware plugin function", "funcName", funcName, "err", err)
 		return
 	}
-	handlerFunc, ok := f.(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc))
-	if !ok {
-		slog.Error("it not a negroni middleware function: %s", "funcName", funcName)
+	handlerFunc, err = adaptMiddlewareSymbol(f)
+	if err != nil {
+		slog.Error("it not a negroni middleware function", "funcName", funcName, "err", err)
 		return
 	}
 	return
+}
+
+// adaptMiddlewareSymbol converts a Lookup'd middleware export into a
+// negroni.HandlerFunc. The documented contract is a factory
+// (`func() negroni.Handler`); the legacy direct HandlerFunc shape is still
+// accepted for .so files built against the older assert.
+func adaptMiddlewareSymbol(f any) (negroni.HandlerFunc, error) {
+	if factory, ok := f.(func() negroni.Handler); ok {
+		h := factory()
+		if h == nil {
+			return nil, fmt.Errorf("negroni middleware factory returned nil")
+		}
+		return h.ServeHTTP, nil
+	}
+	if direct, ok := f.(func(rw http.ResponseWriter, rq *http.Request, next http.HandlerFunc)); ok {
+		return negroni.HandlerFunc(direct), nil
+	}
+	return nil, fmt.Errorf("symbol is not a negroni middleware factory or HandlerFunc")
 }
 
 // Middleware loads configured plugin middleware.
@@ -217,7 +247,7 @@ func (plg *Plugins) Middleware() negroni.Handler {
 		for _, plugin := range plg.cfg.PluginMiddlewareList {
 			fn, err := plg.loadMiddlewareFunc(plugin.File, plugin.Func)
 			if err != nil {
-				slog.Error("unable to load middleware plugin function: %s", "funcName", plugin.Func)
+				slog.Error("unable to load middleware plugin function", "funcName", plugin.Func, "err", err)
 				continue
 			}
 			if fn == nil {

@@ -23,7 +23,13 @@ echo -e "\n\n.:: GOLANG: DOWNLOAD MODULES"
 go mod download
 
 echo -e "\n\n.:: PRESTD: PLUGIN BUILD"
-go build -o ./lib/hello.so -buildmode=plugin ./lib/src/hello.go
+PLUGIN_FLAGS=(-buildmode=plugin -trimpath -ldflags "-s -w")
+if [ -d ./vendor ]; then
+    PLUGIN_FLAGS=(-mod=vendor "${PLUGIN_FLAGS[@]}")
+fi
+go build "${PLUGIN_FLAGS[@]}" -o ./lib/hello.so ./lib/src/hello.go
+mkdir -p ./lib/middlewares
+go build "${PLUGIN_FLAGS[@]}" -o ./lib/middlewares/hello.so ./lib/src/middlewares/hello.go
 
 mkdir -p ./testdata/queries
 chmod -R u+w ./testdata/queries

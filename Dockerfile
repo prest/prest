@@ -38,6 +38,9 @@ COPY --from=builder /workspace/prestd /bin/prestd
 COPY --from=builder /workspace/etc/entrypoint.sh /app/entrypoint.sh
 COPY --from=builder /workspace/lib /app/lib
 COPY --from=builder /workspace/etc/plugin /app/plugin
+# Same module identity as the prestd binary so entrypoint plugin rebuilds load.
+COPY --from=builder /workspace/go.mod /workspace/go.sum /app/
+COPY --from=builder /workspace/vendor /app/vendor
 WORKDIR /app
 ENTRYPOINT ["sh", "/app/entrypoint.sh"]
 

@@ -2,35 +2,26 @@ package plugins_test
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
-	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/integration/testutils"
-	"github.com/prest/prest/v2/plugins"
-	"github.com/urfave/negroni/v3"
 )
 
-func initMiddlewarePluginTestRouter(cfg *config.Prest) *negroni.Negroni {
-	cfg.PluginPath = helpers.PluginLibDir()
-	cfg.PluginMiddlewareList = []config.PluginMiddleware{
-		{File: "hello", Func: "Hello"},
-	}
-	plg := plugins.New(cfg)
-	r := negroni.New()
-	r.Use(plg.Middleware())
-	return r
-}
-
 func TestPluginsMiddleware(t *testing.T) {
-	cfg := helpers.LoadTestConfig(t)
-	server := httptest.NewServer(initMiddlewarePluginTestRouter(cfg))
-	defer server.Close()
+	base := helpers.ServerURL(t)
 
-	// Hit a stack that includes the Hello plugin middleware.
-	// Expected to succeed with HTTP status OK.
-	testutils.DoRequest(
-		t, server.URL+"/",
-		nil, "GET", http.StatusOK, "PluginsMiddleware")
+	// GET a CRUD route on the compose prestd service. Plugin middleware is
+	// wired on the CRUD stack (middlewares.NewCRUDStack); expected: 200 and
+	// X-Hello-Middleware from lib/src/middlewares/hello.so built at prestd start.
+	testutils.DoRequestExpectResponseHeaders(
+		t,
+		base+"/prest-test/public/test",
+		nil,
+		http.MethodGet,
+		http.StatusOK,
+		"PluginsMiddleware",
+		nil,
+		map[string]string{"X-Hello-Middleware": "Hello Middleware"},
+	)
 }

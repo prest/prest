@@ -89,6 +89,70 @@ func DoRequestWithHeaders(
 	}
 }
 
+// DoRequestExpectResponseHeaders is DoRequestWithHeaders plus assertions on
+// response header values (e.g. plugin middleware markers).
+func DoRequestExpectResponseHeaders(
+	t *testing.T,
+	url string,
+	r interface{},
+	method string,
+	expectedStatus int,
+	where string,
+	reqHeaders map[string]string,
+	wantRespHeaders map[string]string,
+	expectedBody ...string,
+) {
+	t.Helper()
+	var byt []byte
+	var err error
+
+	if r != nil {
+		byt, err = json.Marshal(r)
+		assert.Nil(t, err, "error on json marshal")
+	}
+
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(byt))
+	assert.Nil(t, err, "error on New Request")
+	if err != nil {
+		return
+	}
+
+	req.Header.Add("X-Application", "prest")
+	for k, v := range reqHeaders {
+		req.Header.Set(k, v)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	assert.Nil(t, err, "error on Do Request")
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	assert.Nil(t, err, "error on io ReadAll")
+	if err != nil {
+		return
+	}
+
+	bodyStr := string(body)
+	fmt.Printf("test: %s body: %s\n", t.Name(), bodyStr)
+	assert.Equal(t, expectedStatus, resp.StatusCode, where)
+
+	for k, want := range wantRespHeaders {
+		assert.Equal(t, want, resp.Header.Get(k), "%s: response header %s", where, k)
+	}
+
+	if len(expectedBody) > 0 {
+		for _, expected := range expectedBody {
+			assert.True(t,
+				strings.Contains(bodyStr, expected),
+				fmt.Sprintf("expected %s not found in body %s", expected, bodyStr))
+		}
+	}
+}
+
 // DoRequestJSON performs an HTTP request, asserts the response status, and
 // decodes the JSON body into target. Unlike DoRequest (substring checks only),
 // this exposes the parsed response so callers can assert on structure/order.
