@@ -883,3 +883,46 @@ func TestExposeConf_ListingPredicates(t *testing.T) {
 	require.True(t, partial.SchemaListingAllowed())
 	require.False(t, partial.TableListingAllowed())
 }
+
+// guard.enabled is a security switch: viper's GetBool would silently swallow a
+// non-boolean value and disable the guard, so an explicitly set but invalid
+// value must be carried on GuardConf.Invalid and fail closed instead.
+func TestParseGuardEnabledValidation(t *testing.T) {
+	parseGuard := func(t *testing.T) *Prest {
+		t.Helper()
+		t.Setenv("PREST_CONF", "../notfound.toml")
+		v, configPath := viperCfg()
+		cfg := &Prest{}
+		requireParse(t, v, cfg, configPath)
+		return cfg
+	}
+
+	t.Run("unset keeps default disabled", func(t *testing.T) {
+		unsetEnvForTest(t, "PREST_GUARD_ENABLED")
+		cfg := parseGuard(t)
+		require.False(t, cfg.Guard.Enabled)
+		require.NoError(t, cfg.Guard.Invalid)
+	})
+
+	t.Run("valid env boolean enables", func(t *testing.T) {
+		t.Setenv("PREST_GUARD_ENABLED", "true")
+		cfg := parseGuard(t)
+		require.True(t, cfg.Guard.Enabled)
+		require.NoError(t, cfg.Guard.Invalid)
+	})
+
+	t.Run("valid env boolean false keeps disabled", func(t *testing.T) {
+		t.Setenv("PREST_GUARD_ENABLED", "false")
+		cfg := parseGuard(t)
+		require.False(t, cfg.Guard.Enabled)
+		require.NoError(t, cfg.Guard.Invalid)
+	})
+
+	t.Run("invalid env boolean fails closed", func(t *testing.T) {
+		t.Setenv("PREST_GUARD_ENABLED", "yes")
+		cfg := parseGuard(t)
+		require.False(t, cfg.Guard.Enabled)
+		require.Error(t, cfg.Guard.Invalid)
+		require.Contains(t, cfg.Guard.Invalid.Error(), "not a valid boolean")
+	})
+}

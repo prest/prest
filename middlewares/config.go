@@ -31,6 +31,17 @@ func New(cfg *config.Prest) *negroni.Negroni {
 				AllowCredentials: cfg.CORSAllowCredentials,
 			}))
 	}
+	// A non-nil Guard.Invalid means guard.enabled was set to something that
+	// is not a valid boolean: fail closed instead of silently running with
+	// no security.
+	if cfg.Guard.Enabled || cfg.Guard.Invalid != nil {
+		guardHandler, err := GuardMiddleware(cfg.Guard)
+		if err != nil {
+			stack = append(stack, invalidGuardConfigMiddleware(err))
+		} else {
+			stack = append(stack, guardHandler)
+		}
+	}
 	if !cfg.Debug && cfg.EnableDefaultJWT {
 		jwtMiddleware, err := JwtMiddleware(
 			cfg.JWTKey, cfg.JWTJWKS, cfg.JWTAlgo, cfg.JWTWhiteList)

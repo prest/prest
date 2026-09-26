@@ -7,11 +7,11 @@
 [![Homebrew](https://img.shields.io/badge/dynamic/json.svg?url=https://formulae.brew.sh/api/formula/prestd.json&query=$.versions.stable&label=homebrew)](https://formulae.brew.sh/formula/prestd)
 [![Discord](https://img.shields.io/badge/discord-prestd-blue?logo=discord)](https://discord.gg/JnRjvu39w8)
 
-_p_**REST** (**P**_ostgreSQL_ **REST**) is a production-ready API that delivers instant REST and Model Context Protocol (MCP) APIs on top of your **existing or new Postgres** database—CRUD, custom SQL routes, auth, ACL, and a read-only MCP endpoint—without hand-writing a backend.
+_p_**REST** (**P**_ostgreSQL_ **REST**) is a production-ready API that delivers instant REST and Model Context Protocol (MCP) APIs on top of your **existing or new Postgres** database (CRUD, custom SQL routes, auth, ACL, and a read-only MCP endpoint) without hand-writing a backend.
 
 > PostgreSQL version 9.5 or higher
 
-Contributor License Agreement — [![CLA assistant](https://cla-assistant.io/readme/badge/prest/prest)](https://cla-assistant.io/prest/prest)
+Contributor License Agreement: [![CLA assistant](https://cla-assistant.io/readme/badge/prest/prest)](https://cla-assistant.io/prest/prest)
 
 <a href="https://www.producthunt.com/posts/prest?utm_source=badge-featured&utm_medium=badge&utm_souce=badge-prest" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=303506&theme=light" alt="pREST - instant, realtime, high-performance on PostgreSQL | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
 
@@ -41,8 +41,8 @@ See [Configuring pREST](https://docs.prestd.com/get-started/configuring-prest) f
 ## Passing values to query scripts
 
 Values a `_QUERIES` script template interpolates become part of the SQL text, so
-pREST screens them: anything carrying quotes, `--`, `::`, or — for multi-word
-values — a SQL keyword is refused, and a refused value that is interpolated fails
+pREST screens them: anything carrying quotes, `--`, `::`, or (for multi-word
+values) a SQL keyword is refused, and a refused value that is interpolated fails
 the request with `400`.
 
 Bind free-form values instead, and the screen does not apply at all. A bound value
@@ -65,9 +65,49 @@ SELECT * FROM articles WHERE slug = {{sqlVal "slug"}}
 `sqlVal` and `sqlList` also reach headers as `{{sqlVal "header.X-Application"}}`.
 Credential headers (`Authorization`, `Cookie`, …) are always withheld.
 
-Prefer binding for anything user-supplied — search phrases especially, since a
+Prefer binding for anything user-supplied, search phrases especially, since a
 phrase containing a common word such as `do`, `as` or `or` is exactly what the
 interpolation screen refuses.
+
+## Request security (opt-in)
+
+The `[guard]` config section (env: `PREST_GUARD_*`) adds per-client rate
+limiting, request payload inspection, and IP policy as a middleware that runs
+before auth, off by default, and pREST behaves exactly as before without it:
+
+```toml
+[guard]
+enabled = true
+# passive = true              # log what would be blocked, reject nothing
+rate_limit = 100              # requests per client IP (0 = no rate limit)
+rate_limit_window = 60        # ...per this many seconds (default 60)
+max_body_bytes = 1048576      # how much body the inspection layer reads
+# blacklist = ["203.0.113.0/24"]
+# whitelist = ["198.51.100.7"]
+# exclude_paths = ["/health"]           # skips all guard checks for these
+                                        # paths and their subtrees
+# trusted_proxies = ["10.0.0.9"]        # proxies whose X-Forwarded-For is
+                                        # trusted when resolving client IPs
+# redis_url = "redis://localhost:6379"  # share limits/bans across instances
+# block_cloud_providers = ["AWS", "GCP", "Azure"]
+```
+
+With `passive = true` the guard records what it would have blocked instead of
+rejecting requests, so rules can be previewed before enforcing. Without
+`redis_url`, rate limit and ban state is per instance; with `redis_url`
+configured, a Redis outage fails closed rather than dropping shared state.
+
+`exclude_paths` skips every guard check (rate limits and IP policy included)
+for the listed paths and anything below them: an entry `/health` covers
+`/health` and `/health/ready`, but not `/healthcheck`.
+
+When a direct peer is listed in `trusted_proxies` and sends
+`X-Forwarded-For`, the client IP is resolved by walking the hop list from the
+right and taking the rightmost entry that is not itself a trusted proxy (or
+the leftmost when every hop is trusted). Forwarded headers from untrusted
+peers are ignored.
+
+The middleware complements a reverse proxy/edge layer; it does not replace it.
 
 ## 1-Click Deploy
 
@@ -96,7 +136,7 @@ make test-unit
 Run integration suites inside Docker (no local Postgres required):
 
 ```bash
-# Postgres (full stack: default, auth, multicluster, queries) — also: make test-integration
+# Postgres (full stack: default, auth, multicluster, queries), also: make test-integration
 make test-integration-postgres
 
 # TimescaleDB (Timescale-specific E2E only)

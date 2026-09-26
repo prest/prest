@@ -15,6 +15,8 @@ require (
 	github.com/lib/pq v1.12.3
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1
+	github.com/rennf93/guard-core-go/v4 v4.0.4
+	github.com/rennf93/nethttp-guard v1.0.0
 	github.com/rs/cors v1.11.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
@@ -27,6 +29,12 @@ require (
 	go.opentelemetry.io/otel/sdk/log v0.20.0
 	golang.org/x/crypto v0.54.0
 	golang.org/x/sync v0.22.0
+)
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/redis/go-redis/v9 v9.22.0 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
 )
 
 require (
@@ -79,7 +87,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260729162451-8efbd57d26e0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260729162451-8efbd57d26e0 // indirect
