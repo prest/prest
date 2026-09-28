@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -48,7 +49,16 @@ type transactionResponse struct {
 
 // Begin opens a transaction and returns its ID.
 func (h *TransactionHandler) Begin(w http.ResponseWriter, r *http.Request) {
-	id, err := h.mgr.BeginWith(r.Context(), h.db)
+	// WithoutCancel is load-bearing, not defensive. GetTransactionCtx hands
+	// this context to database/sql's BeginTx, and that package rolls the
+	// transaction back when the context is done. r.Context() is done the moment
+	// this handler returns, so the transaction would be rolled back before the
+	// client could use the ID we are about to hand it.
+	//
+	// Lifetime is bounded by Reap (idle timeout) and by RollbackAll at
+	// shutdown, which is what the manager's Start loop is for.
+	ctx := context.WithoutCancel(r.Context())
+	id, err := h.mgr.BeginWith(ctx, h.db)
 	if err != nil {
 		slog.Error("could not begin transaction", "err", logsafe.Error(err))
 		writeTransactionError(w, http.StatusInternalServerError,
@@ -69,7 +79,10 @@ func (h *TransactionHandler) Rollback(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TransactionHandler) finish(w http.ResponseWriter, r *http.Request, commit bool) {
-	id := r.PathValue("id")
+	// pathVars, not r.PathValue: this project is on gorilla/mux v1.8.1, which
+	// populates mux.Vars and leaves PathValue empty. r.PathValue here returns ""
+	// for every request, so every commit and rollback fell through to 410.
+	id := pathVars(r)["id"]
 	var err error
 	if commit {
 		err = h.mgr.Commit(id)
@@ -108,6 +121,14 @@ func (h *TransactionHandler) Lookup(r *http.Request) (*sql.Tx, bool) {
 		return nil, false
 	}
 	return tx, true
+}
+
+// Manager exposes the underlying manager so the composition root can run its
+// reaper loop. Without a caller for Start, Reap and RollbackAll are unreachable
+// in production and an abandoned transaction holds its connection and row locks
+// until the process exits.
+func (h *TransactionHandler) Manager() *transactions.Manager {
+	return h.mgr
 }
 
 func writeTransactionError(w http.ResponseWriter, code int, msg string) {

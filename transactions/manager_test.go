@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 )
@@ -199,5 +200,77 @@ func TestConcurrentBeginGet(t *testing.T) {
 			t.Fatalf("duplicate id under concurrency: %q", id)
 		}
 		seen[id] = true
+	}
+}
+
+// TestReapUsesIdleTimeNotAge pins the distinction that matters: a transaction
+// that is old but still being used must survive, and only one that has been
+// idle past the timeout may be reaped.
+//
+// Reap compared e.created against the cutoff, so a long-running transaction was
+// rolled out from under an active client at the timeout regardless of use. Get
+// refreshes lastUsed, which is the field that should decide.
+func TestReapUsesIdleTimeNotAge(t *testing.T) {
+	m := NewWithTimeout(time.Minute)
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	db := newDB(t)
+
+	id, err := m.Begin(context.Background(), db)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+
+	// Well past the timeout, but the client is actively joining it.
+	m.now = func() time.Time { return base.Add(10 * time.Minute) }
+	if _, ok := m.Get(id); !ok {
+		t.Fatal("transaction should still be joinable while in use")
+	}
+
+	if n := m.Reap(); n != 0 {
+		t.Errorf("Reap() = %d, want 0: an actively used transaction is not idle", n)
+	}
+	if _, ok := m.Get(id); !ok {
+		t.Error("transaction was reaped despite being in use")
+	}
+
+	// Now leave it alone past the timeout; it is genuinely idle.
+	m.now = func() time.Time { return base.Add(30 * time.Minute) }
+	if n := m.Reap(); n != 1 {
+		t.Errorf("Reap() = %d, want 1 for an idle transaction", n)
+	}
+	if _, ok := m.Get(id); ok {
+		t.Error("idle transaction should have been reaped")
+	}
+}
+
+// TestIDsCarryUnpredictableEntropy guards the property that makes an ID safe to
+// treat as a capability.
+//
+// The ID authorises commit, rollback and joining a transaction, and nothing
+// else does. The previous scheme was a timestamp to the second plus a
+// per-process counter, which an attacker can enumerate without guessing, and
+// two managers that begin at the same instant produced the same first ID.
+func TestIDsCarryUnpredictableEntropy(t *testing.T) {
+	db := newDB(t)
+	seen := make(map[string]string)
+	for i := 0; i < 64; i++ {
+		// A fresh manager each time, all beginning at the same instant: only
+		// real entropy can keep these apart.
+		m := New()
+		m.now = func() time.Time { return time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC) }
+		id, err := m.Begin(context.Background(), db)
+		if err != nil {
+			t.Fatalf("begin: %v", err)
+		}
+		if prev, dup := seen[id]; dup {
+			t.Fatalf("ID %q collides with %q; the ID is not unique per manager", id, prev)
+		}
+		seen[id] = id
+		if !strings.HasPrefix(id, "tx_") {
+			t.Errorf("ID %q lost its prefix", id)
+		}
+	}
+	if len(seen) != 64 {
+		t.Fatalf("got %d distinct ids, want 64", len(seen))
 	}
 }

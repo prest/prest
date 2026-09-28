@@ -2,7 +2,9 @@ package transactions
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"sync"
 	"time"
@@ -39,10 +41,15 @@ type Manager struct {
 	timeout time.Duration
 	now     func() time.Time
 
-	// idSeq makes IDs unique within a process without pulling in a UUID
-	// dependency. The random component is from math/rand/v2, which is
-	// sufficient here: the ID is an opaque handle into this process's own map,
-	// not a capability, so predictability is not a security property.
+	// idSeq makes IDs unique within a process. The random part of the ID is
+	// what makes it safe to treat as a capability, and the sequence is a
+	// belt-and-braces guarantee against collision within a process.
+	//
+	// The ID is a capability. Commit, rollback and joining a transaction are
+	// all authorised by knowing the ID and by nothing else, so a client that
+	// can guess another client's ID can commit or roll back its work. A
+	// timestamp-and-counter ID is guessable in both parts, so the entropy has
+	// to come from crypto/rand.
 	idSeq uint64
 }
 
@@ -186,7 +193,9 @@ func (m *Manager) Reap() int {
 	cutoff := m.now().Add(-m.timeout)
 	var stale []*managed
 	for id, e := range m.txns {
-		if e.created.Before(cutoff) {
+		// lastUsed, not created: a transaction in active use must not be
+		// reaped just because it is old. Get refreshes it on every join.
+		if e.lastUsed.Before(cutoff) {
 			stale = append(stale, e)
 			delete(m.txns, id)
 		}
@@ -203,6 +212,38 @@ func (m *Manager) Reap() int {
 }
 
 // RollbackAll rolls back everything. Intended for shutdown.
+// Start reaps idle transactions on a ticker and rolls everything back when ctx
+// is done. It blocks until ctx is cancelled, so callers run it in its own
+// goroutine.
+//
+// Without this, Reap and RollbackAll are never reached in production: an
+// abandoned transaction keeps its connection and its row locks until the
+// process exits, and a client looping on POST /_transactions can exhaust the
+// connection pool. A non-positive timeout disables the ticker entirely, which
+// is only sensible in tests.
+func (m *Manager) Start(ctx context.Context) {
+	if m.timeout <= 0 {
+		<-ctx.Done()
+		m.RollbackAll()
+		return
+	}
+	interval := m.timeout / 2
+	if interval < time.Second {
+		interval = time.Second
+	}
+	t := time.NewTicker(interval)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			m.RollbackAll()
+			return
+		case <-t.C:
+			m.Reap()
+		}
+	}
+}
+
 func (m *Manager) RollbackAll() {
 	m.mu.Lock()
 	all := m.txns
@@ -223,7 +264,22 @@ func (m *Manager) newID(now time.Time) string {
 	m.idSeq++
 	seq := m.idSeq
 	m.mu.Unlock()
-	return "tx_" + now.UTC().Format("20060102150405") + "_" + itoa(seq)
+	return "tx_" + randomToken() + "_" + itoa(seq)
+}
+
+// randomToken returns 128 bits of hex from crypto/rand.
+//
+// The ID authorises commit, rollback and joining a transaction, so it is
+// treated as a bearer capability and needs to be unguessable. crypto/rand can
+// fail, and there is no safe way to continue with a weak ID, so a failure
+// panics: it means the system is broken, and a predictable transaction ID is
+// worse than an unavailable one.
+func randomToken() string {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		panic("transactions: crypto/rand unavailable: " + err.Error())
+	}
+	return hex.EncodeToString(b[:])
 }
 
 func itoa(v uint64) string {

@@ -11,18 +11,34 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/prest/prest/v2/transactions"
+	"github.com/stretchr/testify/require"
 )
 
+// stubBeginner mimics the adapter by calling database/sql's real BeginTx.
+//
+// The obvious stub, returning a pre-made *sql.Tx, cannot catch the context
+// lifetime bug: database/sql rolls a transaction back when the context passed
+// to BeginTx is done, so the request that opened the transaction cancels it the
+// moment the handler returns. Going through a real *sql.DB means the test
+// exercises that cancellation for real instead of assuming it away.
 type stubBeginner struct {
+	db   *sql.DB
 	tx   *sql.Tx
 	err  error
 	hits int
 }
 
-func (s *stubBeginner) GetTransactionCtx(context.Context) (*sql.Tx, error) {
+func (s *stubBeginner) GetTransactionCtx(ctx context.Context) (*sql.Tx, error) {
 	s.hits++
-	return s.tx, s.err
+	if s.err != nil {
+		return nil, s.err
+	}
+	if s.db != nil {
+		return s.db.BeginTx(ctx, nil)
+	}
+	return s.tx, nil
 }
 
 type stubDriver struct{}
@@ -112,7 +128,7 @@ func TestCommitSucceedsThenSecondIsGone(t *testing.T) {
 
 	commit := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/_tx/"+id, nil)
-	req.SetPathValue("id", id)
+	req = mux.SetURLVars(req, map[string]string{"id": id})
 	h.Commit(commit, req)
 	if commit.Code != http.StatusOK {
 		t.Fatalf("commit status = %d: %s", commit.Code, commit.Body)
@@ -124,7 +140,7 @@ func TestCommitSucceedsThenSecondIsGone(t *testing.T) {
 	// a second commit must not report success
 	again := httptest.NewRecorder()
 	req2 := httptest.NewRequest(http.MethodPost, "/_tx/"+id, nil)
-	req2.SetPathValue("id", id)
+	req2 = mux.SetURLVars(req2, map[string]string{"id": id})
 	h.Commit(again, req2)
 	if again.Code != http.StatusGone {
 		t.Fatalf("second commit status = %d, want 410", again.Code)
@@ -140,7 +156,7 @@ func TestRollbackReportsRolledBack(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodDelete, "/_tx/"+id, nil)
-	req.SetPathValue("id", id)
+	req = mux.SetURLVars(req, map[string]string{"id": id})
 	h.Rollback(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d: %s", rec.Code, rec.Body)
@@ -157,7 +173,7 @@ func TestUnknownTransactionIsGoneNotNotFound(t *testing.T) {
 	h := NewTransactionHandler(&stubBeginner{tx: mustTx(t, db)})
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodDelete, "/_tx/tx_nope", nil)
-	req.SetPathValue("id", "tx_nope")
+	req = mux.SetURLVars(req, map[string]string{"id": "tx_nope"})
 	h.Rollback(rec, req)
 	if rec.Code != http.StatusGone {
 		t.Fatalf("status = %d, want 410", rec.Code)
@@ -192,7 +208,7 @@ func TestLookupRejectsStaleHeader(t *testing.T) {
 	id := decode(t, begin)["transaction_id"].(string)
 	c := httptest.NewRecorder()
 	cq := httptest.NewRequest(http.MethodPost, "/_tx/"+id, nil)
-	cq.SetPathValue("id", id)
+	cq = mux.SetURLVars(cq, map[string]string{"id": id})
 	h.Commit(c, cq)
 
 	req := httptest.NewRequest(http.MethodGet, "/db/schema/table", nil)
@@ -225,7 +241,7 @@ func TestHandlerRoutesPostAndDelete(t *testing.T) {
 
 	del := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodDelete, "/_tx/"+id, nil)
-	req.SetPathValue("id", id)
+	req = mux.SetURLVars(req, map[string]string{"id": id})
 	h.Handler()(del, req)
 	if del.Code != http.StatusOK {
 		t.Fatalf("DELETE routed to %d, want 200", del.Code)
@@ -249,4 +265,45 @@ func TestOpenTransactionSurvivesShortReapWindow(t *testing.T) {
 	if _, ok := m.Get(id); !ok {
 		t.Fatal("transaction disappeared inside its own window")
 	}
+}
+
+// TestTransactionSurvivesTheRequestThatOpenedIt is the regression test for the
+// context lifetime bug.
+//
+// database/sql rolls a transaction back when the context handed to BeginTx is
+// done. The request that opens a transaction is finished before the client
+// receives the ID, so passing r.Context() to BeginTx killed the transaction
+// before it could be used: every commit and rollback returned 410, and every
+// CRUD write silently fell outside the transaction.
+//
+// The stub goes through a real *sql.DB, so the rollback-on-cancel behaviour is
+// the real one rather than something this test has to simulate.
+func TestTransactionSurvivesTheRequestThatOpenedIt(t *testing.T) {
+	db := newStubDB(t)
+	h := NewTransactionHandler(&stubBeginner{db: db})
+
+	// Open, exactly as the endpoint does, with a request that then completes.
+	req := httptest.NewRequest(http.MethodPost, "/_transactions", nil)
+	ctx, cancel := context.WithCancel(req.Context())
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+	h.Begin(rec, req)
+	require.Equal(t, http.StatusCreated, rec.Code)
+	id, _ := decode(t, rec)["transaction_id"].(string)
+	require.NotEmpty(t, id)
+
+	// The opening request is now over. In a real server its context is done;
+	// cancel() reproduces that exactly.
+	cancel()
+
+	// The transaction must still be open and committable.
+	// Through the real router, so the path variable is populated the way it is
+	// in production. A direct handler call would leave mux.Vars empty and 410
+	// for an unrelated reason, which is exactly how this bug stayed hidden.
+	rt := mux.NewRouter()
+	rt.HandleFunc("/_transactions/{id}/commit", h.Commit).Methods(http.MethodPost)
+	cRec := httptest.NewRecorder()
+	rt.ServeHTTP(cRec, httptest.NewRequest(http.MethodPost, "/_transactions/"+id+"/commit", nil))
+	require.Equal(t, http.StatusOK, cRec.Code,
+		"transaction was rolled back when the request that opened it finished")
 }
