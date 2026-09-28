@@ -206,3 +206,34 @@ func TestCRUDTransactionHeaderWithoutAdapterSupport(t *testing.T) {
 	require.Equal(t, http.StatusNotImplemented, w.Code,
 		"a header on an adapter without transaction support must be refused, not ignored")
 }
+
+func TestCRUDBatchInsert_RefusesTransactionHeader(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// The adapter has no transaction-aware batch insert. The request must be
+	// refused, because falling through to BatchInsertValuesCtx would be a write
+	// outside the transaction the client asked for -- and silently so.
+	db := mockDatabaseRegistry(ctrl)
+	db.EXPECT().Aliases().Return([]string{"prest-test"}).AnyTimes()
+	db.EXPECT().GetDatabase().Return("prest-test").AnyTimes()
+
+	h := NewCRUDHandler(Deps{
+		// No Builder and no Executor: reaching either would panic, which is the
+		// point -- the request must not get that far.
+		DB:        db,
+		TxExec:    &recordingTxExecutor{},
+		TxHandler: NewTransactionHandler(&stubBeginner{}),
+	})
+
+	w := httptest.NewRecorder()
+	req := crudRequest(http.MethodPost, "/prest-test/public/test", map[string]string{
+		"database": "prest-test", "schema": "public", "table": "test",
+	})
+	req.Header.Set(transactionHeader, "tx_anything")
+	h.BatchInsert(w, req)
+
+	require.Equal(t, http.StatusNotImplemented, w.Code)
+	require.Contains(t, w.Body.String(), "does not support transactions")
+}

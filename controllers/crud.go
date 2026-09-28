@@ -268,6 +268,16 @@ func (h *CRUDHandler) BatchInsert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The adapter has no transaction-aware batch insert, so a request carrying
+	// X-Prest-Transaction is refused rather than written outside the
+	// transaction it named. Silently ignoring the header here would reintroduce
+	// exactly the bug the single-row paths were changed to avoid.
+	if r.Header.Get(transactionHeader) != "" {
+		writeTransactionError(w, http.StatusNotImplemented,
+			"batch insert does not support transactions; use the single-row insert endpoint")
+		return
+	}
+
 	names, placeholders, values, err := h.builder.ParseBatchInsertRequest(r)
 	if err != nil {
 		err = fmt.Errorf("could not perform BatchInsertInTables: %v", err)
