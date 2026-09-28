@@ -124,6 +124,14 @@ func New(cfg *config.Prest) (*App, error) {
 		// W3C trace context. Per-route http.route tags are added in the router.
 		handler = otelhttp.NewHandler(handler, "prest")
 	}
+
+	// Reap idle transactions and roll back on shutdown. app.New has no
+	// lifecycle context to bind to, so this runs until the process exits;
+	// tying the cancel to graceful shutdown in cmd is a separate change.
+	if h.Transaction != nil {
+		go h.Transaction.Manager().Start(context.Background())
+	}
+
 	return &App{Config: cfg, Handler: handler, Adapters: registry, pg: cfg.Adapter}, nil
 }
 

@@ -68,6 +68,20 @@ func RegisterRoutes(
 	router.HandleFunc("/_health", h.Health.Handler()).Methods("GET")
 	router.HandleFunc("/_ready", h.Ready.Handler()).Methods("GET")
 
+	// Transactions. Registered ahead of the CRUD patterns below so a request to
+	// /_transactions is not swallowed by /{database}/{schema}/{table}.
+	//
+	// Wrapped in crudRoute like every other data route. A transaction ID is a
+	// capability: knowing it authorises commit, rollback and joining. Registering
+	// these bare would let an unauthenticated client, with auth enabled, open
+	// transactions that hold pooled connections and commit or roll back another
+	// client's transaction if it guessed the ID.
+	if h.Transaction != nil {
+		router.Handle("/_transactions", crudRoute(crudStack, h.Transaction.Begin)).Methods("POST")
+		router.Handle("/_transactions/{id}/commit", crudRoute(crudStack, h.Transaction.Commit)).Methods("POST")
+		router.Handle("/_transactions/{id}/rollback", crudRoute(crudStack, h.Transaction.Rollback)).Methods("DELETE")
+	}
+
 	router.Handle("/{database}/{schema}/{table}", crudRoute(crudStack, h.CRUD.Select)).Methods("GET")
 	router.Handle("/{database}/{schema}/{table}", crudRoute(crudStack, h.CRUD.Insert)).Methods("POST")
 	router.Handle("/batch/{database}/{schema}/{table}", crudRoute(crudStack, h.CRUD.BatchInsert)).Methods("POST")
