@@ -25,27 +25,35 @@ type AuthConfig struct {
 
 // Deps bundles dependencies for HTTP handlers.
 type Deps struct {
-	Catalog            adapters.CatalogQuerier
-	Builder            adapters.RequestQueryBuilder
-	Executor           adapters.QueryExecutor
-	SQL                adapters.SQLBuilder
-	Perms              adapters.PermissionsChecker
-	Scripts            adapters.ScriptRunner
-	QueryRegistry      adapters.QueryRegistry
-	ScriptPerms        adapters.ScriptPermissionsChecker
-	DB                 adapters.DatabaseRegistry
+	Catalog       adapters.CatalogQuerier
+	Builder       adapters.RequestQueryBuilder
+	Executor      adapters.QueryExecutor
+	SQL           adapters.SQLBuilder
+	Perms         adapters.PermissionsChecker
+	Scripts       adapters.ScriptRunner
+	QueryRegistry adapters.QueryRegistry
+	ScriptPerms   adapters.ScriptPermissionsChecker
+	DB            adapters.DatabaseRegistry
 	// TxManager opens transactions for the /_transactions endpoints. Kept as its
 	// own field rather than reaching through DB, which is the multi-database
 	// registry and does not carry transaction methods.
-	TxManager          adapters.TransactionManager
-	Pinger             adapters.DatabasePinger
-	Readiness          adapters.ReadinessChecker
-	Cache              ResponseCacher
-	AdapterRegistry    adapters.Registry // Multi-database adapter registry
-	SingleDB           bool
-	PGDatabase         string
-	Auth               AuthConfig
-	Expose             config.ExposeConf
+	TxManager adapters.TransactionManager
+	// TxExec is the adapter's transaction-aware write path, nil if the adapter
+	// does not implement TxExecutor.
+	TxExec TxExecutor
+	// TxHandler resolves X-Prest-Transaction to an open transaction. It is
+	// built here rather than in NewHandlers so CRUD and the /_transactions
+	// routes share one manager, and it is nil in hand-built test Deps, which
+	// correctly makes a transaction header a 501 instead of a silent no-op.
+	TxHandler       *TransactionHandler
+	Pinger          adapters.DatabasePinger
+	Readiness       adapters.ReadinessChecker
+	Cache           ResponseCacher
+	AdapterRegistry adapters.Registry // Multi-database adapter registry
+	SingleDB        bool
+	PGDatabase      string
+	Auth            AuthConfig
+	Expose          config.ExposeConf
 }
 
 // NewDepsFromConfig builds handler dependencies from application config.
@@ -56,11 +64,15 @@ func NewDepsFromConfig(p *config.Prest) Deps {
 	}
 	var queryRegistry adapters.QueryRegistry
 	var scriptPerms adapters.ScriptPermissionsChecker
+	var txExec TxExecutor
 	if reg, ok := p.Adapter.(adapters.QueryRegistry); ok {
 		queryRegistry = reg
 	}
 	if perms, ok := p.Adapter.(adapters.ScriptPermissionsChecker); ok {
 		scriptPerms = perms
+	}
+	if tx, ok := p.Adapter.(TxExecutor); ok {
+		txExec = tx
 	}
 	return Deps{
 		Catalog:       p.Adapter,
@@ -73,6 +85,8 @@ func NewDepsFromConfig(p *config.Prest) Deps {
 		ScriptPerms:   scriptPerms,
 		DB:            p.Adapter,
 		TxManager:     p.Adapter,
+		TxExec:        txExec,
+		TxHandler:     NewTransactionHandler(p.Adapter),
 		Pinger:        p.Adapter,
 		Readiness:     p.Adapter,
 		Cache:         cacher,
@@ -109,16 +123,23 @@ type Handlers struct {
 // NewHandlers constructs handlers from dependencies.
 func NewHandlers(deps Deps, cfg *config.Prest) *Handlers {
 	checks := DefaultCheckList(deps.Pinger)
+	// Reuse the handler built in NewDepsFromConfig so CRUD and the
+	// /_transactions routes resolve the same open transactions. A hand-built
+	// Deps in a test has none, so build one from the manager.
+	txHandler := deps.TxHandler
+	if txHandler == nil && deps.TxManager != nil {
+		txHandler = NewTransactionHandler(deps.TxManager)
+	}
 	h := &Handlers{
-		Auth:    NewAuthHandler(deps.Executor, deps.Auth),
-		Catalog: NewCatalogHandler(deps),
-		MCP:     NewMCPHandler(deps),
-		Table:   NewTableHandler(deps.Executor, deps.DB, deps.SingleDB),
-		CRUD:    NewCRUDHandler(deps),
-		Transaction: NewTransactionHandler(deps.TxManager),
-		Script:  NewScriptHandler(deps),
-		Health:  NewHealthHandler(checks),
-		Ready:   NewHealthHandler(DefaultReadyCheckList(deps.Readiness)),
+		Auth:        NewAuthHandler(deps.Executor, deps.Auth),
+		Catalog:     NewCatalogHandler(deps),
+		MCP:         NewMCPHandler(deps),
+		Table:       NewTableHandler(deps.Executor, deps.DB, deps.SingleDB),
+		CRUD:        NewCRUDHandler(deps),
+		Transaction: txHandler,
+		Script:      NewScriptHandler(deps),
+		Health:      NewHealthHandler(checks),
+		Ready:       NewHealthHandler(DefaultReadyCheckList(deps.Readiness)),
 	}
 	if cfg != nil && deps.QueryRegistry != nil && cfg.QueriesConf.RegisterEnabled && cfg.QueriesConf.Storage == config.QueriesStorageDatabase {
 		h.QueryRegistry = NewQueryRegistryHandler(deps, cfg.QueriesConf)

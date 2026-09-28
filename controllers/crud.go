@@ -23,18 +23,30 @@ type CRUDHandler struct {
 	db       adapters.DatabaseRegistry
 	cache    ResponseCacher
 	singleDB bool
+	// txExec runs writes inside a caller-supplied transaction. nil when the
+	// adapter does not implement TxExecutor, in which case a request carrying
+	// X-Prest-Transaction is rejected rather than silently run outside it.
+	txExec TxExecutor
+	// txHandler resolves X-Prest-Transaction to an open transaction.
+	txHandler *TransactionHandler
 }
 
 // NewCRUDHandler creates a CRUDHandler.
+//
+// deps.TxHandler may be nil, in which case a request carrying
+// X-Prest-Transaction is rejected rather than silently executed outside the
+// transaction it named.
 func NewCRUDHandler(deps Deps) *CRUDHandler {
 	return &CRUDHandler{
-		builder:  deps.Builder,
-		sql:      deps.SQL,
-		executor: deps.Executor,
-		perms:    deps.Perms,
-		db:       deps.DB,
-		cache:    deps.Cache,
-		singleDB: deps.SingleDB,
+		builder:   deps.Builder,
+		sql:       deps.SQL,
+		executor:  deps.Executor,
+		perms:     deps.Perms,
+		db:        deps.DB,
+		cache:     deps.Cache,
+		singleDB:  deps.SingleDB,
+		txExec:    deps.TxExec,
+		txHandler: deps.TxHandler,
 	}
 }
 
@@ -221,7 +233,10 @@ func (h *CRUDHandler) Insert(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := requestContext(r, database)
 	defer cancel()
 
-	sc := h.executor.InsertCtx(ctx, sql, values...)
+	sc, ran := h.runInsert(ctx, w, r, sql, values...)
+	if !ran {
+		return
+	}
 	if err = sc.Err(); err != nil {
 		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
 			err = fmt.Errorf("relation does not exist: %v", err)
@@ -328,7 +343,10 @@ func (h *CRUDHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := requestContext(r, database)
 	defer cancel()
 
-	sc := h.executor.DeleteCtx(ctx, sql, values...)
+	sc, ran := h.runDelete(ctx, w, r, sql, values...)
+	if !ran {
+		return
+	}
 	if err = sc.Err(); err != nil {
 		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
 			err = fmt.Errorf("relation does not exist: %v", err)
@@ -394,7 +412,10 @@ func (h *CRUDHandler) Update(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := requestContext(r, database)
 	defer cancel()
 
-	sc := h.executor.UpdateCtx(ctx, sql, values...)
+	sc, ran := h.runUpdate(ctx, w, r, sql, values...)
+	if !ran {
+		return
+	}
 	if err = sc.Err(); err != nil {
 		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
 			jsonError(w, err.Error(), http.StatusNotFound)
