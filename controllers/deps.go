@@ -34,6 +34,10 @@ type Deps struct {
 	QueryRegistry      adapters.QueryRegistry
 	ScriptPerms        adapters.ScriptPermissionsChecker
 	DB                 adapters.DatabaseRegistry
+	// TxManager opens transactions for the /_transactions endpoints. Kept as its
+	// own field rather than reaching through DB, which is the multi-database
+	// registry and does not carry transaction methods.
+	TxManager          adapters.TransactionManager
 	Pinger             adapters.DatabasePinger
 	Readiness          adapters.ReadinessChecker
 	Cache              ResponseCacher
@@ -68,6 +72,7 @@ func NewDepsFromConfig(p *config.Prest) Deps {
 		QueryRegistry: queryRegistry,
 		ScriptPerms:   scriptPerms,
 		DB:            p.Adapter,
+		TxManager:     p.Adapter,
 		Pinger:        p.Adapter,
 		Readiness:     p.Adapter,
 		Cache:         cacher,
@@ -98,6 +103,7 @@ type Handlers struct {
 	QueryRegistry *QueryRegistryHandler
 	Health        *HealthHandler
 	Ready         *HealthHandler
+	Transaction   *TransactionHandler
 }
 
 // NewHandlers constructs handlers from dependencies.
@@ -109,6 +115,7 @@ func NewHandlers(deps Deps, cfg *config.Prest) *Handlers {
 		MCP:     NewMCPHandler(deps),
 		Table:   NewTableHandler(deps.Executor, deps.DB, deps.SingleDB),
 		CRUD:    NewCRUDHandler(deps),
+		Transaction: NewTransactionHandler(deps.TxManager),
 		Script:  NewScriptHandler(deps),
 		Health:  NewHealthHandler(checks),
 		Ready:   NewHealthHandler(DefaultReadyCheckList(deps.Readiness)),

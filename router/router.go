@@ -68,6 +68,14 @@ func RegisterRoutes(
 	router.HandleFunc("/_health", h.Health.Handler()).Methods("GET")
 	router.HandleFunc("/_ready", h.Ready.Handler()).Methods("GET")
 
+	// Transactions. Registered ahead of the CRUD patterns below so a request to
+	// /_transactions is not swallowed by /{database}/{schema}/{table}.
+	if h.Transaction != nil {
+		router.HandleFunc("/_transactions", h.Transaction.Begin).Methods("POST")
+		router.HandleFunc("/_transactions/{id}/commit", h.Transaction.Commit).Methods("POST")
+		router.HandleFunc("/_transactions/{id}/rollback", h.Transaction.Rollback).Methods("DELETE")
+	}
+
 	router.Handle("/{database}/{schema}/{table}", crudRoute(crudStack, h.CRUD.Select)).Methods("GET")
 	router.Handle("/{database}/{schema}/{table}", crudRoute(crudStack, h.CRUD.Insert)).Methods("POST")
 	router.Handle("/batch/{database}/{schema}/{table}", crudRoute(crudStack, h.CRUD.BatchInsert)).Methods("POST")
