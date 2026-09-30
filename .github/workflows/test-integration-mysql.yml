@@ -1,0 +1,24 @@
+name: test-integration-mysql
+run-name: MySQL integration tests
+
+on:
+  push:
+    branches:
+      - "main"
+    tags:
+      - "v*"
+  pull_request:
+
+jobs:
+  integration-mysql:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run MySQL E2E integration tests via docker compose
+        run: make test-integration-mysql

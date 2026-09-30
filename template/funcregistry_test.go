@@ -308,3 +308,29 @@ func TestNewFuncRegistry_RawValuesUnreachableFromTemplate(t *testing.T) {
 		t.Errorf("expected the raw value to be bound, got %v", funcs.Args)
 	}
 }
+
+func TestNewMySQLFuncRegistryPlaceholders(t *testing.T) {
+	t.Parallel()
+	funcs := NewMySQLFuncRegistry(map[string]interface{}{
+		"id":  7,
+		"tbl": "public.items",
+		"ids": []string{"a", "b"},
+	})
+	if got := funcs.sqlVal("id"); got != "?" {
+		t.Fatalf("sqlVal = %s", got)
+	}
+	if got := funcs.sqlList("ids"); got != "(?,?)" {
+		t.Fatalf("sqlList = %s", got)
+	}
+	quoted, err := funcs.ident("tbl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if quoted != "`public`.`items`" {
+		t.Fatalf("ident = %s", quoted)
+	}
+	pg := NewFuncRegistry(map[string]interface{}{"id": 1})
+	if got := pg.sqlVal("id"); got != "$1" {
+		t.Fatalf("postgres sqlVal = %s", got)
+	}
+}

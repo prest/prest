@@ -7,6 +7,7 @@ import (
 
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/adapters/mock"
+	"github.com/prest/prest/v2/adapters/mysql"
 	"github.com/prest/prest/v2/adapters/timescaledb"
 	"github.com/prest/prest/v2/app"
 	"github.com/prest/prest/v2/config"
@@ -444,6 +445,39 @@ func TestEnsureAdapter_Success(t *testing.T) {
 	cfg := connectablePrest("prest")
 	require.NoError(t, app.EnsureAdapter(cfg))
 	require.NotNil(t, cfg.Adapter)
+}
+
+func TestNew_MySQLEngine(t *testing.T) {
+	restore := mysql.SetDBConnectForTest(func(_, _ string) (*sqlx.DB, error) {
+		sqlxDB, _ := newPingableSQLMock(t)
+		return sqlxDB, nil
+	})
+	t.Cleanup(restore)
+
+	cfg := &config.Prest{
+		Engine:        config.EngineMySQL,
+		PGHost:        "db",
+		PGPort:        3306,
+		PGUser:        "app",
+		PGPass:        "pw",
+		PGDatabase:    "shop",
+		PGSSLMode:     "disable",
+		PGMaxIdleConn: 2,
+		PGMaxOpenConn: 2,
+	}
+	got, err := app.New(cfg)
+	require.NoError(t, err)
+	adapter, err := got.Adapters.Get("shop")
+	require.NoError(t, err)
+	_, ok := adapter.(*mysql.Adapter)
+	require.True(t, ok)
+}
+
+func TestNew_UnknownEngine(t *testing.T) {
+	cfg := &config.Prest{Engine: "oracle", PGDatabase: "shop"}
+	_, err := app.New(cfg)
+	require.Error(t, err)
+	require.ErrorIs(t, err, config.ErrUnknownEngine)
 }
 
 func TestNew_DetectAdapter_PostgresFallback(t *testing.T) {

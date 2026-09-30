@@ -136,6 +136,7 @@ type Prest struct {
 	CORSAllowMethods     []string
 	CORSAllowCredentials bool
 	Debug                bool
+	Engine               string // postgres (default) or mysql
 	Adapter              adapters.Adapter
 	EnableDefaultJWT     bool
 	SingleDB             bool
@@ -180,6 +181,9 @@ func Load() (*Prest, error) {
 	Parse(v, cfg, configPath)
 
 	parseDatabaseRegistry(v, cfg)
+	if err := cfg.ValidateEngines(); err != nil {
+		return nil, err
+	}
 
 	ensureJWTConfig(cfg)
 	ensureQueriesPath(cfg)
@@ -387,6 +391,8 @@ func viperCfg() (*viper.Viper, string) {
 	v.SetDefault("http.port", 3000)
 	v.SetDefault("http.timeout", 60)
 
+	v.SetDefault("engine", EnginePostgres)
+
 	v.SetDefault("pg.host", "127.0.0.1")
 	v.SetDefault("pg.port", 5432)
 	v.SetDefault("pg.database", "prest")
@@ -527,6 +533,11 @@ func parseDatabaseURL(cfg *Prest) {
 	u, err := url.Parse(cfg.PGURL)
 	if err != nil {
 		slog.Error("cannot parse db url", "err", logsafe.Error(err))
+		return
+	}
+	// mysql:// is parsed only when engine=mysql, and never by this parser.
+	if strings.EqualFold(u.Scheme, "mysql") {
+		slog.Error("mysql URL ignored: engine is not mysql")
 		return
 	}
 	cfg.PGHost = u.Hostname()
@@ -688,6 +699,14 @@ func getJSONAgg(v *viper.Viper) (config string) {
 }
 
 func parseDBConfig(v *viper.Viper, cfg *Prest) {
+	cfg.Engine = normalizeEngine(v.GetString("engine"))
+	if cfg.Engine == "" {
+		cfg.Engine = EnginePostgres
+	}
+	if cfg.Engine == EngineMySQL {
+		parseMySQLDBConfig(v, cfg)
+		return
+	}
 	cfg.PGURL = v.GetString("pg.url")
 	cfg.PGHost = v.GetString("pg.host")
 	cfg.PGPort = v.GetInt("pg.port")
@@ -710,6 +729,130 @@ func parseDBConfig(v *viper.Viper, cfg *Prest) {
 	cfg.PGConnTimeout = v.GetInt("pg.conntimeout")
 	cfg.PGCache = v.GetBool("pg.cache")
 	cfg.SingleDB = v.GetBool("pg.single")
+}
+
+// parseMySQLDBConfig reads connection fields without applying Postgres defaults.
+// viper defaults for pg.user, pg.pass, pg.database, and pg.host are ignored
+// unless the key was set in the file or environment. Port 3306 applies only
+// when port is unset. A mysql:// URL is applied; any other scheme is ignored.
+func parseMySQLDBConfig(v *viper.Viper, cfg *Prest) {
+	if mysqlConfigured(v, "pg.host") {
+		cfg.PGHost = v.GetString("pg.host")
+	}
+	if mysqlConfigured(v, "pg.port") {
+		cfg.PGPort = v.GetInt("pg.port")
+	}
+	if cfg.PGPort == 0 {
+		cfg.PGPort = mysqlDefaultPort
+	}
+	if mysqlConfigured(v, "pg.user") {
+		cfg.PGUser = v.GetString("pg.user")
+	}
+	if mysqlConfigured(v, "pg.pass") {
+		cfg.PGPass = v.GetString("pg.pass")
+	}
+	if mysqlConfigured(v, "pg.database") {
+		cfg.PGDatabase = v.GetString("pg.database")
+	}
+	if mysqlConfigured(v, "pg.ssl.mode") {
+		cfg.PGSSLMode = v.GetString("pg.ssl.mode")
+	}
+	if cfg.PGSSLMode == "" {
+		cfg.PGSSLMode = "disable"
+	}
+	if mysqlConfigured(v, "pg.ssl.key") {
+		cfg.PGSSLKey = v.GetString("pg.ssl.key")
+	}
+	if mysqlConfigured(v, "pg.ssl.cert") {
+		cfg.PGSSLCert = v.GetString("pg.ssl.cert")
+	}
+	if mysqlConfigured(v, "pg.ssl.rootcert") {
+		cfg.PGSSLRootCert = v.GetString("pg.ssl.rootcert")
+	}
+
+	cfg.PGMaxIdleConn = v.GetInt("pg.maxidleconn")
+	cfg.PGMaxOpenConn = v.GetInt("pg.maxopenconn")
+	cfg.PGConnTimeout = v.GetInt("pg.conntimeout")
+	cfg.PGCache = v.GetBool("pg.cache")
+	cfg.SingleDB = v.GetBool("pg.single")
+
+	if mysqlConfigured(v, "pg.url") {
+		cfg.PGURL = v.GetString("pg.url")
+	}
+	if os.Getenv("DATABASE_URL") != "" {
+		cfg.PGURL = os.Getenv("DATABASE_URL")
+	}
+	applyMySQLURLToPrest(cfg)
+}
+
+// mysqlConfigured reports a value from the environment or config file.
+// viper defaults for the Postgres keys are not treated as set.
+func mysqlConfigured(v *viper.Viper, key string) bool {
+	envKey := "PREST_" + strings.ToUpper(strings.ReplaceAll(key, ".", "_"))
+	if _, ok := os.LookupEnv(envKey); ok {
+		return true
+	}
+	return v.InConfig(key)
+}
+
+func applyMySQLURLToPrest(cfg *Prest) {
+	if cfg.PGURL == "" {
+		return
+	}
+	u, err := url.Parse(cfg.PGURL)
+	if err != nil {
+		slog.Error("cannot parse mysql url", "err", logsafe.Error(err))
+		return
+	}
+	if !strings.EqualFold(u.Scheme, "mysql") {
+		slog.Error("mysql URL ignored: scheme is not mysql", "scheme", u.Scheme)
+		cfg.PGURL = ""
+		return
+	}
+	if u.Hostname() != "" {
+		cfg.PGHost = u.Hostname()
+	}
+	if u.Port() != "" {
+		port, err := strconv.Atoi(u.Port())
+		if err != nil {
+			slog.Error("cannot parse mysql url port", "port", u.Port(), "err", err)
+			return
+		}
+		cfg.PGPort = port
+	}
+	if u.User != nil {
+		if user := u.User.Username(); user != "" {
+			cfg.PGUser = user
+		}
+		if pass, ok := u.User.Password(); ok {
+			cfg.PGPass = pass
+		}
+	}
+	if path := strings.TrimPrefix(u.Path, "/"); path != "" {
+		cfg.PGDatabase = path
+	}
+	if mode := mysqlTLSModeFromQuery(u); mode != "" {
+		cfg.PGSSLMode = mode
+	}
+}
+
+func mysqlTLSModeFromQuery(u *url.URL) string {
+	if u == nil {
+		return ""
+	}
+	if tlsMode := u.Query().Get("tls"); tlsMode != "" {
+		switch strings.ToLower(tlsMode) {
+		case "false":
+			return "disable"
+		case "true":
+			return "require"
+		case "skip-verify":
+			return "skip-verify"
+		default:
+			return tlsMode
+		}
+	}
+	return u.Query().Get("sslmode")
 }
 
 func loadCacheConfig(v *viper.Viper, cfg *Prest) {

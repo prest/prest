@@ -883,3 +883,45 @@ func TestExposeConf_ListingPredicates(t *testing.T) {
 	require.True(t, partial.SchemaListingAllowed())
 	require.False(t, partial.TableListingAllowed())
 }
+
+func TestLoadDefaultEnginePostgres(t *testing.T) {
+	t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, EnginePostgres, cfg.Engine)
+	require.Equal(t, "postgres", cfg.PGUser)
+}
+
+func TestLoadMySQLFailsClosed(t *testing.T) {
+	t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+	t.Setenv("PREST_ENGINE", "oracle")
+	_, err := Load()
+	require.ErrorIs(t, err, ErrUnknownEngine)
+
+	t.Setenv("PREST_ENGINE", "mysql")
+	_, err = Load()
+	require.ErrorIs(t, err, ErrMySQLConfig)
+
+	t.Setenv("PREST_PG_USER", "app")
+	t.Setenv("PREST_PG_DATABASE", "shop")
+	t.Setenv("PREST_PG_HOST", "db.internal")
+	t.Setenv("PREST_PG_SSL_CERT", "/tmp/client.pem")
+	_, err = Load()
+	require.ErrorIs(t, err, ErrMySQLConfig)
+}
+
+func TestLoadMySQLURL(t *testing.T) {
+	t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+	t.Setenv("PREST_ENGINE", "mysql")
+	t.Setenv("PREST_PG_URL", "mysql://app:s3cret@db.internal:3307/shop?tls=skip-verify")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, EngineMySQL, cfg.Engine)
+	require.Equal(t, "app", cfg.PGUser)
+	require.Equal(t, "s3cret", cfg.PGPass)
+	require.Equal(t, "db.internal", cfg.PGHost)
+	require.Equal(t, 3307, cfg.PGPort)
+	require.Equal(t, "shop", cfg.PGDatabase)
+	require.Equal(t, "skip-verify", cfg.PGSSLMode)
+	require.NotEqual(t, "postgres", cfg.PGPass)
+}

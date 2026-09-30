@@ -725,3 +725,38 @@ func TestProfileByAlias(t *testing.T) {
 		})
 	}
 }
+
+func TestFillMySQLDoesNotCopyPostgresDefaults(t *testing.T) {
+	t.Parallel()
+	cfg := &Prest{
+		Engine: EnginePostgres, PGHost: "127.0.0.1", PGPort: 5432,
+		PGUser: "postgres", PGPass: "postgres", PGDatabase: "prest", PGSSLMode: "disable",
+	}
+	db := &DatabaseConf{Alias: "shop", Engine: EngineMySQL, User: "app", Database: "shop"}
+	fillDatabaseDefaults(db, cfg)
+	require.Empty(t, db.Host)
+	require.Equal(t, 3306, db.Port)
+	require.Equal(t, "app", db.User)
+	require.Empty(t, db.Pass)
+	require.Equal(t, "shop", db.Database)
+	require.Equal(t, "disable", db.SSL.Mode)
+	require.ErrorIs(t, (&Prest{Engine: EngineMySQL, Databases: []DatabaseConf{*db}}).ValidateEngines(), ErrMySQLConfig)
+}
+
+func TestApplyMySQLURLDoesNotUsePostgresParser(t *testing.T) {
+	t.Parallel()
+	db := &DatabaseConf{Alias: "shop", URL: "mysql://app:secret@db.internal:3307/shop?tls=true"}
+	applyURLToDatabaseConf(db)
+	require.Equal(t, EngineMySQL, db.Engine)
+	require.Equal(t, "app", db.User)
+	require.Equal(t, "secret", db.Pass)
+	require.Equal(t, "db.internal", db.Host)
+	require.Equal(t, 3307, db.Port)
+	require.Equal(t, "shop", db.Database)
+	require.Equal(t, "require", db.SSL.Mode)
+
+	pg := &DatabaseConf{Alias: "pg", Engine: EnginePostgres, URL: "mysql://app:secret@db:3306/shop"}
+	applyURLToDatabaseConf(pg)
+	require.Empty(t, pg.Host)
+	require.Empty(t, pg.User)
+}

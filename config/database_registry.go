@@ -25,6 +25,7 @@ type DatabaseSSLConf struct {
 // DatabaseConf describes a registered database alias and its connection profile.
 type DatabaseConf struct {
 	Alias       string          `mapstructure:"alias"`
+	Engine      string          `mapstructure:"engine"`
 	URL         string          `mapstructure:"url"`
 	Host        string          `mapstructure:"host"`
 	Port        int             `mapstructure:"port"`
@@ -71,6 +72,9 @@ func parseDatabaseRegistry(v *viper.Viper, cfg *Prest) {
 		if !ident.IsSafeSegment(db.Alias) {
 			slog.Warn("database registry entry skipped: invalid alias", "alias", db.Alias)
 			continue
+		}
+		if db.Engine == "" && urlScheme(db.URL) == EngineMySQL {
+			db.Engine = EngineMySQL
 		}
 		fillDatabaseDefaults(&db, cfg)
 		if _, ok := envAliases[db.Alias]; ok {
@@ -173,6 +177,27 @@ func applyURLToDatabaseConf(db *DatabaseConf) {
 		)
 		return
 	}
+	if strings.EqualFold(u.Scheme, EngineMySQL) {
+		if db.Engine != "" && normalizeEngine(db.Engine) != EngineMySQL {
+			slog.Warn(
+				"mysql URL ignored: engine is not mysql",
+				"alias", db.Alias,
+				"url", logsafe.Redact(db.URL),
+			)
+			return
+		}
+		db.Engine = EngineMySQL
+		applyMySQLURL(db, u)
+		return
+	}
+	if EffectiveEngine(db, nil) == EngineMySQL {
+		slog.Warn(
+			"mysql database URL ignored: scheme is not mysql",
+			"alias", db.Alias,
+			"url", logsafe.Redact(db.URL),
+		)
+		return
+	}
 	if u.Hostname() != "" {
 		db.Host = u.Hostname()
 	}
@@ -195,7 +220,42 @@ func applyURLToDatabaseConf(db *DatabaseConf) {
 	}
 }
 
+func applyMySQLURL(db *DatabaseConf, u *url.URL) {
+	if u.Hostname() != "" {
+		db.Host = u.Hostname()
+	}
+	if u.Port() != "" {
+		if port, err := strconv.Atoi(u.Port()); err == nil {
+			db.Port = port
+		}
+	}
+	if db.Port == 0 {
+		db.Port = mysqlDefaultPort
+	}
+	if u.User != nil {
+		if user := u.User.Username(); user != "" {
+			db.User = user
+		}
+		if pass, ok := u.User.Password(); ok {
+			db.Pass = pass
+		}
+	}
+	if path := strings.TrimPrefix(u.Path, "/"); path != "" {
+		db.Database = path
+	}
+	if mode := mysqlTLSModeFromQuery(u); mode != "" {
+		db.SSL.Mode = mode
+	}
+	if db.SSL.Mode == "" {
+		db.SSL.Mode = "disable"
+	}
+}
+
 func fillDatabaseDefaults(db *DatabaseConf, cfg *Prest) {
+	if EffectiveEngine(db, cfg) == EngineMySQL {
+		fillMySQLDatabaseDefaults(db, cfg)
+		return
+	}
 	if db.Host == "" {
 		db.Host = cfg.PGHost
 	}
@@ -227,6 +287,56 @@ func fillDatabaseDefaults(db *DatabaseConf, cfg *Prest) {
 		db.MaxOpenConn = cfg.PGMaxOpenConn
 	}
 	if db.MaxIdleConn == 0 {
+		db.MaxIdleConn = cfg.PGMaxIdleConn
+	}
+}
+
+// fillMySQLDatabaseDefaults does not copy Postgres host, user, password, or
+// database. Port 3306 applies only when the entry port is unset. When the
+// root engine is also mysql, unset fields inherit the root mysql profile.
+func fillMySQLDatabaseDefaults(db *DatabaseConf, cfg *Prest) {
+	rootMySQL := cfg != nil && EffectiveEngine(nil, cfg) == EngineMySQL
+	if db.Host == "" && rootMySQL {
+		db.Host = cfg.PGHost
+	}
+	if db.Port == 0 {
+		if rootMySQL && cfg.PGPort != 0 {
+			db.Port = cfg.PGPort
+		} else {
+			db.Port = mysqlDefaultPort
+		}
+	}
+	if db.User == "" && rootMySQL {
+		db.User = cfg.PGUser
+	}
+	if db.Pass == "" && rootMySQL {
+		db.Pass = cfg.PGPass
+	}
+	if db.Database == "" && rootMySQL {
+		db.Database = cfg.PGDatabase
+	}
+	if db.SSL.Mode == "" {
+		if rootMySQL && cfg.PGSSLMode != "" {
+			db.SSL.Mode = cfg.PGSSLMode
+		} else {
+			db.SSL.Mode = "disable"
+		}
+	}
+	if rootMySQL {
+		if db.SSL.Cert == "" {
+			db.SSL.Cert = cfg.PGSSLCert
+		}
+		if db.SSL.Key == "" {
+			db.SSL.Key = cfg.PGSSLKey
+		}
+		if db.SSL.RootCert == "" {
+			db.SSL.RootCert = cfg.PGSSLRootCert
+		}
+	}
+	if db.MaxOpenConn == 0 && cfg != nil {
+		db.MaxOpenConn = cfg.PGMaxOpenConn
+	}
+	if db.MaxIdleConn == 0 && cfg != nil {
 		db.MaxIdleConn = cfg.PGMaxIdleConn
 	}
 }

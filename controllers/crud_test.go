@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -405,6 +406,47 @@ func TestCRUDHandler_Select_RelationNotFound(t *testing.T) {
 
 	scanner := mockgen.NewMockScanner(ctrl)
 	scanner.EXPECT().Err().Return(errors.New(`pq: relation "public.missing" does not exist`))
+
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)
+
+	db := mockDatabaseRegistry(ctrl)
+
+	h := NewCRUDHandler(Deps{Perms: perms, SQL: sqlBuilder, Builder: builder, Executor: executor, DB: db})
+	req := crudRequest(http.MethodGet, "/prest-test/public/missing", map[string]string{
+		"database": "prest-test", "schema": "public", "table": "missing",
+	})
+	rec := httptest.NewRecorder()
+	h.Select(rec, req)
+
+	require.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestCRUDHandler_Select_ErrRelationNotFound(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "missing", "read", "").Return([]string{"id"}, nil)
+
+	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
+	sqlBuilder.EXPECT().SelectFields([]string{"id"}).Return("`id`", nil)
+	sqlBuilder.EXPECT().SelectSQL("`id`", "prest-test", "public", "missing").Return("SELECT `id` FROM t")
+
+	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+	builder.EXPECT().DistinctClause(gomock.Any()).Return("", nil)
+	builder.EXPECT().CountByRequest(gomock.Any()).Return("", nil)
+	builder.EXPECT().JoinByRequest(gomock.Any()).Return(nil, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+	builder.EXPECT().GroupByClause(gomock.Any()).Return("")
+	builder.EXPECT().TimeBucketClause(gomock.Any()).Return("", nil)
+	builder.EXPECT().OrderByRequest(gomock.Any()).Return("", nil)
+	builder.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
+
+	scanner := mockgen.NewMockScanner(ctrl)
+	scanner.EXPECT().Err().Return(fmt.Errorf("missing: %w", adapters.ErrRelationNotFound))
 
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)

@@ -20,6 +20,7 @@ import (
 	"unicode"
 
 	"github.com/prest/prest/v2/adapters"
+	"github.com/prest/prest/v2/adapters/access"
 	"github.com/prest/prest/v2/adapters/postgres/formatters"
 	"github.com/prest/prest/v2/adapters/postgres/internal/connection"
 	"github.com/prest/prest/v2/adapters/postgres/statements"
@@ -1786,66 +1787,8 @@ func GetQueryOperator(op string) (string, error) {
 }
 
 // TablePermissions get tables permissions based in prest configuration
-func (adapter *postgres) TablePermissions(database, schema, table, op, userName string) (access bool) {
-	restrict := adapter.cfg.AccessConf.Restrict
-	if !restrict {
-		return true
-	}
-
-	for _, ignoreT := range adapter.cfg.AccessConf.IgnoreTable {
-		if ignoreT == table {
-			return true
-		}
-	}
-
-	if t, ok := matchTableConf(adapter.cfg.AccessConf.Tables, database, schema, table); ok {
-		access = slices.Contains(t.Permissions, op)
-	} else {
-		access = false
-	}
-
-	if userName == "" {
-		return access
-	}
-
-	users := adapter.cfg.AccessConf.Users
-	for _, u := range users {
-		if u.Name != userName {
-			continue
-		}
-		if t, ok := matchTableConf(u.Tables, database, schema, table); ok {
-			return slices.Contains(t.Permissions, op)
-		}
-	}
-	return access
-}
-
-func matchTableConf(tables []config.TablesConf, database, schema, table string) (config.TablesConf, bool) {
-	var tableOnly, schemaTable, full *config.TablesConf
-	for i := range tables {
-		t := &tables[i]
-		if t.Name != table {
-			continue
-		}
-		switch {
-		case t.Database == database && t.Schema == schema:
-			full = t
-		case t.Database == "" && t.Schema == schema:
-			schemaTable = t
-		case t.Database == "" && t.Schema == "":
-			tableOnly = t
-		}
-	}
-	if full != nil {
-		return *full, true
-	}
-	if schemaTable != nil {
-		return *schemaTable, true
-	}
-	if tableOnly != nil {
-		return *tableOnly, true
-	}
-	return config.TablesConf{}, false
+func (adapter *postgres) TablePermissions(database, schema, table, op, userName string) bool {
+	return access.TableAllowed(adapter.cfg, database, schema, table, op, userName)
 }
 
 // fieldsByPermission returns a list of fields that a user is allowed to access
@@ -1859,33 +1802,8 @@ func matchTableConf(tables []config.TablesConf, database, schema, table string) 
 // Returns:
 //   - fields: A slice of strings representing the fields the user is allowed to access.
 //     If no specific permissions are found, it defaults to returning all fields ("*").
-func (adapter *postgres) fieldsByPermission(database, schema, table, operation, userName string) (fields []string) {
-	fields = []string{"*"}
-
-	if t, ok := matchTableConf(adapter.cfg.AccessConf.Tables, database, schema, table); ok {
-		for _, perm := range t.Permissions {
-			if perm == operation {
-				fields = t.Fields
-			}
-		}
-	}
-
-	if userName == "" {
-		return
-	}
-
-	users := adapter.cfg.AccessConf.Users
-	for _, u := range users {
-		if u.Name != userName {
-			continue
-		}
-		if t, ok := matchTableConf(u.Tables, database, schema, table); ok &&
-			slices.Contains(t.Permissions, operation) {
-			fields = t.Fields
-		}
-	}
-
-	return
+func (adapter *postgres) fieldsByPermission(database, schema, table, operation, userName string) []string {
+	return access.FieldsFor(adapter.cfg, database, schema, table, operation, userName)
 }
 
 func containsAsterisk(arr []string) bool {

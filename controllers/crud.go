@@ -177,7 +177,7 @@ func (h *CRUDHandler) Select(w http.ResponseWriter, r *http.Request) {
 	sc := runQuery(ctx, sqlSelect, values...)
 	if err = sc.Err(); err != nil {
 		log.Errorln(err)
-		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
+		if isRelationNotFound(err, schema, table) {
 			jsonError(w, err.Error(), http.StatusNotFound)
 			return
 		}
@@ -223,7 +223,7 @@ func (h *CRUDHandler) Insert(w http.ResponseWriter, r *http.Request) {
 
 	sc := h.executor.InsertCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
-		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
+		if isRelationNotFound(err, schema, table) {
 			err = fmt.Errorf("relation does not exist: %v", err)
 			jsonError(w, err.Error(), http.StatusNotFound)
 			return
@@ -272,7 +272,7 @@ func (h *CRUDHandler) BatchInsert(w http.ResponseWriter, r *http.Request) {
 		sc = h.executor.BatchInsertCopyCtx(ctx, database, schema, table, strings.Split(names, ","), values...)
 	}
 	if err = sc.Err(); err != nil {
-		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
+		if isRelationNotFound(err, schema, table) {
 			err = fmt.Errorf("relation does not exist: %v", err)
 			jsonError(w, err.Error(), http.StatusNotFound)
 			return
@@ -330,7 +330,7 @@ func (h *CRUDHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	sc := h.executor.DeleteCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
-		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
+		if isRelationNotFound(err, schema, table) {
 			err = fmt.Errorf("relation does not exist: %v", err)
 			jsonError(w, err.Error(), http.StatusNotFound)
 			return
@@ -396,7 +396,7 @@ func (h *CRUDHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	sc := h.executor.UpdateCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
-		if strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table)) {
+		if isRelationNotFound(err, schema, table) {
 			jsonError(w, err.Error(), http.StatusNotFound)
 			return
 		}
@@ -404,4 +404,14 @@ func (h *CRUDHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write(sc.Bytes())
+}
+
+func isRelationNotFound(err error, schema, table string) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, adapters.ErrRelationNotFound) {
+		return true
+	}
+	return strings.Contains(err.Error(), fmt.Sprintf(`pq: relation "%s.%s" does not exist`, schema, table))
 }

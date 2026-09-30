@@ -1,7 +1,7 @@
 DOCKER_COMPOSE?=docker-compose -f docker-compose.yml
 UNIT_PKGS = $(shell go list ./... | grep -v '/integration')
 
-.PHONY: build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb test-integration-log test-integration-postgres-log test-integration-timescaledb-log ci signoz-up signoz-down
+.PHONY: build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb test-integration-mysql test-integration-log test-integration-postgres-log test-integration-timescaledb-log ci signoz-up signoz-down
 build_test_image:
 	$(DOCKER_COMPOSE) up -d postgres
 
@@ -26,6 +26,7 @@ test-unit:
 
 POSTGRES_COMPOSE=docker compose -f integration/postgres/docker-compose.yml
 TIMESCALEDB_COMPOSE=docker compose -f integration/timescaledb/docker-compose.yml
+MYSQL_COMPOSE=docker compose -f integration/mysql/docker-compose.yml
 
 # Alias for the historical Postgres integration target.
 test-integration: test-integration-postgres
@@ -85,6 +86,14 @@ test-integration-timescaledb:
 	$(TIMESCALEDB_COMPOSE) run --rm --no-deps tests; \
 	status=$$?; \
 	$(TIMESCALEDB_COMPOSE) down -v --remove-orphans; \
+	exit $$status
+
+# MySQL only. Does not run integration/suites or the Postgres job.
+test-integration-mysql:
+	$(MYSQL_COMPOSE) up -d --wait mysql db-init prestd && \
+	$(MYSQL_COMPOSE) run --rm --no-deps tests; \
+	status=$$?; \
+	$(MYSQL_COMPOSE) down -v --remove-orphans; \
 	exit $$status
 
 .PHONY: dc-up
