@@ -11,9 +11,17 @@ on:
 
 jobs:
   integration-mysql:
+    name: integration-mysql (${{ matrix.image }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - mysql:8.0
+          - mysql:8.4
+          - mysql:26.7
     steps:
       - uses: actions/checkout@v6
         with:
@@ -21,4 +29,6 @@ jobs:
           persist-credentials: false
 
       - name: Run MySQL E2E integration tests via docker compose
+        env:
+          MYSQL_IMAGE: ${{ matrix.image }}
         run: make test-integration-mysql

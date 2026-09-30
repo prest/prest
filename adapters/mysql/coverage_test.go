@@ -328,7 +328,7 @@ func TestQueryRegistryAndScripts(t *testing.T) {
 
 	require.Error(t, a.UpsertQuery(ctx, adapters.StoredQuery{Location: "bad/loc", Name: "q", ReadSQL: "s"}))
 	require.Error(t, a.UpsertQuery(ctx, adapters.StoredQuery{Location: "r", Name: "q"}))
-	mock.ExpectExec("ON DUPLICATE KEY UPDATE").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) AS new").WillReturnResult(sqlmock.NewResult(1, 1))
 	require.NoError(t, a.UpsertQuery(ctx, adapters.StoredQuery{DatabaseAlias: "shop", Location: "r", Name: "q", ReadSQL: "select 1"}))
 
 	mock.ExpectExec("DELETE FROM").WillReturnResult(sqlmock.NewResult(0, 1))
@@ -340,7 +340,7 @@ func TestQueryRegistryAndScripts(t *testing.T) {
 	require.NoError(t, os.Mkdir(filepath.Join(dir, "reports"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "reports", "items.read.sql"), []byte("select 1"), 0o644))
 	mock.ExpectQuery("name = ?").WillReturnRows(sqlmock.NewRows(cols))
-	mock.ExpectExec("ON DUPLICATE KEY UPDATE").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) AS new").WillReturnResult(sqlmock.NewResult(1, 1))
 	report, err := a.ImportFromFilesystem(ctx, dir, config.QueriesImportPolicyError)
 	require.NoError(t, err)
 	require.Equal(t, 1, report.Inserted)
@@ -360,7 +360,7 @@ func TestQueryRegistryAndScripts(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, report.Skipped)
 	mock.ExpectQuery("name = ?").WillReturnRows(sqlmock.NewRows(cols).AddRow(int64(1), "", "reports", "items", "select 1", "", nil, nil, nil, nil, "t", "t"))
-	mock.ExpectExec("ON DUPLICATE KEY UPDATE").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) AS new").WillReturnResult(sqlmock.NewResult(1, 1))
 	report, err = a.ImportFromFilesystem(ctx, conflictDir, "")
 	require.NoError(t, err)
 	require.Equal(t, 1, report.Updated)

@@ -18,7 +18,7 @@ x-prestd-service: &prestd-service
 
 services:
   mysql:
-    image: mysql:8.4
+    image: ${MYSQL_IMAGE:-mysql:8.4}
     environment:
       MYSQL_ROOT_PASSWORD: rootpw
       MYSQL_DATABASE: shop
@@ -32,7 +32,7 @@ services:
       - /var/lib/mysql
 
   db-init:
-    image: mysql:8.4
+    image: ${MYSQL_IMAGE:-mysql:8.4}
     working_dir: /workspace
     volumes:
       - ../..:/workspace

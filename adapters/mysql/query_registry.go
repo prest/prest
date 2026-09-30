@@ -143,6 +143,8 @@ func (a *Adapter) UpsertQuery(ctx context.Context, query adapters.StoredQuery) e
 	if err != nil {
 		return err
 	}
+	// Row alias (AS new) works on MySQL 8.0.19 through current innovation.
+	// VALUES(col) is deprecated since 8.0.20 and is not used.
 	stmt := fmt.Sprintf(`INSERT INTO %s
 (database_alias, location, name, read_sql, write_sql, update_sql, delete_sql, description, created_by)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) AS new

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Seed MySQL 8.4 for pREST: app user, two databases, auto-inc / text / int / JSON.
+# Seed MySQL 8.0+ for pREST: app user, two databases, auto-inc / text / int / JSON.
 set -euo pipefail
 
 host="${MYSQL_HOST:-mysql}"

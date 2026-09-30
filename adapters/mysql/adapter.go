@@ -12,7 +12,7 @@ import (
 	pctx "github.com/prest/prest/v2/context"
 )
 
-// Adapter is the MySQL 8.4 dialect adapter.
+// Adapter is the MySQL 8.0+ dialect adapter (8.0.19 or newer; see integration/mysql/DIFFERENCES.md).
 type Adapter struct {
 	cfg     *config.Prest
 	conn    *connection.Manager

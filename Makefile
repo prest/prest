@@ -88,7 +88,12 @@ test-integration-timescaledb:
 	$(TIMESCALEDB_COMPOSE) down -v --remove-orphans; \
 	exit $$status
 
-# MySQL only. Does not run integration/suites or the Postgres job.
+# MySQL only (./integration/mysql/...). Does not run integration/suites or other DBs.
+# One invocation, one image. Default is mysql:8.4. CI passes MYSQL_IMAGE for 8.0, 8.4, and 26.7.
+# Example: MYSQL_IMAGE=mysql:8.0 make test-integration-mysql
+MYSQL_IMAGE ?= mysql:8.4
+export MYSQL_IMAGE
+
 test-integration-mysql:
 	$(MYSQL_COMPOSE) up -d --wait mysql db-init prestd && \
 	$(MYSQL_COMPOSE) run --rm --no-deps tests; \
