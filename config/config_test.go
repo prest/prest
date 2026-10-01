@@ -890,6 +890,9 @@ func TestLoadDefaultEnginePostgres(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, EnginePostgres, cfg.Engine)
 	require.Equal(t, "postgres", cfg.PGUser)
+	require.Equal(t, "public", cfg.AuthSchema)
+	require.Equal(t, "public", cfg.QueriesConf.Schema)
+	require.False(t, cfg.MySQLPrepare)
 }
 
 func TestLoadMySQLFailsClosed(t *testing.T) {
@@ -923,5 +926,33 @@ func TestLoadMySQLURL(t *testing.T) {
 	require.Equal(t, 3307, cfg.PGPort)
 	require.Equal(t, "shop", cfg.PGDatabase)
 	require.Equal(t, "skip-verify", cfg.PGSSLMode)
+	require.Equal(t, "shop", cfg.AuthSchema)
+	require.Equal(t, "shop", cfg.QueriesConf.Schema)
+	require.False(t, cfg.MySQLPrepare)
 	require.NotEqual(t, "postgres", cfg.PGPass)
+}
+
+func TestLoadMySQLExplicitSchemas(t *testing.T) {
+	t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+	t.Setenv("PREST_ENGINE", "mysql")
+	t.Setenv("PREST_PG_USER", "app")
+	t.Setenv("PREST_PG_DATABASE", "shop")
+	t.Setenv("PREST_PG_HOST", "db.internal")
+	t.Setenv("PREST_AUTH_SCHEMA", "custom")
+	t.Setenv("PREST_QUERIES_SCHEMA", "custom")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, "custom", cfg.AuthSchema)
+	require.Equal(t, "custom", cfg.QueriesConf.Schema)
+	require.Equal(t, "prest_users", cfg.AuthTable)
+}
+
+func TestLoadMySQLPrepare(t *testing.T) {
+	t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+	t.Setenv("PREST_ENGINE", "mysql")
+	t.Setenv("PREST_PG_URL", "mysql://app:s3cret@db.internal:3307/shop")
+	t.Setenv("PREST_MYSQL_PREPARE", "true")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.True(t, cfg.MySQLPrepare)
 }

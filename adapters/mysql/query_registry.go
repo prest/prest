@@ -206,7 +206,7 @@ func (a *Adapter) ImportFromFilesystem(ctx context.Context, queriesPath, policy 
 		existing, getErr := a.GetQuery(ctx, sq.DatabaseAlias, sq.Location, sq.Name)
 		if getErr != nil {
 			if !errors.Is(getErr, sql.ErrNoRows) {
-				return report, getErr
+				return report, fmt.Errorf("import query %s/%s: %w", sq.Location, sq.Name, getErr)
 			}
 			if err := a.UpsertQuery(ctx, sq); err != nil {
 				return report, err

@@ -345,6 +345,21 @@ func TestUpdateReturningCapturedKey(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestUpdateReturningAssignsPrimaryKey(t *testing.T) {
+	a, mock := withMock(t)
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, "shop")
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(statements.PKColumns).
+		WithArgs("shop", "items").
+		WillReturnRows(sqlmock.NewRows([]string{"COLUMN_NAME", "EXTRA"}).AddRow("id", "auto_increment"))
+	mock.ExpectRollback()
+	sc := a.UpdateCtx(ctx, "UPDATE `shop`.`items` SET `id`=? WHERE `name`=? RETURNING `id`", int64(9), "bea")
+	require.Error(t, sc.Err())
+	require.Contains(t, sc.Err().Error(), "cannot change primary key")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestUpdateReturningNoPrimaryKey(t *testing.T) {
 	a, mock := withMock(t)
 	ctx := context.WithValue(context.Background(), pctx.DBNameKey, "shop")

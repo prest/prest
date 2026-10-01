@@ -76,6 +76,7 @@ func (m *Manager) DSN() (string, error) {
 		m.cfg.PGSSLCert,
 		m.cfg.PGSSLKey,
 		m.cfg.PGSSLRootCert,
+		m.cfg.MySQLPrepare,
 	)
 }
 

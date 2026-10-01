@@ -129,13 +129,7 @@ func (h *CRUDHandler) Select(w http.ResponseWriter, r *http.Request) {
 		sqlSelect = fmt.Sprint(query, " WHERE ", requestWhere)
 	}
 
-	var groupValues []any
-	groupBySQL := ""
-	if binder, ok := h.builder.(adapters.GroupByBinder); ok {
-		groupBySQL, groupValues = binder.GroupByClauseValues(r, len(values)+1)
-	} else {
-		groupBySQL = h.builder.GroupByClause(r)
-	}
+	groupBySQL, groupValues := adapters.GroupByFromRequest(h.builder, r, len(values)+1)
 	if groupBySQL != "" {
 		sqlSelect = fmt.Sprintf("%s %s", sqlSelect, groupBySQL)
 	}

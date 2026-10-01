@@ -31,6 +31,7 @@ func TestManagerOpenOwnsAndClose(t *testing.T) {
 		require.Equal(t, "mysql", driver)
 		require.Contains(t, dsn, "tcp(db.internal:3306)/shop")
 		require.Contains(t, dsn, "multiStatements=false")
+		require.Contains(t, dsn, "interpolateParams=true")
 		return sqlx.NewDb(raw, "sqlmock"), nil
 	})
 	t.Cleanup(restore)
@@ -66,6 +67,16 @@ func TestManagerOpenOwnsAndClose(t *testing.T) {
 	_, err = m.GetOwned("shop")
 	require.Error(t, err)
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestManagerDSNPrepare(t *testing.T) {
+	t.Parallel()
+	cfg := testCfg()
+	cfg.MySQLPrepare = true
+	dsn, err := NewManager(cfg).DSN()
+	require.NoError(t, err)
+	require.Contains(t, dsn, "interpolateParams=false")
+	require.Contains(t, dsn, "multiStatements=false")
 }
 
 func TestManagerDSNErrors(t *testing.T) {

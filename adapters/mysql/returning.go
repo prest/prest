@@ -256,6 +256,10 @@ func (a *Adapter) update(ctx context.Context, tx *sql.Tx, query string, params .
 		err = fmt.Errorf("update returning: no primary key")
 		return scanErr(err)
 	}
+	if assignsPrimaryKey(setSQL, pks) {
+		err = fmt.Errorf("update returning: cannot change primary key")
+		return scanErr(err)
+	}
 	var whereArgs []any
 	if whereSQL != "" {
 		whereArgs = params[setN:]
@@ -306,6 +310,25 @@ func (a *Adapter) update(ctx context.Context, tx *sql.Tx, query string, params .
 		}
 	}
 	return scanBuf(buf, nil, true)
+}
+
+func assignsPrimaryKey(setSQL string, pks []pkColumn) bool {
+	idx := strings.Index(strings.ToUpper(setSQL), " SET ")
+	if idx < 0 {
+		return false
+	}
+	tail := setSQL[idx+len(" SET "):]
+	for _, part := range strings.Split(tail, ",") {
+		lhs, _, _ := strings.Cut(part, "=")
+		name := strings.TrimSpace(lhs)
+		name = strings.Trim(name, "`")
+		for _, pk := range pks {
+			if strings.EqualFold(name, pk.name) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func pkForUpdateSQL(pks []pkColumn, table, whereSQL string) string {

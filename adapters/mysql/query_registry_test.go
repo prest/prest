@@ -47,6 +47,7 @@ func TestImportFromFilesystemLookupError(t *testing.T) {
 	mock.ExpectQuery("name = ?").WillReturnError(driverErr)
 	report, err := a.ImportFromFilesystem(ctx, dir, "")
 	require.ErrorIs(t, err, driverErr)
+	require.Contains(t, err.Error(), "itest/get")
 	require.Equal(t, 0, report.Inserted)
 	require.NoError(t, mock.ExpectationsWereMet())
 }

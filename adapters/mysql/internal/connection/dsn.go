@@ -9,10 +9,12 @@ import (
 )
 
 // BuildDSN returns a go-sql-driver MySQL DSN.
-// multiStatements and client-side interpolation are off.
+// multiStatements stays false. prepare false sets interpolateParams so the
+// driver sends one text query. prepare true sets interpolateParams false and
+// uses the binary prepare protocol. A mysql:// URL cannot turn prepare on.
 // The password is escaped into the DSN and must not be logged by callers.
 // Client certificate paths fail closed; this version does not register a TLS config.
-func BuildDSN(user, pass, host string, port int, database, sslMode, cert, key, rootCert string) (string, error) {
+func BuildDSN(user, pass, host string, port int, database, sslMode, cert, key, rootCert string, prepare bool) (string, error) {
 	if user == "" || database == "" {
 		return "", fmt.Errorf("mysql user and database are required")
 	}
@@ -38,12 +40,17 @@ func BuildDSN(user, pass, host string, port int, database, sslMode, cert, key, r
 	cfg.DBName = database
 	cfg.ParseTime = true
 	cfg.MultiStatements = false
-	cfg.InterpolateParams = false
+	interpolate := "true"
+	cfg.InterpolateParams = true
+	if prepare {
+		interpolate = "false"
+		cfg.InterpolateParams = false
+	}
 	cfg.Params = map[string]string{
 		"charset":           "utf8mb4",
 		"tls":               tlsValue,
 		"multiStatements":   "false",
-		"interpolateParams": "false",
+		"interpolateParams": interpolate,
 	}
 	return cfg.FormatDSN(), nil
 }

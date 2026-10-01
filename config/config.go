@@ -137,6 +137,7 @@ type Prest struct {
 	CORSAllowCredentials bool
 	Debug                bool
 	Engine               string // postgres (default) or mysql
+	MySQLPrepare         bool
 	Adapter              adapters.Adapter
 	EnableDefaultJWT     bool
 	SingleDB             bool
@@ -392,6 +393,7 @@ func viperCfg() (*viper.Viper, string) {
 	v.SetDefault("http.timeout", 60)
 
 	v.SetDefault("engine", EnginePostgres)
+	v.SetDefault("mysql.prepare", false)
 
 	v.SetDefault("pg.host", "127.0.0.1")
 	v.SetDefault("pg.port", 5432)
@@ -495,6 +497,7 @@ func Parse(v *viper.Viper, cfg *Prest, configPath string) {
 	cfg.AccessConf.IgnoreTable = v.GetStringSlice("access.ignore_table")
 	cfg.QueriesPath = v.GetString("queries.location")
 	parseQueriesConfig(v, cfg)
+	applyMySQLSchemaDefaults(v, cfg)
 
 	cfg.CORSAllowOrigin = v.GetStringSlice("cors.alloworigin")
 	cfg.CORSAllowHeaders = v.GetStringSlice("cors.allowheaders")
@@ -736,6 +739,7 @@ func parseDBConfig(v *viper.Viper, cfg *Prest) {
 // unless the key was set in the file or environment. Port 3306 applies only
 // when port is unset. A mysql:// URL is applied; any other scheme is ignored.
 func parseMySQLDBConfig(v *viper.Viper, cfg *Prest) {
+	cfg.MySQLPrepare = v.GetBool("mysql.prepare")
 	if mysqlConfigured(v, "pg.host") {
 		cfg.PGHost = v.GetString("pg.host")
 	}
@@ -862,6 +866,21 @@ func loadCacheConfig(v *viper.Viper, cfg *Prest) {
 	cfg.Cache.SufixFile = v.GetString("cache.sufixfile")
 
 	cfg.Cache.Endpoints = unmarshalKeyOrZero[[]cache.Endpoint](v, "cache.endpoints")
+}
+
+// applyMySQLSchemaDefaults copies the MySQL database name into auth and
+// queries schemas when those keys were not set in the file or environment.
+// viper IsSet is true for SetDefault, so a default of "public" is not explicit.
+func applyMySQLSchemaDefaults(v *viper.Viper, cfg *Prest) {
+	if cfg == nil || v == nil || EffectiveEngine(nil, cfg) != EngineMySQL || cfg.PGDatabase == "" {
+		return
+	}
+	if !mysqlConfigured(v, "auth.schema") {
+		cfg.AuthSchema = cfg.PGDatabase
+	}
+	if !mysqlConfigured(v, "queries.schema") {
+		cfg.QueriesConf.Schema = cfg.PGDatabase
+	}
 }
 
 func parseAuthConfig(v *viper.Viper, cfg *Prest) {
