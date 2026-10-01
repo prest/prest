@@ -2,8 +2,10 @@ package config
 
 import (
 	"log/slog"
+	"path/filepath"
 	"strings"
 
+	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 )
 
@@ -88,6 +90,64 @@ func parseQueriesConfig(v *viper.Viper, cfg *Prest) {
 
 	q.Scripts = unmarshalKeyOrZero[[]ScriptConf](v, "queries.scripts")
 	q.Users = unmarshalKeyOrZero[[]QueryUsersConf](v, "queries.users")
+}
+
+func setQueriesDefaults(v *viper.Viper) {
+	v.SetDefault("queries.location", defaultQueriesPath())
+	v.SetDefault("queries.storage", QueriesStorageFilesystem)
+	v.SetDefault("queries.schema", "public")
+	v.SetDefault("queries.table", "prest_queries")
+	v.SetDefault("queries.restrict", false)
+	v.SetDefault("queries.register_enabled", false)
+	v.SetDefault("queries.import_policy", QueriesImportPolicyUpdate)
+}
+
+func defaultQueriesPath() string {
+	hDir, err := homedir.Dir()
+	if err != nil {
+		slog.Error("could not find homedir", "err", err)
+		return filepath.Join(".", "queries")
+	}
+	return filepath.Join(hDir, "queries")
+}
+
+func ensureQueriesPath(cfg *Prest) {
+	if cfg.QueriesConf.Storage == QueriesStorageDatabase {
+		// Database mode uses prest_queries at runtime; location is import-only.
+		if !cfg.QueriesConf.ImportOnStartup {
+			return
+		}
+		if cfg.QueriesPath == "" {
+			return
+		}
+		if err := ensureDir(cfg.QueriesPath); err != nil {
+			slog.Warn("queries import path unavailable", "path", cfg.QueriesPath, "err", err)
+		}
+		return
+	}
+
+	configuredPath := cfg.QueriesPath
+	err := ensureDir(configuredPath)
+	if err == nil {
+		return
+	}
+
+	slog.Warn("queries path unavailable, trying fallback", "path", configuredPath, "err", err)
+
+	fallback := defaultQueriesPath()
+	if configuredPath == fallback {
+		slog.Warn("queries disabled: default queries path unavailable", "path", configuredPath, "err", err)
+		cfg.QueriesPath = ""
+		return
+	}
+
+	if err = ensureDir(fallback); err == nil {
+		cfg.QueriesPath = fallback
+		return
+	}
+
+	slog.Warn("queries disabled: fallback queries path unavailable", "path", fallback, "err", err)
+	cfg.QueriesPath = ""
 }
 
 func ensureQueriesConfig(cfg *Prest) {

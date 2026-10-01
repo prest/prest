@@ -1,25 +1,15 @@
 package config
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/cache"
-	"github.com/prest/prest/v2/internal/logsafe"
 
-	"github.com/lestrrat-go/jwx/v3/jwk"
-	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 )
 
@@ -152,10 +142,7 @@ type Prest struct {
 	Logger               *slog.Logger
 }
 
-const (
-	defaultCfgFile          = "./prest.toml"
-	defaultCacheStoragePath = "./"
-)
+const defaultCfgFile = "./prest.toml"
 
 // Load reads pREST configuration from the TOML file named by PREST_CONF, or
 // ./prest.toml when that variable is unset. Environment variables with the
@@ -201,147 +188,6 @@ func Load() (*Prest, error) {
 	return setupLogger(cfg)
 }
 
-// ensureDir ensures path exists as a writable directory.
-// It creates missing directories, rejects non-directory paths, and verifies
-// writability with a temporary test file.
-func ensureDir(path string) error {
-	info, err := os.Stat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			if err = os.MkdirAll(path, 0700); err != nil {
-				return fmt.Errorf("create directory %q: %w", path, err)
-			}
-		} else {
-			return err
-		}
-	} else if !info.IsDir() {
-		return fmt.Errorf("path %q is not a directory", path)
-	}
-
-	testFile := filepath.Join(path, ".prest-write-test")
-	if err := os.WriteFile(testFile, []byte("test"), 0600); err != nil {
-		return fmt.Errorf("directory %q is not writable: %w", path, err)
-	}
-	if err := os.Remove(testFile); err != nil {
-		return fmt.Errorf("directory %q is not writable: %w", path, err)
-	}
-	return nil
-}
-
-// ensureCacheStorage ensures the cache storage directory exists and is writable.
-// On failure it tries the default path, then disables cache.
-func ensureCacheStorage(cfg *Prest) {
-	configuredPath := cfg.Cache.StoragePath
-	err := ensureDir(configuredPath)
-	if err == nil {
-		return
-	}
-
-	slog.Warn("cache storage path unavailable, trying fallback", "path", configuredPath, "err", err)
-
-	if configuredPath == defaultCacheStoragePath {
-		slog.Warn("cache disabled: default storage path unavailable", "path", configuredPath, "err", err)
-		cfg.Cache.Enabled = false
-		return
-	}
-
-	if err = ensureDir(defaultCacheStoragePath); err == nil {
-		cfg.Cache.StoragePath = defaultCacheStoragePath
-		return
-	}
-
-	slog.Warn("cache disabled: fallback storage path unavailable", "path", defaultCacheStoragePath, "err", err)
-	cfg.Cache.Enabled = false
-}
-
-func ensureJWTConfig(cfg *Prest) {
-	if min := hmacMinKeyBytes(cfg.JWTAlgo); min > 0 && cfg.JWTKey != "" && len(cfg.JWTKey) < min {
-		slog.Error("jwt.key too short for HMAC algorithm",
-			"algo", cfg.JWTAlgo, "got", len(cfg.JWTKey), "want", min, "err", ErrJWTKeyTooShort)
-		// Treat an undersized HMAC key as unusable verification material so
-		// go-jose/v4 cannot reject (or worse, surprise) at request time.
-		cfg.JWTKey = ""
-	}
-	if cfg.AuthEnabled && cfg.JWTKey == "" {
-		slog.Error("auth disabled: jwt.key is empty", "err", ErrAuthEnabledNoJWTKey)
-		cfg.AuthEnabled = false
-	}
-	if !cfg.EnableDefaultJWT || cfg.Debug {
-		return
-	}
-	if cfg.JWTKey != "" || cfg.JWTJWKS != "" || cfg.JWTWellKnownURL != "" {
-		return
-	}
-	slog.Error(
-		"default JWT middleware disabled: no verification material",
-		"err", ErrJWTDefaultEnabledNoKey)
-	cfg.EnableDefaultJWT = false
-}
-
-// hmacMinKeyBytes returns the RFC 7518 minimum HMAC key size for algo, or 0
-// when algo is not HMAC (RS*/ES*/PS*/EdDSA) and jwt.key is not used as a MAC key.
-func hmacMinKeyBytes(algo string) int {
-	switch strings.ToUpper(algo) {
-	case "HS384":
-		return 48
-	case "HS512":
-		return 64
-	case "HS256", "":
-		// Empty matches viper default jwt.algo = HS256.
-		return 32
-	default:
-		return 0
-	}
-}
-
-func defaultQueriesPath() string {
-	hDir, err := homedir.Dir()
-	if err != nil {
-		slog.Error("could not find homedir", "err", err)
-		return filepath.Join(".", "queries")
-	}
-	return filepath.Join(hDir, "queries")
-}
-
-func ensureQueriesPath(cfg *Prest) {
-	if cfg.QueriesConf.Storage == QueriesStorageDatabase {
-		// Database mode uses prest_queries at runtime; location is import-only.
-		if !cfg.QueriesConf.ImportOnStartup {
-			return
-		}
-		if cfg.QueriesPath == "" {
-			return
-		}
-		if err := ensureDir(cfg.QueriesPath); err != nil {
-			slog.Warn("queries import path unavailable", "path", cfg.QueriesPath, "err", err)
-		}
-		return
-	}
-
-	configuredPath := cfg.QueriesPath
-	err := ensureDir(configuredPath)
-	if err == nil {
-		return
-	}
-
-	slog.Warn("queries path unavailable, trying fallback", "path", configuredPath, "err", err)
-
-	fallback := defaultQueriesPath()
-	if configuredPath == fallback {
-		slog.Warn("queries disabled: default queries path unavailable", "path", configuredPath, "err", err)
-		cfg.QueriesPath = ""
-		return
-	}
-
-	if err = ensureDir(fallback); err == nil {
-		cfg.QueriesPath = fallback
-		return
-	}
-
-	slog.Warn("queries disabled: fallback queries path unavailable", "path", fallback, "err", err)
-	cfg.QueriesPath = ""
-}
-
 func unmarshalKeyOrZero[T any](v *viper.Viper, key string) T {
 	var out T
 	if err := v.UnmarshalKey(key, &out); err != nil {
@@ -382,40 +228,22 @@ func viperCfg() (*viper.Viper, string) {
 	v.SetConfigName(file)
 	v.SetConfigType("toml")
 
-	v.SetDefault("auth.enabled", false)
-	v.SetDefault("auth.username", "username")
-	v.SetDefault("auth.password", "password")
-	v.SetDefault("auth.schema", "public")
-	v.SetDefault("auth.table", "prest_users")
-	v.SetDefault("auth.encrypt", "bcrypt")
-	v.SetDefault("auth.type", "body")
+	setAuthDefaults(v)
+	setServerDefaults(v)
+	setEngineDefaults(v)
+	setMySQLDefaults(v)
+	setPostgresDefaults(v)
+	setJWTDefaults(v)
+	setCacheDefaults(v)
+	setQueriesDefaults(v)
+	setOtelDefaults(v)
+	return v, configPath
+}
 
+func setServerDefaults(v *viper.Viper) {
 	v.SetDefault("http.host", "0.0.0.0")
 	v.SetDefault("http.port", 3000)
 	v.SetDefault("http.timeout", 60)
-
-	v.SetDefault("engine", EnginePostgres)
-	v.SetDefault("mysql.prepare", false)
-
-	v.SetDefault("pg.host", "127.0.0.1")
-	v.SetDefault("pg.port", 5432)
-	v.SetDefault("pg.database", "prest")
-	v.SetDefault("pg.user", "postgres")
-	v.SetDefault("pg.pass", "postgres")
-	v.SetDefault("pg.maxidleconn", 0) // avoids db memory leak on req timeout
-	v.SetDefault("pg.maxopenconn", 10)
-	v.SetDefault("pg.conntimeout", 10)
-	v.SetDefault("pg.single", true)
-	v.SetDefault("pg.cache", true)
-	// todo: replace this with prefer, will need to replace lib/pq
-	// https://github.com/jackc/pgx/blob/47d631e34be7128997a0aa89b75885cc4ad4c82e/pgconn/config.go#L218
-	v.SetDefault("pg.ssl.mode", "disable")
-
-	v.SetDefault("jwt.default", false)
-	v.SetDefault("jwt.algo", "HS256")
-	v.SetDefault("jwt.wellknownurl", "")
-	v.SetDefault("jwt.jwks", "")
-	v.SetDefault("jwt.whitelist", []string{`^\/auth$`})
 
 	v.SetDefault("json.agg.type", "jsonb_agg")
 
@@ -428,11 +256,6 @@ func viperCfg() (*viper.Viper, string) {
 	v.SetDefault("https.cert", "/etc/certs/cert.crt")
 	v.SetDefault("https.key", "/etc/certs/cert.key")
 
-	v.SetDefault("cache.enabled", false)
-	v.SetDefault("cache.time", 10)
-	v.SetDefault("cache.storagepath", defaultCacheStoragePath)
-	v.SetDefault("cache.sufixfile", ".cache.prestd.db")
-
 	v.SetDefault("version", 1)
 	v.SetDefault("debug", false)
 	v.SetDefault("context", "/")
@@ -444,23 +267,6 @@ func viperCfg() (*viper.Viper, string) {
 	v.SetDefault("expose.databases", true)
 
 	v.SetDefault("studio.enabled", true)
-
-	v.SetDefault("otel.enabled", false)
-	v.SetDefault("otel.service_name", "prestd")
-	v.SetDefault("otel.protocol", "grpc")
-	v.SetDefault("otel.sample_ratio", 1.0)
-	v.SetDefault("otel.metrics_interval", "15s")
-	v.SetDefault("otel.insecure", false)
-	v.SetDefault("otel.db_statement", false)
-
-	v.SetDefault("queries.location", defaultQueriesPath())
-	v.SetDefault("queries.storage", QueriesStorageFilesystem)
-	v.SetDefault("queries.schema", "public")
-	v.SetDefault("queries.table", "prest_queries")
-	v.SetDefault("queries.restrict", false)
-	v.SetDefault("queries.register_enabled", false)
-	v.SetDefault("queries.import_policy", QueriesImportPolicyUpdate)
-	return v, configPath
 }
 
 func getPrestConfFile(prestConf string) string {
@@ -532,152 +338,6 @@ func Parse(v *viper.Viper, cfg *Prest, configPath string) error {
 	return nil
 }
 
-// parseDatabaseURL tries to get from URL the DB configs
-func parseDatabaseURL(cfg *Prest) {
-	if cfg.PGURL == "" {
-		slog.Debug("no db url found, skipping")
-		return
-	}
-	// Parser PG URL, get database connection via string URL
-	u, err := url.Parse(cfg.PGURL)
-	if err != nil {
-		slog.Error("cannot parse db url", "err", logsafe.Error(err))
-		return
-	}
-	// mysql:// is parsed only when engine=mysql, and never by this parser.
-	if strings.EqualFold(u.Scheme, "mysql") {
-		slog.Error("mysql URL ignored: engine is not mysql")
-		return
-	}
-	cfg.PGHost = u.Hostname()
-	if u.Port() != "" {
-		pgPort, err := strconv.Atoi(u.Port())
-		if err != nil {
-			slog.Error("cannot parse db url port, falling back to default values", "port", u.Port(), "err", err)
-			return
-		}
-		cfg.PGPort = pgPort
-	}
-	cfg.PGUser = u.User.Username()
-	pgPass, pgPassExist := u.User.Password()
-	if pgPassExist {
-		cfg.PGPass = pgPass
-	}
-	cfg.PGDatabase = strings.Replace(u.Path, "/", "", -1)
-	if u.Query().Get("sslmode") != "" {
-		cfg.PGSSLMode = u.Query().Get("sslmode")
-	}
-}
-
-// ErrJWTDefaultEnabledNoKey is returned when the default JWT middleware is
-// enabled but no verification material (HMAC key, JWKS or .well-known URL) was
-// provided. This guards against accidentally serving requests with an empty
-// HMAC key, which would let any client forge bearer tokens. See GHSA-fj7v-859r-2fm4.
-var ErrJWTDefaultEnabledNoKey = errors.New(
-	"jwt.default is enabled but no verification material was provided " +
-		"(set jwt.key, jwt.jwks or jwt.wellknownurl, or disable jwt.default)")
-
-// ErrAuthEnabledNoJWTKey is returned when basic auth is enabled but jwt.key
-// is empty. AuthMiddleware uses the same []byte(JWTKey) to verify HS256
-// tokens, so an empty key opens the same auth-bypass as the default JWT
-// middleware. See GHSA-fj7v-859r-2fm4.
-var ErrAuthEnabledNoJWTKey = errors.New(
-	"auth.enabled is true but jwt.key is empty (required to verify HS256 tokens)")
-
-// ErrJWTKeyTooShort is returned when jwt.key is shorter than the RFC 7518
-// minimum for the configured HMAC algorithm (HS256: 32 bytes, HS384: 48,
-// HS512: 64). go-jose/v4 rejects undersized HMAC keys at sign/verify time.
-var ErrJWTKeyTooShort = errors.New(
-	"jwt.key is shorter than the minimum required for the configured HMAC algorithm")
-
-// fetchJWKS tries to get the JWKS from the URL in the config
-// redactURL returns a log-safe "scheme://host/path" form of raw, dropping
-// userinfo, query, and fragment which may carry credentials or tokens. It
-// returns "" when raw cannot be parsed, so no unsanitized value is ever logged.
-func redactURL(raw string) string {
-	u, err := url.Parse(raw)
-	if err != nil {
-		return ""
-	}
-	return (&url.URL{Scheme: u.Scheme, Host: u.Host, Path: u.Path}).String()
-}
-
-func fetchJWKS(cfg *Prest) {
-	if cfg.JWTWellKnownURL == "" {
-		slog.Debug("no JWT WellKnown url found, skipping")
-		return
-	}
-	if cfg.JWTJWKS != "" {
-		slog.Debug("JWKS already set, skipping")
-		return
-	}
-
-	// Call provider to obtain .well-known config
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-	}
-
-	r, err := client.Get(cfg.JWTWellKnownURL)
-	if err != nil {
-		slog.Error("Cannot get .well-known configuration", "url", cfg.JWTWellKnownURL, "err", err)
-		return
-	}
-	defer r.Body.Close()
-
-	var wellKnown map[string]interface{}
-	err = json.NewDecoder(r.Body).Decode(&wellKnown)
-	if err != nil {
-		slog.Error("Failed to decode JSON", "err", err)
-		return
-	}
-
-	//Retrieve the JWKS from the endpoint
-	uri, ok := wellKnown["jwks_uri"].(string)
-	if !ok {
-		slog.Error("Unable to convert .WellKnown configuration of jwks_uri to a string")
-		return
-	}
-
-	jwksResp, err := client.Get(uri)
-	if err != nil {
-		slog.Error("Failed to fetch JWK", "err", err)
-		return
-	}
-	defer jwksResp.Body.Close()
-
-	if jwksResp.StatusCode < 200 || jwksResp.StatusCode >= 300 {
-		slog.Error("JWKS endpoint returned non-success status", "status", jwksResp.StatusCode, "url", redactURL(uri))
-		return
-	}
-
-	// Cap the JWKS body to guard against oversized or hostile responses.
-	const maxJWKSBytes = 1 << 20 // 1 MiB
-	jwksBody, err := io.ReadAll(io.LimitReader(jwksResp.Body, maxJWKSBytes+1))
-	if err != nil {
-		slog.Error("Failed to read JWKS response body", "err", err)
-		return
-	}
-	if len(jwksBody) > maxJWKSBytes {
-		slog.Error("JWKS response body exceeds size limit", "limit", maxJWKSBytes)
-		return
-	}
-
-	JWKSet, err := jwk.Parse(jwksBody)
-	if err != nil {
-		slog.Error("Failed to parse JWK", "err", err)
-		return
-	}
-
-	//Convert set to json string
-	jwkSetJSON, err := json.Marshal(JWKSet)
-	if err != nil {
-		slog.Error("Failed to marshal JWKSet to JSON", "err", err)
-		return
-	}
-
-	cfg.JWTJWKS = string(jwkSetJSON)
-}
-
 func portFromEnv(cfg *Prest) {
 	if os.Getenv("PORT") == "" {
 		slog.Debug("could not find PORT in env")
@@ -705,209 +365,6 @@ func getJSONAgg(v *viper.Viper) (config string) {
 		slog.Warn("JSON Agg type can only be 'json_agg' or 'jsonb_agg', using the later as default")
 	}
 	return jsonAggDefault
-}
-
-func parseDBConfig(v *viper.Viper, cfg *Prest) error {
-	cfg.Engine = normalizeEngine(v.GetString("engine"))
-	if cfg.Engine == "" {
-		cfg.Engine = EnginePostgres
-	}
-	if cfg.Engine == EngineMySQL {
-		return parseMySQLDBConfig(v, cfg)
-	}
-	cfg.PGURL = v.GetString("pg.url")
-	cfg.PGHost = v.GetString("pg.host")
-	cfg.PGPort = v.GetInt("pg.port")
-	cfg.PGUser = v.GetString("pg.user")
-	cfg.PGPass = v.GetString("pg.pass")
-	cfg.PGDatabase = v.GetString("pg.database")
-	cfg.PGSSLMode = v.GetString("pg.ssl.mode")
-	cfg.PGSSLKey = v.GetString("pg.ssl.key")
-	cfg.PGSSLCert = v.GetString("pg.ssl.cert")
-	cfg.PGSSLRootCert = v.GetString("pg.ssl.rootcert")
-
-	if os.Getenv("DATABASE_URL") != "" {
-		// cloud factor support: https://devcenter.heroku.com/changelog-items/438
-		cfg.PGURL = os.Getenv("DATABASE_URL")
-	}
-	parseDatabaseURL(cfg)
-
-	cfg.PGMaxIdleConn = v.GetInt("pg.maxidleconn")
-	cfg.PGMaxOpenConn = v.GetInt("pg.maxopenconn")
-	cfg.PGConnTimeout = v.GetInt("pg.conntimeout")
-	cfg.PGCache = v.GetBool("pg.cache")
-	cfg.SingleDB = v.GetBool("pg.single")
-	return nil
-}
-
-// parseMySQLDBConfig reads connection fields without applying Postgres defaults.
-// viper defaults for pg.user, pg.pass, pg.database, and pg.host are ignored
-// unless the key was set in the file or environment. Port 3306 applies only
-// when port is unset. A mysql:// URL is applied; any other scheme is ignored.
-func parseMySQLDBConfig(v *viper.Viper, cfg *Prest) error {
-	cfg.MySQLPrepare = v.GetBool("mysql.prepare")
-	if mysqlConfigured(v, "pg.host") {
-		cfg.PGHost = v.GetString("pg.host")
-	}
-	if mysqlConfigured(v, "pg.port") {
-		cfg.PGPort = v.GetInt("pg.port")
-	}
-	if cfg.PGPort == 0 {
-		cfg.PGPort = mysqlDefaultPort
-	}
-	if mysqlConfigured(v, "pg.user") {
-		cfg.PGUser = v.GetString("pg.user")
-	}
-	if mysqlConfigured(v, "pg.pass") {
-		cfg.PGPass = v.GetString("pg.pass")
-	}
-	if mysqlConfigured(v, "pg.database") {
-		cfg.PGDatabase = v.GetString("pg.database")
-	}
-	if mysqlConfigured(v, "pg.ssl.mode") {
-		cfg.PGSSLMode = v.GetString("pg.ssl.mode")
-	}
-	if cfg.PGSSLMode == "" {
-		cfg.PGSSLMode = "disable"
-	}
-	if mysqlConfigured(v, "pg.ssl.key") {
-		cfg.PGSSLKey = v.GetString("pg.ssl.key")
-	}
-	if mysqlConfigured(v, "pg.ssl.cert") {
-		cfg.PGSSLCert = v.GetString("pg.ssl.cert")
-	}
-	if mysqlConfigured(v, "pg.ssl.rootcert") {
-		cfg.PGSSLRootCert = v.GetString("pg.ssl.rootcert")
-	}
-
-	cfg.PGMaxIdleConn = v.GetInt("pg.maxidleconn")
-	cfg.PGMaxOpenConn = v.GetInt("pg.maxopenconn")
-	cfg.PGConnTimeout = v.GetInt("pg.conntimeout")
-	cfg.PGCache = v.GetBool("pg.cache")
-	cfg.SingleDB = v.GetBool("pg.single")
-
-	if mysqlConfigured(v, "pg.url") {
-		cfg.PGURL = v.GetString("pg.url")
-	}
-	if os.Getenv("DATABASE_URL") != "" {
-		cfg.PGURL = os.Getenv("DATABASE_URL")
-	}
-	return applyMySQLURLToPrest(cfg)
-}
-
-// mysqlConfigured reports a value from the environment or config file.
-// viper defaults for the Postgres keys are not treated as set.
-func mysqlConfigured(v *viper.Viper, key string) bool {
-	envKey := "PREST_" + strings.ToUpper(strings.ReplaceAll(key, ".", "_"))
-	if _, ok := os.LookupEnv(envKey); ok {
-		return true
-	}
-	return v.InConfig(key)
-}
-
-func applyMySQLURLToPrest(cfg *Prest) error {
-	if cfg.PGURL == "" {
-		return nil
-	}
-	u, err := url.Parse(cfg.PGURL)
-	if err != nil {
-		slog.Error("cannot parse mysql url", "err", logsafe.Error(err))
-		return nil
-	}
-	if !strings.EqualFold(u.Scheme, "mysql") {
-		slog.Error("mysql URL ignored: scheme is not mysql", "scheme", u.Scheme)
-		cfg.PGURL = ""
-		return nil
-	}
-	port := 0
-	hasPort := false
-	if u.Port() != "" {
-		port, err = strconv.Atoi(u.Port())
-		if err != nil {
-			return fmt.Errorf("cannot parse mysql url port %q: %w", u.Port(), err)
-		}
-		hasPort = true
-	}
-	if u.Hostname() != "" {
-		cfg.PGHost = u.Hostname()
-	}
-	if hasPort {
-		cfg.PGPort = port
-	}
-	if u.User != nil {
-		if user := u.User.Username(); user != "" {
-			cfg.PGUser = user
-		}
-		if pass, ok := u.User.Password(); ok {
-			cfg.PGPass = pass
-		}
-	}
-	if path := strings.TrimPrefix(u.Path, "/"); path != "" {
-		cfg.PGDatabase = path
-	}
-	if mode := mysqlTLSModeFromQuery(u); mode != "" {
-		cfg.PGSSLMode = mode
-	}
-	return nil
-}
-
-func mysqlTLSModeFromQuery(u *url.URL) string {
-	if u == nil {
-		return ""
-	}
-	if tlsMode := u.Query().Get("tls"); tlsMode != "" {
-		switch strings.ToLower(tlsMode) {
-		case "false":
-			return "disable"
-		case "true":
-			return "require"
-		case "skip-verify":
-			return "skip-verify"
-		default:
-			return tlsMode
-		}
-	}
-	return u.Query().Get("sslmode")
-}
-
-func loadCacheConfig(v *viper.Viper, cfg *Prest) {
-	cfg.Cache.Enabled = v.GetBool("cache.enabled")
-	cfg.Cache.Time = v.GetInt("cache.time")
-	cfg.Cache.StoragePath = v.GetString("cache.storagepath")
-	cfg.Cache.SufixFile = v.GetString("cache.sufixfile")
-
-	cfg.Cache.Endpoints = unmarshalKeyOrZero[[]cache.Endpoint](v, "cache.endpoints")
-}
-
-// applyMySQLSchemaDefaults copies the MySQL database name into auth and
-// queries schemas when those keys were not set in the file or environment.
-// viper IsSet is true for SetDefault, so a default of "public" is not explicit.
-func applyMySQLSchemaDefaults(v *viper.Viper, cfg *Prest) {
-	if cfg == nil || v == nil || EffectiveEngine(nil, cfg) != EngineMySQL || cfg.PGDatabase == "" {
-		return
-	}
-	if !mysqlConfigured(v, "auth.schema") {
-		cfg.AuthSchema = cfg.PGDatabase
-	}
-	if !mysqlConfigured(v, "queries.schema") {
-		cfg.QueriesConf.Schema = cfg.PGDatabase
-	}
-}
-
-func parseAuthConfig(v *viper.Viper, cfg *Prest) {
-	cfg.AuthEnabled = v.GetBool("auth.enabled")
-	if v.IsSet("auth.migrate_on_startup") {
-		cfg.AuthMigrateOnStartup = v.GetBool("auth.migrate_on_startup")
-	} else {
-		cfg.AuthMigrateOnStartup = cfg.AuthEnabled
-	}
-	cfg.AuthSchema = v.GetString("auth.schema")
-	cfg.AuthTable = v.GetString("auth.table")
-	cfg.AuthUsername = v.GetString("auth.username")
-	cfg.AuthPassword = v.GetString("auth.password")
-	cfg.AuthEncrypt = v.GetString("auth.encrypt")
-	cfg.AuthMetadata = v.GetStringSlice("auth.metadata")
-	cfg.AuthType = v.GetString("auth.type")
 }
 
 func parseHTTPConfig(v *viper.Viper, cfg *Prest) {

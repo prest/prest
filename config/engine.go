@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	"github.com/spf13/viper"
 )
 
 const (
@@ -40,6 +42,10 @@ func EffectiveEngine(db *DatabaseConf, cfg *Prest) string {
 
 func normalizeEngine(engine string) string {
 	return strings.ToLower(strings.TrimSpace(engine))
+}
+
+func setEngineDefaults(v *viper.Viper) {
+	v.SetDefault("engine", EnginePostgres)
 }
 
 // ValidateEngines fails closed for an unknown engine and for mysql entries
