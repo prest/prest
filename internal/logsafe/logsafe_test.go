@@ -2,6 +2,7 @@ package logsafe
 
 import (
 	"errors"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -44,6 +45,35 @@ func TestError_passwordKV(t *testing.T) {
 			require.Equal(t, tt.want, redacted.Error())
 		})
 	}
+}
+
+func TestError_mysqlURL(t *testing.T) {
+	t.Parallel()
+
+	_, err := url.Parse("mysql://app:s3cret@db.internal:abc/shop")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "s3cret")
+
+	redacted := Error(err)
+	require.NotContains(t, redacted.Error(), "s3cret")
+	require.Equal(t, `parse "mysql://app:***@db.internal:abc/shop": invalid port ":abc" after host`, redacted.Error())
+}
+
+func TestError_mysqlPasswordContainingAt(t *testing.T) {
+	t.Parallel()
+
+	err := errors.New("dial: mysql://user:p@ss@word@host/db failed")
+	redacted := Error(err)
+	require.Equal(t, "dial: mysql://user:***@host/db failed", redacted.Error())
+	require.NotContains(t, redacted.Error(), "ss@word")
+}
+
+func TestRedact_mysqlUppercaseScheme(t *testing.T) {
+	t.Parallel()
+
+	redacted := Redact("MYSQL://app:s3cret@db.internal/shop")
+	require.NotContains(t, redacted, "s3cret")
+	require.Equal(t, "mysql://app:***@db.internal/shop", redacted)
 }
 
 func TestError_postgresURL(t *testing.T) {

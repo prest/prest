@@ -562,3 +562,15 @@ func TestLoadMySQLInvalidPort(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "cannot parse mysql url port")
 }
+
+func TestLoadMySQLNonNumericPort(t *testing.T) {
+	t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+	t.Setenv("PREST_ENGINE", "mysql")
+	raw := "mysql://app:s3cret@db.internal:abc/shop"
+	t.Setenv("PREST_PG_URL", raw)
+	_, err := Load()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "cannot parse mysql url")
+	require.NotContains(t, err.Error(), "s3cret")
+	require.NotContains(t, err.Error(), raw)
+}

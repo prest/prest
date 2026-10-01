@@ -278,8 +278,9 @@ func getPrestConfFile(prestConf string) string {
 
 // Parse pREST config. Invalid or missing config files log warnings and fall
 // back to viper defaults and environment overrides; structured keys that fail
-// to unmarshal use zero values. A mysql URL with an unparsable port returns
-// an error. Other config content does not fail startup.
+// to unmarshal use zero values. A mysql URL that cannot be parsed, including
+// a non-numeric or overflowing port, returns an error. Other config content
+// does not fail startup.
 func Parse(v *viper.Viper, cfg *Prest, configPath string) error {
 	if err := v.ReadInConfig(); err != nil {
 		slog.Warn("config file unavailable, falling back to default settings", "file", configPath, "err", err)

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -88,7 +89,8 @@ func applyMySQLURLToPrest(cfg *Prest) error {
 	u, err := url.Parse(cfg.PGURL)
 	if err != nil {
 		slog.Error("cannot parse mysql url", "err", logsafe.Error(err))
-		return nil
+		// url.Error.Error() embeds the raw URL, including userinfo.
+		return fmt.Errorf("cannot parse mysql url: %s", mysqlURLParseCause(err))
 	}
 	if !strings.EqualFold(u.Scheme, "mysql") {
 		slog.Error("mysql URL ignored: scheme is not mysql", "scheme", u.Scheme)
@@ -125,6 +127,16 @@ func applyMySQLURLToPrest(cfg *Prest) error {
 		cfg.PGSSLMode = mode
 	}
 	return nil
+}
+
+// mysqlURLParseCause is the reason from url.Parse without the raw URL.
+// Wrapping the *url.Error itself would put userinfo in Error().
+func mysqlURLParseCause(err error) string {
+	var uerr *url.Error
+	if errors.As(err, &uerr) && uerr.Err != nil {
+		return uerr.Err.Error()
+	}
+	return "invalid url"
 }
 
 func mysqlTLSModeFromQuery(u *url.URL) string {
