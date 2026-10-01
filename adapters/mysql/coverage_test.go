@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -492,4 +493,17 @@ func TestTransactionWrappers(t *testing.T) {
 	mock.ExpectExec("DELETE FROM `shop`.`items` WHERE `id`=?").WillReturnResult(sqlmock.NewResult(0, 1))
 	sc = a.DeleteWithTransaction(tx, "DELETE FROM `shop`.`items` WHERE `id`=? RETURNING `id`", int64(1))
 	require.NoError(t, sc.Err())
+}
+
+func TestPlaceholders(t *testing.T) {
+	t.Parallel()
+	got, err := placeholders(1, 3)
+	require.NoError(t, err)
+	require.Equal(t, "(?,?,?)", got)
+
+	_, err = placeholders(2, 1)
+	require.Error(t, err)
+
+	_, err = placeholders(0, math.MaxInt)
+	require.Error(t, err)
 }

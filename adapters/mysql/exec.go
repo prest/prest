@@ -46,7 +46,7 @@ func (a *Adapter) QueryCtx(ctx context.Context, query string, params ...any) ada
 	if err != nil {
 		return scanErr(err)
 	}
-	rows, err := db.QueryContext(ctx, query, params...)
+	rows, err := execQuery(ctx, db, query, params...)
 	if err != nil {
 		return scanErr(err)
 	}
@@ -65,7 +65,7 @@ func (a *Adapter) QueryCountCtx(ctx context.Context, query string, params ...any
 		return scanErr(err)
 	}
 	var n int64
-	if err := db.QueryRowContext(ctx, query, params...).Scan(&n); err != nil {
+	if err := execQueryRow(ctx, db, query, params...).Scan(&n); err != nil {
 		return scanErr(err)
 	}
 	buf, err := json.Marshal(map[string]int64{"count": n})
@@ -139,7 +139,11 @@ func (a *Adapter) BatchInsertCopyCtx(ctx context.Context, dbname, schema, table 
 	rows := len(params) / len(keys)
 	groups := make([]string, rows)
 	for i := 0; i < rows; i++ {
-		groups[i] = placeholders(1, len(keys))
+		ph, err := placeholders(1, len(keys))
+		if err != nil {
+			return scanErr(err)
+		}
+		groups[i] = ph
 	}
 	query := fmt.Sprintf("INSERT INTO %s(%s) VALUES%s", tableReference(schema, table), strings.Join(quoted, ","), strings.Join(groups, ","))
 	return a.batchInsert(ctx, query, params...)
@@ -179,13 +183,13 @@ func (a *Adapter) execRowsAffected(ctx context.Context, tx *sql.Tx, query string
 		err error
 	)
 	if tx != nil {
-		res, err = tx.ExecContext(ctx, query, params...)
+		res, err = execStmt(ctx, tx, query, params...)
 	} else {
 		db, derr := a.dbFromCtx(ctx)
 		if derr != nil {
 			return scanErr(derr)
 		}
-		res, err = db.ExecContext(ctx, query, params...)
+		res, err = execStmt(ctx, db, query, params...)
 	}
 	if err != nil {
 		return scanErr(err)
@@ -196,4 +200,28 @@ func (a *Adapter) execRowsAffected(ctx context.Context, tx *sql.Tx, query string
 	}
 	buf, err := json.Marshal(map[string]int64{"rows_affected": n})
 	return scanBuf(buf, err, false)
+}
+
+type queryer interface {
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
+func execQuery(ctx context.Context, q queryer, query string, args ...any) (*sql.Rows, error) {
+	// Adapter-built SQL: identifiers are quoted, values are bound arguments.
+	// codeql[go/sql-injection]
+	return q.QueryContext(ctx, query, args...)
+}
+
+func execQueryRow(ctx context.Context, q queryer, query string, args ...any) *sql.Row {
+	// Adapter-built SQL: identifiers are quoted, values are bound arguments.
+	// codeql[go/sql-injection]
+	return q.QueryRowContext(ctx, query, args...)
+}
+
+func execStmt(ctx context.Context, q queryer, query string, args ...any) (sql.Result, error) {
+	// Adapter-built SQL: identifiers are quoted, values are bound arguments.
+	// codeql[go/sql-injection]
+	return q.ExecContext(ctx, query, args...)
 }

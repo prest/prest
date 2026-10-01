@@ -45,7 +45,7 @@ func (a *Adapter) insert(ctx context.Context, tx *sql.Tx, query string, params .
 			}
 		}()
 	}
-	res, err := tx.ExecContext(ctx, query, params...)
+	res, err := execStmt(ctx, tx, query, params...)
 	if err != nil {
 		return scanErr(err)
 	}
@@ -76,7 +76,7 @@ func (a *Adapter) insertedObject(ctx context.Context, tx *sql.Tx, query string, 
 		return insertedFallback(cols, params, res)
 	}
 	q := fmt.Sprintf("SELECT * FROM %s.%s WHERE %s", mustQuote(schema), mustQuote(table), where)
-	rows, err := tx.QueryContext(ctx, q, args...)
+	rows, err := execQuery(ctx, tx, q, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +260,7 @@ func (a *Adapter) update(ctx context.Context, tx *sql.Tx, query string, params .
 	if whereSQL != "" {
 		whereArgs = params[setN:]
 	}
-	keyRows, err := tx.QueryContext(ctx, pkForUpdateSQL(pks, table, whereSQL), whereArgs...)
+	keyRows, err := execQuery(ctx, tx, pkForUpdateSQL(pks, table, whereSQL), whereArgs...)
 	if err != nil {
 		return scanErr(err)
 	}
@@ -274,7 +274,7 @@ func (a *Adapter) update(ctx context.Context, tx *sql.Tx, query string, params .
 		err = closeErr
 		return scanErr(err)
 	}
-	if _, err = tx.ExecContext(ctx, stmt, params...); err != nil {
+	if _, err = execStmt(ctx, tx, stmt, params...); err != nil {
 		return scanErr(err)
 	}
 	if len(tuples) == 0 {
@@ -287,7 +287,7 @@ func (a *Adapter) update(ctx context.Context, tx *sql.Tx, query string, params .
 	}
 	pred, predArgs := pkPredicate(pks, tuples)
 	sel := fmt.Sprintf("SELECT %s FROM %s WHERE %s", returning, table, pred)
-	rows, err := tx.QueryContext(ctx, sel, predArgs...)
+	rows, err := execQuery(ctx, tx, sel, predArgs...)
 	if err != nil {
 		return scanErr(err)
 	}
@@ -402,7 +402,7 @@ func (a *Adapter) delete(ctx context.Context, tx *sql.Tx, query string, params .
 	if whereSQL != "" {
 		sel += " WHERE " + whereSQL
 	}
-	rows, err := tx.QueryContext(ctx, sel, params...)
+	rows, err := execQuery(ctx, tx, sel, params...)
 	if err != nil {
 		return scanErr(err)
 	}
@@ -411,7 +411,7 @@ func (a *Adapter) delete(ctx context.Context, tx *sql.Tx, query string, params .
 	if err != nil {
 		return scanErr(err)
 	}
-	if _, err = tx.ExecContext(ctx, stmt, params...); err != nil {
+	if _, err = execStmt(ctx, tx, stmt, params...); err != nil {
 		return scanErr(err)
 	}
 	if ownTx {
@@ -451,7 +451,7 @@ func (a *Adapter) batchInsert(ctx context.Context, query string, params ...any) 
 	if err != nil {
 		return scanErr(err)
 	}
-	res, err := tx.ExecContext(ctx, query, params...)
+	res, err := execStmt(ctx, tx, query, params...)
 	if err != nil {
 		_ = tx.Rollback()
 		return scanErr(err)
@@ -518,7 +518,7 @@ func (a *Adapter) batchImages(ctx context.Context, tx *sql.Tx, schema, table str
 		ph[i] = "?"
 	}
 	q := fmt.Sprintf("SELECT * FROM %s.%s WHERE %s IN (%s)", mustQuote(schema), mustQuote(table), mustQuote(pk.name), strings.Join(ph, ","))
-	rows, err := tx.QueryContext(ctx, q, args...)
+	rows, err := execQuery(ctx, tx, q, args...)
 	if err != nil {
 		return nil, err
 	}

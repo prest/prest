@@ -277,7 +277,11 @@ func (a *Adapter) ParseInsertRequest(r *http.Request) (string, string, []interfa
 		fields = append(fields, quoted)
 		values = append(values, bound)
 	}
-	return strings.Join(fields, ", "), placeholders(1, len(values)), values, nil
+	ph, err := placeholders(1, len(values))
+	if err != nil {
+		return "", "", nil, err
+	}
+	return strings.Join(fields, ", "), ph, values, nil
 }
 
 func (a *Adapter) ParseBatchInsertRequest(r *http.Request) (string, string, []interface{}, error) {
@@ -312,7 +316,11 @@ func (a *Adapter) ParseBatchInsertRequest(r *http.Request) (string, string, []in
 			}
 			values = append(values, bound)
 		}
-		rows = append(rows, placeholders(start, len(values)))
+		ph, err := placeholders(start, len(values))
+		if err != nil {
+			return "", "", nil, err
+		}
+		rows = append(rows, ph)
 	}
 	return strings.Join(quoted, ","), strings.Join(rows, ","), values, nil
 }

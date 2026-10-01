@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/prest/prest/v2/internal/ident"
@@ -36,14 +37,18 @@ func mustQuote(s string) string {
 
 // placeholders returns n question-mark placeholders wrapped in parentheses.
 // initial is ignored for the text; it only preserves the caller's value order.
-func placeholders(initial, lenValues int) string {
-	n := lenValues - initial + 1
-	if n < 0 {
-		n = 0
+func placeholders(initial, lenValues int) (string, error) {
+	if initial < 1 || lenValues < initial {
+		return "", fmt.Errorf("invalid placeholder count")
 	}
+	n := lenValues - initial
+	if n == math.MaxInt {
+		return "", fmt.Errorf("invalid placeholder count")
+	}
+	n++
 	parts := make([]string, n)
 	for i := range parts {
 		parts[i] = "?"
 	}
-	return "(" + strings.Join(parts, ",") + ")"
+	return "(" + strings.Join(parts, ",") + ")", nil
 }
