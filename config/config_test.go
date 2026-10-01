@@ -14,7 +14,7 @@ import (
 
 func requireParse(t *testing.T, v *viper.Viper, cfg *Prest, configPath string) {
 	t.Helper()
-	Parse(v, cfg, configPath)
+	require.NoError(t, Parse(v, cfg, configPath))
 }
 
 func TestLoad(t *testing.T) {
@@ -51,7 +51,7 @@ func TestParseMalformedConfig(t *testing.T) {
 	t.Setenv("PREST_CONF", badConfig)
 	v, configPath := viperCfg()
 	cfg := &Prest{}
-	Parse(v, cfg, configPath)
+	require.NoError(t, Parse(v, cfg, configPath))
 	require.Equal(t, 3000, cfg.HTTPPort)
 	require.Equal(t, "disable", cfg.PGSSLMode)
 }
@@ -955,4 +955,25 @@ func TestLoadMySQLPrepare(t *testing.T) {
 	cfg, err := Load()
 	require.NoError(t, err)
 	require.True(t, cfg.MySQLPrepare)
+}
+
+func TestApplyMySQLURLToPrestInvalidPort(t *testing.T) {
+	t.Parallel()
+	c := &Prest{PGHost: "keep", PGURL: "mysql://app:s3cret@db.internal:999999999999999999999/shop"}
+	err := applyMySQLURLToPrest(c)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "cannot parse mysql url port")
+	require.Equal(t, "keep", c.PGHost)
+	require.Empty(t, c.PGUser)
+	require.Empty(t, c.PGPass)
+	require.Empty(t, c.PGDatabase)
+}
+
+func TestLoadMySQLInvalidPort(t *testing.T) {
+	t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+	t.Setenv("PREST_ENGINE", "mysql")
+	t.Setenv("PREST_PG_URL", "mysql://app:s3cret@db.internal:999999999999999999999/shop")
+	_, err := Load()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "cannot parse mysql url port")
 }

@@ -56,7 +56,7 @@ func TestParseDatabaseRegistry_EnvIndexed(t *testing.T) {
 
 	v := viper.New()
 	cfg := &Prest{}
-	parseDBConfig(v, cfg)
+	require.NoError(t, parseDBConfig(v, cfg))
 	parseDatabaseRegistry(v, cfg)
 	require.Len(t, cfg.Databases, 2)
 	require.Equal(t, "tenant-a", cfg.Databases[0].Alias)
@@ -78,7 +78,7 @@ func TestParseDatabaseRegistry_EnvOverridesTOML(t *testing.T) {
 	v, _ := viperCfg()
 	require.NoError(t, v.ReadInConfig())
 	cfg := &Prest{}
-	parseDBConfig(v, cfg)
+	require.NoError(t, parseDBConfig(v, cfg))
 	parseDatabaseRegistry(v, cfg)
 	require.Len(t, cfg.Databases, 2)
 	require.Equal(t, "override-host", cfg.Databases[0].Host)
@@ -95,7 +95,7 @@ func TestParseDatabaseRegistry_LegacyUnchanged(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgresql://cloud:cloudPass@localhost:5432/CloudDatabase/?sslmode=disable")
 	v := viper.New()
 	cfg := &Prest{}
-	parseDBConfig(v, cfg)
+	require.NoError(t, parseDBConfig(v, cfg))
 	parseDatabaseRegistry(v, cfg)
 	require.Empty(t, cfg.Databases)
 	require.Equal(t, "CloudDatabase", cfg.PGDatabase)
@@ -108,7 +108,7 @@ func TestParseDatabaseRegistry_MissingURL(t *testing.T) {
 
 	v := viper.New()
 	cfg := &Prest{}
-	parseDBConfig(v, cfg)
+	require.NoError(t, parseDBConfig(v, cfg))
 	parseDatabaseRegistry(v, cfg)
 	require.Empty(t, cfg.Databases)
 }
@@ -122,7 +122,7 @@ func TestParseDatabaseRegistry_DuplicateAlias(t *testing.T) {
 
 	v := viper.New()
 	cfg := &Prest{}
-	parseDBConfig(v, cfg)
+	require.NoError(t, parseDBConfig(v, cfg))
 	parseDatabaseRegistry(v, cfg)
 	require.Len(t, cfg.Databases, 1)
 	require.Equal(t, "tenant-a", cfg.Databases[0].Alias)

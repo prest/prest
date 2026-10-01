@@ -179,7 +179,9 @@ const (
 func Load() (*Prest, error) {
 	v, configPath := viperCfg()
 	cfg := &Prest{}
-	Parse(v, cfg, configPath)
+	if err := Parse(v, cfg, configPath); err != nil {
+		return nil, err
+	}
 
 	parseDatabaseRegistry(v, cfg)
 	if err := cfg.ValidateEngines(); err != nil {
@@ -470,8 +472,9 @@ func getPrestConfFile(prestConf string) string {
 
 // Parse pREST config. Invalid or missing config files log warnings and fall
 // back to viper defaults and environment overrides; structured keys that fail
-// to unmarshal use zero values. Parse does not fail startup for config content.
-func Parse(v *viper.Viper, cfg *Prest, configPath string) {
+// to unmarshal use zero values. A mysql URL with an unparsable port returns
+// an error. Other config content does not fail startup.
+func Parse(v *viper.Viper, cfg *Prest, configPath string) error {
 	if err := v.ReadInConfig(); err != nil {
 		slog.Warn("config file unavailable, falling back to default settings", "file", configPath, "err", err)
 		cfg.PGSSLMode = "disable"
@@ -480,7 +483,9 @@ func Parse(v *viper.Viper, cfg *Prest, configPath string) {
 	parseAuthConfig(v, cfg)
 	parseHTTPConfig(v, cfg)
 	portFromEnv(cfg)
-	parseDBConfig(v, cfg)
+	if err := parseDBConfig(v, cfg); err != nil {
+		return err
+	}
 
 	cfg.JWTKey = v.GetString("jwt.key")
 	cfg.JWTAlgo = v.GetString("jwt.algo")
@@ -524,6 +529,7 @@ func Parse(v *viper.Viper, cfg *Prest, configPath string) {
 	cfg.AccessConf.Tables = unmarshalKeyOrZero[[]TablesConf](v, "access.tables")
 	cfg.AccessConf.Users = unmarshalKeyOrZero[[]UsersConf](v, "access.users")
 	cfg.PluginMiddlewareList = unmarshalKeyOrZero[[]PluginMiddleware](v, "pluginmiddlewarelist")
+	return nil
 }
 
 // parseDatabaseURL tries to get from URL the DB configs
@@ -701,14 +707,13 @@ func getJSONAgg(v *viper.Viper) (config string) {
 	return jsonAggDefault
 }
 
-func parseDBConfig(v *viper.Viper, cfg *Prest) {
+func parseDBConfig(v *viper.Viper, cfg *Prest) error {
 	cfg.Engine = normalizeEngine(v.GetString("engine"))
 	if cfg.Engine == "" {
 		cfg.Engine = EnginePostgres
 	}
 	if cfg.Engine == EngineMySQL {
-		parseMySQLDBConfig(v, cfg)
-		return
+		return parseMySQLDBConfig(v, cfg)
 	}
 	cfg.PGURL = v.GetString("pg.url")
 	cfg.PGHost = v.GetString("pg.host")
@@ -732,13 +737,14 @@ func parseDBConfig(v *viper.Viper, cfg *Prest) {
 	cfg.PGConnTimeout = v.GetInt("pg.conntimeout")
 	cfg.PGCache = v.GetBool("pg.cache")
 	cfg.SingleDB = v.GetBool("pg.single")
+	return nil
 }
 
 // parseMySQLDBConfig reads connection fields without applying Postgres defaults.
 // viper defaults for pg.user, pg.pass, pg.database, and pg.host are ignored
 // unless the key was set in the file or environment. Port 3306 applies only
 // when port is unset. A mysql:// URL is applied; any other scheme is ignored.
-func parseMySQLDBConfig(v *viper.Viper, cfg *Prest) {
+func parseMySQLDBConfig(v *viper.Viper, cfg *Prest) error {
 	cfg.MySQLPrepare = v.GetBool("mysql.prepare")
 	if mysqlConfigured(v, "pg.host") {
 		cfg.PGHost = v.GetString("pg.host")
@@ -786,7 +792,7 @@ func parseMySQLDBConfig(v *viper.Viper, cfg *Prest) {
 	if os.Getenv("DATABASE_URL") != "" {
 		cfg.PGURL = os.Getenv("DATABASE_URL")
 	}
-	applyMySQLURLToPrest(cfg)
+	return applyMySQLURLToPrest(cfg)
 }
 
 // mysqlConfigured reports a value from the environment or config file.
@@ -799,29 +805,33 @@ func mysqlConfigured(v *viper.Viper, key string) bool {
 	return v.InConfig(key)
 }
 
-func applyMySQLURLToPrest(cfg *Prest) {
+func applyMySQLURLToPrest(cfg *Prest) error {
 	if cfg.PGURL == "" {
-		return
+		return nil
 	}
 	u, err := url.Parse(cfg.PGURL)
 	if err != nil {
 		slog.Error("cannot parse mysql url", "err", logsafe.Error(err))
-		return
+		return nil
 	}
 	if !strings.EqualFold(u.Scheme, "mysql") {
 		slog.Error("mysql URL ignored: scheme is not mysql", "scheme", u.Scheme)
 		cfg.PGURL = ""
-		return
+		return nil
+	}
+	port := 0
+	hasPort := false
+	if u.Port() != "" {
+		port, err = strconv.Atoi(u.Port())
+		if err != nil {
+			return fmt.Errorf("cannot parse mysql url port %q: %w", u.Port(), err)
+		}
+		hasPort = true
 	}
 	if u.Hostname() != "" {
 		cfg.PGHost = u.Hostname()
 	}
-	if u.Port() != "" {
-		port, err := strconv.Atoi(u.Port())
-		if err != nil {
-			slog.Error("cannot parse mysql url port", "port", u.Port(), "err", err)
-			return
-		}
+	if hasPort {
 		cfg.PGPort = port
 	}
 	if u.User != nil {
@@ -838,6 +848,7 @@ func applyMySQLURLToPrest(cfg *Prest) {
 	if mode := mysqlTLSModeFromQuery(u); mode != "" {
 		cfg.PGSSLMode = mode
 	}
+	return nil
 }
 
 func mysqlTLSModeFromQuery(u *url.URL) string {
