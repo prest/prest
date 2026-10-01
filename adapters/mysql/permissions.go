@@ -24,7 +24,7 @@ func (a *Adapter) ScriptPermissions(_ context.Context, databaseAlias, location, 
 func (a *Adapter) FieldsPermissions(r *http.Request, database, schema, table, op, userName string) ([]string, error) {
 	cols, err := columnsByRequest(r)
 	if err != nil {
-		return nil, fmt.Errorf("error on parse columns from request: %s", err)
+		return nil, fmt.Errorf("error on parse columns from request: %w", err)
 	}
 	targets, err := joinTargetsByRequest(r, schema, table)
 	if err != nil {

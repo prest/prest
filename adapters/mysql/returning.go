@@ -133,18 +133,42 @@ func splitTableRef(ref string) (schema, table string) {
 func (a *Adapter) primaryKeys(ctx context.Context, tx *sql.Tx, schema, table string) ([]pkColumn, error) {
 	key := schema + "." + table
 	a.pkMu.Lock()
-	defer a.pkMu.Unlock()
 	if a.pkCache == nil {
 		a.pkCache = map[string][]pkColumn{}
 	}
 	if cached, ok := a.pkCache[key]; ok {
+		a.pkMu.Unlock()
 		return cached, nil
 	}
+	a.pkMu.Unlock()
+
 	rows, err := tx.QueryContext(ctx, statements.PKColumns, schema, table)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	cols, err := scanPKColumns(rows)
+	closeErr := rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	if closeErr != nil {
+		return nil, closeErr
+	}
+
+	a.pkMu.Lock()
+	if a.pkCache == nil {
+		a.pkCache = map[string][]pkColumn{}
+	}
+	if cached, ok := a.pkCache[key]; ok {
+		a.pkMu.Unlock()
+		return cached, nil
+	}
+	a.pkCache[key] = cols
+	a.pkMu.Unlock()
+	return cols, nil
+}
+
+func scanPKColumns(rows *sql.Rows) ([]pkColumn, error) {
 	var cols []pkColumn
 	for rows.Next() {
 		var name, extra string
@@ -159,7 +183,6 @@ func (a *Adapter) primaryKeys(ctx context.Context, tx *sql.Tx, schema, table str
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	a.pkCache[key] = cols
 	return cols, nil
 }
 
@@ -219,22 +242,62 @@ func (a *Adapter) update(ctx context.Context, tx *sql.Tx, query string, params .
 		err = fmt.Errorf("update placeholders exceed values")
 		return scanErr(err)
 	}
+	table := updateTable(stmt)
+	if table == "" {
+		err = fmt.Errorf("update returning: empty table")
+		return scanErr(err)
+	}
+	schema, tbl := splitTableRef(table)
+	pks, err := a.primaryKeys(ctx, tx, schema, tbl)
+	if err != nil {
+		return scanErr(err)
+	}
+	if len(pks) == 0 {
+		err = fmt.Errorf("update returning: no primary key")
+		return scanErr(err)
+	}
+	var whereArgs []any
+	if whereSQL != "" {
+		whereArgs = params[setN:]
+	}
+	keyRows, err := tx.QueryContext(ctx, pkForUpdateSQL(pks, table, whereSQL), whereArgs...)
+	if err != nil {
+		return scanErr(err)
+	}
+	tuples, keyErr := scanKeyTuples(keyRows, len(pks))
+	closeErr := keyRows.Close()
+	if keyErr != nil {
+		err = keyErr
+		return scanErr(err)
+	}
+	if closeErr != nil {
+		err = closeErr
+		return scanErr(err)
+	}
 	if _, err = tx.ExecContext(ctx, stmt, params...); err != nil {
 		return scanErr(err)
 	}
-	table := updateTable(stmt)
-	sel := fmt.Sprintf("SELECT %s FROM %s", returning, table)
-	whereArgs := params[setN:]
-	if whereSQL != "" {
-		sel += " WHERE " + whereSQL
+	if len(tuples) == 0 {
+		if ownTx {
+			if cerr := tx.Commit(); cerr != nil {
+				return scanErr(cerr)
+			}
+		}
+		return scanBuf([]byte("[]"), nil, true)
 	}
-	rows, err := tx.QueryContext(ctx, sel, whereArgs...)
+	pred, predArgs := pkPredicate(pks, tuples)
+	sel := fmt.Sprintf("SELECT %s FROM %s WHERE %s", returning, table, pred)
+	rows, err := tx.QueryContext(ctx, sel, predArgs...)
 	if err != nil {
 		return scanErr(err)
 	}
-	defer rows.Close()
 	buf, err := scanJSONArray(rows)
+	closeErr = rows.Close()
 	if err != nil {
+		return scanErr(err)
+	}
+	if closeErr != nil {
+		err = closeErr
 		return scanErr(err)
 	}
 	if ownTx {
@@ -243,6 +306,76 @@ func (a *Adapter) update(ctx context.Context, tx *sql.Tx, query string, params .
 		}
 	}
 	return scanBuf(buf, nil, true)
+}
+
+func pkForUpdateSQL(pks []pkColumn, table, whereSQL string) string {
+	cols := make([]string, len(pks))
+	for i, pk := range pks {
+		cols[i] = mustQuote(pk.name)
+	}
+	sel := fmt.Sprintf("SELECT %s FROM %s", strings.Join(cols, ", "), table)
+	if whereSQL != "" {
+		sel += " WHERE " + whereSQL
+	}
+	return sel + " FOR UPDATE"
+}
+
+func pkPredicate(pks []pkColumn, tuples [][]any) (string, []any) {
+	args := make([]any, 0, len(pks)*len(tuples))
+	if len(pks) == 1 {
+		col := mustQuote(pks[0].name)
+		if len(tuples) == 1 {
+			return col + " = ?", append(args, tuples[0][0])
+		}
+		ph := make([]string, len(tuples))
+		for i, tuple := range tuples {
+			ph[i] = "?"
+			args = append(args, tuple[0])
+		}
+		return col + " IN (" + strings.Join(ph, ",") + ")", args
+	}
+	cols := make([]string, len(pks))
+	one := make([]string, len(pks))
+	for i, pk := range pks {
+		cols[i] = mustQuote(pk.name)
+		one[i] = "?"
+	}
+	inner := "(" + strings.Join(one, ",") + ")"
+	rowPH := make([]string, len(tuples))
+	for i, tuple := range tuples {
+		rowPH[i] = inner
+		args = append(args, tuple...)
+	}
+	return "(" + strings.Join(cols, ",") + ") IN (" + strings.Join(rowPH, ",") + ")", args
+}
+
+func scanKeyTuples(rows *sql.Rows, n int) ([][]any, error) {
+	var tuples [][]any
+	for rows.Next() {
+		holders := make([][]byte, n)
+		dest := make([]any, n)
+		for i := range holders {
+			dest[i] = &holders[i]
+		}
+		if err := rows.Scan(dest...); err != nil {
+			return nil, err
+		}
+		tuple := make([]any, n)
+		for i, b := range holders {
+			if b == nil {
+				tuple[i] = nil
+				continue
+			}
+			cp := make([]byte, len(b))
+			copy(cp, b)
+			tuple[i] = cp
+		}
+		tuples = append(tuples, tuple)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return tuples, nil
 }
 
 func (a *Adapter) delete(ctx context.Context, tx *sql.Tx, query string, params ...any) adapters.Scanner {

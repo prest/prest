@@ -3,6 +3,7 @@ package mysql
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -204,6 +205,9 @@ func (a *Adapter) ImportFromFilesystem(ctx context.Context, queriesPath, policy 
 	for _, sq := range scanned {
 		existing, getErr := a.GetQuery(ctx, sq.DatabaseAlias, sq.Location, sq.Name)
 		if getErr != nil {
+			if !errors.Is(getErr, sql.ErrNoRows) {
+				return report, getErr
+			}
 			if err := a.UpsertQuery(ctx, sq); err != nil {
 				return report, err
 			}
@@ -308,11 +312,14 @@ func scanFilesystemQueries(queriesPath string) ([]adapters.StoredQuery, error) {
 			return err
 		}
 		parts := strings.Split(rel, string(os.PathSeparator))
-		if len(parts) < 2 {
+		if len(parts) != 2 {
 			return nil
 		}
 		location := parts[0]
-		fileName := parts[len(parts)-1]
+		if !ident.IsSafeSegment(location) {
+			return nil
+		}
+		fileName := parts[1]
 		var matched string
 		for suffix := range scriptSuffixColumns {
 			if strings.HasSuffix(fileName, suffix) {
@@ -324,7 +331,7 @@ func scanFilesystemQueries(queriesPath string) ([]adapters.StoredQuery, error) {
 			return nil
 		}
 		name := strings.TrimSuffix(fileName, matched)
-		if name == "" {
+		if name == "" || !ident.IsSafeSegment(name) {
 			return nil
 		}
 		body, err := os.ReadFile(path)

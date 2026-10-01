@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -219,11 +220,14 @@ func TestInsertUpdateDelete(t *testing.T) {
 	require.JSONEq(t, `{"rows_affected":1}`, string(sc.Bytes()))
 
 	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT `id` FROM `shop`.`items` WHERE `id`=? FOR UPDATE").
+		WithArgs(int64(4)).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(4)))
 	mock.ExpectExec("UPDATE `shop`.`items` SET `name`=? WHERE `id`=?").
 		WithArgs("bea", int64(4)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectQuery("SELECT `id`, `name` FROM `shop`.`items` WHERE `id`=?").
-		WithArgs(int64(4)).
+	mock.ExpectQuery("SELECT `id`, `name` FROM `shop`.`items` WHERE `id` = ?").
+		WithArgs([]byte("4")).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(4), "bea"))
 	mock.ExpectCommit()
 	sc = a.UpdateCtx(ctx, "UPDATE `shop`.`items` SET `name`=? WHERE `id`=? RETURNING `id`, `name`", "bea", int64(4))
@@ -305,6 +309,153 @@ func TestPermissions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"id"}, fields)
 	require.True(t, a.ScriptPermissions(context.Background(), "shop", "r", "q", "read", ""))
+}
+
+func TestFieldsPermissionsUnwrapsColumnError(t *testing.T) {
+	t.Parallel()
+	a := New(testCfg()).(*Adapter)
+	_, err := a.FieldsPermissions(req("/t?_groupby=name&_select=nope:id"), "shop", "shop", "items", "read", "")
+	require.Error(t, err)
+	require.ErrorIs(t, err, errInvalidGroupFn)
+	require.NotNil(t, errors.Unwrap(err))
+	require.Contains(t, err.Error(), "error on parse columns from request")
+}
+
+func TestUpdateReturningCapturedKey(t *testing.T) {
+	a, mock := withMock(t)
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, "shop")
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(statements.PKColumns).
+		WithArgs("shop", "items").
+		WillReturnRows(sqlmock.NewRows([]string{"COLUMN_NAME", "EXTRA"}).AddRow("id", "auto_increment"))
+	mock.ExpectQuery("SELECT `id` FROM `shop`.`items` WHERE `status`=? FOR UPDATE").
+		WithArgs("open").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(7)))
+	mock.ExpectExec("UPDATE `shop`.`items` SET `status`=? WHERE `status`=?").
+		WithArgs("closed", "open").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery("SELECT `id` FROM `shop`.`items` WHERE `id` = ?").
+		WithArgs([]byte("7")).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(7)))
+	mock.ExpectCommit()
+	sc := a.UpdateCtx(ctx, "UPDATE `shop`.`items` SET `status`=? WHERE `status`=? RETURNING `id`", "closed", "open")
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `[{"id":7}]`, string(sc.Bytes()))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestUpdateReturningNoPrimaryKey(t *testing.T) {
+	a, mock := withMock(t)
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, "shop")
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(statements.PKColumns).
+		WithArgs("shop", "items").
+		WillReturnRows(sqlmock.NewRows([]string{"COLUMN_NAME", "EXTRA"}))
+	mock.ExpectRollback()
+	sc := a.UpdateCtx(ctx, "UPDATE `shop`.`items` SET `name`=? WHERE `id`=? RETURNING `id`", "bea", int64(4))
+	require.Error(t, sc.Err())
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestUpdateReturningNoMatch(t *testing.T) {
+	a, mock := withMock(t)
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, "shop")
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(statements.PKColumns).
+		WithArgs("shop", "items").
+		WillReturnRows(sqlmock.NewRows([]string{"COLUMN_NAME", "EXTRA"}).AddRow("id", ""))
+	mock.ExpectQuery("SELECT `id` FROM `shop`.`items` WHERE `id`=? FOR UPDATE").
+		WithArgs(int64(4)).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
+	mock.ExpectExec("UPDATE `shop`.`items` SET `name`=? WHERE `id`=?").
+		WithArgs("bea", int64(4)).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+	sc := a.UpdateCtx(ctx, "UPDATE `shop`.`items` SET `name`=? WHERE `id`=? RETURNING `id`", "bea", int64(4))
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `[]`, string(sc.Bytes()))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestUpdateReturningKeyPredicates(t *testing.T) {
+	a, mock := withMock(t)
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, "shop")
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(statements.PKColumns).
+		WithArgs("shop", "items").
+		WillReturnRows(sqlmock.NewRows([]string{"COLUMN_NAME", "EXTRA"}).AddRow("id", ""))
+	mock.ExpectQuery("SELECT `id` FROM `shop`.`items` FOR UPDATE").
+		WithoutArgs().
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(4)).AddRow(int64(5)))
+	mock.ExpectExec("UPDATE `shop`.`items` SET `name`=?").
+		WithArgs("bea").
+		WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectQuery("SELECT `id` FROM `shop`.`items` WHERE `id` IN (?,?)").
+		WithArgs([]byte("4"), []byte("5")).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(4)).AddRow(int64(5)))
+	mock.ExpectCommit()
+	sc := a.UpdateCtx(ctx, "UPDATE `shop`.`items` SET `name`=? RETURNING `id`", "bea")
+	require.NoError(t, sc.Err())
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(statements.PKColumns).
+		WithArgs("shop", "pair").
+		WillReturnRows(sqlmock.NewRows([]string{"COLUMN_NAME", "EXTRA"}).AddRow("a", "").AddRow("b", ""))
+	mock.ExpectQuery("SELECT `a`, `b` FROM `shop`.`pair` WHERE `a`=? AND `b`=? FOR UPDATE").
+		WithArgs(int64(1), int64(2)).
+		WillReturnRows(sqlmock.NewRows([]string{"a", "b"}).AddRow(int64(1), int64(2)).AddRow(int64(3), int64(4)))
+	mock.ExpectExec("UPDATE `shop`.`pair` SET `n`=? WHERE `a`=? AND `b`=?").
+		WithArgs("x", int64(1), int64(2)).
+		WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectQuery("SELECT `a` FROM `shop`.`pair` WHERE (`a`,`b`) IN ((?,?),(?,?))").
+		WithArgs([]byte("1"), []byte("2"), []byte("3"), []byte("4")).
+		WillReturnRows(sqlmock.NewRows([]string{"a"}).AddRow(int64(1)).AddRow(int64(3)))
+	mock.ExpectCommit()
+	sc = a.UpdateCtx(ctx, "UPDATE `shop`.`pair` SET `n`=? WHERE `a`=? AND `b`=? RETURNING `a`", "x", int64(1), int64(2))
+	require.NoError(t, sc.Err())
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestUpdateReturningEmptyTable(t *testing.T) {
+	a, mock := withMock(t)
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, "shop")
+	mock.ExpectBegin()
+	mock.ExpectRollback()
+	sc := a.UpdateCtx(ctx, "UPDATE SET `n`=? RETURNING `id`", 1)
+	require.Error(t, sc.Err())
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestPrimaryKeysCacheHit(t *testing.T) {
+	a, mock := withMock(t)
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, "shop")
+	mock.ExpectBegin()
+	tx, err := a.GetTransactionCtx(ctx)
+	require.NoError(t, err)
+
+	mock.ExpectQuery(statements.PKColumns).
+		WithArgs("shop", "items").
+		WillReturnError(errors.New("boom"))
+	_, err = a.primaryKeys(ctx, tx, "shop", "items")
+	require.Error(t, err)
+
+	rows := sqlmock.NewRows([]string{"COLUMN_NAME", "EXTRA"}).AddRow("id", "auto_increment")
+	mock.ExpectQuery(statements.PKColumns).
+		WithArgs("shop", "items").
+		WillReturnRows(rows)
+	first, err := a.primaryKeys(ctx, tx, "shop", "items")
+	require.NoError(t, err)
+	require.Equal(t, []pkColumn{{name: "id", autoIncrement: true}}, first)
+
+	second, err := a.primaryKeys(ctx, tx, "shop", "items")
+	require.NoError(t, err)
+	require.Equal(t, first, second)
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestQuoteIdent(t *testing.T) {

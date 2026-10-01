@@ -129,10 +129,17 @@ func (h *CRUDHandler) Select(w http.ResponseWriter, r *http.Request) {
 		sqlSelect = fmt.Sprint(query, " WHERE ", requestWhere)
 	}
 
-	groupBySQL := h.builder.GroupByClause(r)
+	var groupValues []any
+	groupBySQL := ""
+	if binder, ok := h.builder.(adapters.GroupByBinder); ok {
+		groupBySQL, groupValues = binder.GroupByClauseValues(r, len(values)+1)
+	} else {
+		groupBySQL = h.builder.GroupByClause(r)
+	}
 	if groupBySQL != "" {
 		sqlSelect = fmt.Sprintf("%s %s", sqlSelect, groupBySQL)
 	}
+	values = append(values, groupValues...)
 
 	timeBucketSQL, err := h.builder.TimeBucketClause(r)
 	if err != nil {

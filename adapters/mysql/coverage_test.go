@@ -181,6 +181,26 @@ func TestOperatorsBuildersAndErrors(t *testing.T) {
 	require.Empty(t, emptyOrder)
 }
 
+func TestGroupByClauseValues(t *testing.T) {
+	t.Parallel()
+	a := New(testCfg()).(*Adapter)
+
+	clause, values := a.GroupByClauseValues(req("/t?_groupby=status->>having:avg:age:$gt:o'brien"), 1)
+	require.Contains(t, clause, "HAVING AVG(`age`) > ?")
+	require.NotContains(t, clause, "o'brien")
+	require.Equal(t, []any{"o'brien"}, values)
+
+	clause, values = a.GroupByClauseValues(req("/t?_groupby=status->>having:avg:age:$gt:18"), 1)
+	require.Contains(t, clause, "HAVING AVG(`age`) > ?")
+	require.NotContains(t, clause, "18")
+	require.Equal(t, []any{"18"}, values)
+
+	plain := a.GroupByClause(req("/t?_groupby=name"))
+	clause, values = a.GroupByClauseValues(req("/t?_groupby=name"), 1)
+	require.Equal(t, plain, clause)
+	require.Nil(t, values)
+}
+
 func TestJSONScanTypes(t *testing.T) {
 	a, mock := withFlex(t)
 	mock.ExpectQuery("SELECT kinds").

@@ -573,66 +573,78 @@ func joinClauseSQL(clause string) (string, string, error) {
 }
 
 func (a *Adapter) GroupByClause(r *http.Request) string {
-	groupQuery := r.URL.Query().Get("_groupby")
+	groupBy, groupFunc, operator, val, hasVal := groupByParts(r.URL.Query().Get("_groupby"))
+	if !hasVal {
+		return groupBy
+	}
+	if _, errNum := strconv.ParseFloat(val, 64); errNum != nil {
+		val = "'" + strings.ReplaceAll(val, "'", "''") + "'"
+	}
+	return groupBy + " HAVING " + groupFunc + " " + operator + " " + val
+}
+
+// GroupByClauseValues binds the HAVING literal as ?. initialPlaceholderID is unused.
+func (a *Adapter) GroupByClauseValues(r *http.Request, _ int) (string, []any) {
+	groupBy, groupFunc, operator, val, hasVal := groupByParts(r.URL.Query().Get("_groupby"))
+	if !hasVal {
+		return groupBy, nil
+	}
+	return groupBy + " HAVING " + groupFunc + " " + operator + " ?", []any{val}
+}
+
+func groupByParts(groupQuery string) (groupBy, groupFunc, operator, val string, hasVal bool) {
 	if groupQuery == "" {
-		return ""
+		return
 	}
 	if strings.Contains(groupQuery, "->>having") {
-		return groupByHaving(groupQuery)
+		params := strings.Split(groupQuery, ":")
+		groupFieldQuery := strings.Split(groupQuery, "->>having")
+		fields := strings.Split(groupFieldQuery[0], ",")
+		for i, field := range fields {
+			if !ident.IsValid(field) {
+				return "", "", "", "", false
+			}
+			q, err := quoteIdent(field)
+			if err != nil {
+				return "", "", "", "", false
+			}
+			fields[i] = q
+		}
+		groupBy = "GROUP BY " + strings.Join(fields, ",")
+		if len(params) != 5 {
+			return groupBy, "", "", "", false
+		}
+		var err error
+		groupFunc, err = normalizeGroupFunction(params[1] + ":" + params[2])
+		if err != nil {
+			return groupBy, "", "", "", false
+		}
+		operator, err = queryOperator(params[3])
+		if err != nil {
+			return groupBy, "", "", "", false
+		}
+		return groupBy, groupFunc, operator, params[4], true
 	}
 	fields := strings.Split(groupQuery, ",")
 	for i, field := range fields {
 		field = strings.TrimSpace(field)
 		if strings.Contains(field, "(") && strings.Contains(field, ")") {
 			if !isSafeSQLExpression(field) {
-				return ""
+				return "", "", "", "", false
 			}
 			fields[i] = field
 			continue
 		}
 		if !ident.IsValid(field) {
-			return ""
+			return "", "", "", "", false
 		}
 		q, err := quoteIdent(field)
 		if err != nil {
-			return ""
+			return "", "", "", "", false
 		}
 		fields[i] = q
 	}
-	return "GROUP BY " + strings.Join(fields, ",")
-}
-
-func groupByHaving(groupQuery string) string {
-	params := strings.Split(groupQuery, ":")
-	groupFieldQuery := strings.Split(groupQuery, "->>having")
-	fields := strings.Split(groupFieldQuery[0], ",")
-	for i, field := range fields {
-		if !ident.IsValid(field) {
-			return ""
-		}
-		q, err := quoteIdent(field)
-		if err != nil {
-			return ""
-		}
-		fields[i] = q
-	}
-	grouped := "GROUP BY " + strings.Join(fields, ",")
-	if len(params) != 5 {
-		return grouped
-	}
-	groupFunc, err := normalizeGroupFunction(params[1] + ":" + params[2])
-	if err != nil {
-		return grouped
-	}
-	operator, err := queryOperator(params[3])
-	if err != nil {
-		return grouped
-	}
-	val := params[4]
-	if _, errNum := strconv.ParseFloat(val, 64); errNum != nil {
-		val = "'" + strings.ReplaceAll(val, "'", "''") + "'"
-	}
-	return grouped + " HAVING " + groupFunc + " " + operator + " " + val
+	return "GROUP BY " + strings.Join(fields, ","), "", "", "", false
 }
 
 func sanitizeSelectField(field string) (string, error) {

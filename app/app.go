@@ -136,46 +136,58 @@ func ensureSchemaMigrated(cfg *config.Prest, registry adapters.Registry) error {
 		return nil
 	}
 
-	if registry != nil {
-		for _, alias := range registry.GetAll() {
-			adapter, err := registry.Get(alias)
-			if err != nil || adapter == nil {
-				continue
-			}
-			ensurer, ok := adapter.(adapters.SystemTableEnsurer)
-			if !ok {
-				continue
-			}
+	if registry == nil {
+		return nil
+	}
+	for _, alias := range registry.GetAll() {
+		adapter, err := registry.Get(alias)
+		if err != nil || adapter == nil {
+			continue
+		}
+		if ensurer, ok := adapter.(adapters.SystemTableEnsurer); ok {
 			if err := runSystemTables(ensurer, alias, needAuth, needQueries); err != nil {
 				return err
 			}
+			continue
+		}
+		if engineForAlias(cfg, alias) != config.EnginePostgres {
+			continue
+		}
+		db, err := postgres.DB(adapter)
+		if err != nil {
+			if errors.Is(err, postgres.ErrNotPostgresAdapter) {
+				return fmt.Errorf("acquire database connection for startup migration: %w", ErrAdapterNotPostgres)
+			}
+			return fmt.Errorf("acquire database connection for startup migration: %w", err)
+		}
+		if needAuth {
+			if err := EnsureAuthTable(cfg, db); err != nil {
+				return fmt.Errorf("migrate auth table %s.%s: %w", cfg.AuthSchema, cfg.AuthTable, err)
+			}
+			slog.Info("auth table migration complete", "schema", cfg.AuthSchema, "table", cfg.AuthTable)
+		}
+		if needQueries {
+			qc := cfg.QueriesConf
+			if err := EnsureQueriesTable(cfg, db); err != nil {
+				return fmt.Errorf("migrate queries table %s.%s: %w", qc.Schema, qc.Table, err)
+			}
+			slog.Info("queries table migration complete", "schema", qc.Schema, "table", qc.Table)
 		}
 	}
-	if config.EffectiveEngine(nil, cfg) == config.EngineMySQL {
-		return nil
-	}
-
-	db, err := PostgresDB(cfg)
-	if err != nil {
-		return fmt.Errorf("acquire database connection for startup migration: %w", err)
-	}
-
-	if needAuth {
-		if err := EnsureAuthTable(cfg, db); err != nil {
-			return fmt.Errorf("migrate auth table %s.%s: %w", cfg.AuthSchema, cfg.AuthTable, err)
-		}
-		slog.Info("auth table migration complete", "schema", cfg.AuthSchema, "table", cfg.AuthTable)
-	}
-
-	if needQueries {
-		qc := cfg.QueriesConf
-		if err := EnsureQueriesTable(cfg, db); err != nil {
-			return fmt.Errorf("migrate queries table %s.%s: %w", qc.Schema, qc.Table, err)
-		}
-		slog.Info("queries table migration complete", "schema", qc.Schema, "table", qc.Table)
-	}
-
 	return nil
+}
+
+// engineForAlias returns the engine for a registered alias.
+// A matching Databases entry uses that entry's engine, otherwise the root engine.
+func engineForAlias(cfg *config.Prest, alias string) string {
+	if cfg != nil {
+		for i := range cfg.Databases {
+			if cfg.Databases[i].Alias == alias {
+				return config.EffectiveEngine(&cfg.Databases[i], cfg)
+			}
+		}
+	}
+	return config.EffectiveEngine(nil, cfg)
 }
 
 func runSystemTables(ensurer adapters.SystemTableEnsurer, alias string, needAuth, needQueries bool) error {

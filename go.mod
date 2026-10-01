@@ -7,6 +7,7 @@ require (
 	github.com/avelino/slugify v0.0.0-20180501145920-855f152bd774
 	github.com/clbanning/mxj v1.8.4
 	github.com/go-jose/go-jose/v4 v4.1.4
+	github.com/go-sql-driver/mysql v1.9.3
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/gosidekick/migration/v3 v3.0.0
@@ -29,10 +30,7 @@ require (
 	golang.org/x/sync v0.22.0
 )
 
-require (
-	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/go-sql-driver/mysql v1.9.3 // indirect
-)
+require filippo.io/edwards25519 v1.1.0 // indirect
 
 require (
 	github.com/XSAM/otelsql v0.43.0

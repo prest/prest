@@ -2089,55 +2089,64 @@ func (adapter *postgres) DistinctClause(r *http.Request) (distinctQuery string, 
 	return
 }
 
-// GroupByClause get params in request to add group by clause
+// GroupByClause get params in request to add group by clause.
+// HAVING literals stay interpolated so existing string callers keep working.
 func (adapter *postgres) GroupByClause(r *http.Request) (groupBySQL string) {
-	queries := r.URL.Query()
-	groupQuery := queries.Get("_groupby")
+	groupBy, groupFunc, operator, val, hasVal := groupByParts(r.URL.Query().Get("_groupby"))
+	if !hasVal {
+		return groupBy
+	}
+	// sanitize having value: numeric stays raw, string gets single-quoted and escaped
+	if _, errNum := strconv.ParseFloat(val, 64); errNum == nil {
+		havingQuery := fmt.Sprintf(statements.Having, groupFunc, operator, val)
+		return fmt.Sprintf("%s %s", groupBy, havingQuery)
+	}
+	safe := strings.ReplaceAll(val, "'", "''")
+	havingQuery := fmt.Sprintf(statements.Having, groupFunc, operator, fmt.Sprintf("'%s'", safe))
+	return fmt.Sprintf("%s %s", groupBy, havingQuery)
+}
+
+// GroupByClauseValues binds the HAVING literal as $initialPlaceholderID.
+func (adapter *postgres) GroupByClauseValues(r *http.Request, initialPlaceholderID int) (string, []any) {
+	groupBy, groupFunc, operator, val, hasVal := groupByParts(r.URL.Query().Get("_groupby"))
+	if !hasVal {
+		return groupBy, nil
+	}
+	placeholder := fmt.Sprintf("$%d", initialPlaceholderID)
+	havingQuery := fmt.Sprintf(statements.Having, groupFunc, operator, placeholder)
+	return fmt.Sprintf("%s %s", groupBy, havingQuery), []any{val}
+}
+
+// groupByParts parses _groupby. hasVal is set only when HAVING is valid; val is the raw literal.
+func groupByParts(groupQuery string) (groupBy, groupFunc, operator, val string, hasVal bool) {
 	if groupQuery == "" {
 		return
 	}
-
 	if strings.Contains(groupQuery, "->>having") {
 		params := strings.Split(groupQuery, ":")
 		groupFieldQuery := strings.Split(groupQuery, "->>having")
-
 		fields := strings.Split(groupFieldQuery[0], ",")
 		for i, field := range fields {
 			if !ident.IsValid(field) {
-				return ""
+				return "", "", "", "", false
 			}
 			q, _ := ident.Quote(field)
 			fields[i] = q
 		}
-		groupFieldQuery[0] = strings.Join(fields, ",")
+		groupBy = fmt.Sprintf(statements.GroupBy, strings.Join(fields, ","))
 		if len(params) != 5 {
-			groupBySQL = fmt.Sprintf(statements.GroupBy, groupFieldQuery[0])
-			return
+			return groupBy, "", "", "", false
 		}
-		// groupFunc, field, condition, conditionValue string
-		groupFunc, err := NormalizeGroupFunction(fmt.Sprintf("%s:%s", params[1], params[2]))
+		var err error
+		groupFunc, err = NormalizeGroupFunction(fmt.Sprintf("%s:%s", params[1], params[2]))
 		if err != nil {
-			groupBySQL = fmt.Sprintf(statements.GroupBy, groupFieldQuery[0])
-			return
+			return groupBy, "", "", "", false
 		}
-
-		operator, err := GetQueryOperator(params[3])
+		operator, err = GetQueryOperator(params[3])
 		if err != nil {
-			groupBySQL = fmt.Sprintf(statements.GroupBy, groupFieldQuery[0])
-			return
+			return groupBy, "", "", "", false
 		}
-
-		// sanitize having value: numeric stays raw, string gets single-quoted and escaped
-		val := params[4]
-		if _, errNum := strconv.ParseFloat(val, 64); errNum == nil {
-			havingQuery := fmt.Sprintf(statements.Having, groupFunc, operator, val)
-			groupBySQL = fmt.Sprintf("%s %s", fmt.Sprintf(statements.GroupBy, groupFieldQuery[0]), havingQuery)
-			return
-		}
-		safe := strings.ReplaceAll(val, "'", "''")
-		havingQuery := fmt.Sprintf(statements.Having, groupFunc, operator, fmt.Sprintf("'%s'", safe))
-		groupBySQL = fmt.Sprintf("%s %s", fmt.Sprintf(statements.GroupBy, groupFieldQuery[0]), havingQuery)
-		return
+		return groupBy, groupFunc, operator, params[4], true
 	}
 	fields := strings.Split(groupQuery, ",")
 	for i, field := range fields {
@@ -2146,20 +2155,18 @@ func (adapter *postgres) GroupByClause(r *http.Request) (groupBySQL string) {
 		// If field contains parentheses, treat it as a raw SQL expression (must already be safe).
 		if strings.Contains(field, "(") && strings.Contains(field, ")") {
 			if !isSafeSQLExpression(field) {
-				return ""
+				return "", "", "", "", false
 			}
 			fields[i] = field
 			continue
 		}
 		if !ident.IsValid(field) {
-			return ""
+			return "", "", "", "", false
 		}
 		q, _ := ident.Quote(field)
 		fields[i] = q
 	}
-	groupQuery = strings.Join(fields, ",")
-	groupBySQL = fmt.Sprintf(statements.GroupBy, groupQuery)
-	return
+	return fmt.Sprintf(statements.GroupBy, strings.Join(fields, ",")), "", "", "", false
 }
 
 // TimeBucketClause is not supported in the base postgres adapter.
