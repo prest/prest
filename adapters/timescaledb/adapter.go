@@ -41,6 +41,15 @@ func (a *Adapter) SchemaClause(req *http.Request) (query string, hasCount bool) 
 	return
 }
 
+// GroupByClauseValues delegates to the embedded adapter when it binds HAVING.
+// Otherwise it returns the legacy GroupByClause string and no values.
+func (a *Adapter) GroupByClauseValues(r *http.Request, initialPlaceholderID int) (string, []any) {
+	if b, ok := a.Adapter.(adapters.GroupByBinder); ok {
+		return b.GroupByClauseValues(r, initialPlaceholderID)
+	}
+	return a.GroupByClause(r), nil
+}
+
 // TimeBucketClause generates a GROUP BY clause for TimescaleDB time_bucket aggregations.
 // Parses _time_bucket=interval[,column] where interval is 5m, 1h, 1d, etc.
 // This is a TimescaleDB-specific operator; the base postgres adapter does not support it.

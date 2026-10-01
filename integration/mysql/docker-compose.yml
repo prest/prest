@@ -1,0 +1,86 @@
+x-prest-env: &prest-env
+  PREST_ENGINE: mysql
+  PREST_PG_HOST: mysql
+  PREST_PG_PORT: "3306"
+  PREST_PG_USER: prest
+  PREST_PG_PASS: prest
+  PREST_PG_DATABASE: shop
+  PREST_PG_URL: mysql://prest:prest@mysql:3306/shop?tls=false
+  PREST_PG_SSL_MODE: disable
+  GOTOOLCHAIN: auto
+  GOPROXY: https://proxy.golang.org,direct
+
+x-prestd-service: &prestd-service
+  image: golang:1.26-bookworm
+  working_dir: /workspace
+  volumes:
+    - ../..:/workspace
+
+services:
+  mysql:
+    image: ${MYSQL_IMAGE:-mysql:8.4}
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpw
+      MYSQL_DATABASE: shop
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -prootpw"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    tmpfs:
+      - /var/lib/mysql
+
+  db-init:
+    image: ${MYSQL_IMAGE:-mysql:8.4}
+    working_dir: /workspace
+    volumes:
+      - ../..:/workspace
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_ROOT_PASSWORD: rootpw
+      PREST_PG_USER: prest
+      PREST_PG_PASS: prest
+    entrypoint: ["bash", "/workspace/integration/mysql/db-init.sh"]
+    restart: "no"
+
+  prestd:
+    <<: *prestd-service
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      mysql:
+        condition: service_healthy
+    environment:
+      <<: *prest-env
+      PREST_CONF: /workspace/testdata/prest.toml
+      PREST_DEBUG: "true"
+      PREST_JWT_DEFAULT: "false"
+      PREST_CACHE_ENABLED: "false"
+      PREST_ACCESS_RESTRICT: "false"
+      PREST_PG_SINGLE: "false"
+      PREST_HTTP_PORT: "3000"
+    command: >-
+      bash -lc "export PATH=/usr/local/go/bin:/go/bin:$$PATH && apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && go run ./cmd/prestd/main.go"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3000/_health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 90s
+
+  tests:
+    <<: *prestd-service
+    depends_on:
+      prestd:
+        condition: service_healthy
+    environment:
+      <<: *prest-env
+      PREST_CONF: /workspace/testdata/prest.toml
+      PREST_TEST_URL: http://prestd:3000
+    command: >-
+      bash -lc "export PATH=/usr/local/go/bin:/go/bin:$$PATH && go test -count=1 -timeout 180s ./integration/mysql/..."

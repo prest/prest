@@ -15,7 +15,7 @@ func TestParseOtelDefaults(t *testing.T) {
 
 	v, configPath := viperCfg()
 	cfg := &Prest{}
-	Parse(v, cfg, configPath)
+	require.NoError(t, Parse(v, cfg, configPath))
 
 	require.False(t, cfg.Otel.Enabled)
 	require.Equal(t, "prestd", cfg.Otel.ServiceName)
@@ -39,7 +39,7 @@ func TestParseOtelEnvOverride(t *testing.T) {
 
 	v, configPath := viperCfg()
 	cfg := &Prest{}
-	Parse(v, cfg, configPath)
+	require.NoError(t, Parse(v, cfg, configPath))
 
 	require.True(t, cfg.Otel.Enabled)
 	require.Equal(t, "collector:4317", cfg.Otel.Endpoint)

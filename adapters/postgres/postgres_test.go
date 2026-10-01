@@ -773,6 +773,34 @@ func TestGroupByClause_HavingBranches(t *testing.T) {
 	}
 }
 
+func TestGroupByClauseValues(t *testing.T) {
+	t.Parallel()
+
+	adapter := testAdapter()
+
+	req, err := http.NewRequest(http.MethodGet, "/?_groupby=status->>having:avg:age:$gt:o'brien", nil)
+	require.NoError(t, err)
+	clause, values := adapter.GroupByClauseValues(req, 3)
+	require.Contains(t, clause, "HAVING")
+	require.Contains(t, clause, "$3")
+	require.NotContains(t, clause, "o'brien")
+	require.Equal(t, []any{"o'brien"}, values)
+
+	req, err = http.NewRequest(http.MethodGet, "/?_groupby=status->>having:avg:age:$gt:18", nil)
+	require.NoError(t, err)
+	clause, values = adapter.GroupByClauseValues(req, 4)
+	require.Contains(t, clause, "$4")
+	require.NotContains(t, clause, "18")
+	require.Equal(t, []any{"18"}, values)
+
+	req, err = http.NewRequest(http.MethodGet, "/?_groupby=name", nil)
+	require.NoError(t, err)
+	clause, values = adapter.GroupByClauseValues(req, 1)
+	require.Contains(t, clause, `"name"`)
+	require.NotContains(t, clause, "HAVING")
+	require.Nil(t, values)
+}
+
 func TestJoinByRequest(t *testing.T) {
 
 	t.Parallel()
