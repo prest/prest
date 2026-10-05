@@ -56,7 +56,11 @@ func NewQueryRegistryHandler(deps Deps, cfg config.QueriesConf) *QueryRegistryHa
 // List handles GET /_QUERIES/registry.
 func (h *QueryRegistryHandler) List(w http.ResponseWriter, r *http.Request) {
 	h = h.bound(r)
-	database := r.URL.Query().Get("database")
+	vars := mux.Vars(r)
+	database := vars["database"]
+	if database == "" {
+		database = r.URL.Query().Get("database")
+	}
 	location := r.URL.Query().Get("location")
 
 	ctx, cancel := requestContext(r, h.db.GetDatabase())
@@ -97,6 +101,9 @@ func (h *QueryRegistryHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
+	}
+	if vars := mux.Vars(r); vars["database"] != "" {
+		q.DatabaseAlias = vars["database"]
 	}
 	q.CreatedBy = middlewares.AdminUsernameFromContext(r.Context())
 
