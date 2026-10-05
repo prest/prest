@@ -574,3 +574,169 @@ func TestLoadMySQLNonNumericPort(t *testing.T) {
 	require.NotContains(t, err.Error(), "s3cret")
 	require.NotContains(t, err.Error(), raw)
 }
+
+func TestApplyMySQLRegistrySchemas(t *testing.T) {
+	t.Run("postgres root uses the registry database", func(t *testing.T) {
+		unsetConnEnv(t)
+		t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+
+		cfg, err := Load()
+		require.NoError(t, err)
+		require.Equal(t, EnginePostgres, cfg.Engine)
+		require.Equal(t, "public", cfg.AuthSchema)
+		require.Equal(t, "public", cfg.QueriesConf.Schema)
+
+		ApplyMySQLRegistrySchemas(cfg, "shop")
+		require.Equal(t, "shop", cfg.AuthSchema)
+		require.Equal(t, "shop", cfg.QueriesConf.Schema)
+	})
+
+	t.Run("explicit schemas stay", func(t *testing.T) {
+		unsetConnEnv(t)
+		t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+		t.Setenv("PREST_AUTH_SCHEMA", "custom")
+		t.Setenv("PREST_QUERIES_SCHEMA", "custom")
+
+		cfg, err := Load()
+		require.NoError(t, err)
+		require.Equal(t, "custom", cfg.AuthSchema)
+		require.Equal(t, "custom", cfg.QueriesConf.Schema)
+
+		ApplyMySQLRegistrySchemas(cfg, "shop")
+		require.Equal(t, "custom", cfg.AuthSchema)
+		require.Equal(t, "custom", cfg.QueriesConf.Schema)
+	})
+
+	t.Run("mysql root copy leaves the original", func(t *testing.T) {
+		unsetConnEnv(t)
+		t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+		t.Setenv("PREST_ENGINE", "mysql")
+		t.Setenv("PREST_PG_USER", "app")
+		t.Setenv("PREST_PG_DATABASE", "shop")
+
+		cfg, err := Load()
+		require.NoError(t, err)
+		require.Equal(t, "shop", cfg.AuthSchema)
+		require.Equal(t, "shop", cfg.QueriesConf.Schema)
+
+		copy := *cfg
+		ApplyMySQLRegistrySchemas(&copy, "other")
+		require.Equal(t, "other", copy.AuthSchema)
+		require.Equal(t, "other", copy.QueriesConf.Schema)
+		require.Equal(t, "shop", cfg.AuthSchema)
+		require.Equal(t, "shop", cfg.QueriesConf.Schema)
+	})
+}
+
+func TestLoadMySQLExplicitEmptyStrings(t *testing.T) {
+	t.Run("empty host and password env", func(t *testing.T) {
+		unsetConnEnv(t)
+		t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+		t.Setenv("PREST_ENGINE", "mysql")
+		t.Setenv("PREST_PG_USER", "app")
+		t.Setenv("PREST_PG_DATABASE", "shop")
+		t.Setenv("PREST_PG_HOST", "")
+		t.Setenv("PREST_PG_PASS", "")
+
+		cfg, err := Load()
+		require.NoError(t, err)
+		require.Equal(t, "", cfg.PGHost)
+		require.Equal(t, "", cfg.PGPass)
+	})
+
+	t.Run("empty host in toml", func(t *testing.T) {
+		unsetConnEnv(t)
+		conf := filepath.Join(t.TempDir(), "prest.toml")
+		require.NoError(t, os.WriteFile(conf, []byte(`
+engine = "mysql"
+
+[pg]
+host = ""
+user = "app"
+database = "shop"
+`), 0o600))
+		t.Setenv("PREST_CONF", conf)
+		t.Setenv("PREST_ENGINE", "mysql")
+
+		cfg, err := Load()
+		require.NoError(t, err)
+		require.Equal(t, "", cfg.PGHost)
+	})
+}
+
+func TestLoadPRESTDBEnv(t *testing.T) {
+	t.Run("mysql host", func(t *testing.T) {
+		unsetConnEnv(t)
+		t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+		t.Setenv("PREST_ENGINE", "mysql")
+		t.Setenv("PREST_PG_USER", "app")
+		t.Setenv("PREST_PG_DATABASE", "shop")
+		t.Setenv("PREST_DB_HOST", "db.internal")
+
+		cfg, err := Load()
+		require.NoError(t, err)
+		require.Equal(t, "db.internal", cfg.PGHost)
+	})
+
+	t.Run("db password wins over pg password", func(t *testing.T) {
+		unsetConnEnv(t)
+		t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+		t.Setenv("PREST_ENGINE", "mysql")
+		t.Setenv("PREST_PG_USER", "app")
+		t.Setenv("PREST_PG_DATABASE", "shop")
+		t.Setenv("PREST_DB_PASS", "from-db")
+		t.Setenv("PREST_PG_PASS", "from-pg")
+
+		cfg, err := Load()
+		require.NoError(t, err)
+		require.Equal(t, "from-db", cfg.PGPass)
+	})
+
+	t.Run("empty db password wins over pg password", func(t *testing.T) {
+		unsetConnEnv(t)
+		t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+		t.Setenv("PREST_ENGINE", "mysql")
+		t.Setenv("PREST_PG_USER", "app")
+		t.Setenv("PREST_PG_DATABASE", "shop")
+		t.Setenv("PREST_DB_PASS", "")
+		t.Setenv("PREST_PG_PASS", "from-pg")
+
+		cfg, err := Load()
+		require.NoError(t, err)
+		require.Equal(t, "", cfg.PGPass)
+	})
+
+	t.Run("postgres host keeps default user", func(t *testing.T) {
+		unsetConnEnv(t)
+		t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+		t.Setenv("PREST_DB_HOST", "db.internal")
+
+		cfg, err := Load()
+		require.NoError(t, err)
+		require.Equal(t, EnginePostgres, cfg.Engine)
+		require.Equal(t, "db.internal", cfg.PGHost)
+		require.Equal(t, "postgres", cfg.PGUser)
+	})
+}
+
+func unsetConnEnv(t *testing.T) {
+	t.Helper()
+	for _, key := range []string{
+		"DATABASE_URL",
+		"PREST_ENGINE",
+		"PREST_PG_HOST", "PREST_DB_HOST",
+		"PREST_PG_PORT", "PREST_DB_PORT",
+		"PREST_PG_USER", "PREST_DB_USER",
+		"PREST_PG_PASS", "PREST_DB_PASS",
+		"PREST_PG_DATABASE", "PREST_DB_DATABASE",
+		"PREST_PG_URL", "PREST_DB_URL",
+		"PREST_PG_SSL_MODE", "PREST_DB_SSL_MODE",
+		"PREST_PG_SSL_KEY", "PREST_DB_SSL_KEY",
+		"PREST_PG_SSL_CERT", "PREST_DB_SSL_CERT",
+		"PREST_PG_SSL_ROOTCERT", "PREST_DB_SSL_ROOTCERT",
+		"PREST_AUTH_SCHEMA", "PREST_DB_AUTH_SCHEMA",
+		"PREST_QUERIES_SCHEMA", "PREST_DB_QUERIES_SCHEMA",
+	} {
+		unsetEnvForTest(t, key)
+	}
+}

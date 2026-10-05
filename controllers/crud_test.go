@@ -152,6 +152,50 @@ func TestCRUDHandler_Select_Success(t *testing.T) {
 	require.Contains(t, rec.Body.String(), "prest")
 }
 
+func TestCRUDHandler_Select_UsesContextAdapter(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selected := mockgen.NewMockAdapter(ctrl)
+	selected.EXPECT().IsRegistered("prest-test").Return(true)
+	selected.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "test", "read", "").Return([]string{"name"}, nil)
+	selected.EXPECT().SelectFields([]string{"name"}).Return(`"name"`, nil)
+	selected.EXPECT().SelectSQL(`"name"`, "prest-test", "public", "test").Return(`SELECT "name" FROM "prest-test"."public"."test"`)
+	selected.EXPECT().DistinctClause(gomock.Any()).Return("", nil)
+	selected.EXPECT().CountByRequest(gomock.Any()).Return("", nil)
+	selected.EXPECT().JoinByRequest(gomock.Any()).Return(nil, nil)
+	selected.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+	selected.EXPECT().GroupByClause(gomock.Any()).Return("")
+	selected.EXPECT().TimeBucketClause(gomock.Any()).Return("", nil)
+	selected.EXPECT().OrderByRequest(gomock.Any()).Return("", nil)
+	selected.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
+
+	scanner := mockgen.NewMockScanner(ctrl)
+	scanner.EXPECT().Err().Return(nil)
+	scanner.EXPECT().Bytes().Return([]byte(`[{"name":"prest"}]`))
+	selected.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)
+
+	h := NewCRUDHandler(Deps{
+		Perms:    mockgen.NewMockPermissionsChecker(ctrl),
+		SQL:      mockgen.NewMockSQLBuilder(ctrl),
+		Builder:  mockgen.NewMockRequestQueryBuilder(ctrl),
+		Executor: mockgen.NewMockQueryExecutor(ctrl),
+		DB:       mockgen.NewMockDatabaseRegistry(ctrl),
+	})
+
+	req := crudRequest(http.MethodGet, "/prest-test/public/test", map[string]string{
+		"database": "prest-test", "schema": "public", "table": "test",
+	})
+	req = req.WithContext(context.WithValue(req.Context(), pctx.AdapterKey, selected))
+	rec := httptest.NewRecorder()
+	h.Select(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), "prest")
+}
+
 func TestCRUDHandler_Select_TimeBucketClauseError(t *testing.T) {
 	t.Parallel()
 

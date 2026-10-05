@@ -59,6 +59,13 @@ func TestMySQLShowColumnsAndMissingTable(t *testing.T) {
 	testutils.DoRequest(t, base+"/shop/shop/no_such_table", nil, http.MethodGet, http.StatusNotFound, "missing")
 }
 
+func TestMySQLHealthReportsAdapter(t *testing.T) {
+	// Probe liveness on the MySQL server.
+	// Expected to succeed with HTTP 200 and name the mysql adapter.
+	base := helpers.ServerURL(t)
+	testutils.DoRequest(t, base+"/_health", nil, http.MethodGet, http.StatusOK, "health adapter", `"adapter":"mysql"`)
+}
+
 func TestMySQLRejectsUnsupportedOperators(t *testing.T) {
 	// $tsquery and FULL JOIN are rejected on MySQL.
 	base := helpers.ServerURL(t)

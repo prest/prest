@@ -25,23 +25,24 @@ type AuthConfig struct {
 
 // Deps bundles dependencies for HTTP handlers.
 type Deps struct {
-	Catalog            adapters.CatalogQuerier
-	Builder            adapters.RequestQueryBuilder
-	Executor           adapters.QueryExecutor
-	SQL                adapters.SQLBuilder
-	Perms              adapters.PermissionsChecker
-	Scripts            adapters.ScriptRunner
-	QueryRegistry      adapters.QueryRegistry
-	ScriptPerms        adapters.ScriptPermissionsChecker
-	DB                 adapters.DatabaseRegistry
-	Pinger             adapters.DatabasePinger
-	Readiness          adapters.ReadinessChecker
-	Cache              ResponseCacher
-	AdapterRegistry    adapters.Registry // Multi-database adapter registry
-	SingleDB           bool
-	PGDatabase         string
-	Auth               AuthConfig
-	Expose             config.ExposeConf
+	Catalog         adapters.CatalogQuerier
+	Builder         adapters.RequestQueryBuilder
+	Executor        adapters.QueryExecutor
+	SQL             adapters.SQLBuilder
+	Perms           adapters.PermissionsChecker
+	Scripts         adapters.ScriptRunner
+	QueryRegistry   adapters.QueryRegistry
+	ScriptPerms     adapters.ScriptPermissionsChecker
+	DB              adapters.DatabaseRegistry
+	Pinger          adapters.DatabasePinger
+	Readiness       adapters.ReadinessChecker
+	Cache           ResponseCacher
+	AdapterRegistry adapters.Registry // Multi-database adapter registry
+	AdapterName     string            // Default engine name reported by /_health
+	SingleDB        bool
+	PGDatabase      string
+	Auth            AuthConfig
+	Expose          config.ExposeConf
 }
 
 // NewDepsFromConfig builds handler dependencies from application config.
@@ -103,6 +104,8 @@ type Handlers struct {
 // NewHandlers constructs handlers from dependencies.
 func NewHandlers(deps Deps, cfg *config.Prest) *Handlers {
 	checks := DefaultCheckList(deps.Pinger)
+	health := NewHealthHandler(checks)
+	health.adapterName = deps.AdapterName
 	h := &Handlers{
 		Auth:    NewAuthHandler(deps.Executor, deps.Auth),
 		Catalog: NewCatalogHandler(deps),
@@ -110,7 +113,7 @@ func NewHandlers(deps Deps, cfg *config.Prest) *Handlers {
 		Table:   NewTableHandler(deps.Executor, deps.DB, deps.SingleDB),
 		CRUD:    NewCRUDHandler(deps),
 		Script:  NewScriptHandler(deps),
-		Health:  NewHealthHandler(checks),
+		Health:  health,
 		Ready:   NewHealthHandler(DefaultReadyCheckList(deps.Readiness)),
 	}
 	if cfg != nil && deps.QueryRegistry != nil && cfg.QueriesConf.RegisterEnabled && cfg.QueriesConf.Storage == config.QueriesStorageDatabase {

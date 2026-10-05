@@ -1,12 +1,12 @@
 x-prest-env: &prest-env
   PREST_ENGINE: mysql
-  PREST_PG_HOST: mysql
-  PREST_PG_PORT: "3306"
-  PREST_PG_USER: prest
-  PREST_PG_PASS: prest
-  PREST_PG_DATABASE: shop
-  PREST_PG_URL: mysql://prest:prest@mysql:3306/shop?tls=false
-  PREST_PG_SSL_MODE: disable
+  PREST_DB_HOST: mysql
+  PREST_DB_PORT: "3306"
+  PREST_DB_USER: prest
+  PREST_DB_PASS: prest
+  PREST_DB_DATABASE: shop
+  PREST_DB_URL: mysql://prest:prest@mysql:3306/shop?tls=false
+  PREST_DB_SSL_MODE: disable
   GOTOOLCHAIN: auto
   GOPROXY: https://proxy.golang.org,direct
 
@@ -62,7 +62,7 @@ services:
       PREST_JWT_DEFAULT: "false"
       PREST_CACHE_ENABLED: "false"
       PREST_ACCESS_RESTRICT: "false"
-      PREST_PG_SINGLE: "false"
+      PREST_DB_SINGLE: "false"
       PREST_HTTP_PORT: "3000"
     command: >-
       bash -lc "export PATH=/usr/local/go/bin:/go/bin:$$PATH && apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && go run ./cmd/prestd/main.go"

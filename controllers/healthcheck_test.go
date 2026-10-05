@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -37,6 +38,35 @@ func TestHealthStatus(t *testing.T) {
 		defer resp.Body.Close()
 		require.Equal(t, tc.expected, resp.StatusCode)
 	}
+}
+
+func TestHealthHandler_AdapterName(t *testing.T) {
+	t.Parallel()
+
+	mysql := NewHealthHandler(CheckList{healthyDB})
+	mysql.adapterName = "mysql"
+	rec := httptest.NewRecorder()
+	mysql.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/_health", nil))
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+	require.Equal(t, `{"adapter":"mysql"}`, rec.Body.String())
+
+	empty := NewHealthHandler(CheckList{healthyDB})
+	rec = httptest.NewRecorder()
+	empty.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/_health", nil))
+	require.Equal(t, http.StatusOK, rec.Code)
+	body, err := io.ReadAll(rec.Body)
+	require.NoError(t, err)
+	require.Empty(t, body)
+
+	down := NewHealthHandler(CheckList{unhealthyDB})
+	down.adapterName = "mysql"
+	rec = httptest.NewRecorder()
+	down.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/_health", nil))
+	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	body, err = io.ReadAll(rec.Body)
+	require.NoError(t, err)
+	require.Empty(t, body)
 }
 
 func TestReadyStatus(t *testing.T) {

@@ -261,6 +261,8 @@ func TestWriteWrappersAndScripts(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectExec("INSERT INTO `shop`.`batch`(`name`) VALUES(?),(?)").
 		WillReturnResult(sqlmock.NewResult(1, 2))
+	mock.ExpectQuery("SELECT @@auto_increment_increment").
+		WillReturnRows(sqlmock.NewRows([]string{"@@auto_increment_increment"}).AddRow(int64(1)))
 	mock.ExpectQuery("COLUMN_KEY").
 		WithArgs("shop", "batch").
 		WillReturnRows(sqlmock.NewRows([]string{"COLUMN_NAME", "EXTRA"}).AddRow("id", "auto_increment"))
@@ -271,6 +273,8 @@ func TestWriteWrappersAndScripts(t *testing.T) {
 	require.NoError(t, sc.Err())
 	mock.ExpectBegin()
 	mock.ExpectExec("INSERT INTO nope").WillReturnResult(sqlmock.NewResult(3, 1))
+	mock.ExpectQuery("SELECT @@auto_increment_increment").
+		WillReturnRows(sqlmock.NewRows([]string{"@@auto_increment_increment"}).AddRow(int64(1)))
 	mock.ExpectCommit()
 	sc = a.BatchInsertValuesCtx(ctx, "INSERT INTO nope", "a")
 	require.NoError(t, sc.Err())
@@ -280,6 +284,8 @@ func TestWriteWrappersAndScripts(t *testing.T) {
 	mock.ExpectExec("INSERT INTO `shop`.`pair`(`name`) VALUES(?)").
 		WithArgs("a").
 		WillReturnResult(sqlmock.NewResult(8, 1))
+	mock.ExpectQuery("SELECT @@auto_increment_increment").
+		WillReturnRows(sqlmock.NewRows([]string{"@@auto_increment_increment"}).AddRow(int64(1)))
 	mock.ExpectQuery("COLUMN_KEY").
 		WithArgs("shop", "pair").
 		WillReturnRows(sqlmock.NewRows([]string{"COLUMN_NAME", "EXTRA"}).
@@ -489,7 +495,7 @@ func TestTransactionWrappers(t *testing.T) {
 	mock.ExpectExec("DELETE FROM `shop`.`items`").WillReturnResult(sqlmock.NewResult(0, 1))
 	sc = a.DeleteWithTransaction(tx, "DELETE FROM `shop`.`items`")
 	require.NoError(t, sc.Err())
-	mock.ExpectQuery("SELECT `id` FROM").WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(1)))
+	mock.ExpectQuery("SELECT `id` FROM `shop`.`items` WHERE `id`=? FOR UPDATE").WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(1)))
 	mock.ExpectExec("DELETE FROM `shop`.`items` WHERE `id`=?").WillReturnResult(sqlmock.NewResult(0, 1))
 	sc = a.DeleteWithTransaction(tx, "DELETE FROM `shop`.`items` WHERE `id`=? RETURNING `id`", int64(1))
 	require.NoError(t, sc.Err())

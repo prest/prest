@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -153,6 +154,16 @@ func (a *Adapter) primaryKeys(ctx context.Context, tx *sql.Tx, schema, table str
 	}
 	if closeErr != nil {
 		return nil, closeErr
+	}
+	if len(cols) == 0 && schema != "" {
+		var one int64
+		err = tx.QueryRowContext(ctx, statements.TableExists, schema, table).Scan(&one)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w: %s.%s", adapters.ErrRelationNotFound, schema, table)
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	a.pkMu.Lock()
@@ -425,6 +436,7 @@ func (a *Adapter) delete(ctx context.Context, tx *sql.Tx, query string, params .
 	if whereSQL != "" {
 		sel += " WHERE " + whereSQL
 	}
+	sel += " FOR UPDATE"
 	rows, err := execQuery(ctx, tx, sel, params...)
 	if err != nil {
 		return scanErr(err)
@@ -479,13 +491,21 @@ func (a *Adapter) batchInsert(ctx context.Context, query string, params ...any) 
 		_ = tx.Rollback()
 		return scanErr(err)
 	}
+	var inc int64
+	if id, idErr := res.LastInsertId(); idErr == nil && id != 0 {
+		inc, err = autoIncrementStep(ctx, tx)
+		if err != nil {
+			_ = tx.Rollback()
+			return scanErr(err)
+		}
+	}
 	schema, table, cols, perr := parseInsert(query)
 	var buf []byte
 	if perr == nil {
-		buf, err = a.batchImages(ctx, tx, schema, table, cols, params, res)
+		buf, err = a.batchImages(ctx, tx, schema, table, cols, params, res, inc)
 	}
 	if err != nil || buf == nil {
-		buf, err = batchFallback(cols, params, res)
+		buf, err = batchFallback(cols, params, res, inc)
 	}
 	if err != nil {
 		_ = tx.Rollback()
@@ -497,7 +517,7 @@ func (a *Adapter) batchInsert(ctx context.Context, query string, params ...any) 
 	return scanBuf(buf, nil, true)
 }
 
-func (a *Adapter) batchImages(ctx context.Context, tx *sql.Tx, schema, table string, cols []string, params []any, res sql.Result) ([]byte, error) {
+func (a *Adapter) batchImages(ctx context.Context, tx *sql.Tx, schema, table string, cols []string, params []any, res sql.Result, inc int64) ([]byte, error) {
 	if len(cols) == 0 {
 		return nil, fmt.Errorf("no columns")
 	}
@@ -531,7 +551,7 @@ func (a *Adapter) batchImages(ctx context.Context, tx *sql.Tx, schema, table str
 			return nil, fmt.Errorf("missing last insert id")
 		}
 		for i := 0; i < n; i++ {
-			args = append(args, id+int64(i))
+			args = append(args, id+int64(i)*inc)
 		}
 	} else {
 		return nil, fmt.Errorf("primary key not in insert")
@@ -549,7 +569,7 @@ func (a *Adapter) batchImages(ctx context.Context, tx *sql.Tx, schema, table str
 	return scanJSONArray(rows)
 }
 
-func batchFallback(cols []string, params []any, res sql.Result) ([]byte, error) {
+func batchFallback(cols []string, params []any, res sql.Result, inc int64) ([]byte, error) {
 	if len(cols) == 0 {
 		n := int64(0)
 		if res != nil {
@@ -569,7 +589,7 @@ func batchFallback(cols []string, params []any, res sql.Result) ([]byte, error) 
 			obj[col] = params[row*len(cols)+i]
 		}
 		if last != 0 {
-			obj["last_insert_id"] = last + int64(row)
+			obj["last_insert_id"] = last + int64(row)*inc
 		}
 		out = append(out, obj)
 	}
@@ -577,4 +597,16 @@ func batchFallback(cols []string, params []any, res sql.Result) ([]byte, error) 
 		out = []map[string]any{}
 	}
 	return json.Marshal(out)
+}
+
+func autoIncrementStep(ctx context.Context, tx *sql.Tx) (int64, error) {
+	var step int64
+	err := tx.QueryRowContext(ctx, "SELECT @@auto_increment_increment").Scan(&step)
+	if err != nil {
+		return 0, err
+	}
+	if step < 1 {
+		return step, fmt.Errorf("auto_increment_increment %d", step)
+	}
+	return step, nil
 }

@@ -23,48 +23,67 @@ func setMySQLDefaults(v *viper.Viper) {
 // when port is unset. A mysql:// URL is applied; any other scheme is ignored.
 func parseMySQLDBConfig(v *viper.Viper, cfg *Prest) error {
 	cfg.MySQLPrepare = v.GetBool("mysql.prepare")
-	if mysqlConfigured(v, "pg.host") {
-		cfg.PGHost = v.GetString("pg.host")
+	if host, ok := mysqlExplicitString(v, "pg.host"); ok {
+		cfg.PGHost = host
 	}
-	if mysqlConfigured(v, "pg.port") {
-		cfg.PGPort = v.GetInt("pg.port")
+	port, portSet, err := mysqlExplicitPort(v)
+	if err != nil {
+		return err
+	}
+	if portSet {
+		cfg.PGPort = port
 	}
 	if cfg.PGPort == 0 {
 		cfg.PGPort = mysqlDefaultPort
 	}
-	if mysqlConfigured(v, "pg.user") {
-		cfg.PGUser = v.GetString("pg.user")
+	if user, ok := mysqlExplicitString(v, "pg.user"); ok {
+		cfg.PGUser = user
 	}
-	if mysqlConfigured(v, "pg.pass") {
-		cfg.PGPass = v.GetString("pg.pass")
+	if pass, ok := mysqlExplicitString(v, "pg.pass"); ok {
+		cfg.PGPass = pass
 	}
-	if mysqlConfigured(v, "pg.database") {
-		cfg.PGDatabase = v.GetString("pg.database")
+	if database, ok := mysqlExplicitString(v, "pg.database"); ok {
+		cfg.PGDatabase = database
 	}
-	if mysqlConfigured(v, "pg.ssl.mode") {
-		cfg.PGSSLMode = v.GetString("pg.ssl.mode")
+	if mode, ok := mysqlExplicitString(v, "pg.ssl.mode"); ok {
+		cfg.PGSSLMode = mode
 	}
 	if cfg.PGSSLMode == "" {
 		cfg.PGSSLMode = "disable"
 	}
-	if mysqlConfigured(v, "pg.ssl.key") {
-		cfg.PGSSLKey = v.GetString("pg.ssl.key")
+	if key, ok := mysqlExplicitString(v, "pg.ssl.key"); ok {
+		cfg.PGSSLKey = key
 	}
-	if mysqlConfigured(v, "pg.ssl.cert") {
-		cfg.PGSSLCert = v.GetString("pg.ssl.cert")
+	if cert, ok := mysqlExplicitString(v, "pg.ssl.cert"); ok {
+		cfg.PGSSLCert = cert
 	}
-	if mysqlConfigured(v, "pg.ssl.rootcert") {
-		cfg.PGSSLRootCert = v.GetString("pg.ssl.rootcert")
+	if root, ok := mysqlExplicitString(v, "pg.ssl.rootcert"); ok {
+		cfg.PGSSLRootCert = root
 	}
 
-	cfg.PGMaxIdleConn = v.GetInt("pg.maxidleconn")
-	cfg.PGMaxOpenConn = v.GetInt("pg.maxopenconn")
-	cfg.PGConnTimeout = v.GetInt("pg.conntimeout")
-	cfg.PGCache = v.GetBool("pg.cache")
-	cfg.SingleDB = v.GetBool("pg.single")
+	cfg.PGMaxIdleConn, err = configuredInt(v, "pg.maxidleconn")
+	if err != nil {
+		return err
+	}
+	cfg.PGMaxOpenConn, err = configuredInt(v, "pg.maxopenconn")
+	if err != nil {
+		return err
+	}
+	cfg.PGConnTimeout, err = configuredInt(v, "pg.conntimeout")
+	if err != nil {
+		return err
+	}
+	cfg.PGCache, err = configuredBool(v, "pg.cache")
+	if err != nil {
+		return err
+	}
+	cfg.SingleDB, err = configuredBool(v, "pg.single")
+	if err != nil {
+		return err
+	}
 
-	if mysqlConfigured(v, "pg.url") {
-		cfg.PGURL = v.GetString("pg.url")
+	if rawURL, ok := mysqlExplicitString(v, "pg.url"); ok {
+		cfg.PGURL = rawURL
 	}
 	if os.Getenv("DATABASE_URL") != "" {
 		cfg.PGURL = os.Getenv("DATABASE_URL")
@@ -72,14 +91,102 @@ func parseMySQLDBConfig(v *viper.Viper, cfg *Prest) error {
 	return applyMySQLURLToPrest(cfg)
 }
 
+// configEnvNames maps a viper key to the engine-neutral name and the legacy name.
+// pg.host becomes PREST_DB_HOST and PREST_PG_HOST. auth.schema becomes
+// PREST_DB_AUTH_SCHEMA and PREST_AUTH_SCHEMA. The legacy name keeps the PREST_
+// prefix viper already uses, so PREST_PG_* and PREST_AUTH_SCHEMA stay valid.
+func configEnvNames(key string) (dbEnv, legacyEnv string) {
+	upper := strings.ToUpper(strings.ReplaceAll(key, ".", "_"))
+	suffix := strings.TrimPrefix(upper, "PG_")
+	return "PREST_DB_" + suffix, "PREST_" + upper
+}
+
+// lookupConfigEnv reads PREST_DB_* first, then the legacy PREST_* name.
+// An explicit empty value is present.
+func lookupConfigEnv(key string) (string, bool) {
+	dbEnv, legacyEnv := configEnvNames(key)
+	if val, ok := os.LookupEnv(dbEnv); ok {
+		return val, true
+	}
+	if val, ok := os.LookupEnv(legacyEnv); ok {
+		return val, true
+	}
+	return "", false
+}
+
+// mysqlExplicitString returns a string from the environment or the config file.
+// Viper defaults are not treated as set. GetString is used only for a file
+// value, after the environment is known to be unset.
+func mysqlExplicitString(v *viper.Viper, key string) (string, bool) {
+	if val, ok := lookupConfigEnv(key); ok {
+		return val, true
+	}
+	if v != nil && v.InConfig(key) {
+		return v.GetString(key), true
+	}
+	return "", false
+}
+
 // mysqlConfigured reports a value from the environment or config file.
 // viper defaults for the Postgres keys are not treated as set.
 func mysqlConfigured(v *viper.Viper, key string) bool {
-	envKey := "PREST_" + strings.ToUpper(strings.ReplaceAll(key, ".", "_"))
-	if _, ok := os.LookupEnv(envKey); ok {
-		return true
+	_, ok := mysqlExplicitString(v, key)
+	return ok
+}
+
+// mysqlExplicitPort parses PREST_DB_PORT or PREST_PG_PORT with Atoi when that
+// variable is present. A file value still uses GetInt. Unset stays 0 so the
+// caller can apply 3306. A non-numeric env value fails.
+func mysqlExplicitPort(v *viper.Viper) (port int, ok bool, err error) {
+	if val, found := lookupConfigEnv("pg.port"); found {
+		port, err = strconv.Atoi(val)
+		if err != nil {
+			return 0, false, fmt.Errorf("invalid pg.port %q: %w", val, err)
+		}
+		return port, true, nil
 	}
-	return v.InConfig(key)
+	if mysqlConfigured(v, "pg.port") {
+		return v.GetInt("pg.port"), true, nil
+	}
+	return 0, false, nil
+}
+
+// configuredString uses an explicit env value, including empty, and otherwise
+// viper (file or Postgres default).
+func configuredString(v *viper.Viper, key string) string {
+	if val, ok := lookupConfigEnv(key); ok {
+		return val
+	}
+	return v.GetString(key)
+}
+
+// configuredInt parses PREST_DB_* / PREST_PG_* with Atoi when present.
+// Otherwise it uses viper, including Postgres defaults.
+func configuredInt(v *viper.Viper, key string) (int, error) {
+	if val, ok := lookupConfigEnv(key); ok {
+		n, err := strconv.Atoi(val)
+		if err != nil {
+			return 0, fmt.Errorf("invalid %s %q: %w", key, val, err)
+		}
+		return n, nil
+	}
+	return v.GetInt(key), nil
+}
+
+// configuredBool parses PREST_DB_* / PREST_PG_* when present.
+// An explicit empty value is false. Otherwise it uses viper.
+func configuredBool(v *viper.Viper, key string) (bool, error) {
+	if val, ok := lookupConfigEnv(key); ok {
+		if val == "" {
+			return false, nil
+		}
+		b, err := strconv.ParseBool(val)
+		if err != nil {
+			return false, fmt.Errorf("invalid %s %q: %w", key, val, err)
+		}
+		return b, nil
+	}
+	return v.GetBool(key), nil
 }
 
 func applyMySQLURLToPrest(cfg *Prest) error {
@@ -156,6 +263,21 @@ func mysqlTLSModeFromQuery(u *url.URL) string {
 		}
 	}
 	return u.Query().Get("sslmode")
+}
+
+// ApplyMySQLRegistrySchemas sets auth and queries schemas to database when
+// the operator did not set those keys. A nil config or an empty database is
+// left unchanged. Explicit values, including "public", are kept.
+func ApplyMySQLRegistrySchemas(dst *Prest, database string) {
+	if dst == nil || database == "" {
+		return
+	}
+	if !dst.authSchemaSet {
+		dst.AuthSchema = database
+	}
+	if !dst.queriesSchemaSet {
+		dst.QueriesConf.Schema = database
+	}
 }
 
 // applyMySQLSchemaDefaults copies the MySQL database name into auth and

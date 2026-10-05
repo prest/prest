@@ -235,7 +235,7 @@ func TestInsertUpdateDelete(t *testing.T) {
 	require.JSONEq(t, `[{"id":4,"name":"bea"}]`, string(sc.Bytes()))
 
 	mock.ExpectBegin()
-	mock.ExpectQuery("SELECT `id` FROM `shop`.`items` WHERE `id`=?").
+	mock.ExpectQuery("SELECT `id` FROM `shop`.`items` WHERE `id`=? FOR UPDATE").
 		WithArgs(int64(4)).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(4)))
 	mock.ExpectExec("DELETE FROM `shop`.`items` WHERE `id`=?").
@@ -255,6 +255,8 @@ func TestBatchInsertCopy(t *testing.T) {
 	mock.ExpectExec("INSERT INTO `shop`.`items`(`name`) VALUES(?),(?)").
 		WithArgs("a", "b").
 		WillReturnResult(sqlmock.NewResult(10, 2))
+	mock.ExpectQuery("SELECT @@auto_increment_increment").
+		WillReturnRows(sqlmock.NewRows([]string{"@@auto_increment_increment"}).AddRow(int64(1)))
 	mock.ExpectQuery(statements.PKColumns).
 		WithArgs("shop", "items").
 		WillReturnRows(sqlmock.NewRows([]string{"COLUMN_NAME", "EXTRA"}).AddRow("id", "auto_increment"))
@@ -265,6 +267,27 @@ func TestBatchInsertCopy(t *testing.T) {
 	sc := a.BatchInsertCopyCtx(ctx, "alias", "shop", "items", []string{"`name`"}, "a", "b")
 	require.NoError(t, sc.Err())
 	require.Contains(t, string(sc.Bytes()), `"name":"a"`)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestBatchInsertAutoIncrementStep(t *testing.T) {
+	a, mock := withMock(t)
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, "shop")
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT INTO `shop`.`items`(`name`) VALUES(?),(?)").
+		WithArgs("a", "b").
+		WillReturnResult(sqlmock.NewResult(10, 2))
+	mock.ExpectQuery("SELECT @@auto_increment_increment").
+		WillReturnRows(sqlmock.NewRows([]string{"@@auto_increment_increment"}).AddRow(int64(2)))
+	mock.ExpectQuery(statements.PKColumns).
+		WithArgs("shop", "items").
+		WillReturnRows(sqlmock.NewRows([]string{"COLUMN_NAME", "EXTRA"}).AddRow("id", "auto_increment"))
+	mock.ExpectQuery("SELECT * FROM `shop`.`items` WHERE `id` IN (?,?)").
+		WithArgs(int64(10), int64(12)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(int64(10), "a").AddRow(int64(12), "b"))
+	mock.ExpectCommit()
+	sc := a.BatchInsertCopyCtx(ctx, "alias", "shop", "items", []string{"`name`"}, "a", "b")
+	require.NoError(t, sc.Err())
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -368,9 +391,33 @@ func TestUpdateReturningNoPrimaryKey(t *testing.T) {
 	mock.ExpectQuery(statements.PKColumns).
 		WithArgs("shop", "items").
 		WillReturnRows(sqlmock.NewRows([]string{"COLUMN_NAME", "EXTRA"}))
+	mock.ExpectQuery(statements.TableExists).
+		WithArgs("shop", "items").
+		WillReturnRows(sqlmock.NewRows([]string{"1"}).AddRow(int64(1)))
 	mock.ExpectRollback()
 	sc := a.UpdateCtx(ctx, "UPDATE `shop`.`items` SET `name`=? WHERE `id`=? RETURNING `id`", "bea", int64(4))
 	require.Error(t, sc.Err())
+	require.Contains(t, sc.Err().Error(), "no primary key")
+	require.False(t, errors.Is(sc.Err(), adapters.ErrRelationNotFound))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestUpdateReturningMissingTable(t *testing.T) {
+	a, mock := withMock(t)
+	ctx := context.WithValue(context.Background(), pctx.DBNameKey, "shop")
+
+	for i := 0; i < 2; i++ {
+		mock.ExpectBegin()
+		mock.ExpectQuery(statements.PKColumns).
+			WithArgs("shop", "missing").
+			WillReturnRows(sqlmock.NewRows([]string{"COLUMN_NAME", "EXTRA"}))
+		mock.ExpectQuery(statements.TableExists).
+			WithArgs("shop", "missing").
+			WillReturnRows(sqlmock.NewRows([]string{"1"}))
+		mock.ExpectRollback()
+		sc := a.UpdateCtx(ctx, "UPDATE `shop`.`missing` SET `name`=? WHERE `id`=? RETURNING `id`", "bea", int64(4))
+		require.ErrorIs(t, sc.Err(), adapters.ErrRelationNotFound)
+	}
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

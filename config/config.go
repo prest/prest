@@ -118,6 +118,10 @@ type Prest struct {
 	MigrationsPath       string
 	QueriesPath          string
 	QueriesConf          QueriesConf
+	// authSchemaSet and queriesSchemaSet mean the operator set those keys.
+	// The viper default "public" is not explicit, so an explicit public stays.
+	authSchemaSet        bool
+	queriesSchemaSet     bool
 	AccessConf           AccessConf
 	ExposeConf           ExposeConf
 	StudioConf           StudioConf
@@ -309,6 +313,8 @@ func Parse(v *viper.Viper, cfg *Prest, configPath string) error {
 	cfg.AccessConf.IgnoreTable = v.GetStringSlice("access.ignore_table")
 	cfg.QueriesPath = v.GetString("queries.location")
 	parseQueriesConfig(v, cfg)
+	cfg.authSchemaSet = mysqlConfigured(v, "auth.schema")
+	cfg.queriesSchemaSet = mysqlConfigured(v, "queries.schema")
 	applyMySQLSchemaDefaults(v, cfg)
 
 	cfg.CORSAllowOrigin = v.GetStringSlice("cors.alloworigin")

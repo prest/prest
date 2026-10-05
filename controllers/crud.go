@@ -25,6 +25,20 @@ type CRUDHandler struct {
 	singleDB bool
 }
 
+func (h *CRUDHandler) ports(r *http.Request) (builder adapters.RequestQueryBuilder, sql adapters.SQLBuilder, executor adapters.QueryExecutor, perms adapters.PermissionsChecker, db adapters.DatabaseRegistry) {
+	if a := GetAdapterForRequest(r, nil); a != nil {
+		return a, a, a, a, a
+	}
+	return h.builder, h.sql, h.executor, h.perms, h.db
+}
+
+func (h *CRUDHandler) bound(r *http.Request) *CRUDHandler {
+	builder, sql, executor, perms, db := h.ports(r)
+	cp := *h
+	cp.builder, cp.sql, cp.executor, cp.perms, cp.db = builder, sql, executor, perms, db
+	return &cp
+}
+
 // NewCRUDHandler creates a CRUDHandler.
 func NewCRUDHandler(deps Deps) *CRUDHandler {
 	return &CRUDHandler{
@@ -40,6 +54,7 @@ func NewCRUDHandler(deps Deps) *CRUDHandler {
 
 // Select performs a SELECT on a table.
 func (h *CRUDHandler) Select(w http.ResponseWriter, r *http.Request) {
+	h = h.bound(r)
 	vars := pathVars(r)
 	database := vars["database"]
 	schema := vars["schema"]
@@ -195,6 +210,7 @@ func (h *CRUDHandler) Select(w http.ResponseWriter, r *http.Request) {
 
 // Insert performs an INSERT on a table.
 func (h *CRUDHandler) Insert(w http.ResponseWriter, r *http.Request) {
+	h = h.bound(r)
 	vars := pathVars(r)
 	database := vars["database"]
 	schema := vars["schema"]
@@ -239,6 +255,7 @@ func (h *CRUDHandler) Insert(w http.ResponseWriter, r *http.Request) {
 
 // BatchInsert performs a batch INSERT on a table.
 func (h *CRUDHandler) BatchInsert(w http.ResponseWriter, r *http.Request) {
+	h = h.bound(r)
 	vars := pathVars(r)
 	database := vars["database"]
 	schema := vars["schema"]
@@ -288,6 +305,7 @@ func (h *CRUDHandler) BatchInsert(w http.ResponseWriter, r *http.Request) {
 
 // Delete performs a DELETE on a table.
 func (h *CRUDHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	h = h.bound(r)
 	vars := pathVars(r)
 	database := vars["database"]
 	schema := vars["schema"]
@@ -345,6 +363,7 @@ func (h *CRUDHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 // Update performs an UPDATE on a table.
 func (h *CRUDHandler) Update(w http.ResponseWriter, r *http.Request) {
+	h = h.bound(r)
 	vars := pathVars(r)
 	database := vars["database"]
 	schema := vars["schema"]

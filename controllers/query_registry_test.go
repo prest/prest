@@ -138,6 +138,41 @@ func TestQueryRegistryHandler_Get_Success(t *testing.T) {
 	require.Equal(t, q, got)
 }
 
+func TestQueryRegistryHandler_Get_UsesContextAdapter(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selectedDB := mockgen.NewMockAdapter(ctrl)
+	selectedReg := mockgen.NewMockQueryRegistry(ctrl)
+	selectedDB.EXPECT().GetDatabase().Return("prest-test")
+	q := adapters.StoredQuery{DatabaseAlias: "shop", Location: "fulltable", Name: "get_all", ReadSQL: "SELECT 1"}
+	selectedReg.EXPECT().GetQuery(gomock.Any(), "shop", "fulltable", "get_all").Return(q, nil)
+
+	selected := struct {
+		adapters.Adapter
+		adapters.QueryRegistry
+	}{Adapter: selectedDB, QueryRegistry: selectedReg}
+
+	h := NewQueryRegistryHandler(Deps{
+		QueryRegistry: mockgen.NewMockQueryRegistry(ctrl),
+		DB:            mockgen.NewMockDatabaseRegistry(ctrl),
+	}, config.QueriesConf{})
+
+	req := queryRegistryRequest(http.MethodGet, "/_QUERIES/registry/shop/fulltable/get_all", nil, map[string]string{
+		"database": "shop",
+		"location": "fulltable",
+		"name":     "get_all",
+	})
+	req = req.WithContext(context.WithValue(req.Context(), pctx.AdapterKey, selected))
+	rec := httptest.NewRecorder()
+	h.Get(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), `"name":"get_all"`)
+}
+
 func TestQueryRegistryHandler_Get_DatabaseFromQuery(t *testing.T) {
 	t.Parallel()
 

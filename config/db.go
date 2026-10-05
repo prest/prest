@@ -35,16 +35,20 @@ func parseDBConfig(v *viper.Viper, cfg *Prest) error {
 	if cfg.Engine == EngineMySQL {
 		return parseMySQLDBConfig(v, cfg)
 	}
-	cfg.PGURL = v.GetString("pg.url")
-	cfg.PGHost = v.GetString("pg.host")
-	cfg.PGPort = v.GetInt("pg.port")
-	cfg.PGUser = v.GetString("pg.user")
-	cfg.PGPass = v.GetString("pg.pass")
-	cfg.PGDatabase = v.GetString("pg.database")
-	cfg.PGSSLMode = v.GetString("pg.ssl.mode")
-	cfg.PGSSLKey = v.GetString("pg.ssl.key")
-	cfg.PGSSLCert = v.GetString("pg.ssl.cert")
-	cfg.PGSSLRootCert = v.GetString("pg.ssl.rootcert")
+	cfg.PGURL = configuredString(v, "pg.url")
+	cfg.PGHost = configuredString(v, "pg.host")
+	port, err := configuredInt(v, "pg.port")
+	if err != nil {
+		return err
+	}
+	cfg.PGPort = port
+	cfg.PGUser = configuredString(v, "pg.user")
+	cfg.PGPass = configuredString(v, "pg.pass")
+	cfg.PGDatabase = configuredString(v, "pg.database")
+	cfg.PGSSLMode = configuredString(v, "pg.ssl.mode")
+	cfg.PGSSLKey = configuredString(v, "pg.ssl.key")
+	cfg.PGSSLCert = configuredString(v, "pg.ssl.cert")
+	cfg.PGSSLRootCert = configuredString(v, "pg.ssl.rootcert")
 
 	if os.Getenv("DATABASE_URL") != "" {
 		// cloud factor support: https://devcenter.heroku.com/changelog-items/438
@@ -52,11 +56,26 @@ func parseDBConfig(v *viper.Viper, cfg *Prest) error {
 	}
 	parseDatabaseURL(cfg)
 
-	cfg.PGMaxIdleConn = v.GetInt("pg.maxidleconn")
-	cfg.PGMaxOpenConn = v.GetInt("pg.maxopenconn")
-	cfg.PGConnTimeout = v.GetInt("pg.conntimeout")
-	cfg.PGCache = v.GetBool("pg.cache")
-	cfg.SingleDB = v.GetBool("pg.single")
+	cfg.PGMaxIdleConn, err = configuredInt(v, "pg.maxidleconn")
+	if err != nil {
+		return err
+	}
+	cfg.PGMaxOpenConn, err = configuredInt(v, "pg.maxopenconn")
+	if err != nil {
+		return err
+	}
+	cfg.PGConnTimeout, err = configuredInt(v, "pg.conntimeout")
+	if err != nil {
+		return err
+	}
+	cfg.PGCache, err = configuredBool(v, "pg.cache")
+	if err != nil {
+		return err
+	}
+	cfg.SingleDB, err = configuredBool(v, "pg.single")
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

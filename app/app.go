@@ -100,6 +100,7 @@ func New(cfg *config.Prest) (*App, error) {
 
 	deps := controllers.NewDepsFromConfig(cfg)
 	deps.AdapterRegistry = registry // Inject registry into deps
+	deps.AdapterName = adapterEngineName(cfg.Adapter)
 	h := controllers.NewHandlers(deps, cfg)
 
 	plg := plugins.New(cfg)
@@ -112,13 +113,13 @@ func New(cfg *config.Prest) (*App, error) {
 
 	mux := mux.NewRouter().StrictSlash(true)
 	router.RegisterRoutes(mux, cfg, h, crud, queryStack, adminStack, plg)
-
-	// Add adapter selector middleware for multi-database routing
-	// This attaches the correct adapter to each request based on the database name in the URL
-	muxWithAdapter := middlewares.NewAdapterSelectorMiddleware(registry, mux)
+	// After the match, so mux.Vars includes {database} before route middleware runs.
+	mux.Use(func(next http.Handler) http.Handler {
+		return middlewares.NewAdapterSelectorMiddleware(registry, next)
+	})
 
 	n := middlewares.New(cfg)
-	n.UseHandler(muxWithAdapter)
+	n.UseHandler(mux)
 
 	var handler http.Handler = n
 	if cfg.Otel.Enabled {
@@ -281,6 +282,19 @@ func PostgresDB(cfg *config.Prest) (*sqlx.DB, error) {
 	return db, nil
 }
 
+// adapterEngineName reports the default adapter for /_health.
+// A nil adapter and test doubles are reported as postgres.
+func adapterEngineName(a adapters.Adapter) string {
+	switch a.(type) {
+	case *mysql.Adapter:
+		return "mysql"
+	case *timescaledb.Adapter:
+		return "timescaledb"
+	default:
+		return "postgres"
+	}
+}
+
 // detectAndCreateAdapter tries to connect to TimescaleDB first; if not available, falls back to PostgreSQL.
 // This allows pREST to auto-detect and use the appropriate adapter without configuration.
 func detectAndCreateAdapter(cfg *config.Prest) (adapters.Adapter, error) {
@@ -333,6 +347,7 @@ func createAdapterForDatabase(cfg *config.Prest, dbConf *config.DatabaseConf) (a
 		dbCfg.PGURL = dbConf.URL
 	}
 	if eng == config.EngineMySQL {
+		config.ApplyMySQLRegistrySchemas(&dbCfg, dbConf.Database)
 		my := mysql.New(&dbCfg)
 		if err := mysql.Connect(my); err != nil {
 			return nil, fmt.Errorf("failed to connect to database %s: %w", dbConf.Alias, err)
