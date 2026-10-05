@@ -45,6 +45,8 @@ func RegisterRoutes(
 	if h.QueryRegistry != nil && adminStack != nil {
 		router.Handle("/_QUERIES/registry", adminRoute(adminStack, h.QueryRegistry.List)).Methods("GET")
 		router.Handle("/_QUERIES/registry", adminRoute(adminStack, h.QueryRegistry.Create)).Methods("POST")
+		router.Handle("/_QUERIES/registry/{database}", adminRoute(adminStack, h.QueryRegistry.List)).Methods("GET")
+		router.Handle("/_QUERIES/registry/{database}", adminRoute(adminStack, h.QueryRegistry.Create)).Methods("POST")
 		router.Handle("/_QUERIES/registry/{location}/{name}", adminRoute(adminStack, h.QueryRegistry.Get)).Methods("GET")
 		router.Handle("/_QUERIES/registry/{location}/{name}", adminRoute(adminStack, h.QueryRegistry.Update)).Methods("PUT")
 		router.Handle("/_QUERIES/registry/{location}/{name}", adminRoute(adminStack, h.QueryRegistry.Delete)).Methods("DELETE")

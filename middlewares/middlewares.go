@@ -149,7 +149,11 @@ func AccessControl(perms adapters.PermissionsChecker) negroni.Handler {
 			return
 		}
 
-		if perms.TablePermissions(mapPath["database"], mapPath["schema"], mapPath["table"], permission, userName) {
+		checker := perms
+		if a, ok := ctx.Value(pctx.AdapterKey).(adapters.Adapter); ok {
+			checker = a
+		}
+		if checker.TablePermissions(mapPath["database"], mapPath["schema"], mapPath["table"], permission, userName) {
 			next(rw, rq)
 			return
 		}

@@ -10,8 +10,10 @@ var (
 	// The password group is greedy so it consumes up to the LAST "@" before
 	// the host rather than the first: a password containing "@" (e.g.
 	// postgres://user:p@ss@word@host/db) would otherwise leave everything
-	// after its first "@" ("ss@word") unredacted.
-	pgURLCreds = regexp.MustCompile(`(?i)postgres(?:ql)?://([^:@/]+):(.+)@`)
+	// after its first "@" ("ss@word") unredacted. mysql:// is redacted the
+	// same way.
+	pgURLCreds    = regexp.MustCompile(`(?i)postgres(?:ql)?://([^:@/]+):(.+)@`)
+	mysqlURLCreds = regexp.MustCompile(`(?i)mysql://([^:@/]+):(.+)@`)
 )
 
 // Redact returns s with database credentials removed, suitable for safe
@@ -19,7 +21,8 @@ var (
 // value, not just an error message.
 func Redact(s string) string {
 	redacted := passwordKV.ReplaceAllString(s, "password=***")
-	return pgURLCreds.ReplaceAllString(redacted, "postgres://$1:***@")
+	redacted = pgURLCreds.ReplaceAllString(redacted, "postgres://$1:***@")
+	return mysqlURLCreds.ReplaceAllString(redacted, "mysql://$1:***@")
 }
 
 // Error returns err with database credentials redacted for safe structured logging.

@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -151,6 +152,50 @@ func TestCRUDHandler_Select_Success(t *testing.T) {
 	require.Contains(t, rec.Body.String(), "prest")
 }
 
+func TestCRUDHandler_Select_UsesContextAdapter(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selected := mockgen.NewMockAdapter(ctrl)
+	selected.EXPECT().IsRegistered("prest-test").Return(true)
+	selected.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "test", "read", "").Return([]string{"name"}, nil)
+	selected.EXPECT().SelectFields([]string{"name"}).Return(`"name"`, nil)
+	selected.EXPECT().SelectSQL(`"name"`, "prest-test", "public", "test").Return(`SELECT "name" FROM "prest-test"."public"."test"`)
+	selected.EXPECT().DistinctClause(gomock.Any()).Return("", nil)
+	selected.EXPECT().CountByRequest(gomock.Any()).Return("", nil)
+	selected.EXPECT().JoinByRequest(gomock.Any()).Return(nil, nil)
+	selected.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+	selected.EXPECT().GroupByClause(gomock.Any()).Return("")
+	selected.EXPECT().TimeBucketClause(gomock.Any()).Return("", nil)
+	selected.EXPECT().OrderByRequest(gomock.Any()).Return("", nil)
+	selected.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
+
+	scanner := mockgen.NewMockScanner(ctrl)
+	scanner.EXPECT().Err().Return(nil)
+	scanner.EXPECT().Bytes().Return([]byte(`[{"name":"prest"}]`))
+	selected.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)
+
+	h := NewCRUDHandler(Deps{
+		Perms:    mockgen.NewMockPermissionsChecker(ctrl),
+		SQL:      mockgen.NewMockSQLBuilder(ctrl),
+		Builder:  mockgen.NewMockRequestQueryBuilder(ctrl),
+		Executor: mockgen.NewMockQueryExecutor(ctrl),
+		DB:       mockgen.NewMockDatabaseRegistry(ctrl),
+	})
+
+	req := crudRequest(http.MethodGet, "/prest-test/public/test", map[string]string{
+		"database": "prest-test", "schema": "public", "table": "test",
+	})
+	req = req.WithContext(context.WithValue(req.Context(), pctx.AdapterKey, selected))
+	rec := httptest.NewRecorder()
+	h.Select(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), "prest")
+}
+
 func TestCRUDHandler_Select_TimeBucketClauseError(t *testing.T) {
 	t.Parallel()
 
@@ -242,6 +287,71 @@ func TestCRUDHandler_Select_TimeBucketClauseSuccess(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Contains(t, rec.Body.String(), "ok")
+}
+
+type groupByBinderBuilder struct {
+	*mockgen.MockRequestQueryBuilder
+	placeholderID int
+}
+
+func (b *groupByBinderBuilder) GroupByClauseValues(_ *http.Request, initialPlaceholderID int) (string, []any) {
+	b.placeholderID = initialPlaceholderID
+	return `GROUP BY "status" HAVING AVG("age") > $2`, []any{"o'brien"}
+}
+
+func TestCRUDHandler_Select_GroupByBinder(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "test", "read", "").Return([]string{"name"}, nil)
+
+	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
+	sqlBuilder.EXPECT().SelectFields([]string{"name"}).Return(`"name"`, nil)
+	sqlBuilder.EXPECT().SelectSQL(`"name"`, "prest-test", "public", "test").Return(`SELECT "name" FROM "prest-test"."public"."test"`)
+
+	inner := mockgen.NewMockRequestQueryBuilder(ctrl)
+	inner.EXPECT().DistinctClause(gomock.Any()).Return("", nil)
+	inner.EXPECT().CountByRequest(gomock.Any()).Return("", nil)
+	inner.EXPECT().JoinByRequest(gomock.Any()).Return(nil, nil)
+	inner.EXPECT().WhereByRequest(gomock.Any(), 1).Return("name=$1", []interface{}{"prest"}, nil)
+	inner.EXPECT().GroupByClause(gomock.Any()).Times(0)
+	inner.EXPECT().TimeBucketClause(gomock.Any()).Return("", nil)
+	inner.EXPECT().OrderByRequest(gomock.Any()).Return("", nil)
+	inner.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
+
+	builder := &groupByBinderBuilder{MockRequestQueryBuilder: inner}
+
+	scanner := mockgen.NewMockScanner(ctrl)
+	scanner.EXPECT().Err().Return(nil)
+	scanner.EXPECT().Bytes().Return([]byte(`[{"name":"prest"}]`))
+
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any(), "prest", "o'brien").DoAndReturn(
+		func(_ context.Context, sql string, _ ...interface{}) adapters.Scanner {
+			require.Contains(t, sql, `GROUP BY "status" HAVING AVG("age") > $2`)
+			return scanner
+		},
+	)
+
+	h := NewCRUDHandler(Deps{
+		Perms:    perms,
+		SQL:      sqlBuilder,
+		Builder:  builder,
+		Executor: executor,
+		DB:       mockDatabaseRegistry(ctrl),
+	})
+
+	req := crudRequest(http.MethodGet, "/prest-test/public/test?name=$eq.prest", map[string]string{
+		"database": "prest-test", "schema": "public", "table": "test",
+	})
+	rec := httptest.NewRecorder()
+	h.Select(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, 2, builder.placeholderID)
 }
 
 func TestCRUDHandler_Select_WithClauses(t *testing.T) {
@@ -405,6 +515,47 @@ func TestCRUDHandler_Select_RelationNotFound(t *testing.T) {
 
 	scanner := mockgen.NewMockScanner(ctrl)
 	scanner.EXPECT().Err().Return(errors.New(`pq: relation "public.missing" does not exist`))
+
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)
+
+	db := mockDatabaseRegistry(ctrl)
+
+	h := NewCRUDHandler(Deps{Perms: perms, SQL: sqlBuilder, Builder: builder, Executor: executor, DB: db})
+	req := crudRequest(http.MethodGet, "/prest-test/public/missing", map[string]string{
+		"database": "prest-test", "schema": "public", "table": "missing",
+	})
+	rec := httptest.NewRecorder()
+	h.Select(rec, req)
+
+	require.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestCRUDHandler_Select_ErrRelationNotFound(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "missing", "read", "").Return([]string{"id"}, nil)
+
+	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
+	sqlBuilder.EXPECT().SelectFields([]string{"id"}).Return("`id`", nil)
+	sqlBuilder.EXPECT().SelectSQL("`id`", "prest-test", "public", "missing").Return("SELECT `id` FROM t")
+
+	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+	builder.EXPECT().DistinctClause(gomock.Any()).Return("", nil)
+	builder.EXPECT().CountByRequest(gomock.Any()).Return("", nil)
+	builder.EXPECT().JoinByRequest(gomock.Any()).Return(nil, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+	builder.EXPECT().GroupByClause(gomock.Any()).Return("")
+	builder.EXPECT().TimeBucketClause(gomock.Any()).Return("", nil)
+	builder.EXPECT().OrderByRequest(gomock.Any()).Return("", nil)
+	builder.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
+
+	scanner := mockgen.NewMockScanner(ctrl)
+	scanner.EXPECT().Err().Return(fmt.Errorf("missing: %w", adapters.ErrRelationNotFound))
 
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)

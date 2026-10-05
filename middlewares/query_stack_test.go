@@ -48,6 +48,44 @@ func TestScriptAccessControl_Allowed(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 }
 
+func TestScriptAccessControl_UsesContextAdapter(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selected := &adapterWithScriptPerms{
+		MockAdapter:     mockgen.NewMockAdapter(ctrl),
+		stubScriptPerms: stubScriptPerms{allow: true},
+	}
+	handler := ScriptAccessControl(stubScriptPerms{allow: false})
+	req := httptest.NewRequest(http.MethodGet, "/_QUERIES/shop/fulltable/get_all", nil)
+	req = mux.SetURLVars(req, map[string]string{
+		"database":        "shop",
+		"queriesLocation": "fulltable",
+		"script":          "get_all",
+	})
+	req = req.WithContext(context.WithValue(req.Context(), pctx.AdapterKey, selected))
+	rec := httptest.NewRecorder()
+
+	called := false
+	handler.ServeHTTP(rec, req, func(http.ResponseWriter, *http.Request) { called = true })
+	require.True(t, called)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	plain := httptest.NewRequest(http.MethodGet, "/_QUERIES/shop/fulltable/get_all", nil)
+	plain = mux.SetURLVars(plain, map[string]string{
+		"database":        "shop",
+		"queriesLocation": "fulltable",
+		"script":          "get_all",
+	})
+	rec = httptest.NewRecorder()
+	ScriptAccessControl(stubScriptPerms{allow: false}).ServeHTTP(rec, plain, func(http.ResponseWriter, *http.Request) {
+		t.Fatal("should not call next")
+	})
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
 func TestScriptAccessControl_Denied(t *testing.T) {
 	t.Parallel()
 

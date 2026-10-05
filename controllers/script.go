@@ -34,6 +34,20 @@ type ScriptHandler struct {
 	singleDB bool
 }
 
+func (h *ScriptHandler) ports(r *http.Request) (scripts adapters.ScriptRunner, executor adapters.QueryExecutor, db adapters.DatabaseRegistry) {
+	if a := GetAdapterForRequest(r, nil); a != nil {
+		return a, a, a
+	}
+	return h.scripts, h.executor, h.db
+}
+
+func (h *ScriptHandler) bound(r *http.Request) *ScriptHandler {
+	scripts, executor, db := h.ports(r)
+	cp := *h
+	cp.scripts, cp.executor, cp.db = scripts, executor, db
+	return &cp
+}
+
 // NewScriptHandler creates a ScriptHandler.
 func NewScriptHandler(deps Deps) *ScriptHandler {
 	return &ScriptHandler{
@@ -48,6 +62,7 @@ func NewScriptHandler(deps Deps) *ScriptHandler {
 
 // Execute runs a script from the configured queries location.
 func (h *ScriptHandler) Execute(w http.ResponseWriter, r *http.Request) {
+	h = h.bound(r)
 	vars := mux.Vars(r)
 	queriesPath := vars["queriesLocation"]
 	script := vars["script"]
@@ -98,6 +113,7 @@ func (h *ScriptHandler) Execute(w http.ResponseWriter, r *http.Request) {
 // detail to the operator, a safe summary to the caller. The cause stays
 // wrapped so errors.Is/As still work.
 func (h *ScriptHandler) ExecuteScriptQuery(rq *http.Request, queriesPath string, script string) ([]byte, error) {
+	h = h.bound(rq)
 	vars := mux.Vars(rq)
 	database := vars["database"] // empty = default prest_queries.database_alias
 

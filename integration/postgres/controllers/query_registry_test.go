@@ -88,6 +88,30 @@ func TestQueryRegistryCRUD(t *testing.T) {
 		},
 		http.MethodPost, token, http.StatusCreated, "RegistryCreate")
 
+	// Create a registry entry on the prest-test alias path.
+	// Expected to succeed with HTTP status Created.
+	// The path selects the same registry a later GET by database uses.
+	helpers.DoAuthRequest(
+		t, base+"/_QUERIES/registry/prest-test",
+		map[string]string{
+			"location": "itest",
+			"name":     "alias_sample",
+			"read_sql": "SELECT 1",
+		},
+		http.MethodPost, token, http.StatusCreated, "RegistryCreateWithDB")
+
+	// Read the alias entry back through the database path.
+	// Expected to succeed with HTTP status OK and include alias_sample.
+	helpers.DoAuthRequest(
+		t, base+"/_QUERIES/registry/prest-test/itest/alias_sample",
+		nil, http.MethodGet, token, http.StatusOK, "RegistryGetAliasCreate", "alias_sample")
+
+	// Delete the alias entry so the registry stays as the seed left it.
+	// Expected to succeed with HTTP status NoContent.
+	helpers.DoAuthRequest(
+		t, base+"/_QUERIES/registry/prest-test/itest/alias_sample",
+		nil, http.MethodDelete, token, http.StatusNoContent, "RegistryDeleteAliasCreate")
+
 	// Update the sample entry's read_sql.
 	// Expected to succeed with HTTP status OK and return SELECT 2.
 	helpers.DoAuthRequest(

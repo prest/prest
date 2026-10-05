@@ -438,6 +438,43 @@ func TestAccessControl_EnforcesBatchInsertRoute(t *testing.T) {
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
+func TestAccessControl_UsesContextAdapter(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	fallback := mockgen.NewMockPermissionsChecker(ctrl)
+	fallback.EXPECT().TablePermissions("prest-test", "public", "test", "read", "").Return(false).AnyTimes()
+
+	selected := mockgen.NewMockAdapter(ctrl)
+	selected.EXPECT().TablePermissions("prest-test", "public", "test", "read", "").Return(true)
+
+	handler := AccessControl(fallback)
+	req := httptest.NewRequest(http.MethodGet, "/prest-test/public/test", nil)
+	req = req.WithContext(context.WithValue(req.Context(), pctx.AdapterKey, selected))
+
+	called := false
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req, func(http.ResponseWriter, *http.Request) {
+		called = true
+	})
+
+	require.True(t, called)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	fallbackOnly := mockgen.NewMockPermissionsChecker(ctrl)
+	fallbackOnly.EXPECT().TablePermissions("prest-test", "public", "test", "read", "").Return(false)
+	plain := httptest.NewRequest(http.MethodGet, "/prest-test/public/test", nil)
+	rec = httptest.NewRecorder()
+	called = false
+	AccessControl(fallbackOnly).ServeHTTP(rec, plain, func(http.ResponseWriter, *http.Request) {
+		called = true
+	})
+	require.False(t, called)
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
 func TestAccessControl_SkipsNonTablePaths(t *testing.T) {
 	t.Parallel()
 

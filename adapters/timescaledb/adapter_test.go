@@ -24,6 +24,31 @@ func TestAdapterImplementsOptionalDBInterfaces(t *testing.T) {
 	require.True(t, okDB)
 }
 
+func TestGroupByClauseValues(t *testing.T) {
+	t.Parallel()
+
+	a := New(&config.Prest{}).(*Adapter)
+	req, err := http.NewRequest(http.MethodGet, "/?_groupby=status->>having:avg:age:$gt:o'brien", nil)
+	require.NoError(t, err)
+	clause, values := a.GroupByClauseValues(req, 3)
+	require.Contains(t, clause, "$3")
+	require.NotContains(t, clause, "o'brien")
+	require.Equal(t, []any{"o'brien"}, values)
+
+	fallback := &Adapter{Adapter: groupByStringOnly{clause: `GROUP BY "status"`}}
+	clause, values = fallback.GroupByClauseValues(req, 3)
+	require.Equal(t, `GROUP BY "status"`, clause)
+	require.Nil(t, values)
+}
+
+// groupByStringOnly implements GroupByClause and not GroupByBinder.
+type groupByStringOnly struct {
+	adapters.Adapter
+	clause string
+}
+
+func (g groupByStringOnly) GroupByClause(*http.Request) string { return g.clause }
+
 func TestTimeBucketClause(t *testing.T) {
 	t.Parallel()
 

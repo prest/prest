@@ -12,8 +12,10 @@ func TestCheckDBHealth(t *testing.T) {
 	base := helpers.ServerURL(t)
 
 	// Probe the public health endpoint.
-	// Expected to succeed with HTTP status OK when the database is reachable.
+	// Expected to succeed with HTTP status OK when the database is reachable,
+	// and to name the default postgres adapter.
 	testutils.DoRequest(
 		t, base+"/_health",
-		nil, "GET", http.StatusOK, "CheckDBHealth")
+		nil, "GET", http.StatusOK, "CheckDBHealth",
+		`"adapter":"postgres"`)
 }

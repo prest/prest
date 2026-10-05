@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/adapters/mockgen"
+	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/middlewares"
 	"github.com/stretchr/testify/require"
 )
@@ -41,6 +43,42 @@ func TestScriptHandler_Execute_Success(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/queries/list", nil)
 	req = mux.SetURLVars(req, map[string]string{"queriesLocation": "queries", "script": "list", "database": "prest-test"})
 	req = req.WithContext(withTestTimeout(req.Context()))
+	rec := httptest.NewRecorder()
+
+	h.Execute(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), `"n":1`)
+}
+
+func TestScriptHandler_Execute_UsesContextAdapter(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selected := mockgen.NewMockAdapter(ctrl)
+	selected.EXPECT().IsRegistered("prest-test").Return(true)
+	selected.EXPECT().ResolveScript(gomock.Any(), http.MethodGet, "queries", "list", "prest-test").Return(adapters.ScriptSource{
+		Name: "list.read.sql", Content: "SELECT 1",
+	}, nil)
+	selected.EXPECT().ParseScriptTemplate("list.read.sql", "SELECT 1", gomock.Any()).Return(`SELECT 1`, nil, nil)
+
+	scanner := mockgen.NewMockScanner(ctrl)
+	scanner.EXPECT().Err().Return(nil)
+	scanner.EXPECT().Bytes().Return([]byte(`[{"n":1}]`))
+	selected.EXPECT().ExecuteScriptsCtx(gomock.Any(), http.MethodGet, `SELECT 1`, gomock.Any()).Return(scanner)
+
+	h := NewScriptHandler(Deps{
+		Scripts:    mockgen.NewMockScriptRunner(ctrl),
+		Executor:   mockgen.NewMockQueryExecutor(ctrl),
+		DB:         mockgen.NewMockDatabaseRegistry(ctrl),
+		PGDatabase: "prest-test",
+	})
+	req := httptest.NewRequest(http.MethodGet, "/queries/list", nil)
+	req = mux.SetURLVars(req, map[string]string{"queriesLocation": "queries", "script": "list", "database": "prest-test"})
+	req = req.WithContext(withTestTimeout(req.Context()))
+	req = req.WithContext(context.WithValue(req.Context(), pctx.AdapterKey, selected))
 	rec := httptest.NewRecorder()
 
 	h.Execute(rec, req)
