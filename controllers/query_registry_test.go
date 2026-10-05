@@ -102,6 +102,7 @@ func TestQueryRegistryHandler_List_UsesContextRegistryForAlias(t *testing.T) {
 
 	selectedDB := mockgen.NewMockAdapter(ctrl)
 	selectedReg := mockgen.NewMockQueryRegistry(ctrl)
+	selectedDB.EXPECT().IsRegistered("shop").Return(true)
 	selectedDB.EXPECT().GetDatabase().Return("shop")
 	selectedReg.EXPECT().
 		ListQueries(gomock.Any(), "shop", "itest").
@@ -126,6 +127,24 @@ func TestQueryRegistryHandler_List_UsesContextRegistryForAlias(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Contains(t, rec.Body.String(), `"database":"shop"`)
+}
+
+func TestQueryRegistryHandler_List_UnregisteredRouteAlias(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	h, _, db := testQueryRegistryHandler(t, ctrl)
+	db.EXPECT().IsRegistered("unknown").Return(false)
+
+	rec := httptest.NewRecorder()
+	h.List(rec, queryRegistryRequest(http.MethodGet, "/_QUERIES/registry/unknown", nil, map[string]string{
+		"database": "unknown",
+	}))
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Contains(t, rec.Body.String(), "database not registered")
 }
 
 func TestQueryRegistryHandler_List_Error(t *testing.T) {
@@ -310,6 +329,7 @@ func TestQueryRegistryHandler_Create_UsesContextRegistryForAlias(t *testing.T) {
 
 	selectedDB := mockgen.NewMockAdapter(ctrl)
 	selectedReg := mockgen.NewMockQueryRegistry(ctrl)
+	selectedDB.EXPECT().IsRegistered("shop").Return(true)
 	selectedDB.EXPECT().GetDatabase().Return("shop")
 	selectedReg.EXPECT().
 		UpsertQuery(gomock.Any(), gomock.Any()).
@@ -343,6 +363,25 @@ func TestQueryRegistryHandler_Create_UsesContextRegistryForAlias(t *testing.T) {
 	var got adapters.StoredQuery
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&got))
 	require.Equal(t, "shop", got.DatabaseAlias)
+}
+
+func TestQueryRegistryHandler_Create_UnregisteredRouteAlias(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	h, _, db := testQueryRegistryHandler(t, ctrl)
+	db.EXPECT().IsRegistered("unknown").Return(false)
+
+	body := []byte(`{"location":"itest","name":"sample","read_sql":"SELECT 1"}`)
+	rec := httptest.NewRecorder()
+	h.Create(rec, queryRegistryRequest(http.MethodPost, "/_QUERIES/registry/unknown", body, map[string]string{
+		"database": "unknown",
+	}))
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Contains(t, rec.Body.String(), "database not registered")
 }
 
 func TestQueryRegistryHandler_Create_InvalidJSON(t *testing.T) {
