@@ -30,7 +30,7 @@ require (
 	golang.org/x/sync v0.22.0
 )
 
-require filippo.io/edwards25519 v1.1.0 // indirect
+require filippo.io/edwards25519 v1.1.1 // indirect
 
 require (
 	github.com/XSAM/otelsql v0.43.0
