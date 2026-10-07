@@ -7,9 +7,11 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/prest/prest/v2/adapters"
+	"github.com/prest/prest/v2/adapters/mysql"
 	"github.com/prest/prest/v2/adapters/postgres"
 	"github.com/prest/prest/v2/adapters/timescaledb"
 	"github.com/prest/prest/v2/config"
@@ -80,7 +82,7 @@ func New(cfg *config.Prest) (*App, error) {
 		}
 	}
 
-	if err := ensureSchemaMigrated(cfg); err != nil {
+	if err := ensureSchemaMigrated(cfg, registry); err != nil {
 		return nil, err
 	}
 
@@ -98,6 +100,7 @@ func New(cfg *config.Prest) (*App, error) {
 
 	deps := controllers.NewDepsFromConfig(cfg)
 	deps.AdapterRegistry = registry // Inject registry into deps
+	deps.AdapterName = adapterEngineName(cfg.Adapter)
 	h := controllers.NewHandlers(deps, cfg)
 
 	plg := plugins.New(cfg)
@@ -110,13 +113,13 @@ func New(cfg *config.Prest) (*App, error) {
 
 	mux := mux.NewRouter().StrictSlash(true)
 	router.RegisterRoutes(mux, cfg, h, crud, queryStack, adminStack, plg)
-
-	// Add adapter selector middleware for multi-database routing
-	// This attaches the correct adapter to each request based on the database name in the URL
-	muxWithAdapter := middlewares.NewAdapterSelectorMiddleware(registry, mux)
+	// After the match, so mux.Vars includes {database} before route middleware runs.
+	mux.Use(func(next http.Handler) http.Handler {
+		return middlewares.NewAdapterSelectorMiddleware(registry, next)
+	})
 
 	n := middlewares.New(cfg)
-	n.UseHandler(muxWithAdapter)
+	n.UseHandler(mux)
 
 	var handler http.Handler = n
 	if cfg.Otel.Enabled {
@@ -127,33 +130,85 @@ func New(cfg *config.Prest) (*App, error) {
 	return &App{Config: cfg, Handler: handler, Adapters: registry, pg: cfg.Adapter}, nil
 }
 
-func ensureSchemaMigrated(cfg *config.Prest) error {
+func ensureSchemaMigrated(cfg *config.Prest, registry adapters.Registry) error {
 	needAuth := cfg.AuthEnabled && cfg.AuthMigrateOnStartup
 	needQueries := cfg.QueriesConf.Storage == config.QueriesStorageDatabase && cfg.QueriesConf.MigrateOnStartup
 	if !needAuth && !needQueries {
 		return nil
 	}
 
-	db, err := PostgresDB(cfg)
-	if err != nil {
-		return fmt.Errorf("acquire database connection for startup migration: %w", err)
+	if registry == nil {
+		return nil
 	}
+	for _, alias := range registry.GetAll() {
+		adapter, err := registry.Get(alias)
+		if err != nil || adapter == nil {
+			continue
+		}
+		if ensurer, ok := adapter.(adapters.SystemTableEnsurer); ok {
+			if err := runSystemTables(ensurer, alias, needAuth, needQueries); err != nil {
+				return err
+			}
+			continue
+		}
+		if engineForAlias(cfg, alias) != config.EnginePostgres {
+			continue
+		}
+		db, err := postgres.DB(adapter)
+		if err != nil {
+			if errors.Is(err, postgres.ErrNotPostgresAdapter) {
+				return fmt.Errorf("acquire database connection for startup migration: %w", ErrAdapterNotPostgres)
+			}
+			return fmt.Errorf("acquire database connection for startup migration: %w", err)
+		}
+		if needAuth {
+			if err := EnsureAuthTable(cfg, db); err != nil {
+				return fmt.Errorf("migrate auth table %s.%s: %w", cfg.AuthSchema, cfg.AuthTable, err)
+			}
+			slog.Info("auth table migration complete", "schema", cfg.AuthSchema, "table", cfg.AuthTable)
+		}
+		if needQueries {
+			qc := cfg.QueriesConf
+			if err := EnsureQueriesTable(cfg, db); err != nil {
+				return fmt.Errorf("migrate queries table %s.%s: %w", qc.Schema, qc.Table, err)
+			}
+			slog.Info("queries table migration complete", "schema", qc.Schema, "table", qc.Table)
+		}
+	}
+	return nil
+}
 
+// engineForAlias returns the engine for a registered alias.
+// A matching Databases entry uses that entry's engine, otherwise the root engine.
+func engineForAlias(cfg *config.Prest, alias string) string {
+	if cfg != nil {
+		for i := range cfg.Databases {
+			if cfg.Databases[i].Alias == alias {
+				return config.EffectiveEngine(&cfg.Databases[i], cfg)
+			}
+		}
+	}
+	return config.EffectiveEngine(nil, cfg)
+}
+
+func runSystemTables(ensurer adapters.SystemTableEnsurer, alias string, needAuth, needQueries bool) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if alias != "" {
+		ctx = context.WithValue(ctx, pctx.DBNameKey, alias)
+	}
 	if needAuth {
-		if err := EnsureAuthTable(cfg, db); err != nil {
-			return fmt.Errorf("migrate auth table %s.%s: %w", cfg.AuthSchema, cfg.AuthTable, err)
+		if err := ensurer.EnsureAuthTable(ctx); err != nil {
+			return fmt.Errorf("migrate auth table: %w", err)
 		}
-		slog.Info("auth table migration complete", "schema", cfg.AuthSchema, "table", cfg.AuthTable)
+		slog.Info("auth table migration complete", "alias", alias)
 	}
-
 	if needQueries {
-		qc := cfg.QueriesConf
-		if err := EnsureQueriesTable(cfg, db); err != nil {
-			return fmt.Errorf("migrate queries table %s.%s: %w", qc.Schema, qc.Table, err)
+		if err := ensurer.EnsureQueriesTable(ctx); err != nil {
+			return fmt.Errorf("migrate queries table: %w", err)
 		}
-		slog.Info("queries table migration complete", "schema", qc.Schema, "table", qc.Table)
+		slog.Info("queries table migration complete", "alias", alias)
 	}
-
 	return nil
 }
 
@@ -191,9 +246,17 @@ func ensureQueriesImported(cfg *config.Prest) error {
 	return nil
 }
 
-// EnsureAdapter connects the postgres adapter when cfg.Adapter is nil.
+// EnsureAdapter connects the configured adapter when cfg.Adapter is nil.
 func EnsureAdapter(cfg *config.Prest) error {
 	if cfg.Adapter != nil {
+		return nil
+	}
+	if config.EffectiveEngine(nil, cfg) == config.EngineMySQL {
+		my := mysql.New(cfg)
+		if err := mysql.Connect(my); err != nil {
+			return err
+		}
+		cfg.Adapter = my
 		return nil
 	}
 	pg := postgres.New(cfg)
@@ -219,9 +282,33 @@ func PostgresDB(cfg *config.Prest) (*sqlx.DB, error) {
 	return db, nil
 }
 
+// adapterEngineName reports the default adapter for /_health.
+// A nil adapter and test doubles are reported as postgres.
+func adapterEngineName(a adapters.Adapter) string {
+	switch a.(type) {
+	case *mysql.Adapter:
+		return "mysql"
+	case *timescaledb.Adapter:
+		return "timescaledb"
+	default:
+		return "postgres"
+	}
+}
+
 // detectAndCreateAdapter tries to connect to TimescaleDB first; if not available, falls back to PostgreSQL.
 // This allows pREST to auto-detect and use the appropriate adapter without configuration.
 func detectAndCreateAdapter(cfg *config.Prest) (adapters.Adapter, error) {
+	if err := cfg.ValidateEngines(); err != nil {
+		return nil, err
+	}
+	if config.EffectiveEngine(nil, cfg) == config.EngineMySQL {
+		my := mysql.New(cfg)
+		if err := mysql.Connect(my); err != nil {
+			return nil, err
+		}
+		slog.Info("using mysql adapter")
+		return my, nil
+	}
 	// Try TimescaleDB first
 	tsAdapter := timescaledb.New(cfg)
 	if err := timescaledb.Connect(tsAdapter); err == nil {
@@ -241,8 +328,10 @@ func detectAndCreateAdapter(cfg *config.Prest) (adapters.Adapter, error) {
 // Currently all databases use the postgres adapter (wire-compatible mode).
 // In the future, this can route to TimescaleDB, MySQL, or other adapters based on detection.
 func createAdapterForDatabase(cfg *config.Prest, dbConf *config.DatabaseConf) (adapters.Adapter, error) {
+	eng := config.EffectiveEngine(dbConf, cfg)
 	// Create a temporary config scoped to this database for adapter creation
 	dbCfg := *cfg
+	dbCfg.Engine = eng
 	dbCfg.PGHost = dbConf.Host
 	dbCfg.PGPort = dbConf.Port
 	dbCfg.PGUser = dbConf.User
@@ -254,8 +343,21 @@ func createAdapterForDatabase(cfg *config.Prest, dbConf *config.DatabaseConf) (a
 	dbCfg.PGSSLCert = dbConf.SSL.Cert
 	dbCfg.PGSSLKey = dbConf.SSL.Key
 	dbCfg.PGSSLRootCert = dbConf.SSL.RootCert
-	if dbConf.URL != "" {
+	if dbConf.URL != "" && (eng != config.EngineMySQL || strings.HasPrefix(strings.ToLower(dbConf.URL), "mysql://")) {
 		dbCfg.PGURL = dbConf.URL
+	}
+	if eng == config.EngineMySQL {
+		config.ApplyMySQLRegistrySchemas(&dbCfg, dbConf.Database)
+		my := mysql.New(&dbCfg)
+		if err := mysql.Connect(my); err != nil {
+			return nil, fmt.Errorf("failed to connect to database %s: %w", dbConf.Alias, err)
+		}
+		my.SetDatabase(dbConf.Alias)
+		slog.Info("using mysql adapter for database", "alias", dbConf.Alias)
+		return my, nil
+	}
+	if eng != config.EnginePostgres {
+		return nil, fmt.Errorf("database %s: unknown database engine %q", dbConf.Alias, eng)
 	}
 
 	// Try TimescaleDB first, fall back to PostgreSQL

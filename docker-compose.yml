@@ -20,6 +20,24 @@ services:
         ]
       interval: 30s
       retries: 3
+  # Optional local MySQL (docker compose --profile mysql up mysql).
+  # Not started with the default prest service.
+  mysql:
+    profiles: ["mysql"]
+    image: mysql:8.4
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpw
+      - MYSQL_DATABASE=prest
+      - MYSQL_USER=prest
+      - MYSQL_PASSWORD=prest
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -prootpw"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
   prest:
     build: .
     restart: on-failure
@@ -28,6 +46,8 @@ services:
     environment:
       - PREST_DEBUG=true
       - PREST_PG_URL=${PREST_PG_URL}
+      # - PREST_ENGINE=mysql
+      # - PREST_DB_URL=mysql://prest:prest@mysql:3306/prest?tls=false
       - PREST_PG_CACHE=false
       - PREST_JWT_DEFAULT=false
       - PREST_CACHE_ENABLED=false

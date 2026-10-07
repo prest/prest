@@ -56,7 +56,7 @@ func TestParseDatabaseRegistry_EnvIndexed(t *testing.T) {
 
 	v := viper.New()
 	cfg := &Prest{}
-	parseDBConfig(v, cfg)
+	require.NoError(t, parseDBConfig(v, cfg))
 	parseDatabaseRegistry(v, cfg)
 	require.Len(t, cfg.Databases, 2)
 	require.Equal(t, "tenant-a", cfg.Databases[0].Alias)
@@ -78,7 +78,7 @@ func TestParseDatabaseRegistry_EnvOverridesTOML(t *testing.T) {
 	v, _ := viperCfg()
 	require.NoError(t, v.ReadInConfig())
 	cfg := &Prest{}
-	parseDBConfig(v, cfg)
+	require.NoError(t, parseDBConfig(v, cfg))
 	parseDatabaseRegistry(v, cfg)
 	require.Len(t, cfg.Databases, 2)
 	require.Equal(t, "override-host", cfg.Databases[0].Host)
@@ -95,7 +95,7 @@ func TestParseDatabaseRegistry_LegacyUnchanged(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgresql://cloud:cloudPass@localhost:5432/CloudDatabase/?sslmode=disable")
 	v := viper.New()
 	cfg := &Prest{}
-	parseDBConfig(v, cfg)
+	require.NoError(t, parseDBConfig(v, cfg))
 	parseDatabaseRegistry(v, cfg)
 	require.Empty(t, cfg.Databases)
 	require.Equal(t, "CloudDatabase", cfg.PGDatabase)
@@ -108,7 +108,7 @@ func TestParseDatabaseRegistry_MissingURL(t *testing.T) {
 
 	v := viper.New()
 	cfg := &Prest{}
-	parseDBConfig(v, cfg)
+	require.NoError(t, parseDBConfig(v, cfg))
 	parseDatabaseRegistry(v, cfg)
 	require.Empty(t, cfg.Databases)
 }
@@ -122,7 +122,7 @@ func TestParseDatabaseRegistry_DuplicateAlias(t *testing.T) {
 
 	v := viper.New()
 	cfg := &Prest{}
-	parseDBConfig(v, cfg)
+	require.NoError(t, parseDBConfig(v, cfg))
 	parseDatabaseRegistry(v, cfg)
 	require.Len(t, cfg.Databases, 1)
 	require.Equal(t, "tenant-a", cfg.Databases[0].Alias)
@@ -724,4 +724,39 @@ func TestProfileByAlias(t *testing.T) {
 			require.Equal(t, tt.want2, got2, "ProfileByAlias found mismatch")
 		})
 	}
+}
+
+func TestFillMySQLDoesNotCopyPostgresDefaults(t *testing.T) {
+	t.Parallel()
+	cfg := &Prest{
+		Engine: EnginePostgres, PGHost: "127.0.0.1", PGPort: 5432,
+		PGUser: "postgres", PGPass: "postgres", PGDatabase: "prest", PGSSLMode: "disable",
+	}
+	db := &DatabaseConf{Alias: "shop", Engine: EngineMySQL, User: "app", Database: "shop"}
+	fillDatabaseDefaults(db, cfg)
+	require.Empty(t, db.Host)
+	require.Equal(t, 3306, db.Port)
+	require.Equal(t, "app", db.User)
+	require.Empty(t, db.Pass)
+	require.Equal(t, "shop", db.Database)
+	require.Equal(t, "disable", db.SSL.Mode)
+	require.ErrorIs(t, (&Prest{Engine: EngineMySQL, Databases: []DatabaseConf{*db}}).ValidateEngines(), ErrMySQLConfig)
+}
+
+func TestApplyMySQLURLDoesNotUsePostgresParser(t *testing.T) {
+	t.Parallel()
+	db := &DatabaseConf{Alias: "shop", URL: "mysql://app:secret@db.internal:3307/shop?tls=true"}
+	applyURLToDatabaseConf(db)
+	require.Equal(t, EngineMySQL, db.Engine)
+	require.Equal(t, "app", db.User)
+	require.Equal(t, "secret", db.Pass)
+	require.Equal(t, "db.internal", db.Host)
+	require.Equal(t, 3307, db.Port)
+	require.Equal(t, "shop", db.Database)
+	require.Equal(t, "require", db.SSL.Mode)
+
+	pg := &DatabaseConf{Alias: "pg", Engine: EnginePostgres, URL: "mysql://app:secret@db:3306/shop"}
+	applyURLToDatabaseConf(pg)
+	require.Empty(t, pg.Host)
+	require.Empty(t, pg.User)
 }

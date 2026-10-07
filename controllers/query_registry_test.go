@@ -94,6 +94,59 @@ func TestQueryRegistryHandler_List_WithFilters(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 }
 
+func TestQueryRegistryHandler_List_UsesContextRegistryForAlias(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selectedDB := mockgen.NewMockAdapter(ctrl)
+	selectedReg := mockgen.NewMockQueryRegistry(ctrl)
+	selectedDB.EXPECT().IsRegistered("shop").Return(true)
+	selectedDB.EXPECT().GetDatabase().Return("shop")
+	selectedReg.EXPECT().
+		ListQueries(gomock.Any(), "shop", "itest").
+		Return([]adapters.StoredQuery{{DatabaseAlias: "shop", Location: "itest", Name: "sample"}}, nil)
+
+	selected := struct {
+		adapters.Adapter
+		adapters.QueryRegistry
+	}{Adapter: selectedDB, QueryRegistry: selectedReg}
+
+	h := NewQueryRegistryHandler(Deps{
+		QueryRegistry: mockgen.NewMockQueryRegistry(ctrl),
+		DB:            mockgen.NewMockDatabaseRegistry(ctrl),
+	}, config.QueriesConf{})
+
+	req := queryRegistryRequest(http.MethodGet, "/_QUERIES/registry/shop?location=itest", nil, map[string]string{
+		"database": "shop",
+	})
+	req = req.WithContext(context.WithValue(req.Context(), pctx.AdapterKey, selected))
+	rec := httptest.NewRecorder()
+	h.List(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), `"database":"shop"`)
+}
+
+func TestQueryRegistryHandler_List_UnregisteredRouteAlias(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	h, _, db := testQueryRegistryHandler(t, ctrl)
+	db.EXPECT().IsRegistered("unknown").Return(false)
+
+	rec := httptest.NewRecorder()
+	h.List(rec, queryRegistryRequest(http.MethodGet, "/_QUERIES/registry/unknown", nil, map[string]string{
+		"database": "unknown",
+	}))
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Contains(t, rec.Body.String(), "database not registered")
+}
+
 func TestQueryRegistryHandler_List_Error(t *testing.T) {
 	t.Parallel()
 
@@ -136,6 +189,41 @@ func TestQueryRegistryHandler_Get_Success(t *testing.T) {
 	var got adapters.StoredQuery
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&got))
 	require.Equal(t, q, got)
+}
+
+func TestQueryRegistryHandler_Get_UsesContextAdapter(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selectedDB := mockgen.NewMockAdapter(ctrl)
+	selectedReg := mockgen.NewMockQueryRegistry(ctrl)
+	selectedDB.EXPECT().GetDatabase().Return("prest-test")
+	q := adapters.StoredQuery{DatabaseAlias: "shop", Location: "fulltable", Name: "get_all", ReadSQL: "SELECT 1"}
+	selectedReg.EXPECT().GetQuery(gomock.Any(), "shop", "fulltable", "get_all").Return(q, nil)
+
+	selected := struct {
+		adapters.Adapter
+		adapters.QueryRegistry
+	}{Adapter: selectedDB, QueryRegistry: selectedReg}
+
+	h := NewQueryRegistryHandler(Deps{
+		QueryRegistry: mockgen.NewMockQueryRegistry(ctrl),
+		DB:            mockgen.NewMockDatabaseRegistry(ctrl),
+	}, config.QueriesConf{})
+
+	req := queryRegistryRequest(http.MethodGet, "/_QUERIES/registry/shop/fulltable/get_all", nil, map[string]string{
+		"database": "shop",
+		"location": "fulltable",
+		"name":     "get_all",
+	})
+	req = req.WithContext(context.WithValue(req.Context(), pctx.AdapterKey, selected))
+	rec := httptest.NewRecorder()
+	h.Get(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), `"name":"get_all"`)
 }
 
 func TestQueryRegistryHandler_Get_DatabaseFromQuery(t *testing.T) {
@@ -231,6 +319,69 @@ func TestQueryRegistryHandler_Create_Success(t *testing.T) {
 	require.Equal(t, "itest", got.Location)
 	require.Equal(t, "sample", got.Name)
 	require.Equal(t, "admin@test", got.CreatedBy)
+}
+
+func TestQueryRegistryHandler_Create_UsesContextRegistryForAlias(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selectedDB := mockgen.NewMockAdapter(ctrl)
+	selectedReg := mockgen.NewMockQueryRegistry(ctrl)
+	selectedDB.EXPECT().IsRegistered("shop").Return(true)
+	selectedDB.EXPECT().GetDatabase().Return("shop")
+	selectedReg.EXPECT().
+		UpsertQuery(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, q adapters.StoredQuery) error {
+			require.Equal(t, "shop", q.DatabaseAlias)
+			require.Equal(t, "itest", q.Location)
+			require.Equal(t, "sample", q.Name)
+			require.Equal(t, "admin@test", q.CreatedBy)
+			return nil
+		})
+
+	selected := struct {
+		adapters.Adapter
+		adapters.QueryRegistry
+	}{Adapter: selectedDB, QueryRegistry: selectedReg}
+
+	h := NewQueryRegistryHandler(Deps{
+		QueryRegistry: mockgen.NewMockQueryRegistry(ctrl),
+		DB:            mockgen.NewMockDatabaseRegistry(ctrl),
+	}, config.QueriesConf{})
+
+	body := []byte(`{"location":"itest","name":"sample","read_sql":"SELECT 1","database":"other"}`)
+	req := queryRegistryRequestWithUser(http.MethodPost, "/_QUERIES/registry/shop", body, map[string]string{
+		"database": "shop",
+	}, "admin@test")
+	req = req.WithContext(context.WithValue(req.Context(), pctx.AdapterKey, selected))
+	rec := httptest.NewRecorder()
+	h.Create(rec, req)
+
+	require.Equal(t, http.StatusCreated, rec.Code)
+	var got adapters.StoredQuery
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&got))
+	require.Equal(t, "shop", got.DatabaseAlias)
+}
+
+func TestQueryRegistryHandler_Create_UnregisteredRouteAlias(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	h, _, db := testQueryRegistryHandler(t, ctrl)
+	db.EXPECT().IsRegistered("unknown").Return(false)
+
+	body := []byte(`{"location":"itest","name":"sample","read_sql":"SELECT 1"}`)
+	rec := httptest.NewRecorder()
+	h.Create(rec, queryRegistryRequest(http.MethodPost, "/_QUERIES/registry/unknown", body, map[string]string{
+		"database": "unknown",
+	}))
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Contains(t, rec.Body.String(), "database not registered")
 }
 
 func TestQueryRegistryHandler_Create_InvalidJSON(t *testing.T) {

@@ -17,6 +17,20 @@ type CatalogHandler struct {
 	singleDB bool
 }
 
+func (h *CatalogHandler) ports(r *http.Request) (catalog adapters.CatalogQuerier, builder adapters.RequestQueryBuilder, executor adapters.QueryExecutor, db adapters.DatabaseRegistry) {
+	if a := GetAdapterForRequest(r, nil); a != nil {
+		return a, a, a, a
+	}
+	return h.catalog, h.builder, h.executor, h.db
+}
+
+func (h *CatalogHandler) bound(r *http.Request) *CatalogHandler {
+	catalog, builder, executor, db := h.ports(r)
+	cp := *h
+	cp.catalog, cp.builder, cp.executor, cp.db = catalog, builder, executor, db
+	return &cp
+}
+
 // NewCatalogHandler creates a CatalogHandler.
 func NewCatalogHandler(deps Deps) *CatalogHandler {
 	return &CatalogHandler{
@@ -30,6 +44,7 @@ func NewCatalogHandler(deps Deps) *CatalogHandler {
 
 // ListDatabases lists all (or filter) databases.
 func (h *CatalogHandler) ListDatabases(w http.ResponseWriter, r *http.Request) {
+	h = h.bound(r)
 	requestWhere, values, err := h.builder.WhereByRequest(r, 1)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
@@ -76,6 +91,7 @@ func (h *CatalogHandler) ListDatabases(w http.ResponseWriter, r *http.Request) {
 
 // ListSchemas lists all (or filter) schemas.
 func (h *CatalogHandler) ListSchemas(w http.ResponseWriter, r *http.Request) {
+	h = h.bound(r)
 	requestWhere, values, err := h.builder.WhereByRequest(r, 1)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
@@ -122,6 +138,7 @@ func (h *CatalogHandler) ListSchemas(w http.ResponseWriter, r *http.Request) {
 
 // ListTables lists all (or filter) tables.
 func (h *CatalogHandler) ListTables(w http.ResponseWriter, r *http.Request) {
+	h = h.bound(r)
 	requestWhere, values, err := h.builder.WhereByRequest(r, 1)
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
@@ -169,6 +186,7 @@ func (h *CatalogHandler) ListTables(w http.ResponseWriter, r *http.Request) {
 
 // ListTablesByDatabaseAndSchema lists tables for a database and schema.
 func (h *CatalogHandler) ListTablesByDatabaseAndSchema(w http.ResponseWriter, r *http.Request) {
+	h = h.bound(r)
 	vars := pathVars(r)
 	database := vars["database"]
 	schema := vars["schema"]

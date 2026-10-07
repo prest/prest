@@ -35,6 +35,9 @@ type FuncRegistry struct {
 	// bypassing the very screen the helpers exist to make unnecessary.
 	rawParams  map[string]interface{}
 	rawHeaders map[string]interface{}
+
+	// question placeholders and backtick identifiers for the MySQL dialect.
+	mysql bool
 }
 
 // NewFuncRegistry builds a registry for templateData, moving the reserved raw
@@ -43,6 +46,14 @@ func NewFuncRegistry(templateData map[string]interface{}) *FuncRegistry {
 	fr := &FuncRegistry{TemplateData: templateData}
 	fr.rawParams = takeRawMap(templateData, rawParamKey)
 	fr.rawHeaders = takeRawMap(templateData, rawHeaderKey)
+	return fr
+}
+
+// NewMySQLFuncRegistry is the MySQL sibling of NewFuncRegistry.
+// sqlVal and sqlList emit ? and ident wraps identifiers in backticks.
+func NewMySQLFuncRegistry(templateData map[string]interface{}) *FuncRegistry {
+	fr := NewFuncRegistry(templateData)
+	fr.mysql = true
 	return fr
 }
 
@@ -167,6 +178,9 @@ func (fr *FuncRegistry) boundValue(key string) interface{} {
 func (fr *FuncRegistry) sqlVal(key string) string {
 	fr.Args = append(fr.Args, fr.boundValue(key))
 	fr.next++
+	if fr.mysql {
+		return "?"
+	}
 	return fmt.Sprintf("$%d", fr.next)
 }
 
@@ -177,13 +191,20 @@ func (fr *FuncRegistry) sqlList(key string) string {
 		for i := range s {
 			fr.Args = append(fr.Args, s[i])
 			fr.next++
-			ph[i] = fmt.Sprintf("$%d", fr.next)
+			ph[i] = fr.placeholder()
 		}
 		return fmt.Sprintf("(%s)", strings.Join(ph, ","))
 	}
 	fr.Args = append(fr.Args, fr.boundValue(key))
 	fr.next++
-	return fmt.Sprintf("($%d)", fr.next)
+	return "(" + fr.placeholder() + ")"
+}
+
+func (fr *FuncRegistry) placeholder() string {
+	if fr.mysql {
+		return "?"
+	}
+	return fmt.Sprintf("$%d", fr.next)
 }
 
 // ident validates and safely quotes an identifier (optionally dotted path).
@@ -195,5 +216,19 @@ func (fr *FuncRegistry) sqlList(key string) string {
 // aborts template rendering.
 func (fr *FuncRegistry) ident(key string) (string, error) {
 	s, _ := fr.boundValue(key).(string)
+	if fr.mysql {
+		return quoteMySQLIdent(s)
+	}
 	return ident.Quote(s)
+}
+
+func quoteMySQLIdent(s string) (string, error) {
+	if !ident.IsValid(s) {
+		return "", fmt.Errorf("invalid identifier: %s", s)
+	}
+	parts := strings.Split(s, ".")
+	for i, part := range parts {
+		parts[i] = "`" + strings.ReplaceAll(part, "`", "``") + "`"
+	}
+	return strings.Join(parts, "."), nil
 }

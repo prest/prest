@@ -122,6 +122,37 @@ func TestAdapterSelectorMiddleware_UnregisteredDatabase(t *testing.T) {
 	require.False(t, ok)
 }
 
+func TestAdapterSelectorMiddleware_MatchedRouteSetsAdapter(t *testing.T) {
+	// Serial: mock.New registers a sql driver (not parallel-safe).
+	shop := mock.New(t)
+	other := mock.New(t)
+	registry := adapters.NewRegistry()
+	require.NoError(t, registry.Register("shop", shop))
+	require.NoError(t, registry.Register("other", other))
+
+	var got adapters.Adapter
+	var ok bool
+	router := mux.NewRouter()
+	router.HandleFunc("/{database}/{schema}/{table}", func(_ http.ResponseWriter, r *http.Request) {
+		got, ok = r.Context().Value(pctx.AdapterKey).(adapters.Adapter)
+	}).Methods(http.MethodGet)
+	router.Use(func(next http.Handler) http.Handler {
+		return NewAdapterSelectorMiddleware(registry, next)
+	})
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/shop/public/items", nil))
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.True(t, ok)
+	require.Same(t, shop, got)
+
+	got, ok = nil, false
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/missing/public/items", nil))
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.False(t, ok)
+}
+
 func TestGetRouteVars(t *testing.T) {
 	t.Parallel()
 

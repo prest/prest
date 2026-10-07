@@ -15,6 +15,24 @@ const (
 	defaultGuardRedisPrefix     = "prest_guard"
 )
 
+// setGuardDefaults registers the [guard] section defaults. Every knob starts
+// off: the guard is opt-in and pREST behaves exactly as before unless the
+// operator enables it.
+func setGuardDefaults(v *viper.Viper) {
+	v.SetDefault("guard.enabled", false)
+	v.SetDefault("guard.passive", false)
+	v.SetDefault("guard.rate_limit", 0)
+	v.SetDefault("guard.rate_limit_window", defaultGuardRateLimitWindow)
+	v.SetDefault("guard.max_body_bytes", defaultGuardMaxBodyBytes)
+	v.SetDefault("guard.blacklist", []string{})
+	v.SetDefault("guard.whitelist", []string{})
+	v.SetDefault("guard.exclude_paths", []string{})
+	v.SetDefault("guard.trusted_proxies", []string{})
+	v.SetDefault("guard.redis_url", "")
+	v.SetDefault("guard.redis_prefix", defaultGuardRedisPrefix)
+	v.SetDefault("guard.block_cloud_providers", []string{})
+}
+
 // GuardConf holds opt-in request security settings backed by the guard-core
 // engine (per-client rate limits, request payload inspection, IP policy).
 // Everything here is disabled by default: when Enabled is false pREST builds

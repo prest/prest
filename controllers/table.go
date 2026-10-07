@@ -14,6 +14,20 @@ type TableHandler struct {
 	singleDB bool
 }
 
+func (h *TableHandler) ports(r *http.Request) (executor adapters.QueryExecutor, db adapters.DatabaseRegistry) {
+	if a := GetAdapterForRequest(r, nil); a != nil {
+		return a, a
+	}
+	return h.executor, h.db
+}
+
+func (h *TableHandler) bound(r *http.Request) *TableHandler {
+	executor, db := h.ports(r)
+	cp := *h
+	cp.executor, cp.db = executor, db
+	return &cp
+}
+
 // NewTableHandler creates a TableHandler.
 func NewTableHandler(executor adapters.QueryExecutor, db adapters.DatabaseRegistry, singleDB bool) *TableHandler {
 	return &TableHandler{
@@ -25,6 +39,7 @@ func NewTableHandler(executor adapters.QueryExecutor, db adapters.DatabaseRegist
 
 // Show returns information about a table.
 func (h *TableHandler) Show(w http.ResponseWriter, r *http.Request) {
+	h = h.bound(r)
 	vars := pathVars(r)
 	database := vars["database"]
 	schema := vars["schema"]

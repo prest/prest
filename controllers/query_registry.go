@@ -20,6 +20,29 @@ type QueryRegistryHandler struct {
 	registry adapters.QueryRegistry
 	db       adapters.DatabaseRegistry
 	cfg      config.QueriesConf
+	singleDB bool
+}
+
+func (h *QueryRegistryHandler) ports(r *http.Request) (adapters.QueryRegistry, adapters.DatabaseRegistry) {
+	reg, db := h.registry, h.db
+	a := GetAdapterForRequest(r, nil)
+	if a == nil {
+		return reg, db
+	}
+	if qr, ok := a.(adapters.QueryRegistry); ok {
+		reg = qr
+	}
+	if d, ok := a.(adapters.DatabaseRegistry); ok {
+		db = d
+	}
+	return reg, db
+}
+
+func (h *QueryRegistryHandler) bound(r *http.Request) *QueryRegistryHandler {
+	reg, db := h.ports(r)
+	cp := *h
+	cp.registry, cp.db = reg, db
+	return &cp
 }
 
 // NewQueryRegistryHandler creates a QueryRegistryHandler.
@@ -28,12 +51,24 @@ func NewQueryRegistryHandler(deps Deps, cfg config.QueriesConf) *QueryRegistryHa
 		registry: deps.QueryRegistry,
 		db:       deps.DB,
 		cfg:      cfg,
+		singleDB: deps.SingleDB,
 	}
 }
 
 // List handles GET /_QUERIES/registry.
 func (h *QueryRegistryHandler) List(w http.ResponseWriter, r *http.Request) {
-	database := r.URL.Query().Get("database")
+	h = h.bound(r)
+	if database := mux.Vars(r)["database"]; database != "" {
+		if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+			jsonError(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+	vars := mux.Vars(r)
+	database := vars["database"]
+	if database == "" {
+		database = r.URL.Query().Get("database")
+	}
 	location := r.URL.Query().Get("location")
 
 	ctx, cancel := requestContext(r, h.db.GetDatabase())
@@ -49,6 +84,7 @@ func (h *QueryRegistryHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // Get handles GET /_QUERIES/registry/{location}/{name}.
 func (h *QueryRegistryHandler) Get(w http.ResponseWriter, r *http.Request) {
+	h = h.bound(r)
 	vars := mux.Vars(r)
 	database := vars["database"]
 	if database == "" {
@@ -68,10 +104,20 @@ func (h *QueryRegistryHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 // Create handles POST /_QUERIES/registry.
 func (h *QueryRegistryHandler) Create(w http.ResponseWriter, r *http.Request) {
+	h = h.bound(r)
+	if database := mux.Vars(r)["database"]; database != "" {
+		if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+			jsonError(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
 	q, err := h.decodeBody(w, r)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
+	}
+	if vars := mux.Vars(r); vars["database"] != "" {
+		q.DatabaseAlias = vars["database"]
 	}
 	q.CreatedBy = middlewares.AdminUsernameFromContext(r.Context())
 
@@ -87,6 +133,7 @@ func (h *QueryRegistryHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // Update handles PUT /_QUERIES/registry/{location}/{name}.
 func (h *QueryRegistryHandler) Update(w http.ResponseWriter, r *http.Request) {
+	h = h.bound(r)
 	vars := mux.Vars(r)
 	q, err := h.decodeBody(w, r)
 	if err != nil {
@@ -112,6 +159,7 @@ func (h *QueryRegistryHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 // Delete handles DELETE /_QUERIES/registry/{location}/{name}.
 func (h *QueryRegistryHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	h = h.bound(r)
 	vars := mux.Vars(r)
 	database := vars["database"]
 	if database == "" {

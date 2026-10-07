@@ -32,6 +32,16 @@ type OtelConf struct {
 	DBStatement bool
 }
 
+func setOtelDefaults(v *viper.Viper) {
+	v.SetDefault("otel.enabled", false)
+	v.SetDefault("otel.service_name", "prestd")
+	v.SetDefault("otel.protocol", "grpc")
+	v.SetDefault("otel.sample_ratio", 1.0)
+	v.SetDefault("otel.metrics_interval", "15s")
+	v.SetDefault("otel.insecure", false)
+	v.SetDefault("otel.db_statement", false)
+}
+
 // parseOtelConfig reads the [otel] section. Env overrides use the PREST_OTEL_*
 // prefix; when a key is left at its zero value the OTel SDK/exporter still reads
 // standard OTEL_* environment variables at init time.

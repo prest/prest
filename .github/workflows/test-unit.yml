@@ -36,9 +36,11 @@ jobs:
           path: coverage.out
 
       - name: Upload code coverage
+        continue-on-error: true
         uses: codecov/codecov-action@v4
         with:
           files: ./coverage.out
+          fail_ci_if_error: false
 
   coverage-report:
     name: Coverage PR comment
