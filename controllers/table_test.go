@@ -63,7 +63,7 @@ func TestTableHandler_Show_QueryError(t *testing.T) {
 	defer ctrl.Finish()
 
 	scanner := mockgen.NewMockScanner(ctrl)
-	scanner.EXPECT().Err().Return(errors.New("schema error")).Times(2)
+	scanner.EXPECT().Err().Return(errors.New("schema error"))
 
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(scanner)

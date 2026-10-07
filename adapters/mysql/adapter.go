@@ -28,6 +28,7 @@ var (
 	_ adapters.QueryRegistry            = (*Adapter)(nil)
 	_ adapters.ScriptPermissionsChecker = (*Adapter)(nil)
 	_ adapters.SystemTableEnsurer       = (*Adapter)(nil)
+	_ adapters.SchemaScoper             = (*Adapter)(nil)
 )
 
 // New creates a MySQL adapter without connecting.
@@ -60,9 +61,9 @@ func (a *Adapter) DB() (*sqlx.DB, error) {
 func (a *Adapter) Ping(ctx context.Context) error {
 	db, err := a.conn.Get()
 	if err != nil {
-		return err
+		return wrapDriver(err)
 	}
-	return db.PingContext(ctx)
+	return wrapDriver(db.PingContext(ctx))
 }
 
 // PingAll pings connections this manager already owns.
@@ -107,6 +108,15 @@ func (a *Adapter) PhysicalName(alias string) string {
 	return alias
 }
 
+// AllowsSchema pins {schema} to this connection's database when a registry
+// is configured, so one alias cannot reach another alias's database.
+func (a *Adapter) AllowsSchema(schema string) bool {
+	if a.cfg == nil || !a.cfg.HasDatabaseRegistry() {
+		return true
+	}
+	return schema == a.PhysicalName("")
+}
+
 // GetTransaction starts a transaction on the pooled connection.
 func (a *Adapter) GetTransaction() (*sql.Tx, error) {
 	db, err := a.conn.Get()
@@ -125,13 +135,17 @@ func (a *Adapter) GetTransactionCtx(ctx context.Context) (*sql.Tx, error) {
 	return db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
 }
 
+// dbFromCtx returns the pool for the request's alias. Connection failures are
+// wrapped so callers never surface dial text.
 func (a *Adapter) dbFromCtx(ctx context.Context) (*sqlx.DB, error) {
 	if ctx != nil {
 		if name, ok := ctx.Value(pctx.DBNameKey).(string); ok && name != "" {
-			return a.conn.GetOwned(name)
+			db, err := a.conn.GetOwned(name)
+			return db, wrapDriver(err)
 		}
 	}
-	return a.conn.Get()
+	db, err := a.conn.Get()
+	return db, wrapDriver(err)
 }
 
 // Connect initializes a MySQL adapter connection pool.

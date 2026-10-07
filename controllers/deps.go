@@ -41,6 +41,7 @@ type Deps struct {
 	AdapterRegistry adapters.Registry // Multi-database adapter registry
 	AdapterName     string            // Default engine name reported by /_health
 	SingleDB        bool
+	RegistryMode    bool // [[databases]] configured: aliases come from AdapterRegistry
 	PGDatabase      string
 	Auth            AuthConfig
 	Expose          config.ExposeConf
@@ -75,6 +76,7 @@ func NewDepsFromConfig(p *config.Prest) Deps {
 		Readiness:     p.Adapter,
 		Cache:         cacher,
 		SingleDB:      p.SingleDB,
+		RegistryMode:  p.HasDatabaseRegistry(),
 		PGDatabase:    p.PGDatabase,
 		Expose:        p.ExposeConf,
 		Auth: AuthConfig{

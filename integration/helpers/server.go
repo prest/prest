@@ -35,6 +35,13 @@ func QueriesServerURL(t *testing.T) string {
 	return envURL(t, "PREST_QUERIES_TEST_URL")
 }
 
+// RegistryServerURL returns the base URL for the prestd service configured with
+// a [[databases]] registry (MySQL: testdata/prest_mysql_registry.toml).
+func RegistryServerURL(t *testing.T) string {
+	t.Helper()
+	return envURL(t, "PREST_REGISTRY_TEST_URL")
+}
+
 // CacheServerURL returns the base URL for the cache+auth+ACL-enabled prestd
 // service (testdata/prest_cache.toml), used to test per-identity cache scoping.
 func CacheServerURL(t *testing.T) string {

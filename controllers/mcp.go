@@ -877,35 +877,18 @@ func (h *MCPHandler) validateToolTarget(database, schema, table string) error {
 	if !validatePathSegments(database, schema, table) {
 		return fmt.Errorf("invalid identifier in path")
 	}
+	if a, err := GetAdapterFromRegistry(h.registry, database); err == nil {
+		return checkSchemaScope(a, schema)
+	}
 	return nil
 }
 
 func (h *MCPHandler) physicalDatabase(alias string) string {
-	if h.db == nil {
-		return alias
-	}
-	return h.db.PhysicalName(alias)
+	return physicalName(h.db, alias)
 }
 
 func (h *MCPHandler) databaseAliases() []string {
-	if h.singleDB {
-		database := h.defaultDatabase()
-		if database == "" {
-			return nil
-		}
-		return []string{database}
-	}
-	if h.db != nil {
-		aliases := uniqueStrings(h.db.Aliases())
-		if len(aliases) > 0 {
-			return aliases
-		}
-	}
-	database := h.defaultDatabase()
-	if database == "" {
-		return nil
-	}
-	return []string{database}
+	return registryAliases(h.db, h.singleDB, h.defaultDatabase())
 }
 
 func (h *MCPHandler) defaultDatabase() string {

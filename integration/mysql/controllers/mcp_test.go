@@ -41,3 +41,14 @@ func TestMySQLMCPDescribeTable(t *testing.T) {
 	args := map[string]any{"database": "shop", "schema": "shop", "table": "items"}
 	testutils.DoRequest(t, base+"/_mcp", mcpCall(3, "prest.describe_table", args), http.MethodPost, http.StatusOK, "describe_table", "meta")
 }
+
+func TestMySQLMCPBinaryAsHex(t *testing.T) {
+	// select_table renders VARBINARY as "\x"+hex like REST. The row JSON is
+	// embedded as text in the JSON-RPC result, so only the hex digits are asserted.
+	base := helpers.ServerURL(t)
+	args := map[string]any{
+		"database": "shop", "schema": "shop", "table": "items",
+		"filters": map[string]any{"name": "ada"}, "columns": []string{"raw"},
+	}
+	testutils.DoRequest(t, base+"/_mcp", mcpCall(4, "prest.select_table", args), http.MethodPost, http.StatusOK, "select_table binary", "xdeadbeef")
+}

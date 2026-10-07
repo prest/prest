@@ -30,9 +30,22 @@ func wrapDriver(err error) error {
 	if err == nil {
 		return nil
 	}
+	if errors.Is(err, adapters.ErrUnavailable) {
+		return err
+	}
+	if errors.Is(err, mysql.ErrInvalidConn) || adapters.IsUnavailable(err) {
+		// Type name only: dial errors carry host and port.
+		return fmt.Errorf("%w (%T)", adapters.ErrUnavailable, err)
+	}
 	var me *mysql.MySQLError
-	if errors.As(err, &me) && me.Number == 1146 {
-		return fmt.Errorf("%w: %s", adapters.ErrRelationNotFound, me.Message)
+	if errors.As(err, &me) {
+		switch me.Number {
+		case 1146:
+			return fmt.Errorf("%w: %s", adapters.ErrRelationNotFound, me.Message)
+		case 1142, 1044, 1049:
+			// Access denied / unknown database: the message names user@host.
+			return fmt.Errorf("%w", adapters.ErrRelationNotFound)
+		}
 	}
 	return err
 }
@@ -138,12 +151,15 @@ func (a *Adapter) BatchInsertCopyCtx(ctx context.Context, dbname, schema, table 
 	}
 	rows := len(params) / len(keys)
 	groups := make([]string, rows)
+	slots := make([]string, len(keys))
 	for i := 0; i < rows; i++ {
-		ph, err := placeholders(1, len(keys))
-		if err != nil {
-			return scanErr(err)
+		for j := range keys {
+			slots[j] = "?"
+			if _, ok := params[i*len(keys)+j].(adapters.DefaultValue); ok {
+				slots[j] = "DEFAULT"
+			}
 		}
-		groups[i] = ph
+		groups[i] = "(" + strings.Join(slots, ",") + ")"
 	}
 	query := fmt.Sprintf("INSERT INTO %s(%s) VALUES%s", tableReference(schema, table), strings.Join(quoted, ","), strings.Join(groups, ","))
 	return a.batchInsert(ctx, query, params...)
@@ -220,8 +236,10 @@ func execQueryRow(ctx context.Context, q queryer, query string, args ...any) *sq
 	return q.QueryRowContext(ctx, query, args...)
 }
 
+// execStmt drops adapters.DefaultValue markers: the SQL text already has
+// DEFAULT in those slots, so only real values are bound.
 func execStmt(ctx context.Context, q queryer, query string, args ...any) (sql.Result, error) {
 	// Adapter-built SQL: identifiers are quoted, values are bound arguments.
 	// codeql[go/sql-injection]
-	return q.ExecContext(ctx, query, args...)
+	return q.ExecContext(ctx, query, adapters.BoundValues(args)...)
 }

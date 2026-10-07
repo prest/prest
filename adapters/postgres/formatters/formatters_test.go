@@ -1,6 +1,7 @@
 package formatters
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 )
@@ -23,6 +24,11 @@ func TestFormatArray(t *testing.T) {
 		{"stringer array", []fmt.Stringer{str{}, str{}, str{}}, `{"test","test","test"}`},
 		{"interface array", nil, `{"value 1","value 2","value 3"}`},
 		{"nil", nil, ""},
+		// JSON numbers decoded with UseNumber stay unquoted and exact
+		{"json number array", []interface{}{json.Number("1"), json.Number("9007199254740993")}, `{1,9007199254740993}`},
+		// numbers decoded without UseNumber arrive as float64
+		{"float array", []interface{}{float64(1), 2.5}, `{1,2.5}`},
+		{"mixed array", []interface{}{json.Number("3"), "x"}, `{3,"x"}`},
 	}
 
 	// define interface array

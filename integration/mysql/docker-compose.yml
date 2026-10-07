@@ -129,6 +129,33 @@ services:
       retries: 40
       start_period: 90s
 
+  prestd-registry:
+    <<: *prestd-service
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      mysql:
+        condition: service_healthy
+    environment:
+      <<: *prest-env
+      # [[databases]] store -> shop, archive -> other. The root PREST_DB_* vars
+      # from prest-env only fill fields an entry leaves unset; each url wins.
+      PREST_CONF: /workspace/testdata/prest_mysql_registry.toml
+      PREST_DEBUG: "true"
+      PREST_JWT_DEFAULT: "false"
+      PREST_CACHE_ENABLED: "false"
+      PREST_ACCESS_RESTRICT: "false"
+      PREST_DB_SINGLE: "false"
+      PREST_HTTP_PORT: "3004"
+    command: >-
+      bash -lc "export PATH=/usr/local/go/bin:/go/bin:$$PATH && apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && go run ./cmd/prestd/main.go"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3004/_health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 90s
+
   tests:
     <<: *prestd-service
     depends_on:
@@ -138,11 +165,14 @@ services:
         condition: service_healthy
       prestd-queries:
         condition: service_healthy
+      prestd-registry:
+        condition: service_healthy
     environment:
       <<: *prest-env
       PREST_CONF: /workspace/testdata/prest.toml
       PREST_TEST_URL: http://prestd:3000
       PREST_AUTH_TEST_URL: http://prestd-auth:3002
       PREST_QUERIES_TEST_URL: http://prestd-queries:3003
+      PREST_REGISTRY_TEST_URL: http://prestd-registry:3004
     command: >-
       bash -lc "export PATH=/usr/local/go/bin:/go/bin:$$PATH && go test -count=1 -timeout 180s ./integration/mysql/..."

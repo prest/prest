@@ -14,6 +14,7 @@ import (
 	"unicode"
 
 	"github.com/pkg/errors"
+	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/internal/ident"
 )
 
@@ -23,7 +24,9 @@ const (
 	defaultPageSize = 10
 )
 
-var removeOperatorRegex = regexp.MustCompile(`\$[a-z]+\.`)
+// operatorRegex matches a leading $op token, with or without a trailing dot,
+// so value-less operators like $null work as in Postgres. $100 stays a value.
+var operatorRegex = regexp.MustCompile(`^\$([a-z]+)(?:\.|$)`)
 
 func (a *Adapter) WhereByRequest(r *http.Request, _ int) (string, []interface{}, error) {
 	var whereKey []string
@@ -76,11 +79,11 @@ func whereKeyAndValue(rawKey, v string, pid *int) (string, []interface{}, error)
 	if v == "" {
 		return "", nil, errInvalidOperator
 	}
-	op := strings.ReplaceAll(removeOperatorRegex.FindString(v), ".", "")
-	if op == "" {
-		op = "$eq"
+	op, value := "$eq", v
+	if m := operatorRegex.FindStringSubmatch(v); m != nil {
+		op = "$" + m[1]
+		value = v[len(m[0]):]
 	}
-	value := removeOperatorRegex.ReplaceAllString(v, "")
 	keyInfo := strings.Split(rawKey, ":")
 	if len(keyInfo) > 1 {
 		switch keyInfo[1] {
@@ -222,7 +225,7 @@ func (a *Adapter) ReturningByRequest(r *http.Request) (string, error) {
 
 func (a *Adapter) SetByRequest(r *http.Request, _ int) (string, []interface{}, error) {
 	body := make(map[string]interface{})
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := newBodyDecoder(r.Body).Decode(&body); err != nil {
 		return "", nil, err
 	}
 	defer r.Body.Close()
@@ -252,7 +255,7 @@ func (a *Adapter) SetByRequest(r *http.Request, _ int) (string, []interface{}, e
 
 func (a *Adapter) ParseInsertRequest(r *http.Request) (string, string, []interface{}, error) {
 	body := make(map[string]interface{})
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := newBodyDecoder(r.Body).Decode(&body); err != nil {
 		return "", "", nil, err
 	}
 	defer closer(r.Body)
@@ -286,14 +289,14 @@ func (a *Adapter) ParseInsertRequest(r *http.Request) (string, string, []interfa
 
 func (a *Adapter) ParseBatchInsertRequest(r *http.Request) (string, string, []interface{}, error) {
 	recordSet := make([]map[string]interface{}, 0)
-	if err := json.NewDecoder(r.Body).Decode(&recordSet); err != nil {
+	if err := newBodyDecoder(r.Body).Decode(&recordSet); err != nil {
 		return "", "", nil, err
 	}
 	defer closer(r.Body)
 	if len(recordSet) == 0 {
 		return "", "", nil, errBodyEmpty
 	}
-	keys := sortedKeys(recordSet[0])
+	keys := unionKeys(recordSet)
 	quoted := make([]string, len(keys))
 	for i, key := range keys {
 		if !ident.IsValid(key) {
@@ -307,22 +310,46 @@ func (a *Adapter) ParseBatchInsertRequest(r *http.Request) (string, string, []in
 	}
 	values := make([]interface{}, 0, len(recordSet)*len(keys))
 	rows := make([]string, 0, len(recordSet))
+	slots := make([]string, len(keys))
 	for _, record := range recordSet {
-		start := len(values) + 1
-		for _, key := range keys {
-			bound, err := bindValue(record[key])
+		// A column absent from this record renders DEFAULT; the marker keeps
+		// values aligned and executors drop it before binding.
+		for i, key := range keys {
+			v, ok := record[key]
+			if !ok {
+				values = append(values, adapters.DefaultValue{})
+				slots[i] = "DEFAULT"
+				continue
+			}
+			bound, err := bindValue(v)
 			if err != nil {
 				return "", "", nil, err
 			}
 			values = append(values, bound)
+			slots[i] = "?"
 		}
-		ph, err := placeholders(start, len(values))
-		if err != nil {
-			return "", "", nil, err
-		}
-		rows = append(rows, ph)
+		rows = append(rows, "("+strings.Join(slots, ",")+")")
 	}
 	return strings.Join(quoted, ","), strings.Join(rows, ","), values, nil
+}
+
+// unionKeys returns the sorted union of every record's keys.
+func unionKeys(recordSet []map[string]interface{}) []string {
+	seen := map[string]interface{}{}
+	for _, record := range recordSet {
+		for k := range record {
+			seen[k] = nil
+		}
+	}
+	return sortedKeys(seen)
+}
+
+// newBodyDecoder keeps numbers as json.Number so integers above 2^53 are not
+// rounded through float64.
+func newBodyDecoder(body io.Reader) *json.Decoder {
+	dec := json.NewDecoder(body)
+	dec.UseNumber()
+	return dec
 }
 
 func bindValue(value interface{}) (interface{}, error) {
@@ -633,7 +660,8 @@ func groupByParts(groupQuery string) (groupBy, groupFunc, operator, val string, 
 			return groupBy, "", "", "", false
 		}
 		var err error
-		groupFunc, err = normalizeGroupFunction(params[1] + ":" + params[2])
+		// HAVING takes the bare aggregate; the select-list alias is not valid here.
+		groupFunc, err = aggregateExpr(params[1], params[2])
 		if err != nil {
 			return groupBy, "", "", "", false
 		}
@@ -693,37 +721,46 @@ var quotedAggRegex = regexp.MustCompile(
 		"\\((\\*|`[A-Za-z_]\\w*`(\\.[A-Za-z_]\\w*`)*)\\)" +
 		"( AS `[A-Za-z_]\\w*`)?$")
 
+// normalizeGroupFunction renders func:col[:alias] for the select list. Without
+// an alias the column is named after the lowercase function, as in Postgres.
 func normalizeGroupFunction(paramValue string) (string, error) {
 	values := strings.Split(paramValue, ":")
-	groupFunc := strings.ToUpper(values[0])
+	if len(values) < 2 {
+		return "", errors.Wrapf(errInvalidGroupFn, "%s", strings.ToUpper(values[0]))
+	}
+	sql, err := aggregateExpr(values[0], values[1])
+	if err != nil {
+		return "", err
+	}
+	alias := strings.ToLower(values[0])
+	if len(values) == 3 {
+		alias = values[2]
+		if !ident.IsValid(alias) || strings.Contains(alias, ".") {
+			return "", errInvalidIdentifier
+		}
+	}
+	return fmt.Sprintf("%s AS `%s`", sql, alias), nil
+}
+
+// aggregateExpr renders FUNC(`col`) without an alias.
+func aggregateExpr(fn, col string) (string, error) {
+	groupFunc := strings.ToUpper(fn)
 	switch groupFunc {
 	case "SUM", "AVG", "MAX", "MIN", "STDDEV", "VARIANCE":
-		if len(values) < 2 {
-			return "", errors.Wrapf(errInvalidGroupFn, "%s", groupFunc)
-		}
-		v := values[1]
-		if v != "*" {
-			if !ident.IsValid(v) {
-				return "", errInvalidIdentifier
-			}
-			q, err := quoteIdent(v)
-			if err != nil {
-				return "", err
-			}
-			v = q
-		}
-		sql := fmt.Sprintf("%s(%s)", groupFunc, v)
-		if len(values) == 3 {
-			alias := values[2]
-			if !ident.IsValid(alias) || strings.Contains(alias, ".") {
-				return "", errInvalidIdentifier
-			}
-			sql = fmt.Sprintf("%s AS `%s`", sql, alias)
-		}
-		return sql, nil
 	default:
 		return "", errors.Wrapf(errInvalidGroupFn, "%s", groupFunc)
 	}
+	if col != "*" {
+		if !ident.IsValid(col) {
+			return "", errInvalidIdentifier
+		}
+		q, err := quoteIdent(col)
+		if err != nil {
+			return "", err
+		}
+		col = q
+	}
+	return fmt.Sprintf("%s(%s)", groupFunc, col), nil
 }
 
 var allowedGroupByFunctions = map[string]struct{}{

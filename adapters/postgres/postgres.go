@@ -719,7 +719,9 @@ func sliceToJSONList(ifaceSlice interface{}) (returnValue string, err error) {
 // SetByRequest create a set clause for SQL
 func (adapter *postgres) SetByRequest(r *http.Request, initialPlaceholderID int) (setSyntax string, values []interface{}, err error) {
 	body := make(map[string]interface{})
-	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
+	dec := json.NewDecoder(r.Body)
+	dec.UseNumber() // keep integers above 2^53 exact
+	if err = dec.Decode(&body); err != nil {
 		return
 	}
 	defer r.Body.Close()
@@ -769,10 +771,16 @@ func closer(body io.Closer) {
 	}
 }
 
+// errCopyRequiresUniformKeys is returned when COPY receives DEFAULT markers:
+// COPY has no DEFAULT keyword, so every record must carry every column.
+var errCopyRequiresUniformKeys = errors.New("copy batch requires every record to have the same keys")
+
 // ParseBatchInsertRequest create insert SQL to batch request
 func (adapter *postgres) ParseBatchInsertRequest(r *http.Request) (colsName string, placeholders string, values []interface{}, err error) {
 	recordSet := make([]map[string]interface{}, 0)
-	if err = json.NewDecoder(r.Body).Decode(&recordSet); err != nil {
+	dec := json.NewDecoder(r.Body)
+	dec.UseNumber() // keep integers above 2^53 exact
+	if err = dec.Decode(&recordSet); err != nil {
 		return
 	}
 	defer closer(r.Body)
@@ -780,34 +788,66 @@ func (adapter *postgres) ParseBatchInsertRequest(r *http.Request) (colsName stri
 		err = ErrBodyEmpty
 		return
 	}
-	recordKeys := adapter.tableKeys(recordSet[0])
+	recordKeys, err := adapter.batchKeys(recordSet)
+	if err != nil {
+		return
+	}
 	colsName = strings.Join(recordKeys, ",")
 	values, placeholders, err = adapter.operationValues(recordSet, recordKeys)
 	return
 }
 
-func (adapter *postgres) operationValues(recordSet []map[string]interface{}, recordKeys []string) (values []interface{}, placeholders string, err error) {
-	for i, record := range recordSet {
-		initPH := len(values) + 1
-		for _, key := range recordKeys {
-			key, err = strconv.Unquote(key)
-			if err != nil {
+// batchKeys returns the sorted union of every record's keys, so a key present
+// only in a later record is not dropped.
+func (adapter *postgres) batchKeys(recordSet []map[string]interface{}) (keys []string, err error) {
+	union := make(map[string]interface{})
+	for _, record := range recordSet {
+		for key := range record {
+			if !ident.IsValid(key) {
+				err = errors.Wrap(ErrInvalidIdentifier, "BatchInsert")
 				return
 			}
-			value := record[key]
+			union[key] = nil
+		}
+	}
+	keys = adapter.tableKeys(union)
+	return
+}
+
+// operationValues renders one VALUES tuple per record. Present keys get the
+// next $n placeholder; missing keys render DEFAULT and an adapters.DefaultValue
+// marker keeps values aligned (len = records*keys). Executors drop the markers.
+func (adapter *postgres) operationValues(recordSet []map[string]interface{}, recordKeys []string) (values []interface{}, placeholders string, err error) {
+	columns := make([]string, len(recordKeys))
+	for i, key := range recordKeys {
+		columns[i], err = strconv.Unquote(key)
+		if err != nil {
+			return
+		}
+	}
+	tuples := make([]string, 0, len(recordSet))
+	placeholderID := 1
+	for _, record := range recordSet {
+		row := make([]string, 0, len(columns))
+		for _, column := range columns {
+			value, ok := record[column]
+			if !ok {
+				row = append(row, "DEFAULT")
+				values = append(values, adapters.DefaultValue{})
+				continue
+			}
 			switch value.(type) {
 			case []interface{}:
 				values = append(values, formatters.FormatArray(value))
 			default:
 				values = append(values, value)
 			}
+			row = append(row, fmt.Sprintf("$%d", placeholderID))
+			placeholderID++
 		}
-		pl := adapter.createPlaceholders(initPH, len(values))
-		placeholders = fmt.Sprintf("%s,%s", placeholders, pl)
-		if i == 0 {
-			placeholders = pl
-		}
+		tuples = append(tuples, "("+strings.Join(row, ",")+")")
 	}
+	placeholders = strings.Join(tuples, ",")
 	return
 }
 
@@ -833,7 +873,9 @@ func (adapter *postgres) createPlaceholders(initial, lenValues int) (ret string)
 // ParseInsertRequest create insert SQL
 func (adapter *postgres) ParseInsertRequest(r *http.Request) (colsName string, colsValue string, values []interface{}, err error) {
 	body := make(map[string]interface{})
-	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
+	dec := json.NewDecoder(r.Body)
+	dec.UseNumber() // keep integers above 2^53 exact
+	if err = dec.Decode(&body); err != nil {
 		return
 	}
 	defer closer(r.Body)
@@ -1224,6 +1266,9 @@ func (adapter *postgres) PaginateIfPossible(r *http.Request) (paginatedQuery str
 
 // BatchInsertCopy execute batch insert sql into a table unsing copy
 func (adapter *postgres) BatchInsertCopy(dbname, schema, table string, keys []string, values ...interface{}) (sc adapters.Scanner) {
+	if adapters.HasDefaults(values) {
+		return &scanner.PrestScanner{Error: errCopyRequiresUniformKeys}
+	}
 	db, err := adapter.conn.Get()
 	if err != nil {
 		slog.Error("log details", "err", logsafe.Error(err))
@@ -1290,6 +1335,9 @@ func (adapter *postgres) BatchInsertCopy(dbname, schema, table string, keys []st
 
 // BatchInsertCopyCtx execute batch insert sql into a table unsing copy
 func (adapter *postgres) BatchInsertCopyCtx(ctx context.Context, dbname, schema, table string, keys []string, values ...interface{}) (sc adapters.Scanner) {
+	if adapters.HasDefaults(values) {
+		return &scanner.PrestScanner{Error: errCopyRequiresUniformKeys}
+	}
 	db, err := adapter.dbFromCtx(ctx)
 	if err != nil {
 		slog.Error("log details", "err", logsafe.Error(err))
@@ -1367,7 +1415,7 @@ func (adapter *postgres) BatchInsertValues(SQL string, values ...interface{}) (s
 		return &scanner.PrestScanner{Error: err}
 	}
 	jsonData := []byte("[")
-	rows, err := stmt.Query(values...)
+	rows, err := stmt.Query(adapters.BoundValues(values)...)
 	if err != nil {
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
@@ -1410,7 +1458,7 @@ func (adapter *postgres) BatchInsertValuesCtx(ctx context.Context, SQL string, v
 		return &scanner.PrestScanner{Error: err}
 	}
 	jsonData := []byte("[")
-	rows, err := stmt.QueryContext(ctx, values...)
+	rows, err := stmt.QueryContext(ctx, adapters.BoundValues(values)...)
 	if err != nil {
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}

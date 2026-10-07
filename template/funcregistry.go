@@ -121,7 +121,7 @@ func (fr *FuncRegistry) split(orig, sep string) (values []string) {
 	return
 }
 
-// LimitOffset create and format limit query (offset, SQL ANSI)
+// LimitOffset create and format limit query (offset, SQL ANSI) with literal values
 func LimitOffset(pageNumberStr, pageSizeStr string) (paginatedQuery string, err error) {
 	pageNumber, err := strconv.Atoi(pageNumberStr)
 	if err != nil {
@@ -131,10 +131,15 @@ func LimitOffset(pageNumberStr, pageSizeStr string) (paginatedQuery string, err 
 	if err != nil {
 		return
 	}
-	if pageNumber-1 < 0 {
+	if pageSize < 0 {
+		err = fmt.Errorf("invalid page size: %d", pageSize)
+		return
+	}
+	if pageNumber < 1 {
 		pageNumber = 1
 	}
-	paginatedQuery = fmt.Sprintf("LIMIT %d OFFSET(%d - 1) * %d", pageSize, pageNumber, pageSize)
+	// OFFSET is computed here: MySQL rejects an expression in OFFSET.
+	paginatedQuery = fmt.Sprintf("LIMIT %d OFFSET %d", pageSize, (pageNumber-1)*pageSize)
 	return
 }
 

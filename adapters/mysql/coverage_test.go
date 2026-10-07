@@ -3,6 +3,7 @@ package mysql
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -99,7 +100,7 @@ func TestOperatorsBuildersAndErrors(t *testing.T) {
 	set, setVals, err := a.SetByRequest(bodyReq("/t", `{"b":"z","a":1}`), 1)
 	require.NoError(t, err)
 	require.Equal(t, "`a`=?, `b`=?", set)
-	require.Equal(t, []any{float64(1), "z"}, setVals)
+	require.Equal(t, []any{json.Number("1"), "z"}, setVals)
 	_, _, err = a.SetByRequest(bodyReq("/t", `{}`), 1)
 	require.ErrorIs(t, err, errBodyEmpty)
 	_, _, err = a.SetByRequest(bodyReq("/t", `{"bad name":1}`), 1)

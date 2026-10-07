@@ -95,7 +95,7 @@ MYSQL_IMAGE ?= mysql:8.4
 export MYSQL_IMAGE
 
 test-integration-mysql:
-	$(MYSQL_COMPOSE) up -d --wait mysql db-init prestd prestd-auth prestd-queries && \
+	$(MYSQL_COMPOSE) up -d --wait mysql db-init prestd prestd-auth prestd-queries prestd-registry && \
 	$(MYSQL_COMPOSE) run --rm --no-deps tests; \
 	status=$$?; \
 	$(MYSQL_COMPOSE) down -v --remove-orphans; \
