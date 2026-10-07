@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"strconv"
 	"strings"
 
@@ -78,54 +79,185 @@ type GuardConf struct {
 	BlockCloudProviders []string
 }
 
-// parseGuardConfig reads the [guard] section. Env overrides use the
-// PREST_GUARD_* prefix.
-func parseGuardConfig(v *viper.Viper, cfg *Prest) {
-	g := &cfg.Guard
-
-	// viper's GetBool silently discards conversion errors, which would turn a
-	// typo like PREST_GUARD_ENABLED=yes into "guard off". Validate the raw
-	// value instead: an explicitly set but non-boolean value marks the whole
-	// guard config invalid so the middleware fails closed.
-	switch raw := v.Get("guard.enabled").(type) {
+// guardRawBool reads key strictly. Viper's GetBool silently discards
+// conversion errors, which would turn a typo like PREST_GUARD_PASSIVE=yes
+// into "passive off"; an explicitly set but unparseable value instead marks
+// the guard config invalid so the middleware fails closed.
+func guardRawBool(v *viper.Viper, key string, g *GuardConf) (bool, bool) {
+	switch raw := v.Get(key).(type) {
 	case nil:
-		// Nothing set anywhere: keep the default (disabled).
+		return false, true
 	case bool:
-		g.Enabled = raw
+		return raw, true
 	case string:
 		parsed, err := strconv.ParseBool(strings.TrimSpace(raw))
 		if err != nil {
-			g.Invalid = fmt.Errorf("guard.enabled: %q is not a valid boolean", raw)
-			slog.Error("invalid guard config, guard requests will fail closed", "err", g.Invalid)
-			return
+			g.Invalid = fmt.Errorf("%s: %q is not a valid boolean", key, raw)
+			return false, false
 		}
-		g.Enabled = parsed
+		return parsed, true
 	default:
-		g.Invalid = fmt.Errorf("guard.enabled: unsupported value %v", raw)
+		g.Invalid = fmt.Errorf("%s: unsupported value %v", key, raw)
+		return false, false
+	}
+}
+
+// guardRawInt reads key strictly, reporting whether the key was set at all
+// so unset keys keep their defaults while explicitly invalid values fail
+// closed. Viper's GetInt turns a typo like PREST_GUARD_RATE_LIMIT=100/min
+// into 0, silently disabling rate limiting.
+func guardRawInt(v *viper.Viper, key string, g *GuardConf) (int64, bool, bool) {
+	switch raw := v.Get(key).(type) {
+	case nil:
+		return 0, false, true
+	case int:
+		return int64(raw), true, true
+	case int64:
+		return raw, true, true
+	case float64:
+		if raw != math.Trunc(raw) {
+			g.Invalid = fmt.Errorf("%s: %v is not an integer", key, raw)
+			return 0, true, false
+		}
+		return int64(raw), true, true
+	case string:
+		parsed, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
+		if err != nil {
+			g.Invalid = fmt.Errorf("%s: %q is not a valid integer", key, raw)
+			return 0, true, false
+		}
+		return parsed, true, true
+	default:
+		g.Invalid = fmt.Errorf("%s: unsupported value %v", key, raw)
+		return 0, true, false
+	}
+}
+
+// guardRawList reads key as a string list. Env values are comma-separated:
+// viper's GetStringSlice splits environment values on whitespace, which
+// would read PREST_GUARD_BLACKLIST=1.2.3.4,5.6.7.8 as the single entry
+// "1.2.3.4,5.6.7.8" and block nothing. Config-file arrays must contain
+// only strings.
+func guardRawList(v *viper.Viper, key string, g *GuardConf) ([]string, bool) {
+	switch raw := v.Get(key).(type) {
+	case nil:
+		return nil, true
+	case []string:
+		return raw, true
+	case []interface{}:
+		out := make([]string, 0, len(raw))
+		for _, item := range raw {
+			s, ok := item.(string)
+			if !ok {
+				g.Invalid = fmt.Errorf("%s: non-string entry %v", key, item)
+				return nil, false
+			}
+			out = append(out, s)
+		}
+		return out, true
+	case string:
+		parts := strings.Split(raw, ",")
+		out := make([]string, 0, len(parts))
+		for _, part := range parts {
+			if trimmed := strings.TrimSpace(part); trimmed != "" {
+				out = append(out, trimmed)
+			}
+		}
+		return out, true
+	default:
+		g.Invalid = fmt.Errorf("%s: unsupported value %v", key, raw)
+		return nil, false
+	}
+}
+
+// parseGuardConfig reads the [guard] section. Env overrides use the
+// PREST_GUARD_* prefix. Every security-relevant key is validated from its
+// raw value: anything explicitly set but unparseable marks the whole guard
+// config invalid so the middleware fails closed instead of silently running
+// with a weaker posture.
+func parseGuardConfig(v *viper.Viper, cfg *Prest) {
+	g := &cfg.Guard
+	fail := func() {
 		slog.Error("invalid guard config, guard requests will fail closed", "err", g.Invalid)
+	}
+
+	enabled, ok := guardRawBool(v, "guard.enabled", g)
+	if !ok {
+		fail()
 		return
 	}
+	g.Enabled = enabled
 
-	g.Passive = v.GetBool("guard.passive")
-	g.RateLimit = v.GetInt("guard.rate_limit")
-	g.RateLimitWindow = v.GetInt("guard.rate_limit_window")
-	g.MaxBodyBytes = v.GetInt64("guard.max_body_bytes")
-	g.Blacklist = v.GetStringSlice("guard.blacklist")
-	g.Whitelist = v.GetStringSlice("guard.whitelist")
-	g.ExcludePaths = v.GetStringSlice("guard.exclude_paths")
-	g.TrustedProxies = v.GetStringSlice("guard.trusted_proxies")
+	passive, ok := guardRawBool(v, "guard.passive", g)
+	if !ok {
+		fail()
+		return
+	}
+	g.Passive = passive
+
+	rateLimit, set, ok := guardRawInt(v, "guard.rate_limit", g)
+	if !ok {
+		fail()
+		return
+	}
+	if set && rateLimit < 0 {
+		g.Invalid = fmt.Errorf("guard.rate_limit: %d is negative", rateLimit)
+		fail()
+		return
+	}
+	g.RateLimit = int(rateLimit)
+
+	window, set, ok := guardRawInt(v, "guard.rate_limit_window", g)
+	if !ok {
+		fail()
+		return
+	}
+	if set && window <= 0 {
+		g.Invalid = fmt.Errorf("guard.rate_limit_window: %d is not positive", window)
+		fail()
+		return
+	}
+	if !set {
+		window = defaultGuardRateLimitWindow
+	}
+	g.RateLimitWindow = int(window)
+
+	maxBody, set, ok := guardRawInt(v, "guard.max_body_bytes", g)
+	if !ok {
+		fail()
+		return
+	}
+	if set && maxBody <= 0 {
+		g.Invalid = fmt.Errorf("guard.max_body_bytes: %d is not positive", maxBody)
+		fail()
+		return
+	}
+	if !set {
+		maxBody = defaultGuardMaxBodyBytes
+	}
+	g.MaxBodyBytes = maxBody
+
+	lists := []struct {
+		key string
+		dst *[]string
+	}{
+		{"guard.blacklist", &g.Blacklist},
+		{"guard.whitelist", &g.Whitelist},
+		{"guard.exclude_paths", &g.ExcludePaths},
+		{"guard.trusted_proxies", &g.TrustedProxies},
+		{"guard.block_cloud_providers", &g.BlockCloudProviders},
+	}
+	for _, list := range lists {
+		values, ok := guardRawList(v, list.key, g)
+		if !ok {
+			fail()
+			return
+		}
+		*list.dst = values
+	}
+
 	g.RedisURL = v.GetString("guard.redis_url")
-	g.RedisPrefix = v.GetString("guard.redis_prefix")
-	g.BlockCloudProviders = v.GetStringSlice("guard.block_cloud_providers")
-
-	if g.RateLimitWindow <= 0 {
-		slog.Warn("guard.rate_limit_window must be positive, using default", "value", g.RateLimitWindow)
-		g.RateLimitWindow = defaultGuardRateLimitWindow
-	}
-	if g.MaxBodyBytes <= 0 {
-		g.MaxBodyBytes = defaultGuardMaxBodyBytes
-	}
-	if g.RedisPrefix == "" {
+	if g.RedisPrefix = v.GetString("guard.redis_prefix"); g.RedisPrefix == "" {
 		g.RedisPrefix = defaultGuardRedisPrefix
 	}
 }

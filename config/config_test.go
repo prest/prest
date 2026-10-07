@@ -481,6 +481,91 @@ func TestExposeConf_ListingPredicates(t *testing.T) {
 	require.False(t, partial.TableListingAllowed())
 }
 
+// Every security-relevant guard key validates from its raw value: a value
+// that is set but unparseable fails the guard closed instead of silently
+// weakening the posture (rate limit off, blacklist unsplit, and so on).
+func TestParseGuardStrictValidation(t *testing.T) {
+	parseGuard := func(t *testing.T) *Prest {
+		t.Helper()
+		t.Setenv("PREST_CONF", "../notfound.toml")
+		v, configPath := viperCfg()
+		cfg := &Prest{}
+		requireParse(t, v, cfg, configPath)
+		return cfg
+	}
+
+	t.Run("unset keys keep safe defaults", func(t *testing.T) {
+		unsetEnvForTest(t, "PREST_GUARD_ENABLED")
+		unsetEnvForTest(t, "PREST_GUARD_RATE_LIMIT")
+		unsetEnvForTest(t, "PREST_GUARD_RATE_LIMIT_WINDOW")
+		unsetEnvForTest(t, "PREST_GUARD_MAX_BODY_BYTES")
+		cfg := parseGuard(t)
+		require.NoError(t, cfg.Guard.Invalid)
+		require.False(t, cfg.Guard.Enabled)
+		require.Equal(t, 0, cfg.Guard.RateLimit)
+		require.Equal(t, defaultGuardRateLimitWindow, cfg.Guard.RateLimitWindow)
+		require.Equal(t, int64(defaultGuardMaxBodyBytes), cfg.Guard.MaxBodyBytes)
+	})
+
+	t.Run("invalid passive fails closed", func(t *testing.T) {
+		t.Setenv("PREST_GUARD_PASSIVE", "yes")
+		cfg := parseGuard(t)
+		require.Error(t, cfg.Guard.Invalid)
+		require.Contains(t, cfg.Guard.Invalid.Error(), "guard.passive")
+		require.Contains(t, cfg.Guard.Invalid.Error(), "not a valid boolean")
+	})
+
+	t.Run("invalid rate limit fails closed", func(t *testing.T) {
+		t.Setenv("PREST_GUARD_RATE_LIMIT", "100/min")
+		cfg := parseGuard(t)
+		require.Error(t, cfg.Guard.Invalid)
+		require.Contains(t, cfg.Guard.Invalid.Error(), "guard.rate_limit")
+		require.Contains(t, cfg.Guard.Invalid.Error(), "not a valid integer")
+	})
+
+	t.Run("valid string rate limit parses", func(t *testing.T) {
+		t.Setenv("PREST_GUARD_RATE_LIMIT", "100")
+		cfg := parseGuard(t)
+		require.NoError(t, cfg.Guard.Invalid)
+		require.Equal(t, 100, cfg.Guard.RateLimit)
+	})
+
+	t.Run("negative rate limit fails closed", func(t *testing.T) {
+		t.Setenv("PREST_GUARD_RATE_LIMIT", "-5")
+		cfg := parseGuard(t)
+		require.Error(t, cfg.Guard.Invalid)
+		require.Contains(t, cfg.Guard.Invalid.Error(), "negative")
+	})
+
+	t.Run("explicit zero rate limit window fails closed", func(t *testing.T) {
+		t.Setenv("PREST_GUARD_RATE_LIMIT_WINDOW", "0")
+		cfg := parseGuard(t)
+		require.Error(t, cfg.Guard.Invalid)
+		require.Contains(t, cfg.Guard.Invalid.Error(), "guard.rate_limit_window")
+	})
+
+	t.Run("invalid max body bytes fails closed", func(t *testing.T) {
+		t.Setenv("PREST_GUARD_MAX_BODY_BYTES", "8KiB")
+		cfg := parseGuard(t)
+		require.Error(t, cfg.Guard.Invalid)
+		require.Contains(t, cfg.Guard.Invalid.Error(), "guard.max_body_bytes")
+	})
+
+	t.Run("blacklist env value splits on commas", func(t *testing.T) {
+		t.Setenv("PREST_GUARD_BLACKLIST", "1.2.3.4, 5.6.7.8")
+		cfg := parseGuard(t)
+		require.NoError(t, cfg.Guard.Invalid)
+		require.Equal(t, []string{"1.2.3.4", "5.6.7.8"}, cfg.Guard.Blacklist)
+	})
+
+	t.Run("trusted proxies env value splits on commas", func(t *testing.T) {
+		t.Setenv("PREST_GUARD_TRUSTED_PROXIES", "10.0.0.1,10.0.0.2")
+		cfg := parseGuard(t)
+		require.NoError(t, cfg.Guard.Invalid)
+		require.Equal(t, []string{"10.0.0.1", "10.0.0.2"}, cfg.Guard.TrustedProxies)
+	})
+}
+
 // guard.enabled is a security switch: viper's GetBool would silently swallow a
 // non-boolean value and disable the guard, so an explicitly set but invalid
 // value must be carried on GuardConf.Invalid and fail closed instead.

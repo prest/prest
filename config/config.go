@@ -50,8 +50,8 @@ type ExposeConf struct {
 }
 
 // The listing predicates below are the single definition of what [expose]
-// permits. Every surface that returns catalog metadata (the REST routes via
-// ExposureMiddleware and the /_mcp tools) must consult them, so a new
+// permits. Every surface that returns catalog metadata — the REST routes via
+// ExposureMiddleware and the /_mcp tools — must consult them, so a new
 // discovery endpoint cannot silently escape the control. When the section is
 // disabled the flags carry no meaning and everything is listable.
 
