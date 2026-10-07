@@ -29,6 +29,7 @@ type Adapter interface {
 	QueryExecutor
 	CatalogQuerier
 	SQLBuilder
+	Dialect
 	PermissionsChecker
 	ScriptRunner
 	DatabaseRegistry

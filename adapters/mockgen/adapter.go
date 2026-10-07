@@ -625,6 +625,20 @@ func (mr *MockAdapterMockRecorder) PingAll(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PingAll", reflect.TypeOf((*MockAdapter)(nil).PingAll), arg0)
 }
 
+// Placeholder mocks base method.
+func (m *MockAdapter) Placeholder(arg0 int) string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Placeholder", arg0)
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Placeholder indicates an expected call of Placeholder.
+func (mr *MockAdapterMockRecorder) Placeholder(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Placeholder", reflect.TypeOf((*MockAdapter)(nil).Placeholder), arg0)
+}
+
 // Query mocks base method.
 func (m *MockAdapter) Query(arg0 string, arg1 ...interface{}) adapters.Scanner {
 	m.ctrl.T.Helper()
@@ -699,6 +713,21 @@ func (mr *MockAdapterMockRecorder) QueryCtx(arg0, arg1 interface{}, arg2 ...inte
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryCtx", reflect.TypeOf((*MockAdapter)(nil).QueryCtx), varargs...)
+}
+
+// QuoteIdentifier mocks base method.
+func (m *MockAdapter) QuoteIdentifier(arg0 string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QuoteIdentifier", arg0)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QuoteIdentifier indicates an expected call of QuoteIdentifier.
+func (mr *MockAdapterMockRecorder) QuoteIdentifier(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QuoteIdentifier", reflect.TypeOf((*MockAdapter)(nil).QuoteIdentifier), arg0)
 }
 
 // ResolveScript mocks base method.

@@ -36,13 +36,24 @@ func TestMySQLInsertUpdateDelete(t *testing.T) {
 	testutils.DoRequest(t, base+"/shop/shop/items?name=$eq.bea", nil, http.MethodDelete, http.StatusOK, "delete", "rows_affected")
 }
 
+func TestMySQLJSONObjectInsertAndPatch(t *testing.T) {
+	// JSON objects in the body bind as utf8mb4 strings, so the default
+	// interpolateParams mode writes them into a JSON column (no error 3144).
+	base := helpers.ServerURL(t)
+	testutils.DoRequest(t, base+"/shop/shop/items", map[string]any{"name": "socks", "qty": 5, "meta": map[string]any{"kind": "apparel"}}, http.MethodPost, http.StatusCreated, "insert json", "apparel")
+	testutils.DoRequest(t, base+"/shop/shop/items?meta->>kind:jsonb=apparel", nil, http.MethodGet, http.StatusOK, "filter json", "socks")
+	testutils.DoRequest(t, base+"/shop/shop/items?name=$eq.socks", map[string]any{"meta": map[string]any{"kind": "shoes"}}, http.MethodPatch, http.StatusOK, "patch json", "rows_affected")
+	testutils.DoRequest(t, base+"/shop/shop/items?name=$eq.socks", nil, http.MethodGet, http.StatusOK, "read patched", "shoes")
+	testutils.DoRequest(t, base+"/shop/shop/items?name=$eq.socks", nil, http.MethodDelete, http.StatusOK, "cleanup", "rows_affected")
+}
+
 func TestMySQLBatchInsertCopy(t *testing.T) {
-	// Batch insert with Prest-Batch-Method copy writes multiple rows.
+	// Batch insert with Prest-Batch-Method copy writes multiple rows, one with a JSON object.
 	base := helpers.ServerURL(t)
 	testutils.DoRequestWithHeaders(
 		t,
 		base+"/batch/shop/shop/items",
-		[]map[string]any{{"name": "copy-a", "qty": 1}, {"name": "copy-b", "qty": 1}},
+		[]map[string]any{{"name": "copy-a", "qty": 1}, {"name": "copy-b", "qty": 1, "meta": map[string]any{"kind": "batch"}}},
 		http.MethodPost,
 		http.StatusCreated,
 		"batch copy",
@@ -71,4 +82,10 @@ func TestMySQLRejectsUnsupportedOperators(t *testing.T) {
 	base := helpers.ServerURL(t)
 	testutils.DoRequest(t, base+"/shop/shop/items?body=$tsquery.hello", nil, http.MethodGet, http.StatusBadRequest, "tsquery")
 	testutils.DoRequest(t, base+"/shop/shop/items?_join=FULL:tags:tags.id:$eq:items.id", nil, http.MethodGet, http.StatusBadRequest, "full join")
+}
+
+func TestMySQLCountKey(t *testing.T) {
+	// _count returns the key "count", the same as Postgres, not "COUNT(*)".
+	base := helpers.ServerURL(t)
+	testutils.DoRequest(t, base+"/shop/shop/items?_count=*", nil, http.MethodGet, http.StatusOK, "count", `"count":`)
 }

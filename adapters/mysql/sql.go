@@ -335,12 +335,22 @@ func bindValue(value interface{}) (interface{}, error) {
 		if rv.Type().Elem().Kind() == reflect.Uint8 {
 			return value, nil
 		}
-		return json.Marshal(value)
+		return marshalJSONString(value)
 	case reflect.Array, reflect.Map:
-		return json.Marshal(value)
+		return marshalJSONString(value)
 	default:
 		return value, nil
 	}
+}
+
+// marshalJSONString encodes value as a JSON string. A []byte would be sent as
+// _binary under interpolateParams, which MySQL refuses for JSON columns.
+func marshalJSONString(value interface{}) (interface{}, error) {
+	b, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	return string(b), nil
 }
 
 func sortedKeys(m map[string]interface{}) []string {
@@ -488,7 +498,7 @@ func (a *Adapter) CountByRequest(req *http.Request) (string, error) {
 			fields[i] = q
 		}
 	}
-	return fmt.Sprintf("SELECT COUNT(%s)%s FROM", strings.Join(fields, ","), selectFields), nil
+	return fmt.Sprintf("SELECT COUNT(%s) AS `count`%s FROM", strings.Join(fields, ","), selectFields), nil
 }
 
 func (a *Adapter) TimeBucketClause(*http.Request) (string, error) { return "", nil }

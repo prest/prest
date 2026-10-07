@@ -72,7 +72,7 @@ test-integration-postgres-log:
 test-integration-timescaledb-log:
 	@echo "Writing full TimescaleDB integration output to $(INTEGRATION_LOG)"
 	@{ \
-	  $(TIMESCALEDB_COMPOSE) up -d --wait timescaledb db-init prestd && \
+	  $(TIMESCALEDB_COMPOSE) up -d --wait timescaledb db-init prestd prestd-queries && \
 	  $(TIMESCALEDB_COMPOSE) run --rm --no-deps tests; \
 	  echo $$? > .integration-status.$$$$; \
 	  $(TIMESCALEDB_COMPOSE) down -v --remove-orphans; \
@@ -82,7 +82,7 @@ test-integration-timescaledb-log:
 	exit $$status
 
 test-integration-timescaledb:
-	$(TIMESCALEDB_COMPOSE) up -d --wait timescaledb db-init prestd && \
+	$(TIMESCALEDB_COMPOSE) up -d --wait timescaledb db-init prestd prestd-queries && \
 	$(TIMESCALEDB_COMPOSE) run --rm --no-deps tests; \
 	status=$$?; \
 	$(TIMESCALEDB_COMPOSE) down -v --remove-orphans; \
@@ -95,7 +95,7 @@ MYSQL_IMAGE ?= mysql:8.4
 export MYSQL_IMAGE
 
 test-integration-mysql:
-	$(MYSQL_COMPOSE) up -d --wait mysql db-init prestd && \
+	$(MYSQL_COMPOSE) up -d --wait mysql db-init prestd prestd-auth prestd-queries && \
 	$(MYSQL_COMPOSE) run --rm --no-deps tests; \
 	status=$$?; \
 	$(MYSQL_COMPOSE) down -v --remove-orphans; \
@@ -121,6 +121,7 @@ mockgen:
 	mockgen -destination=adapters/mockgen/query_executor.go -package=mockgen github.com/prest/prest/v2/adapters QueryExecutor
 	mockgen -destination=adapters/mockgen/catalog_querier.go -package=mockgen github.com/prest/prest/v2/adapters CatalogQuerier
 	mockgen -destination=adapters/mockgen/sql_builder.go -package=mockgen github.com/prest/prest/v2/adapters SQLBuilder
+	mockgen -destination=adapters/mockgen/dialect.go -package=mockgen github.com/prest/prest/v2/adapters Dialect
 	mockgen -destination=adapters/mockgen/permissions_checker.go -package=mockgen github.com/prest/prest/v2/adapters PermissionsChecker
 	mockgen -destination=adapters/mockgen/script_runner.go -package=mockgen github.com/prest/prest/v2/adapters ScriptRunner
 	mockgen -destination=adapters/mockgen/query_registry.go -package=mockgen github.com/prest/prest/v2/adapters QueryRegistry

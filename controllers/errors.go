@@ -10,6 +10,7 @@ import (
 var (
 	ErrUserNotFound            = errors.New(unf)
 	ErrUnknownEncryptAlgorithm = errors.New("unknown encrypt algorithm")
+	ErrAuthDialectMissing      = errors.New("auth: no SQL dialect configured")
 	jsonErrorMsg               = `{"error":"%s"}`
 )
 

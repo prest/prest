@@ -1,7 +1,13 @@
 version: 2
 
+before:
+  hooks:
+    # The plugin image ships vendor/ so entrypoint plugin builds match prestd.
+    - go mod vendor
+
 builds:
-  - binary: prestd
+  - id: prestd
+    binary: prestd
     main: ./cmd/prestd/main.go
     mod_timestamp: '{{ .CommitTimestamp }}'
     ldflags:
@@ -34,6 +40,35 @@ builds:
         goarch: 386
       - goos: windows
         goarch: arm
+
+  # Image binary. Go plugins need cgo and the same flags as etc/plugin/go-build.sh
+  # (-mod=vendor -trimpath -s -w), or plugin.Open rejects the .so.
+  - id: prestd-docker
+    binary: prestd
+    main: ./cmd/prestd/main.go
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    flags:
+      - -mod=vendor
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/prest/prest/v2/helpers.Version={{.Version}} -X github.com/prest/prest/v2/helpers.Commit={{.Commit}} -X github.com/prest/prest/v2/helpers.Date={{ .CommitDate }} -X github.com/prest/prest/v2/helpers.BuiltBy=goreleaser
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    overrides:
+      - goos: linux
+        goarch: arm64
+        env:
+          - CGO_ENABLED=1
+          - CC=aarch64-linux-gnu-gcc
+archives:
+  # Release archives keep the portable build; prestd-docker only feeds images.
+  - ids: [prestd]
+
 checksum:
   name_template: '{{ .ProjectName }}_checksums.txt'
 changelog:
@@ -51,47 +86,57 @@ release:
     owner: prest
     name: prest
 
-dockers:
-- image_templates:
-  - "prest/prest:{{ .Tag }}"
-  - "prest/prest:v{{ .Major }}"
-  - "ghcr.io/prest/prest:{{ .Tag }}"
-  - "ghcr.io/prest/prest:v{{ .Major }}"
-  dockerfile: Dockerfile
-  goos: linux
-  goarch: amd64
-  extra_files:
-    - etc/entrypoint.sh
-    - lib
-    - etc/plugin
-  build_flag_templates:
-  - "--target=release"
-  - "--build-arg=VERSION={{.Version}}"
-  - "--build-arg=COMMIT={{.Commit}}"
-  - "--build-arg=DATE={{.Date}}"
-  - "--label=org.opencontainers.image.created={{.Date}}"
-  - "--label=org.opencontainers.image.name={{.ProjectName}}"
-  - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-  - "--label=org.opencontainers.image.version={{.Version}}"
+dockers_v2:
+  - id: prest
+    ids: [prestd-docker]
+    dockerfile: Dockerfile
+    images:
+      - prest/prest
+      - ghcr.io/prest/prest
+    tags:
+      - '{{ .Tag }}'
+      - 'v{{ .Major }}'
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    extra_files:
+      - etc/entrypoint.sh
+      - lib
+      - etc/plugin
+      - go.mod
+      - go.sum
+      - vendor
+    flags:
+      - --target=release
+    build_args:
+      # Must equal the toolchain that built prestd-docker (CI exports it).
+      GO_VERSION: '{{ envOrDefault "GO_VERSION" "1.26" }}'
+    labels:
+      org.opencontainers.image.created: '{{ .Date }}'
+      org.opencontainers.image.name: '{{ .ProjectName }}'
+      org.opencontainers.image.revision: '{{ .FullCommit }}'
+      org.opencontainers.image.version: '{{ .Version }}'
 
-- image_templates:
-  - "prest/prest:{{ .Tag }}-noplugins"
-  - "prest/prest:v{{ .Major }}-noplugins"
-  - "ghcr.io/prest/prest:{{ .Tag }}-noplugins"
-  - "ghcr.io/prest/prest:v{{ .Major }}-noplugins"
-  dockerfile: Dockerfile.noplugins
-  goos: linux
-  goarch: amd64
-  extra_files:
-    - etc/entrypoint.sh
-    - lib
-    - etc/plugin
-  build_flag_templates:
-  - "--target=release"
-  - "--build-arg=VERSION={{.Version}}"
-  - "--build-arg=COMMIT={{.Commit}}"
-  - "--build-arg=DATE={{.Date}}"
-  - "--label=org.opencontainers.image.created={{.Date}}"
-  - "--label=org.opencontainers.image.name={{.ProjectName}}"
-  - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-  - "--label=org.opencontainers.image.version={{.Version}}"
+  - id: prest-noplugins
+    ids: [prestd-docker]
+    dockerfile: Dockerfile.noplugins
+    images:
+      - prest/prest
+      - ghcr.io/prest/prest
+    tags:
+      - '{{ .Tag }}-noplugins'
+      - 'v{{ .Major }}-noplugins'
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    extra_files:
+      - etc/entrypoint.sh
+      - lib
+      - etc/plugin
+    flags:
+      - --target=release
+    labels:
+      org.opencontainers.image.created: '{{ .Date }}'
+      org.opencontainers.image.name: '{{ .ProjectName }}'
+      org.opencontainers.image.revision: '{{ .FullCommit }}'
+      org.opencontainers.image.version: '{{ .Version }}'

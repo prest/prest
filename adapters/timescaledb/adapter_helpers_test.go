@@ -315,3 +315,133 @@ func TestPing(t *testing.T) {
 		require.ErrorIs(t, Ping(context.Background(), &pingerAdapter{Adapter: base, err: pingErr}), pingErr)
 	})
 }
+
+var (
+	_ adapters.QueryRegistry            = (*Adapter)(nil)
+	_ adapters.ScriptPermissionsChecker = (*Adapter)(nil)
+)
+
+// registryAdapter embeds adapters.Adapter and records QueryRegistry and
+// ScriptPermissions calls so forwarding can be asserted.
+type registryAdapter struct {
+	adapters.Adapter
+	gotAlias, gotLocation, gotName, gotOp, gotUser, gotPath, gotPolicy string
+	gotQuery                                                           adapters.StoredQuery
+	list                                                               []adapters.StoredQuery
+	query                                                              adapters.StoredQuery
+	report                                                             adapters.ImportReport
+	allow                                                              bool
+	err                                                                error
+}
+
+func (r *registryAdapter) ListQueries(_ context.Context, alias, location string) ([]adapters.StoredQuery, error) {
+	r.gotAlias, r.gotLocation = alias, location
+	return r.list, r.err
+}
+
+func (r *registryAdapter) GetQuery(_ context.Context, alias, location, name string) (adapters.StoredQuery, error) {
+	r.gotAlias, r.gotLocation, r.gotName = alias, location, name
+	return r.query, r.err
+}
+
+func (r *registryAdapter) UpsertQuery(_ context.Context, q adapters.StoredQuery) error {
+	r.gotQuery = q
+	return r.err
+}
+
+func (r *registryAdapter) DeleteQuery(_ context.Context, alias, location, name string) error {
+	r.gotAlias, r.gotLocation, r.gotName = alias, location, name
+	return r.err
+}
+
+func (r *registryAdapter) ImportFromFilesystem(_ context.Context, path, policy string) (adapters.ImportReport, error) {
+	r.gotPath, r.gotPolicy = path, policy
+	return r.report, r.err
+}
+
+func (r *registryAdapter) ScriptPermissions(_ context.Context, alias, location, name, op, user string) bool {
+	r.gotAlias, r.gotLocation, r.gotName, r.gotOp, r.gotUser = alias, location, name, op, user
+	return r.allow
+}
+
+func TestQueryRegistryForwards(t *testing.T) {
+	ctx := context.Background()
+	stored := adapters.StoredQuery{DatabaseAlias: "prest-test", Location: "itest", Name: "q", ReadSQL: "SELECT 1"}
+	stub := &registryAdapter{
+		list:   []adapters.StoredQuery{stored},
+		query:  stored,
+		report: adapters.ImportReport{Inserted: 2, Updated: 1, Skipped: 3},
+	}
+	a := &Adapter{Adapter: stub}
+
+	list, err := a.ListQueries(ctx, "prest-test", "itest")
+	require.NoError(t, err)
+	require.Equal(t, stub.list, list)
+	require.Equal(t, []string{"prest-test", "itest"}, []string{stub.gotAlias, stub.gotLocation})
+
+	got, err := a.GetQuery(ctx, "prest-test", "itest", "q")
+	require.NoError(t, err)
+	require.Equal(t, stored, got)
+	require.Equal(t, "q", stub.gotName)
+
+	require.NoError(t, a.UpsertQuery(ctx, stored))
+	require.Equal(t, stored, stub.gotQuery)
+
+	require.NoError(t, a.DeleteQuery(ctx, "other", "loc", "gone"))
+	require.Equal(t, []string{"other", "loc", "gone"}, []string{stub.gotAlias, stub.gotLocation, stub.gotName})
+
+	report, err := a.ImportFromFilesystem(ctx, "/queries", "update")
+	require.NoError(t, err)
+	require.Equal(t, stub.report, report)
+	require.Equal(t, []string{"/queries", "update"}, []string{stub.gotPath, stub.gotPolicy})
+}
+
+func TestQueryRegistryForwardsErrors(t *testing.T) {
+	ctx := context.Background()
+	boom := errors.New("boom")
+	a := &Adapter{Adapter: &registryAdapter{err: boom}}
+
+	_, err := a.ListQueries(ctx, "", "")
+	require.ErrorIs(t, err, boom)
+	_, err = a.GetQuery(ctx, "", "l", "n")
+	require.ErrorIs(t, err, boom)
+	require.ErrorIs(t, a.UpsertQuery(ctx, adapters.StoredQuery{}), boom)
+	require.ErrorIs(t, a.DeleteQuery(ctx, "", "l", "n"), boom)
+	_, err = a.ImportFromFilesystem(ctx, "/q", "skip")
+	require.ErrorIs(t, err, boom)
+}
+
+func TestScriptPermissionsForwards(t *testing.T) {
+	stub := &registryAdapter{allow: true}
+	a := &Adapter{Adapter: stub}
+
+	require.True(t, a.ScriptPermissions(context.Background(), "prest-test", "itest", "q", "read", "ada"))
+	require.Equal(t,
+		[]string{"prest-test", "itest", "q", "read", "ada"},
+		[]string{stub.gotAlias, stub.gotLocation, stub.gotName, stub.gotOp, stub.gotUser})
+
+	stub.allow = false
+	require.False(t, a.ScriptPermissions(context.Background(), "prest-test", "itest", "q", "write", "ada"))
+}
+
+func TestQueryRegistryUnsupported(t *testing.T) {
+	// The mock adapter implements neither port, so the wrapper must refuse
+	// instead of pretending the registry exists.
+	inner := mock.New(t)
+	_, isRegistry := interface{}(inner).(adapters.QueryRegistry)
+	_, isChecker := interface{}(inner).(adapters.ScriptPermissionsChecker)
+	require.False(t, isRegistry)
+	require.False(t, isChecker)
+
+	ctx := context.Background()
+	a := &Adapter{Adapter: inner}
+	_, err := a.ListQueries(ctx, "", "")
+	require.ErrorIs(t, err, ErrNotTimescaleDBAdapter)
+	_, err = a.GetQuery(ctx, "", "l", "n")
+	require.ErrorIs(t, err, ErrNotTimescaleDBAdapter)
+	require.ErrorIs(t, a.UpsertQuery(ctx, adapters.StoredQuery{}), ErrNotTimescaleDBAdapter)
+	require.ErrorIs(t, a.DeleteQuery(ctx, "", "l", "n"), ErrNotTimescaleDBAdapter)
+	_, err = a.ImportFromFilesystem(ctx, "/q", "skip")
+	require.ErrorIs(t, err, ErrNotTimescaleDBAdapter)
+	require.False(t, a.ScriptPermissions(ctx, "", "l", "n", "read", ""))
+}

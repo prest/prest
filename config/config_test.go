@@ -529,6 +529,19 @@ func TestLoadMySQLURL(t *testing.T) {
 	require.NotEqual(t, "postgres", cfg.PGPass)
 }
 
+func TestLoadMySQLDBURLDefaultsAuthSchema(t *testing.T) {
+	// PREST_DB_URL alone (the documented quickstart) must point auth at the
+	// connection's database instead of the Postgres default "public".
+	t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+	t.Setenv("PREST_ENGINE", "mysql")
+	t.Setenv("PREST_DB_URL", "mysql://prest:prest@mysql:3306/shop")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, "shop", cfg.PGDatabase)
+	require.Equal(t, "shop", cfg.AuthSchema)
+	require.Equal(t, "shop", cfg.QueriesConf.Schema)
+}
+
 func TestLoadMySQLExplicitSchemas(t *testing.T) {
 	t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
 	t.Setenv("PREST_ENGINE", "mysql")

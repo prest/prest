@@ -116,7 +116,12 @@ func TestWhereOrderJoinSelect(t *testing.T) {
 
 	count, err := a.CountByRequest(req("/t?_count=id"))
 	require.NoError(t, err)
-	require.Equal(t, "SELECT COUNT(`id`) FROM", count)
+	require.Equal(t, "SELECT COUNT(`id`) AS `count` FROM", count)
+
+	// Postgres names the column count implicitly; MySQL must alias it to match.
+	count, err = a.CountByRequest(req("/t?_count=*&_select=name"))
+	require.NoError(t, err)
+	require.Equal(t, "SELECT COUNT(*) AS `count`, `name` FROM", count)
 }
 
 func TestParseInsertSortsAndMarshalsSlice(t *testing.T) {
@@ -129,7 +134,7 @@ func TestParseInsertSortsAndMarshalsSlice(t *testing.T) {
 	require.Equal(t, "`a`, `b`", names)
 	require.Equal(t, "(?,?)", ph)
 	require.Equal(t, "x", vals[0])
-	require.JSONEq(t, "[1,2]", string(vals[1].([]byte)))
+	require.Equal(t, "[1,2]", vals[1])
 }
 
 func TestCatalogSQL(t *testing.T) {

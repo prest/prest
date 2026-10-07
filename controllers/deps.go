@@ -29,6 +29,7 @@ type Deps struct {
 	Builder         adapters.RequestQueryBuilder
 	Executor        adapters.QueryExecutor
 	SQL             adapters.SQLBuilder
+	Dialect         adapters.Dialect
 	Perms           adapters.PermissionsChecker
 	Scripts         adapters.ScriptRunner
 	QueryRegistry   adapters.QueryRegistry
@@ -64,6 +65,7 @@ func NewDepsFromConfig(p *config.Prest) Deps {
 		Builder:       p.Adapter,
 		Executor:      p.Adapter,
 		SQL:           p.Adapter,
+		Dialect:       p.Adapter,
 		Perms:         p.Adapter,
 		Scripts:       p.Adapter,
 		QueryRegistry: queryRegistry,
@@ -107,7 +109,7 @@ func NewHandlers(deps Deps, cfg *config.Prest) *Handlers {
 	health := NewHealthHandler(checks)
 	health.adapterName = deps.AdapterName
 	h := &Handlers{
-		Auth:    NewAuthHandler(deps.Executor, deps.Auth),
+		Auth:    NewAuthHandler(deps.Executor, deps.Dialect, deps.Auth),
 		Catalog: NewCatalogHandler(deps),
 		MCP:     NewMCPHandler(deps),
 		Table:   NewTableHandler(deps.Executor, deps.DB, deps.SingleDB),
