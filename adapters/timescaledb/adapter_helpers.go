@@ -3,6 +3,7 @@ package timescaledb
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/prest/prest/v2/adapters"
@@ -29,6 +30,25 @@ func (a *Adapter) DB() (*sqlx.DB, error) {
 		return nil, ErrNotTimescaleDBAdapter
 	}
 	return d.DB()
+}
+
+// QuoteIdentifier implements adapters.Dialect by delegating to the embedded postgres
+// adapter. Dialect is optional on adapters.Adapter, so embedding does not promote it.
+func (a *Adapter) QuoteIdentifier(name string) (string, error) {
+	d, ok := a.Adapter.(adapters.Dialect)
+	if !ok {
+		return "", ErrNotTimescaleDBAdapter
+	}
+	return d.QuoteIdentifier(name)
+}
+
+// Placeholder implements adapters.Dialect by delegating to the embedded postgres
+// adapter, defaulting to Postgres-style $n binds (TimescaleDB is wire-compatible).
+func (a *Adapter) Placeholder(position int) string {
+	if d, ok := a.Adapter.(adapters.Dialect); ok {
+		return d.Placeholder(position)
+	}
+	return fmt.Sprintf("$%d", position)
 }
 
 // queryRegistry returns the wrapped adapter's QueryRegistry. Embedding the

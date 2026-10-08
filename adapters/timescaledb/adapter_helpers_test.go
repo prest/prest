@@ -8,6 +8,7 @@ import (
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/adapters/mock"
 	"github.com/prest/prest/v2/adapters/postgres"
+	"github.com/prest/prest/v2/config"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
@@ -444,4 +445,29 @@ func TestQueryRegistryUnsupported(t *testing.T) {
 	_, err = a.ImportFromFilesystem(ctx, "/q", "skip")
 	require.ErrorIs(t, err, ErrNotTimescaleDBAdapter)
 	require.False(t, a.ScriptPermissions(ctx, "", "l", "n", "read", ""))
+}
+
+var _ adapters.Dialect = (*Adapter)(nil)
+
+// The wrapped postgres adapter's Dialect is forwarded, so auth and MCP keep
+// working on TimescaleDB now that Dialect is no longer part of adapters.Adapter.
+func TestDialectForwards(t *testing.T) {
+	t.Parallel()
+
+	a := &Adapter{Adapter: postgres.New(&config.Prest{})}
+	quoted, err := a.QuoteIdentifier("a.b")
+	require.NoError(t, err)
+	require.Equal(t, `"a"."b"`, quoted)
+	require.Equal(t, "$2", a.Placeholder(2))
+}
+
+// A wrapped adapter without Dialect cannot quote, but placeholders stay
+// Postgres-style because TimescaleDB is wire-compatible.
+func TestDialectUnsupported(t *testing.T) {
+	t.Parallel()
+
+	a := &Adapter{Adapter: struct{ adapters.Adapter }{}}
+	_, err := a.QuoteIdentifier("a")
+	require.ErrorIs(t, err, ErrNotTimescaleDBAdapter)
+	require.Equal(t, "$1", a.Placeholder(1))
 }

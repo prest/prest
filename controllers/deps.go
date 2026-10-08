@@ -61,12 +61,17 @@ func NewDepsFromConfig(p *config.Prest) Deps {
 	if perms, ok := p.Adapter.(adapters.ScriptPermissionsChecker); ok {
 		scriptPerms = perms
 	}
+	// Dialect is optional; nil makes auth return ErrAuthDialectMissing.
+	var dialect adapters.Dialect
+	if d, ok := p.Adapter.(adapters.Dialect); ok {
+		dialect = d
+	}
 	return Deps{
 		Catalog:       p.Adapter,
 		Builder:       p.Adapter,
 		Executor:      p.Adapter,
 		SQL:           p.Adapter,
-		Dialect:       p.Adapter,
+		Dialect:       dialect,
 		Perms:         p.Adapter,
 		Scripts:       p.Adapter,
 		QueryRegistry: queryRegistry,

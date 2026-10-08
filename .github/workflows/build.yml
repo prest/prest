@@ -115,7 +115,7 @@ jobs:
 
       - name: Install arm64 cross compiler
         if: github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/v')
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu libc6-dev-arm64-cross
 
       - name: GoReleaser
         if: github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/v')

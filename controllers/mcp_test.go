@@ -2082,3 +2082,46 @@ func TestMCPHandler_ExposeDisabledKeepsListing(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 }
+
+// A registry adapter without the optional Dialect port falls back to the
+// handler's dialect instead of leaving the backend without one.
+func TestMCPHandler_Backend_RegistryAdapterWithoutDialectUsesDefault(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	shop := mockgen.NewMockAdapter(ctrl)
+	registry := adapters.NewRegistry()
+	require.NoError(t, registry.Register("prest-test", shop))
+
+	h := NewMCPHandler(Deps{Dialect: pgDialect{}, AdapterRegistry: registry})
+	b := h.backend("prest-test")
+	require.Equal(t, shop, b.catalog)
+	require.Equal(t, shop, b.executor)
+	require.Equal(t, pgDialect{}, b.dialect)
+}
+
+// With neither the registry adapter nor Deps providing a Dialect, select_table
+// reports errMCPDialectMissing rather than building unquoted SQL.
+func TestMCPHandler_SelectTable_RegistryAdapterWithoutDialect(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	shop := mockgen.NewMockAdapter(ctrl)
+	registry := adapters.NewRegistry()
+	require.NoError(t, registry.Register("prest-test", shop))
+
+	showScanner := mockgen.NewMockScanner(ctrl)
+	shop.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(showScanner)
+	showScanner.EXPECT().Err().Return(nil)
+	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","position":1}]`))
+
+	h := NewMCPHandler(Deps{AdapterRegistry: registry, DB: mockDatabaseRegistry(ctrl), PGDatabase: "prest-test"})
+	_, err := h.selectTable(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpSelectArgs{
+		Database: "prest-test", Schema: "public", Table: "users",
+	})
+	require.ErrorIs(t, err, errMCPDialectMissing)
+}

@@ -72,7 +72,13 @@ type mcpBackend struct {
 // handlers fall back to the defaults from Deps.
 func (h *MCPHandler) backend(database string) mcpBackend {
 	if a, err := GetAdapterFromRegistry(h.registry, database); err == nil {
-		return mcpBackend{catalog: a, executor: a, dialect: a}
+		// Dialect is optional; without it fall back to the default so
+		// selectTable can still report errMCPDialectMissing when both are nil.
+		dialect, ok := a.(adapters.Dialect)
+		if !ok {
+			dialect = h.dialect
+		}
+		return mcpBackend{catalog: a, executor: a, dialect: dialect}
 	}
 	return mcpBackend{catalog: h.catalog, executor: h.executor, dialect: h.dialect}
 }

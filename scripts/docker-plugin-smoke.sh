@@ -40,6 +40,22 @@ docker buildx build --load --platform "linux/$arch" --target release \
 docker network create "$name" >/dev/null
 docker run -d --name "$name-pg" --network "$name" \
 	-e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=prest postgres:17 >/dev/null
+
+# Start prestd only once PostgreSQL accepts connections.
+pg_ready=""
+for _ in $(seq 1 60); do
+	if docker exec "$name-pg" pg_isready -U postgres -d prest -q >/dev/null 2>&1; then
+		pg_ready=1
+		break
+	fi
+	sleep 1
+done
+if [ -z "$pg_ready" ]; then
+	echo "FAIL: postgres did not become ready" >&2
+	docker logs "$name-pg" 2>&1 | tail -n 20 >&2
+	exit 1
+fi
+
 docker run -d --name "$name" --network "$name" --platform "linux/$arch" -p 127.0.0.1::3000 \
 	-v "$ctx/smoke.toml:/app/smoke.toml:ro" \
 	-e PREST_CONF=/app/smoke.toml -e PREST_PG_HOST="$name-pg" -e PREST_PG_PORT=5432 \

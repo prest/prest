@@ -25,6 +25,7 @@ func TestMySQLQueryRegistryImportedBoundTemplate(t *testing.T) {
 	base := helpers.QueriesServerURL(t)
 	token := helpers.LoginToken(t, base, "test@postgres.rest", "123456")
 	helpers.DoAuthRequest(t, base+"/_QUERIES/registry/fulltable/get_bound", nil, http.MethodGet, token, http.StatusOK, "imported", "sqlVal")
+	// Executing the imported template with field1=gopher returns da silva.
 	helpers.DoAuthRequest(t, base+"/_QUERIES/fulltable/get_bound?field1=gopher", nil, http.MethodGet, token, http.StatusOK, "execute", "da silva")
 }
 
