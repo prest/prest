@@ -1,0 +1,65 @@
+---
+description: Plan every task first, parallelise independent work, and staff each task with the cheapest model that can do it well
+alwaysApply: true
+---
+
+# Planning, Parallelism & Model Selection
+
+Applies to **every** task, before any edit. Complements `agentic-loop.mdc` (step 3) and `token-optimization.mdc` (§1).
+
+## 1. Plan First — Always
+
+No file edits before a written plan. Plan size scales with the task:
+
+| Task | Plan shape |
+|------|-----------|
+| One-line / trivial fix | 1–2 lines: target + change + staffing ("1 agent, Haiku-tier") |
+| Bug fix / small feature | Short numbered steps + staffing table |
+| Feature, refactor, new DB engine | Full plan (all sections below) |
+
+A full plan is as detailed as possible and contains:
+
+1. **Goal & context** — what and why; behavior change vs refactor; breaking-change risk.
+2. **Files & symbols** — exact paths, functions, ports, mocks to touch; existing code to reuse.
+3. **Ordered steps** — numbered, each small enough to hand to one agent without extra context.
+4. **Dependencies** — which steps block which (e.g. port change → `make mockgen` → handler).
+5. **Validation** — exact commands per step (`go test ...`, `make test-integration-*`).
+6. **Risks** — auth/SQL safety, config fail-closed rules, shared globals, flaky tests.
+7. **Staffing** — see §3. The plan is **not final** until this section exists.
+
+## 2. Parallelise by Default
+
+- Split the plan into **work units** with no shared files and no ordering dependency.
+- Independent units run **concurrently** (parallel sub-agents, batched tool calls). Run serially only when a real dependency exists — state it.
+- One agent owns each file; never let two parallel agents edit the same file.
+- Parallel agents that write code use isolated worktrees/branches; one integrator merges and validates.
+- Typical parallel splits in pREST: per-package unit tests, per-adapter implementations (`adapters/<engine>/`), per-DB integration suites (`integration/<db>/`), independent research/search questions.
+- Typical serial chains: port interface → `make mockgen` → adapter + handler → route → integration test.
+
+## 3. Staffing Table (mandatory, last section of the plan)
+
+Before finishing the plan, decide **how many agents**, **which steps each owns**, and **which model** each runs:
+
+| Agent | Steps | Model | Why this model | Runs |
+|-------|-------|-------|----------------|------|
+| A1 | 1, 2 | Haiku | Locate call sites, mechanical edits | parallel with A2 |
+| A2 | 3 | Sonnet | Adapter impl following existing pattern | parallel with A1 |
+| Main | 4 | Sonnet | Integrate + run validation | after A1, A2 |
+
+Also state: total agent count, parallel vs sequential groups, and who integrates/validates.
+
+## 4. Model Selection — Cheapest That Is Good Enough
+
+Pick the **lowest tier** that can do the task well. Escalate only with a stated reason (e.g. failed attempt, unknown root cause).
+
+| Tier | Claude model | Use for |
+|------|-------------|---------|
+| Small | Haiku | Search/locate code, read & summarise, renames, boilerplate, mechanical/pattern edits, doc tweaks, running tests and reporting output |
+| Mid | Sonnet | Standard features, TDD unit tests, adapters following existing patterns, bug fixes with known cause, reviewing contained diffs |
+| Large | Opus | Port/architecture design, new SQL dialect gap analysis (`DIFFERENCES.md`), cross-cutting refactors, debugging with unknown root cause, security-sensitive auth/ACL/SQL changes |
+
+Non-Claude tools (Cursor, Copilot) map these tiers to their own small/mid/large models.
+
+## 5. When Not to Fan Out
+
+Use a single agent when the task is trivial, the edits are tightly coupled (same file/symbol), or coordination would cost more than it saves. Still write the staffing line ("1 agent, <model>, reason") so the decision is explicit.

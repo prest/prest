@@ -16,6 +16,7 @@ import (
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/adapters/scanner"
 	"github.com/prest/prest/v2/config"
+	"github.com/prest/prest/v2/internal/ident"
 	"github.com/prest/prest/v2/internal/logsafe"
 )
 
@@ -512,4 +513,14 @@ func (m *Mock) AddItem(body []byte, err error, isCount bool) {
 // GetDatabase ron mock db
 func (m *Mock) GetDatabase() (db string) {
 	return
+}
+
+// QuoteIdentifier mock with Postgres-style double quotes.
+func (m *Mock) QuoteIdentifier(name string) (string, error) {
+	return ident.Quote(name)
+}
+
+// Placeholder mock with Postgres-style $n binds.
+func (m *Mock) Placeholder(position int) string {
+	return fmt.Sprintf("$%d", position)
 }

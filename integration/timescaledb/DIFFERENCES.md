@@ -15,7 +15,8 @@ TimescaleDB-specific features (time_bucket, continuous aggregates) are supported
 | Continuous aggregates | N/A | Materialized views appear as queryable tables; create via `/_QUERIES` custom SQL |
 | Wire / driver | `lib/pq` + postgres adapter | Same `lib/pq` + postgres adapter (Timescale is wire-compatible) |
 | System schemas | `pg_catalog` / `information_schema` | Extra `_timescaledb_*` schemas visible; can be filtered with ACL later |
-| Compose | Multi-service (auth, multicluster, queries) | Lean stack for suites + specific tests; other flavors stay on the Postgres job |
+| Optional adapter ports | Implemented directly by `adapters/postgres` | The wrapper embeds the `adapters.Adapter` interface, which does not promote optional ports, so `adapters/timescaledb/adapter_helpers.go` forwards `Connect`, `DB`, `QueryRegistry` and `ScriptPermissionsChecker` to the wrapped postgres adapter. Without them `queries.storage = "database"` failed at startup and `/_QUERIES` scripts were denied. |
+| Compose | Multi-service (auth, multicluster, queries) | `prestd` for suites + specific tests, plus `prestd-queries` (port 3003, `testdata/prest_queries.toml`) for the queries registry lifecycle. Auth-only and multicluster flavors stay on the Postgres job |
 
 ## Shared suites vs Timescale E2E
 

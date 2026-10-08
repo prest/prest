@@ -543,7 +543,12 @@ func (a *Adapter) batchImages(ctx context.Context, tx *sql.Tx, schema, table str
 	args := make([]any, 0, n)
 	if idx >= 0 {
 		for row := 0; row < n; row++ {
-			args = append(args, params[row*len(cols)+idx])
+			v := params[row*len(cols)+idx]
+			if _, ok := v.(adapters.DefaultValue); ok {
+				// The key came from the column default; it cannot be selected back.
+				return nil, fmt.Errorf("primary key omitted in a batch record")
+			}
+			args = append(args, v)
 		}
 	} else if pk.autoIncrement {
 		id, err := res.LastInsertId()
@@ -586,7 +591,11 @@ func batchFallback(cols []string, params []any, res sql.Result, inc int64) ([]by
 	for row := 0; row < n; row++ {
 		obj := map[string]any{}
 		for i, col := range cols {
-			obj[col] = params[row*len(cols)+i]
+			v := params[row*len(cols)+i]
+			if _, ok := v.(adapters.DefaultValue); ok {
+				continue
+			}
+			obj[col] = v
 		}
 		if last != 0 {
 			obj["last_insert_id"] = last + int64(row)*inc

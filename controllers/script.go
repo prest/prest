@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/prest/prest/v2/adapters"
+	"github.com/prest/prest/v2/internal/logsafe"
 	"github.com/prest/prest/v2/middlewares"
 
 	"github.com/gorilla/mux"
@@ -142,7 +143,9 @@ func (h *ScriptHandler) ExecuteScriptQuery(rq *http.Request, queriesPath string,
 	}
 
 	sc := h.executor.ExecuteScriptsCtx(rq.Context(), rq.Method, sql, values)
-	if sc.Err() != nil {
+	if execErr := sc.Err(); execErr != nil {
+		slog.Error("could not execute script",
+			"location", queriesPath, "script", script, "err", logsafe.Error(execErr))
 		err = fmt.Errorf("could not execute sql, check your prest logs")
 		return nil, err
 	}

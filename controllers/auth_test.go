@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	jose "github.com/go-jose/go-jose/v4"
@@ -15,6 +16,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/prest/prest/v2/adapters/mockgen"
 	"github.com/prest/prest/v2/controllers/auth"
+	"github.com/prest/prest/v2/internal/ident"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -22,7 +24,7 @@ import (
 const testAuthJWTKey = "test-jwt-hmac-secret-key-32bytes"
 
 func testAuthHandler() *AuthHandler {
-	return NewAuthHandler(nil, AuthConfig{
+	return NewAuthHandler(nil, pgDialect{}, AuthConfig{
 		Schema:   "public",
 		Table:    "prest_users",
 		Username: "username",
@@ -43,6 +45,30 @@ func testAuthConfig() AuthConfig {
 	}
 }
 
+// pgDialect and mysqlDialect stand in for the adapters' Dialect implementations.
+type pgDialect struct{}
+
+func (pgDialect) QuoteIdentifier(name string) (string, error) { return ident.Quote(name) }
+func (pgDialect) Placeholder(n int) string                    { return fmt.Sprintf("$%d", n) }
+
+type mysqlDialect struct{}
+
+func (mysqlDialect) QuoteIdentifier(name string) (string, error) {
+	if !ident.IsValid(name) {
+		return "", fmt.Errorf("invalid identifier: %s", name)
+	}
+	return "`" + strings.ReplaceAll(name, ".", "`.`") + "`", nil
+}
+func (mysqlDialect) Placeholder(int) string { return "?" }
+
+func mustQuery(t *testing.T) func(string, error) string {
+	return func(q string, err error) string {
+		t.Helper()
+		require.NoError(t, err)
+		return q
+	}
+}
+
 func md5Hex(s string) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(s)))
 }
@@ -50,8 +76,8 @@ func md5Hex(s string) string {
 func Test_getSelectQuery(t *testing.T) {
 	t.Parallel()
 
-	expected := "SELECT * FROM public.prest_users WHERE username=$1 AND password=$2 LIMIT 1"
-	query := testAuthHandler().selectQuery()
+	expected := `SELECT * FROM "public"."prest_users" WHERE "username"=$1 AND "password"=$2 LIMIT 1`
+	query := mustQuery(t)(testAuthHandler().selectQuery())
 
 	if query != expected {
 		t.Errorf("expected query: %s, got: %s", expected, query)
@@ -106,7 +132,7 @@ func TestAuthHandler_Login_BodySuccess(t *testing.T) {
 
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	sc := mockgen.NewMockScanner(ctrl)
-	expectedQuery := testAuthHandler().selectQuery()
+	expectedQuery := mustQuery(t)(testAuthHandler().selectQuery())
 
 	executor.EXPECT().
 		Query(expectedQuery, "alice", md5Hex("secret")).
@@ -119,7 +145,7 @@ func TestAuthHandler_Login_BodySuccess(t *testing.T) {
 		return 1, nil
 	})
 
-	h := NewAuthHandler(executor, testAuthConfig())
+	h := NewAuthHandler(executor, pgDialect{}, testAuthConfig())
 	body := bytes.NewBufferString(`{"username":"Alice","password":"secret"}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth", body)
 	rec := httptest.NewRecorder()
@@ -155,7 +181,7 @@ func TestAuthHandler_Login_BodyUserNotFound(t *testing.T) {
 	sc.EXPECT().Err().Return(nil)
 	sc.EXPECT().Scan(gomock.Any()).Return(0, nil)
 
-	h := NewAuthHandler(executor, testAuthConfig())
+	h := NewAuthHandler(executor, pgDialect{}, testAuthConfig())
 	body := bytes.NewBufferString(`{"username":"nobody","password":"wrong"}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth", body)
 	rec := httptest.NewRecorder()
@@ -178,7 +204,7 @@ func TestAuthHandler_Login_BodyQueryError(t *testing.T) {
 	executor.EXPECT().Query(gomock.Any(), gomock.Any(), gomock.Any()).Return(sc)
 	sc.EXPECT().Err().Return(fmt.Errorf("db down")).Times(2)
 
-	h := NewAuthHandler(executor, testAuthConfig())
+	h := NewAuthHandler(executor, pgDialect{}, testAuthConfig())
 	body := bytes.NewBufferString(`{"username":"alice","password":"secret"}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth", body)
 	rec := httptest.NewRecorder()
@@ -192,7 +218,7 @@ func TestAuthHandler_Login_BodyQueryError(t *testing.T) {
 func TestAuthHandler_Login_BasicMissingCredentials(t *testing.T) {
 	t.Parallel()
 
-	h := NewAuthHandler(nil, AuthConfig{AuthType: "basic"})
+	h := NewAuthHandler(nil, pgDialect{}, AuthConfig{AuthType: "basic"})
 	req := httptest.NewRequest(http.MethodPost, "/auth", nil)
 	rec := httptest.NewRecorder()
 
@@ -223,7 +249,7 @@ func TestAuthHandler_Login_BasicSuccess(t *testing.T) {
 
 	cfg := testAuthConfig()
 	cfg.AuthType = "basic"
-	h := NewAuthHandler(executor, cfg)
+	h := NewAuthHandler(executor, pgDialect{}, cfg)
 
 	req := httptest.NewRequest(http.MethodPost, "/auth", nil)
 	req.SetBasicAuth("Bob", "pass")
@@ -241,7 +267,7 @@ func TestAuthHandler_Login_BasicSuccess(t *testing.T) {
 func TestAuthHandler_token(t *testing.T) {
 	t.Parallel()
 
-	h := NewAuthHandler(nil, AuthConfig{JWTKey: testAuthJWTKey})
+	h := NewAuthHandler(nil, pgDialect{}, AuthConfig{JWTKey: testAuthJWTKey})
 	user := auth.User{ID: 9, Username: "jwt-user", Name: "JWT User"}
 
 	token, err := h.token(user)
@@ -266,7 +292,7 @@ func TestAuthHandler_token(t *testing.T) {
 func TestAuthHandler_tokenWrapsSerializeError(t *testing.T) {
 	t.Parallel()
 
-	h := NewAuthHandler(nil, AuthConfig{JWTKey: "too-short"})
+	h := NewAuthHandler(nil, pgDialect{}, AuthConfig{JWTKey: "too-short"})
 	_, err := h.token(auth.User{Username: "jwt-user"})
 
 	require.ErrorIs(t, err, jose.ErrInvalidKeySize)
@@ -276,10 +302,10 @@ func TestAuthHandler_tokenWrapsSerializeError(t *testing.T) {
 func Test_getSelectQueryByUsername(t *testing.T) {
 	t.Parallel()
 
-	expected := "SELECT * FROM public.prest_users WHERE username=$1 LIMIT 1"
+	expected := `SELECT * FROM "public"."prest_users" WHERE "username"=$1 LIMIT 1`
 	query := testAuthHandler()
 	query.cfg.Encrypt = "bcrypt"
-	require.Equal(t, expected, query.selectQueryByUsername())
+	require.Equal(t, expected, mustQuery(t)(query.selectQueryByUsername()))
 }
 
 func TestAuthHandler_basicPasswordCheck_bcryptLegacyMD5Stored(t *testing.T) {
@@ -292,10 +318,10 @@ func TestAuthHandler_basicPasswordCheck_bcryptLegacyMD5Stored(t *testing.T) {
 	sc := mockgen.NewMockScanner(ctrl)
 	cfg := testAuthConfig()
 	cfg.Encrypt = "bcrypt"
-	h := NewAuthHandler(executor, cfg)
+	h := NewAuthHandler(executor, pgDialect{}, cfg)
 
 	executor.EXPECT().
-		Query(h.selectQueryByUsername(), "carol").
+		Query(mustQuery(t)(h.selectQueryByUsername()), "carol").
 		Return(sc)
 	sc.EXPECT().Err().Return(nil)
 	sc.EXPECT().Scan(gomock.Any()).DoAndReturn(func(dest interface{}) (int, error) {
@@ -319,11 +345,11 @@ func TestAuthHandler_basicPasswordCheck_bcryptLegacySHA1Stored(t *testing.T) {
 	sc := mockgen.NewMockScanner(ctrl)
 	cfg := testAuthConfig()
 	cfg.Encrypt = "bcrypt"
-	h := NewAuthHandler(executor, cfg)
+	h := NewAuthHandler(executor, pgDialect{}, cfg)
 	sha1Hex := fmt.Sprintf("%x", sha1.Sum([]byte("pw")))
 
 	executor.EXPECT().
-		Query(h.selectQueryByUsername(), "carol").
+		Query(mustQuery(t)(h.selectQueryByUsername()), "carol").
 		Return(sc)
 	sc.EXPECT().Err().Return(nil)
 	sc.EXPECT().Scan(gomock.Any()).DoAndReturn(func(dest interface{}) (int, error) {
@@ -350,10 +376,10 @@ func TestAuthHandler_basicPasswordCheck_bcrypt(t *testing.T) {
 	sc := mockgen.NewMockScanner(ctrl)
 	cfg := testAuthConfig()
 	cfg.Encrypt = "bcrypt"
-	h := NewAuthHandler(executor, cfg)
+	h := NewAuthHandler(executor, pgDialect{}, cfg)
 
 	executor.EXPECT().
-		Query(h.selectQueryByUsername(), "carol").
+		Query(mustQuery(t)(h.selectQueryByUsername()), "carol").
 		Return(sc)
 	sc.EXPECT().Err().Return(nil)
 	sc.EXPECT().Scan(gomock.Any()).DoAndReturn(func(dest interface{}) (int, error) {
@@ -380,10 +406,10 @@ func TestAuthHandler_basicPasswordCheck_bcryptWrongPassword(t *testing.T) {
 	sc := mockgen.NewMockScanner(ctrl)
 	cfg := testAuthConfig()
 	cfg.Encrypt = "bcrypt"
-	h := NewAuthHandler(executor, cfg)
+	h := NewAuthHandler(executor, pgDialect{}, cfg)
 
 	executor.EXPECT().
-		Query(h.selectQueryByUsername(), "carol").
+		Query(mustQuery(t)(h.selectQueryByUsername()), "carol").
 		Return(sc)
 	sc.EXPECT().Err().Return(nil)
 	sc.EXPECT().Scan(gomock.Any()).DoAndReturn(func(dest interface{}) (int, error) {
@@ -399,7 +425,7 @@ func TestAuthHandler_basicPasswordCheck_bcryptWrongPassword(t *testing.T) {
 func TestAuthHandler_basicPasswordCheck_unknownAlgorithm(t *testing.T) {
 	t.Parallel()
 
-	h := NewAuthHandler(nil, AuthConfig{Encrypt: "PLAINTEXT"})
+	h := NewAuthHandler(nil, pgDialect{}, AuthConfig{Encrypt: "PLAINTEXT"})
 	_, err := h.basicPasswordCheck("carol", "pw")
 	require.ErrorIs(t, err, ErrUnknownEncryptAlgorithm)
 }
@@ -412,10 +438,10 @@ func TestAuthHandler_basicPasswordCheck(t *testing.T) {
 
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	sc := mockgen.NewMockScanner(ctrl)
-	h := NewAuthHandler(executor, testAuthConfig())
+	h := NewAuthHandler(executor, pgDialect{}, testAuthConfig())
 
 	executor.EXPECT().
-		Query(h.selectQuery(), "carol", md5Hex("pw")).
+		Query(mustQuery(t)(h.selectQuery()), "carol", md5Hex("pw")).
 		Return(sc)
 	sc.EXPECT().Err().Return(nil)
 	sc.EXPECT().Scan(gomock.Any()).DoAndReturn(func(dest interface{}) (int, error) {
@@ -447,7 +473,7 @@ func TestToken(t *testing.T) {
 func TestAuthHandler_verifyStoredPassword_BcryptSuccessAndFailure(t *testing.T) {
 	t.Parallel()
 
-	h := NewAuthHandler(nil, testAuthConfig())
+	h := NewAuthHandler(nil, pgDialect{}, testAuthConfig())
 	h.cfg.Encrypt = "bcrypt"
 
 	hash, err := HashPassword("secret")
@@ -460,7 +486,7 @@ func TestAuthHandler_verifyStoredPassword_BcryptSuccessAndFailure(t *testing.T) 
 func TestAuthHandler_verifyStoredPassword_LegacyDigestAndInvalid(t *testing.T) {
 	t.Parallel()
 
-	h := NewAuthHandler(nil, testAuthConfig())
+	h := NewAuthHandler(nil, pgDialect{}, testAuthConfig())
 
 	md5Digest, err := h.legacyDigestForAlgorithm("secret", "md5")
 	require.NoError(t, err)
@@ -477,4 +503,51 @@ func TestAuthHandler_verifyStoredPassword_LegacyDigestAndInvalid(t *testing.T) {
 	require.Equal(t, "", storedLegacyDigestAlgorithm("not-hex"))
 	require.True(t, isHexDigest(md5Digest))
 	require.False(t, isHexDigest("xyz"))
+}
+
+func TestAuthLookupQueryMySQLDialect(t *testing.T) {
+	t.Parallel()
+
+	cfg := testAuthConfig()
+	cfg.Schema = "shop"
+	h := NewAuthHandler(nil, mysqlDialect{}, cfg)
+
+	require.Equal(t, "SELECT * FROM `shop`.`prest_users` WHERE `username`=? LIMIT 1", mustQuery(t)(h.selectQueryByUsername()))
+	require.Equal(t, "SELECT * FROM `shop`.`prest_users` WHERE `username`=? AND `password`=? LIMIT 1", mustQuery(t)(h.selectQuery()))
+}
+
+func TestAuthLookupQueryRejectsInvalidIdentifiers(t *testing.T) {
+	t.Parallel()
+
+	for _, mutate := range []func(*AuthConfig){
+		func(c *AuthConfig) { c.Table = "users;drop" },
+		func(c *AuthConfig) { c.Username = "user name" },
+		func(c *AuthConfig) { c.Password = `pass"word` },
+	} {
+		cfg := testAuthConfig()
+		mutate(&cfg)
+		_, err := NewAuthHandler(nil, pgDialect{}, cfg).selectQuery()
+		require.Error(t, err)
+	}
+	_, err := NewAuthHandler(nil, nil, testAuthConfig()).selectQuery()
+	require.ErrorIs(t, err, ErrAuthDialectMissing)
+}
+
+func TestAuthHandler_Login_InvalidTableSkipsQuery(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// No EXPECT: the executor must not be called when the table name is unsafe.
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	cfg := testAuthConfig()
+	cfg.Table = "users;drop"
+	h := NewAuthHandler(executor, pgDialect{}, cfg)
+	req := httptest.NewRequest(http.MethodPost, "/auth", bytes.NewBufferString(`{"username":"a","password":"b"}`))
+	rec := httptest.NewRecorder()
+
+	h.Login(rec, req)
+
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
 }

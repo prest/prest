@@ -43,15 +43,17 @@ WORKDIR /app
 USER prest
 ENTRYPOINT ["sh", "/app/entrypoint.sh"]
 
-# GoReleaser: prebuilt binary + extra_files only (no studio/ in context)
+# GoReleaser (dockers_v2): prebuilt binary under $TARGETPLATFORM/ + extra_files
+# only (no studio/ in context)
 FROM registry.hub.docker.com/library/debian:bookworm AS release
+ARG TARGETPLATFORM
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install --no-install-recommends -yq netcat-traditional && \
     rm -rf /var/lib/apt/lists/* \
     && groupadd --system prest \
     && useradd --system --gid prest --home-dir /app --shell /usr/sbin/nologin prest
 ENV PREST_BUILD_PLUGINS=0
-COPY prestd /bin/prestd
+COPY $TARGETPLATFORM/prestd /bin/prestd
 COPY etc/entrypoint.sh /app/entrypoint.sh
 COPY lib /app/lib
 COPY etc/plugin /app/plugin

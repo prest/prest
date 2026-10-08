@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
+	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/adapters/mockgen"
 	"github.com/stretchr/testify/require"
 )
@@ -122,7 +123,7 @@ func TestCatalogHandler_ListDatabases_QueryError(t *testing.T) {
 	builder.EXPECT().OrderByRequest(gomock.Any()).Return("", nil)
 	builder.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
 	executor.EXPECT().Query(gomock.Any()).Return(scanner)
-	scanner.EXPECT().Err().Return(errors.New("query failed")).Times(2)
+	scanner.EXPECT().Err().Return(errors.New("query failed"))
 
 	h := NewCatalogHandler(Deps{Catalog: catalog, Builder: builder, Executor: executor})
 	rec := httptest.NewRecorder()
@@ -362,4 +363,102 @@ func TestCatalogHandler_ListTablesByDatabaseAndSchema_UnregisteredDatabase(t *te
 
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 	require.Contains(t, rec.Body.String(), fmt.Sprintf("database not registered: %v", "other"))
+}
+
+// With [[databases]], /databases lists the configured aliases (not the
+// server's catalog), each with the physical database its adapter targets.
+// This applies to Postgres registry mode as well as MySQL.
+func TestCatalogHandler_ListDatabases_RegistryMode(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	shop := mockgen.NewMockAdapter(ctrl)
+	shop.EXPECT().PhysicalName("shop").Return("shop_prod")
+	analytics := mockgen.NewMockAdapter(ctrl)
+	analytics.EXPECT().PhysicalName("analytics").Return("warehouse")
+	registry := adapters.NewRegistry()
+	require.NoError(t, registry.Register("shop", shop))
+	require.NoError(t, registry.Register("analytics", analytics))
+
+	// Catalog/Builder/Executor have no expectations: no SQL is run.
+	h := NewCatalogHandler(Deps{
+		Catalog:         mockgen.NewMockCatalogQuerier(ctrl),
+		Builder:         mockgen.NewMockRequestQueryBuilder(ctrl),
+		Executor:        mockgen.NewMockQueryExecutor(ctrl),
+		AdapterRegistry: registry,
+		RegistryMode:    true,
+	})
+
+	rec := httptest.NewRecorder()
+	h.ListDatabases(rec, httptest.NewRequest(http.MethodGet, "/databases", nil))
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+	require.JSONEq(t, `[
+		{"datname":"analytics","name":"analytics","physical_name":"warehouse"},
+		{"datname":"shop","name":"shop","physical_name":"shop_prod"}
+	]`, rec.Body.String())
+}
+
+// A registry without registry mode (legacy single-adapter wiring) keeps
+// querying the server catalog.
+func TestCatalogHandler_ListDatabases_RegistryWithoutRegistryMode(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	catalog := mockgen.NewMockCatalogQuerier(ctrl)
+	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	scanner := mockgen.NewMockScanner(ctrl)
+	catalog.EXPECT().DatabaseWhere("").Return("")
+	catalog.EXPECT().DatabaseClause(gomock.Any()).Return("SELECT datname FROM pg_database", false)
+	catalog.EXPECT().DatabaseOrderBy("", false).Return("")
+	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+	builder.EXPECT().DistinctClause(gomock.Any()).Return("", nil)
+	builder.EXPECT().OrderByRequest(gomock.Any()).Return("", nil)
+	builder.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
+	executor.EXPECT().Query(gomock.Any()).Return(scanner)
+	scanner.EXPECT().Err().Return(nil)
+	scanner.EXPECT().Bytes().Return([]byte(`[{"datname":"prest-test"}]`))
+
+	h := NewCatalogHandler(Deps{Catalog: catalog, Builder: builder, Executor: executor, AdapterRegistry: adapters.NewRegistry()})
+	rec := httptest.NewRecorder()
+	h.ListDatabases(rec, httptest.NewRequest(http.MethodGet, "/databases", nil))
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), "prest-test")
+}
+
+// A refused connection while listing answers 503 without the driver text.
+func TestCatalogHandler_ListDatabases_Unavailable(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	catalog := mockgen.NewMockCatalogQuerier(ctrl)
+	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	scanner := mockgen.NewMockScanner(ctrl)
+	catalog.EXPECT().DatabaseWhere("").Return("")
+	catalog.EXPECT().DatabaseClause(gomock.Any()).Return("SELECT datname FROM pg_database", false)
+	catalog.EXPECT().DatabaseOrderBy("", false).Return("")
+	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+	builder.EXPECT().DistinctClause(gomock.Any()).Return("", nil)
+	builder.EXPECT().OrderByRequest(gomock.Any()).Return("", nil)
+	builder.EXPECT().PaginateIfPossible(gomock.Any()).Return("", nil)
+	executor.EXPECT().Query(gomock.Any()).Return(scanner)
+	scanner.EXPECT().Err().Return(dialError()).AnyTimes()
+
+	h := NewCatalogHandler(Deps{Catalog: catalog, Builder: builder, Executor: executor})
+	rec := httptest.NewRecorder()
+	h.ListDatabases(rec, httptest.NewRequest(http.MethodGet, "/databases", nil))
+
+	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	require.Contains(t, rec.Body.String(), "database unavailable")
+	require.NotContains(t, rec.Body.String(), "10.0.0.5")
 }

@@ -1,0 +1,72 @@
+name: docker plugin smoke
+run-name: release image builds and loads plugins
+
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - Dockerfile.noplugins
+      - .goreleaser.yml
+      - etc/**
+      - lib/**
+      - go.mod
+      - go.sum
+      - scripts/docker-plugin-smoke.sh
+      - .github/workflows/docker-smoke.yml
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.26
+
+      - name: Export Go version for the image
+        run: echo "GO_VERSION=$(go env GOVERSION | sed 's/^go//')" >> "$GITHUB_ENV"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install arm64 cross compiler
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+
+      # Same build as the release images (cgo, -mod=vendor, -trimpath).
+      - name: Build image binaries
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: '~> v2'
+          args: build --snapshot --clean --id prestd-docker
+
+      # Runtime image (golang:1.26, Debian bookworm) ships glibc 2.36.
+      - name: Check glibc symbol versions
+        run: |
+          max_allowed=2.36
+          status=0
+          for bin in dist/*prestd-docker_linux_*/prestd; do
+            syms="$(objdump -T "$bin" 2>/dev/null || aarch64-linux-gnu-objdump -T "$bin")"
+            ver="$(grep -o 'GLIBC_[0-9.]*' <<<"$syms" | sed 's/^GLIBC_//' | sort -uV | tail -n1 || true)"
+            echo "$bin: max GLIBC_${ver:-none}"
+            if [ -n "$ver" ] && [ "$(printf '%s\n%s\n' "$ver" "$max_allowed" | sort -V | tail -n1)" != "$max_allowed" ]; then
+              echo "::error file=$bin::requires GLIBC_$ver, newer than runtime GLIBC_$max_allowed"
+              status=1
+            fi
+          done
+          exit "$status"
+
+      - name: Smoke linux/amd64
+        run: bash scripts/docker-plugin-smoke.sh amd64 "$(find dist -path '*prestd-docker_linux_amd64*' -name prestd -type f)"
+
+      - name: Smoke linux/arm64 (QEMU)
+        run: bash scripts/docker-plugin-smoke.sh arm64 "$(find dist -path '*prestd-docker_linux_arm64*' -name prestd -type f)"

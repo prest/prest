@@ -3,6 +3,7 @@ package timescaledb
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/prest/prest/v2/adapters"
@@ -29,6 +30,87 @@ func (a *Adapter) DB() (*sqlx.DB, error) {
 		return nil, ErrNotTimescaleDBAdapter
 	}
 	return d.DB()
+}
+
+// QuoteIdentifier implements adapters.Dialect by delegating to the embedded postgres
+// adapter. Dialect is optional on adapters.Adapter, so embedding does not promote it.
+func (a *Adapter) QuoteIdentifier(name string) (string, error) {
+	d, ok := a.Adapter.(adapters.Dialect)
+	if !ok {
+		return "", ErrNotTimescaleDBAdapter
+	}
+	return d.QuoteIdentifier(name)
+}
+
+// Placeholder implements adapters.Dialect by delegating to the embedded postgres
+// adapter, defaulting to Postgres-style $n binds (TimescaleDB is wire-compatible).
+func (a *Adapter) Placeholder(position int) string {
+	if d, ok := a.Adapter.(adapters.Dialect); ok {
+		return d.Placeholder(position)
+	}
+	return fmt.Sprintf("$%d", position)
+}
+
+// queryRegistry returns the wrapped adapter's QueryRegistry. Embedding the
+// adapters.Adapter interface does not promote optional ports.
+func (a *Adapter) queryRegistry() (adapters.QueryRegistry, error) {
+	r, ok := a.Adapter.(adapters.QueryRegistry)
+	if !ok {
+		return nil, ErrNotTimescaleDBAdapter
+	}
+	return r, nil
+}
+
+// ListQueries implements adapters.QueryRegistry by delegating to the embedded postgres adapter.
+func (a *Adapter) ListQueries(ctx context.Context, databaseAlias, location string) ([]adapters.StoredQuery, error) {
+	r, err := a.queryRegistry()
+	if err != nil {
+		return nil, err
+	}
+	return r.ListQueries(ctx, databaseAlias, location)
+}
+
+// GetQuery implements adapters.QueryRegistry by delegating to the embedded postgres adapter.
+func (a *Adapter) GetQuery(ctx context.Context, databaseAlias, location, name string) (adapters.StoredQuery, error) {
+	r, err := a.queryRegistry()
+	if err != nil {
+		return adapters.StoredQuery{}, err
+	}
+	return r.GetQuery(ctx, databaseAlias, location, name)
+}
+
+// UpsertQuery implements adapters.QueryRegistry by delegating to the embedded postgres adapter.
+func (a *Adapter) UpsertQuery(ctx context.Context, query adapters.StoredQuery) error {
+	r, err := a.queryRegistry()
+	if err != nil {
+		return err
+	}
+	return r.UpsertQuery(ctx, query)
+}
+
+// DeleteQuery implements adapters.QueryRegistry by delegating to the embedded postgres adapter.
+func (a *Adapter) DeleteQuery(ctx context.Context, databaseAlias, location, name string) error {
+	r, err := a.queryRegistry()
+	if err != nil {
+		return err
+	}
+	return r.DeleteQuery(ctx, databaseAlias, location, name)
+}
+
+// ImportFromFilesystem implements adapters.QueryRegistry by delegating to the embedded postgres adapter.
+func (a *Adapter) ImportFromFilesystem(ctx context.Context, queriesPath, policy string) (adapters.ImportReport, error) {
+	r, err := a.queryRegistry()
+	if err != nil {
+		return adapters.ImportReport{}, err
+	}
+	return r.ImportFromFilesystem(ctx, queriesPath, policy)
+}
+
+// ScriptPermissions implements adapters.ScriptPermissionsChecker by delegating to the
+// embedded postgres adapter; without one it denies, like middlewares.denyAllScriptPerms.
+func (a *Adapter) ScriptPermissions(ctx context.Context, databaseAlias, location, name, op, userName string) bool {
+	p, ok := a.Adapter.(adapters.ScriptPermissionsChecker)
+	return ok && p.ScriptPermissions(ctx, databaseAlias, location, name, op, userName)
 }
 
 // Connect initializes the TimescaleDB adapter connection pool and verifies TimescaleDB is available.

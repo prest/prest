@@ -58,6 +58,13 @@ location = "itest"
 name = "rawreach"
 permissions = ["read"]
 
+# Lifecycle template registered by integration/helpers.RunQueryRegistryLifecycle on
+# every engine's queries server; POST and DELETE run its write_sql/delete_sql.
+[[queries.scripts]]
+location = "itest"
+name = "lifecycle"
+permissions = ["read", "write", "delete"]
+
 # Templates imported from testdata/queries at startup (import_on_startup) and
 # executed in database mode by integration/postgres/controllers/queries_database_test.go,
 # which mirrors the filesystem-mode coverage in integration/suites/controllers/scripts_test.go.

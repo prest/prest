@@ -1,0 +1,18 @@
+# MySQL [[databases]] registry for integration/mysql (prestd-registry, port 3004).
+# Both aliases use the same MySQL user, which is granted on shop and other; each
+# alias must still only serve its own database as {schema}.
+[http]
+port = 3004
+
+[access]
+restrict = false
+
+[[databases]]
+alias = "store"
+engine = "mysql"
+url = "mysql://prest:prest@mysql:3306/shop?tls=false"
+
+[[databases]]
+alias = "archive"
+engine = "mysql"
+url = "mysql://prest:prest@mysql:3306/other?tls=false"

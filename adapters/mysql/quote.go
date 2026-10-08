@@ -52,3 +52,9 @@ func placeholders(initial, lenValues int) (string, error) {
 	}
 	return "(" + strings.Join(parts, ",") + ")", nil
 }
+
+// QuoteIdentifier implements adapters.Dialect with backtick quoting.
+func (a *Adapter) QuoteIdentifier(name string) (string, error) { return quoteIdent(name) }
+
+// Placeholder implements adapters.Dialect; MySQL binds are positional "?".
+func (a *Adapter) Placeholder(int) string { return "?" }
