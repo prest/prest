@@ -771,10 +771,6 @@ func closer(body io.Closer) {
 	}
 }
 
-// errCopyRequiresUniformKeys is returned when COPY receives DEFAULT markers:
-// COPY has no DEFAULT keyword, so every record must carry every column.
-var errCopyRequiresUniformKeys = errors.New("copy batch requires every record to have the same keys")
-
 // ParseBatchInsertRequest create insert SQL to batch request
 func (adapter *postgres) ParseBatchInsertRequest(r *http.Request) (colsName string, placeholders string, values []interface{}, err error) {
 	recordSet := make([]map[string]interface{}, 0)
@@ -814,9 +810,15 @@ func (adapter *postgres) batchKeys(recordSet []map[string]interface{}) (keys []s
 	return
 }
 
-// operationValues renders one VALUES tuple per record. Present keys get the
-// next $n placeholder; missing keys render DEFAULT and an adapters.DefaultValue
-// marker keeps values aligned (len = records*keys). Executors drop the markers.
+// errCopyRequiresUniformKeys is returned when COPY receives DEFAULT markers:
+// COPY has no DEFAULT keyword, so every record must carry every column.
+var errCopyRequiresUniformKeys = errors.New("copy batch requires every record to have the same keys")
+
+// operationValues renders one VALUES tuple per record over the union of keys.
+// Present keys get the next $n placeholder; a missing key renders DEFAULT (the
+// column default applies, so NOT NULL columns with a default still insert) and
+// an adapters.DefaultValue marker keeps values aligned (len = records*keys).
+// Executors drop the markers before binding.
 func (adapter *postgres) operationValues(recordSet []map[string]interface{}, recordKeys []string) (values []interface{}, placeholders string, err error) {
 	columns := make([]string, len(recordKeys))
 	for i, key := range recordKeys {

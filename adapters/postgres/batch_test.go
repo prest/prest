@@ -20,7 +20,8 @@ func batchRequest(t *testing.T, body string) *http.Request {
 }
 
 // Records with different keys: columns are the union of all keys and a missing
-// key renders DEFAULT, so no value from a later record is dropped.
+// key renders DEFAULT, so the column default applies (NOT NULL columns with a
+// default keep working) and no value from a later record is dropped.
 func TestParseBatchInsertRequest_KeyUnion(t *testing.T) {
 	t.Parallel()
 

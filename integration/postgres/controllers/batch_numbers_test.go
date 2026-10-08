@@ -21,18 +21,26 @@ func cleanupBatchDefaults(t *testing.T, base string, queries ...string) {
 	})
 }
 
-// TestBatchHeterogeneousKeysUseDefaults: a batch whose records carry different
-// keys keeps every record's columns and fills omitted ones with the column
-// DEFAULT; COPY cannot express DEFAULT, so it rejects mixed keys with 400.
+// TestBatchHeterogeneousKeysUseDefaults: records with different keys keep every
+// column (union of keys) and an omitted key takes the column DEFAULT, so a
+// NOT NULL column with a default still inserts. COPY cannot express DEFAULT.
 func TestBatchHeterogeneousKeysUseDefaults(t *testing.T) {
 	base := helpers.ServerURL(t)
-	cleanupBatchDefaults(t, base, "a=x1", "b=y1", "a=x2", "b=y2")
+	cleanupBatchDefaults(t, base, "a=x1", "b=y1", "c=given", "a=x2", "b=y2")
 
-	body := []map[string]interface{}{{"a": "x1"}, {"b": "y1"}}
+	body := []map[string]interface{}{{"a": "x1", "c": "given"}, {"b": "y1"}}
 	testutils.DoRequest(t, base+"/batch"+batchDefaultsPath, body, "POST", http.StatusCreated, "BatchHeterogeneousInsert")
 
-	testutils.DoRequest(t, base+batchDefaultsPath+"?a=x1", nil, "GET", http.StatusOK, "BatchDefaultApplied", `"dflt"`)
-	testutils.DoRequest(t, base+batchDefaultsPath+"?b=y1", nil, "GET", http.StatusOK, "BatchSecondRecordKept", `"y1"`)
+	var first, second []map[string]interface{}
+	testutils.DoRequestJSON(t, base+batchDefaultsPath+"?a=x1", nil, "GET", http.StatusOK, "BatchFirstRecord", &first)
+	require.Len(t, first, 1)
+	require.Equal(t, "dflt", first[0]["b"], "omitted nullable key takes the column default")
+	require.Equal(t, "given", first[0]["c"])
+
+	testutils.DoRequestJSON(t, base+batchDefaultsPath+"?b=y1", nil, "GET", http.StatusOK, "BatchSecondRecord", &second)
+	require.Len(t, second, 1, "the second record's column is kept")
+	require.Nil(t, second[0]["a"])
+	require.Equal(t, "req", second[0]["c"], "omitted NOT NULL key takes the column default")
 
 	copyBody := []map[string]interface{}{{"a": "x2"}, {"b": "y2"}}
 	testutils.DoRequestWithHeaders(t, base+"/batch"+batchDefaultsPath, copyBody, "POST", http.StatusBadRequest,

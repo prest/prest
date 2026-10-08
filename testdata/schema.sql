@@ -71,6 +71,7 @@ INSERT INTO employee_secret (emp_id, ssn) VALUES (1, 'ssn-top-secret-1'), (2, 's
 INSERT INTO employee_badge (emp_id, badge) VALUES (1, 'badge-001'), (2, 'badge-002');
 
 -- Batch/number fixtures (integration/postgres/controllers/batch_numbers_test.go):
--- b has a DEFAULT so heterogeneous batch records can prove omitted keys fall
--- back to it; big and nums cover UseNumber precision and numeric arrays.
-CREATE TABLE batch_defaults(id serial PRIMARY KEY, a text, b text DEFAULT 'dflt', big bigint, nums int[]);
+-- heterogeneous batch records prove an omitted key falls back to the column
+-- DEFAULT, including a NOT NULL column (c); big and nums cover UseNumber
+-- precision and numeric arrays.
+CREATE TABLE batch_defaults(id serial PRIMARY KEY, a text, b text DEFAULT 'dflt', c text NOT NULL DEFAULT 'req', big bigint, nums int[]);

@@ -65,6 +65,11 @@ func (h *TableHandler) Show(w http.ResponseWriter, r *http.Request) {
 	sc := h.executor.ShowTableCtx(ctx, schema, table)
 	if err := sc.Err(); err != nil {
 		const prefix = "error to execute query, schema error "
+		if status, msg := statusFor(err, schema, table); status == http.StatusNotFound {
+			// /show keeps its historical 400 for a missing table; only CRUD routes answer 404.
+			jsonError(w, prefix+msg, http.StatusBadRequest)
+			return
+		}
 		writeStatementError(w, err, schema, table, prefix, prefix)
 		return
 	}
