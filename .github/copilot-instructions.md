@@ -19,6 +19,13 @@ These instructions guide AI-generated changes in this repository.
 - Apply SOLID when designing packages, ports, handlers, and adapters (see **SOLID Principles for Go** below).
 - Keep the runtime stateless: no shared mutable application state between commands or requests (see **Go Style and Implementation Rules**).
 
+## Planning & Delegation
+
+- Plan every task before editing, as detailed as the task warrants (files, steps, dependencies, validation, risks).
+- Parallelise independent work units; serialize only on real dependencies.
+- Close each plan with a staffing decision: agent count, steps per agent, and the **cheapest model tier that can do each step well**.
+- Full rule: `.cursor/rules/planning-and-delegation.mdc`.
+
 ## SOLID Principles for Go
 
 Apply these on every change. They complement **Hexagonal Architecture** (below) — hexagonal defines layer boundaries; SOLID defines how types and dependencies inside those layers are shaped.

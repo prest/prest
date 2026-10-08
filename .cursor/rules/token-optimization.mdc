@@ -24,7 +24,9 @@ Before issuing tool calls, state internally (or briefly to user, max 1 line):
 - What file or symbol you're targeting
 - Which tool is the cheapest way to find it
 
-Skip planning chatter for trivial tasks (one-line edits, single-file reads).
+Trivial tasks (one-line edits, single-file reads) get a 1–2 line plan, not
+none. Full planning, parallelisation and model-selection rules live in
+`planning-and-delegation.mdc`.
 
 ## 2. Cheapest Tool Wins
 

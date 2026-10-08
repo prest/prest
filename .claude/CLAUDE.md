@@ -79,6 +79,16 @@ Claude **prepares** commits, humans **execute** them.
 
 **Reference:** `.claude/rules/GIT_WORKFLOW.md`
 
+### 6. Planning, Parallelism & Model Selection
+
+Every task is planned before any edit — as detailed as the task warrants (files, symbols, ordered steps, dependencies, validation commands, risks).
+
+- **Parallelise** independent work units: launch independent sub-agents in a single message; serialize only on real dependencies. One agent per file; use `isolation: "worktree"` for parallel agents that write code.
+- **Staffing decision closes every plan:** number of agents, which steps each owns, which model each runs, what runs in parallel, who integrates/validates.
+- **Cheapest capable model:** pass `model: "haiku"` for search/mechanical/doc/test-running work, `"sonnet"` for standard features, TDD tests and pattern-following adapters, `"opus"` only for architecture, new dialects, cross-cutting refactors, unknown-root-cause debugging or security-sensitive changes. Escalate only with a stated reason.
+
+**Reference:** `.cursor/rules/planning-and-delegation.mdc`
+
 ## When to Apply Rules
 
 See `.cursor/rules/` for all authoritative rules:
@@ -86,6 +96,7 @@ See `.cursor/rules/` for all authoritative rules:
 | Situation | Rule File |
 |-----------|-----------|
 | Every request | `core.mdc` (response discipline) |
+| Every task, before implementing | `planning-and-delegation.mdc` (plan first, parallelise, staffing + cheapest capable model) |
 | Code changes | `hexagonal-architecture.mdc` (DIP/ISP) |
 | Behavior changes | `unit-tests-tdd.mdc` (TDD, ≥80% coverage) |
 | New database engine | `sql-database-support.mdc` (classify, DIFFERENCES.md, adapter registry) |
