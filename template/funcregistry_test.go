@@ -1,7 +1,6 @@
 package template
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 	"text/template"
@@ -116,31 +115,29 @@ func TestUnEscape(t *testing.T) {
 func TestLimitOffset(t *testing.T) {
 	t.Parallel()
 
-	data := make(map[string]interface{})
-	pageNumber := 1
-	pageSize := 10
-	data["_page"] = pageNumber
-	data["_page_size"] = pageSize
-	funcs := &FuncRegistry{TemplateData: data}
-	value := funcs.limitOffset(fmt.Sprint(pageNumber), fmt.Sprint(pageSize))
-	expected := fmt.Sprintf("LIMIT %d OFFSET(%d - 1) * %d", pageSize, pageNumber, pageSize)
-	if value != expected {
-		t.Errorf("expected '%s', bug got %s", expected, value)
+	funcs := &FuncRegistry{TemplateData: map[string]interface{}{}}
+	cases := []struct {
+		name, page, size, expected string
+	}{
+		// first page starts at offset 0; OFFSET must be a literal for MySQL
+		{"first page", "1", "10", "LIMIT 10 OFFSET 0"},
+		{"third page", "3", "5", "LIMIT 5 OFFSET 10"},
+		// page below 1 is clamped to the first page
+		{"page zero", "0", "10", "LIMIT 10 OFFSET 0"},
+		{"negative page", "-4", "10", "LIMIT 10 OFFSET 0"},
+		// invalid input renders nothing
+		{"negative size", "1", "-1", ""},
+		{"non numeric page", "a", "10", ""},
+		{"non numeric size", "1", "a", ""},
+	}
+	for _, tc := range cases {
+		if value := funcs.limitOffset(tc.page, tc.size); value != tc.expected {
+			t.Errorf("%s: expected '%s', but got '%s'", tc.name, tc.expected, value)
+		}
 	}
 
-	value = funcs.limitOffset("0", fmt.Sprint(pageSize))
-	if value != expected {
-		t.Errorf("expected '%s', bug got %s", expected, value)
-	}
-
-	value = funcs.limitOffset("a", fmt.Sprint(pageSize))
-	if value != "" {
-		t.Errorf("expected '%s', bug got %s", "", value)
-	}
-
-	value = funcs.limitOffset(fmt.Sprint(pageNumber), "a")
-	if value != "" {
-		t.Errorf("expected '%s', bug got %s", "", value)
+	if _, err := LimitOffset("1", "-1"); err == nil {
+		t.Error("expected error for negative page size")
 	}
 }
 

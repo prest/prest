@@ -1,13 +1,14 @@
 package formatters
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 )
 
 // FormatArray format slice to a postgres array format
-// today support a slice of string, int and fmt.Stringer
+// today support a slice of string, int, float64, json.Number and fmt.Stringer
 func FormatArray(value interface{}) string {
 	var aux string
 	var check = func(aux string, value interface{}) (ret string) {
@@ -45,6 +46,11 @@ func FormatArray(value interface{}) string {
 		return `"` + aux + `"`
 	case int:
 		return strconv.Itoa(value)
+	case float64:
+		return strconv.FormatFloat(value, 'f', -1, 64)
+	case json.Number:
+		// unquoted so Postgres reads it as a numeric element, digits intact
+		return string(value)
 	case fmt.Stringer:
 		return FormatArray(value.String())
 	}

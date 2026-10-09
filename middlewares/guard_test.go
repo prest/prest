@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -20,6 +21,12 @@ import (
 func newGuardTestStack(t *testing.T, mutate func(*config.GuardConf)) *negroni.Negroni {
 	t.Helper()
 	cfg := &config.Prest{}
+	// Production defaults: parseGuardConfig applies these before the
+	// middleware ever sees the struct, so tests start from the same state
+	// and mutate on top.
+	cfg.Guard.PenetrationDetection = true
+	cfg.Guard.RedisFailOpen = true
+	cfg.Guard.MaxBodyBytes = 8192
 	if mutate != nil {
 		mutate(&cfg.Guard)
 	}
@@ -39,7 +46,12 @@ func serveGuardRequest(n *negroni.Negroni, target string) *httptest.ResponseReco
 // tests assert guard behavior without the rest of the pREST stack.
 func newGuardOnlyStack(t *testing.T, mutate func(*config.GuardConf)) *negroni.Negroni {
 	t.Helper()
-	conf := config.GuardConf{}
+	conf := config.GuardConf{
+		// Production defaults from parseGuardConfig (see newGuardTestStack).
+		PenetrationDetection: true,
+		RedisFailOpen:        true,
+		MaxBodyBytes:         8192,
+	}
 	if mutate != nil {
 		mutate(&conf)
 	}
@@ -344,6 +356,25 @@ func TestGuardBodyScan(t *testing.T) {
 		// so the body scan's 400 must not preempt the engine's 403.
 		require.Equal(t, http.StatusForbidden, rec.Code)
 	})
+}
+
+// TestGuardInvalidConfigBodyIsValidJSON proves the 500 body of an invalid
+// guard config is one valid JSON document even when the underlying error
+// carries quotes from echoed config input.
+func TestGuardInvalidConfigBodyIsValidJSON(t *testing.T) {
+	// The fail-closed middleware mounts through New(), not GuardMiddleware
+	// (which returns the error), so the full stack is the unit under test.
+	n := newGuardTestStack(t, func(g *config.GuardConf) {
+		g.Invalid = errors.New(`guard.enabled: "yes" is not a valid boolean`)
+	})
+	req := httptest.NewRequest(http.MethodGet, "/teste", nil)
+	rec := httptest.NewRecorder()
+	n.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusInternalServerError, rec.Code)
+	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+	var parsed map[string]string
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &parsed))
+	require.Contains(t, parsed["error"], "not a valid boolean")
 }
 
 // TestGuardEngineRunsBeforeBodyScan verifies the engine's verdicts take

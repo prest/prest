@@ -81,7 +81,18 @@ enabled = true
 # passive = true              # log what would be blocked, reject nothing
 rate_limit = 100              # requests per client IP (0 = no rate limit)
 rate_limit_window = 60        # ...per this many seconds (default 60)
-max_body_bytes = 1048576      # how much body the inspection layer reads
+max_body_bytes = 8192         # body prefix the inspection layer reads, in
+                              # bytes (default 8 KiB; a per-request CPU
+                              # budget - raise it deliberately)
+# penetration_detection = true          # the pattern engine over URL, query,
+                                        # headers, and bodies (default on);
+                                        # turn off to keep only rate limits
+                                        # and IP policy
+# auto_ban = false                      # IP auto-banning is opt-in: behind a
+                                        # load balancer without
+                                        # trusted_proxies, bans would land on
+                                        # the proxy address and take every
+                                        # client down at once
 # blacklist = ["203.0.113.0/24"]
 # whitelist = ["198.51.100.7"]
 # exclude_paths = ["/health"]           # skips all guard checks for these
@@ -89,13 +100,19 @@ max_body_bytes = 1048576      # how much body the inspection layer reads
 # trusted_proxies = ["10.0.0.9"]        # proxies whose X-Forwarded-For is
                                         # trusted when resolving client IPs
 # redis_url = "redis://localhost:6379"  # share limits/bans across instances
+# redis_fail_open = true                # when Redis is unreachable, keep
+                                        # serving on local state (false fails
+                                        # requests closed instead)
 # block_cloud_providers = ["AWS", "GCP", "Azure"]
 ```
 
 With `passive = true` the guard records what it would have blocked instead of
 rejecting requests, so rules can be previewed before enforcing. Without
 `redis_url`, rate limit and ban state is per instance; with `redis_url`
-configured, a Redis outage fails closed rather than dropping shared state.
+configured, state is shared, and a Redis outage degrades to local state by
+default (`redis_fail_open = true`) rather than taking requests down -
+operators who prefer rejection over degraded limits set
+`redis_fail_open = false`.
 
 `exclude_paths` skips every guard check (rate limits and IP policy included)
 for the listed paths and anything below them: an entry `/health` covers

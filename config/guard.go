@@ -12,8 +12,12 @@ import (
 
 const (
 	defaultGuardRateLimitWindow = 60
-	defaultGuardMaxBodyBytes    = 1 << 20 // 1 MiB
-	defaultGuardRedisPrefix     = "prest_guard"
+	// 8 KiB: per-request inspection cost grows with this budget, so the
+	// default is the smallest useful body prefix (the prest-guard plugin's
+	// benchmark keeps the worst case in the tens of milliseconds); operators
+	// who need deeper body inspection raise it deliberately.
+	defaultGuardMaxBodyBytes = 8 << 10 // 8 KiB
+	defaultGuardRedisPrefix  = "prest_guard"
 )
 
 // setGuardDefaults registers the [guard] section defaults. Every knob starts
@@ -32,6 +36,9 @@ func setGuardDefaults(v *viper.Viper) {
 	v.SetDefault("guard.redis_url", "")
 	v.SetDefault("guard.redis_prefix", defaultGuardRedisPrefix)
 	v.SetDefault("guard.block_cloud_providers", []string{})
+	v.SetDefault("guard.auto_ban", false)
+	v.SetDefault("guard.penetration_detection", true)
+	v.SetDefault("guard.redis_fail_open", true)
 }
 
 // GuardConf holds opt-in request security settings backed by the guard-core
@@ -77,6 +84,21 @@ type GuardConf struct {
 	// BlockCloudProviders blocks datacenter ranges (e.g. ["AWS", "GCP",
 	// "Azure"]). Off by default; range refresh uses Redis when configured.
 	BlockCloudProviders []string
+	// AutoBan turns IP auto-banning on. Default false: behind a load
+	// balancer with no trusted_proxies configured, bans would land on the
+	// proxy's address and take every client down at once. Opt in together
+	// with trusted_proxies.
+	AutoBan bool
+	// PenetrationDetection runs the pattern engine (URL path, query,
+	// headers, and request bodies) on each request. Default true; operators
+	// who only want rate limits and IP policy can turn it off.
+	PenetrationDetection bool
+	// RedisFailOpen decides what happens when redis_url is configured and
+	// Redis is unreachable. Default true: requests keep flowing on local
+	// per-instance state (shared limits loosen). false fails requests
+	// closed instead, for operators who prefer rejection over degraded
+	// limits.
+	RedisFailOpen bool
 }
 
 // guardRawBool reads key strictly. Viper's GetBool silently discards
@@ -170,6 +192,21 @@ func guardRawList(v *viper.Viper, key string, g *GuardConf) ([]string, bool) {
 	}
 }
 
+// guardRawString reads key strictly: missing and string values pass, any
+// other type (a number or bool in the config file, say) marks the guard
+// config invalid instead of being silently stringified.
+func guardRawString(v *viper.Viper, key string, g *GuardConf) (string, bool) {
+	switch raw := v.Get(key).(type) {
+	case nil:
+		return "", true
+	case string:
+		return raw, true
+	default:
+		g.Invalid = fmt.Errorf("%s: unsupported value %v", key, raw)
+		return "", false
+	}
+}
+
 // parseGuardConfig reads the [guard] section. Env overrides use the
 // PREST_GUARD_* prefix. Every security-relevant key is validated from its
 // raw value: anything explicitly set but unparseable marks the whole guard
@@ -256,8 +293,40 @@ func parseGuardConfig(v *viper.Viper, cfg *Prest) {
 		*list.dst = values
 	}
 
-	g.RedisURL = v.GetString("guard.redis_url")
-	if g.RedisPrefix = v.GetString("guard.redis_prefix"); g.RedisPrefix == "" {
+	autoBan, ok := guardRawBool(v, "guard.auto_ban", g)
+	if !ok {
+		fail()
+		return
+	}
+	g.AutoBan = autoBan
+
+	penetrationDetection, ok := guardRawBool(v, "guard.penetration_detection", g)
+	if !ok {
+		fail()
+		return
+	}
+	g.PenetrationDetection = penetrationDetection
+
+	redisFailOpen, ok := guardRawBool(v, "guard.redis_fail_open", g)
+	if !ok {
+		fail()
+		return
+	}
+	g.RedisFailOpen = redisFailOpen
+
+	redisURL, ok := guardRawString(v, "guard.redis_url", g)
+	if !ok {
+		fail()
+		return
+	}
+	g.RedisURL = redisURL
+
+	redisPrefix, ok := guardRawString(v, "guard.redis_prefix", g)
+	if !ok {
+		fail()
+		return
+	}
+	if g.RedisPrefix = redisPrefix; g.RedisPrefix == "" {
 		g.RedisPrefix = defaultGuardRedisPrefix
 	}
 }

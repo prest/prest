@@ -24,6 +24,9 @@ type LegacyExecutor interface {
 // It lives on DatabaseConnector, DatabaseAccessor, and DatabasePinger so test
 // doubles can implement Adapter without a real database. Production postgres
 // adapters also satisfy those interfaces; use type assertions where needed.
+//
+// Dialect is likewise optional so adapters written before it existed still
+// satisfy Adapter; callers type-assert to Dialect and handle its absence.
 type Adapter interface {
 	RequestQueryBuilder
 	QueryExecutor

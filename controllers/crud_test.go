@@ -1804,3 +1804,85 @@ func TestNewCRUDHandler(t *testing.T) {
 	require.NotNil(t, h)
 	require.True(t, h.singleDB)
 }
+
+// A refused connection answers 503 with a fixed message: the driver text
+// ("dial tcp 10.0.0.5:5432: connect: connection refused") leaks the host.
+func TestCRUDHandler_Select_DatabaseUnavailable(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	perms, sqlBuilder, builder, executor, db := baseSelectMocks(ctrl)
+	expectSelectBuilderHappyPath(builder)
+
+	scanner := mockgen.NewMockScanner(ctrl)
+	scanner.EXPECT().Err().Return(dialError())
+	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)
+
+	h := NewCRUDHandler(Deps{Perms: perms, SQL: sqlBuilder, Builder: builder, Executor: executor, DB: db})
+	rec := runSelect(t, h, http.MethodGet)
+
+	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	require.Contains(t, rec.Body.String(), "database unavailable")
+	require.NotContains(t, rec.Body.String(), "dial")
+}
+
+// Write paths map connection failures the same way as reads.
+func TestCRUDHandler_Writes_DatabaseUnavailable(t *testing.T) {
+	t.Parallel()
+
+	vars := map[string]string{"database": "prest-test", "schema": "public", "table": "test"}
+	cases := []struct {
+		name   string
+		method string
+		setup  func(*mockgen.MockRequestQueryBuilder, *mockgen.MockSQLBuilder, *mockgen.MockQueryExecutor, *mockgen.MockScanner)
+		call   func(*CRUDHandler, http.ResponseWriter, *http.Request)
+	}{
+		{"insert", http.MethodPost, func(b *mockgen.MockRequestQueryBuilder, s *mockgen.MockSQLBuilder, e *mockgen.MockQueryExecutor, sc *mockgen.MockScanner) {
+			b.EXPECT().ParseInsertRequest(gomock.Any()).Return(`"name"`, "$1", []interface{}{"x"}, nil)
+			s.EXPECT().InsertSQL(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(`INSERT`)
+			e.EXPECT().InsertCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(sc)
+		}, (*CRUDHandler).Insert},
+		{"batch insert", http.MethodPost, func(b *mockgen.MockRequestQueryBuilder, s *mockgen.MockSQLBuilder, e *mockgen.MockQueryExecutor, sc *mockgen.MockScanner) {
+			b.EXPECT().ParseBatchInsertRequest(gomock.Any()).Return(`"name"`, "($1)", []interface{}{"x"}, nil)
+			s.EXPECT().InsertSQL(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(`INSERT`)
+			e.EXPECT().BatchInsertValuesCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(sc)
+		}, (*CRUDHandler).BatchInsert},
+		{"delete", http.MethodDelete, func(b *mockgen.MockRequestQueryBuilder, s *mockgen.MockSQLBuilder, e *mockgen.MockQueryExecutor, sc *mockgen.MockScanner) {
+			b.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+			b.EXPECT().ReturningByRequest(gomock.Any()).Return("", nil)
+			s.EXPECT().DeleteSQL(gomock.Any(), gomock.Any(), gomock.Any()).Return(`DELETE`)
+			e.EXPECT().DeleteCtx(gomock.Any(), gomock.Any()).Return(sc)
+		}, (*CRUDHandler).Delete},
+		{"update", http.MethodPut, func(b *mockgen.MockRequestQueryBuilder, s *mockgen.MockSQLBuilder, e *mockgen.MockQueryExecutor, sc *mockgen.MockScanner) {
+			b.EXPECT().SetByRequest(gomock.Any(), 1).Return(`"name"=$1`, []interface{}{"x"}, nil)
+			b.EXPECT().WhereByRequest(gomock.Any(), 2).Return("", nil, nil)
+			b.EXPECT().ReturningByRequest(gomock.Any()).Return("", nil)
+			s.EXPECT().UpdateSQL(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(`UPDATE`)
+			e.EXPECT().UpdateCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(sc)
+		}, (*CRUDHandler).Update},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+			sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
+			executor := mockgen.NewMockQueryExecutor(ctrl)
+			scanner := mockgen.NewMockScanner(ctrl)
+			scanner.EXPECT().Err().Return(dialError())
+			tc.setup(builder, sqlBuilder, executor, scanner)
+
+			h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
+			rec := httptest.NewRecorder()
+			tc.call(h, rec, crudRequest(tc.method, "/prest-test/public/test", vars))
+
+			require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+			require.Contains(t, rec.Body.String(), "database unavailable")
+			require.NotContains(t, rec.Body.String(), "10.0.0.5")
+		})
+	}
+}

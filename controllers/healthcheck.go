@@ -37,7 +37,9 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for _, check := range h.checks {
 		if err := check(ctx); err != nil {
 			slog.Error("could not check DB connection", "err", logsafe.Error(err))
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusServiceUnavailable)
+			fmt.Fprintf(w, jsonErrorMsg, unavailableMsg)
 			return
 		}
 	}

@@ -142,3 +142,13 @@ func TestTimeBucketClause(t *testing.T) {
 		})
 	}
 }
+
+func TestNewWrapsAdapterWithRegistryPorts(t *testing.T) {
+	// The wrapped postgres adapter must provide the ports the wrapper forwards,
+	// or database-stored queries would be denied in production.
+	inner := New(&config.Prest{}).(*Adapter).Adapter
+	_, isRegistry := inner.(adapters.QueryRegistry)
+	_, isChecker := inner.(adapters.ScriptPermissionsChecker)
+	require.True(t, isRegistry)
+	require.True(t, isChecker)
+}

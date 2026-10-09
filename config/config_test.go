@@ -558,6 +558,56 @@ func TestParseGuardStrictValidation(t *testing.T) {
 		require.Equal(t, []string{"1.2.3.4", "5.6.7.8"}, cfg.Guard.Blacklist)
 	})
 
+	t.Run("new knobs keep safe defaults", func(t *testing.T) {
+		unsetEnvForTest(t, "PREST_GUARD_AUTO_BAN")
+		unsetEnvForTest(t, "PREST_GUARD_PENETRATION_DETECTION")
+		unsetEnvForTest(t, "PREST_GUARD_REDIS_FAIL_OPEN")
+		cfg := parseGuard(t)
+		require.NoError(t, cfg.Guard.Invalid)
+		require.False(t, cfg.Guard.AutoBan)
+		require.True(t, cfg.Guard.PenetrationDetection)
+		require.True(t, cfg.Guard.RedisFailOpen)
+	})
+
+	t.Run("auto ban opts in and parses strictly", func(t *testing.T) {
+		t.Setenv("PREST_GUARD_AUTO_BAN", "true")
+		cfg := parseGuard(t)
+		require.NoError(t, cfg.Guard.Invalid)
+		require.True(t, cfg.Guard.AutoBan)
+
+		t.Setenv("PREST_GUARD_AUTO_BAN", "yes")
+		cfg = parseGuard(t)
+		require.Error(t, cfg.Guard.Invalid)
+		require.Contains(t, cfg.Guard.Invalid.Error(), "guard.auto_ban")
+	})
+
+	t.Run("penetration detection opts out", func(t *testing.T) {
+		t.Setenv("PREST_GUARD_PENETRATION_DETECTION", "false")
+		cfg := parseGuard(t)
+		require.NoError(t, cfg.Guard.Invalid)
+		require.False(t, cfg.Guard.PenetrationDetection)
+	})
+
+	t.Run("redis fail open opts into strict mode", func(t *testing.T) {
+		t.Setenv("PREST_GUARD_REDIS_FAIL_OPEN", "false")
+		cfg := parseGuard(t)
+		require.NoError(t, cfg.Guard.Invalid)
+		require.False(t, cfg.Guard.RedisFailOpen)
+	})
+
+	t.Run("non-string redis url fails closed", func(t *testing.T) {
+		t.Setenv("PREST_GUARD_REDIS_URL", "redis://localhost:6379")
+		cfg := parseGuard(t)
+		require.NoError(t, cfg.Guard.Invalid)
+
+		v, configPath := viperCfg()
+		v.Set("guard.redis_url", 16379)
+		cfg2 := &Prest{}
+		requireParse(t, v, cfg2, configPath)
+		require.Error(t, cfg2.Guard.Invalid)
+		require.Contains(t, cfg2.Guard.Invalid.Error(), "guard.redis_url")
+	})
+
 	t.Run("trusted proxies env value splits on commas", func(t *testing.T) {
 		t.Setenv("PREST_GUARD_TRUSTED_PROXIES", "10.0.0.1,10.0.0.2")
 		cfg := parseGuard(t)
@@ -654,6 +704,19 @@ func TestLoadMySQLURL(t *testing.T) {
 	require.Equal(t, "shop", cfg.QueriesConf.Schema)
 	require.False(t, cfg.MySQLPrepare)
 	require.NotEqual(t, "postgres", cfg.PGPass)
+}
+
+func TestLoadMySQLDBURLDefaultsAuthSchema(t *testing.T) {
+	// PREST_DB_URL alone (the documented quickstart) must point auth at the
+	// connection's database instead of the Postgres default "public".
+	t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+	t.Setenv("PREST_ENGINE", "mysql")
+	t.Setenv("PREST_DB_URL", "mysql://prest:prest@mysql:3306/shop")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, "shop", cfg.PGDatabase)
+	require.Equal(t, "shop", cfg.AuthSchema)
+	require.Equal(t, "shop", cfg.QueriesConf.Schema)
 }
 
 func TestLoadMySQLExplicitSchemas(t *testing.T) {

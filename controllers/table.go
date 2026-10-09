@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/prest/prest/v2/adapters"
@@ -50,6 +49,11 @@ func (h *TableHandler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := validateSchema(r, schema); err != nil {
+		jsonError(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
 	if !validatePathSegments(database, schema, table) {
 		jsonError(w, "invalid identifier in path", http.StatusBadRequest)
 		return
@@ -59,9 +63,14 @@ func (h *TableHandler) Show(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	sc := h.executor.ShowTableCtx(ctx, schema, table)
-	if sc.Err() != nil {
-		errorMessage := fmt.Sprintf("error to execute query, schema error %s", sc.Err())
-		jsonError(w, errorMessage, http.StatusBadRequest)
+	if err := sc.Err(); err != nil {
+		const prefix = "error to execute query, schema error "
+		if status, msg := statusFor(err, schema, table); status == http.StatusNotFound {
+			// /show keeps its historical 400 for a missing table; only CRUD routes answer 404.
+			jsonError(w, prefix+msg, http.StatusBadRequest)
+			return
+		}
+		writeStatementError(w, err, schema, table, prefix, prefix)
 		return
 	}
 	w.Write(sc.Bytes())

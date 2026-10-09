@@ -2,11 +2,13 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/adapters/mockgen"
 	"github.com/stretchr/testify/require"
 )
@@ -63,7 +65,7 @@ func TestTableHandler_Show_QueryError(t *testing.T) {
 	defer ctrl.Finish()
 
 	scanner := mockgen.NewMockScanner(ctrl)
-	scanner.EXPECT().Err().Return(errors.New("schema error")).Times(2)
+	scanner.EXPECT().Err().Return(errors.New("schema error"))
 
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(scanner)
@@ -79,4 +81,28 @@ func TestTableHandler_Show_QueryError(t *testing.T) {
 
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 	require.Contains(t, rec.Body.String(), "schema error")
+}
+
+func TestTableHandler_Show_RelationNotFoundIsBadRequest(t *testing.T) {
+	t.Parallel()
+
+	// /show keeps its historical 400 for a missing table (CRUD routes use 404).
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	scanner := mockgen.NewMockScanner(ctrl)
+	scanner.EXPECT().Err().Return(fmt.Errorf("%w: Table 'shop.users' doesn't exist", adapters.ErrRelationNotFound))
+
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(scanner)
+
+	h := NewTableHandler(executor, mockDatabaseRegistry(ctrl), false)
+	req := crudRequest(http.MethodGet, "/prest-test/public/users", map[string]string{
+		"database": "prest-test", "schema": "public", "table": "users",
+	})
+	rec := httptest.NewRecorder()
+	h.Show(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Contains(t, rec.Body.String(), "error to execute query, schema error")
 }

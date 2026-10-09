@@ -58,3 +58,22 @@ func TestRequestQueryBuilderStaysCompatible(t *testing.T) {
 		t.Fatalf("frozen stub should be inert, got %v / %v", joins, err)
 	}
 }
+
+// noDialectAdapter is an out-of-tree adapter written before Dialect existed.
+// Dialect is an optional port: Adapter must not require it, or every such
+// adapter stops compiling.
+type noDialectAdapter struct {
+	adapters.RequestQueryBuilder
+	adapters.QueryExecutor
+	adapters.CatalogQuerier
+	adapters.SQLBuilder
+	adapters.PermissionsChecker
+	adapters.ScriptRunner
+	adapters.DatabaseRegistry
+	adapters.DatabasePinger
+	adapters.ReadinessChecker
+	adapters.TransactionManager
+	adapters.LegacyExecutor
+}
+
+var _ adapters.Adapter = noDialectAdapter{}

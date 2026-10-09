@@ -29,6 +29,9 @@ Understand → Locate → Plan → Implement → Validate → Self-review → (i
 
 ### 3. Plan (minimal change)
 
+- Write the plan **before** implementing, as detailed as the task warrants (see `planning-and-delegation.mdc`).
+- Split into independent work units and run them in parallel; serialize only on real dependencies.
+- End the plan with the staffing table: agent count, steps per agent, cheapest capable model per agent.
 - Propose the **smallest** diff that solves the task.
 - Map changes to hexagonal layers (failing unit test → port → adapter → handler → route → integration).
 - Flag if `adapters/` interfaces change → plan `make mockgen`.
@@ -163,6 +166,7 @@ A task is **done** only when all apply:
 
 ## Related rules
 
+- `planning-and-delegation.mdc` — plan first, parallelise, staffing + cheapest capable model
 - `unit-tests-tdd.mdc` — always-on TDD + ≥80% package coverage
 - `integration-tests.mdc` / `integration-layout.mdc` — E2E readability and per-DB layout
 - `sql-database-support.mdc` — classify engines, DIFFERENCES gate, where-to-change matrix

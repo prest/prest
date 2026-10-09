@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/adapters/mockgen"
 	"github.com/prest/prest/v2/config"
 	pctx "github.com/prest/prest/v2/context"
@@ -54,7 +55,7 @@ func TestMCPHandler_GetDiscovery(t *testing.T) {
 		{"table_schema":"public","table_name":"users","column_name":"name","data_type":"text","position":2}
 	]`)
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/_mcp", nil)
 
@@ -119,7 +120,7 @@ func TestMCPHandler_SelectTableWithFiltersAndOrder(t *testing.T) {
 	scanner.EXPECT().Err().Return(nil)
 	scanner.EXPECT().Bytes().Return([]byte(`[{"id":1,"name":"Alice"}]`))
 
-	h := NewMCPHandler(Deps{Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	result, err := h.selectTable(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpSelectArgs{
 		Database: "prest-test",
 		Schema:   "public",
@@ -176,7 +177,7 @@ func TestMCPHandler_AccessDeniedFiltersTools(t *testing.T) {
 
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(false).AnyTimes()
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	tools, err := h.tools(httptest.NewRequest(http.MethodGet, "/_mcp", nil))
 	require.NoError(t, err)
 
@@ -216,7 +217,7 @@ func TestMCPHandler_ListSchemasDoesNotLeakWhenAllFiltered(t *testing.T) {
 
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(false)
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	result, err := h.listSchemas(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpListSchemasArgs{Database: "prest-test"})
 	require.NoError(t, err)
 	require.Empty(t, result.([]map[string]any))
@@ -275,7 +276,7 @@ func TestMCPHandler_DispatchRPC_ToolsList(t *testing.T) {
 	tableScanner.EXPECT().Bytes().Return([]byte(`[]`)).AnyTimes()
 	expectShowColumns(t, ctrl, executor, `[]`)
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, DB: db, PGDatabase: "prest-test"})
 	result, err := h.dispatchRPC(httptest.NewRequest(http.MethodGet, "/_mcp", nil), "tools/list", nil)
 	require.NoError(t, err)
 	payload := result.(map[string]any)
@@ -318,7 +319,7 @@ func TestMCPHandler_RPC_ListSchemas(t *testing.T) {
 
 	catalog, executor, perms, db := setupSchemaListMocks(ctrl)
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	body := bytes.NewBufferString(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"prest.list_schemas","arguments":{"database":"prest-test"}}}`)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/_mcp", body))
@@ -335,7 +336,7 @@ func TestMCPHandler_RPC_ListTables(t *testing.T) {
 
 	catalog, executor, perms, db := setupTableListMocks(ctrl, "")
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	body := bytes.NewBufferString(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"prest.list_tables","arguments":{"database":"prest-test"}}}`)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/_mcp", body))
@@ -352,7 +353,7 @@ func TestMCPHandler_RPC_ListTablesWithSchema(t *testing.T) {
 
 	catalog, executor, perms, db := setupTableListMocks(ctrl, "public")
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	body := bytes.NewBufferString(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"prest.list_tables","arguments":{"database":"prest-test","schema":"public"}}}`)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/_mcp", body))
@@ -375,7 +376,7 @@ func TestMCPHandler_RPC_DescribeTable(t *testing.T) {
 	showScanner.EXPECT().Err().Return(nil)
 	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","data_type":"integer","position":1}]`))
 
-	h := NewMCPHandler(Deps{Executor: executor, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, DB: db, PGDatabase: "prest-test"})
 	body := bytes.NewBufferString(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"prest.describe_table","arguments":{"database":"prest-test","schema":"public","table":"users"}}}`)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/_mcp", body))
@@ -406,7 +407,7 @@ func TestMCPHandler_DescribeTable_NoPermission(t *testing.T) {
 	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","data_type":"integer","position":1}]`))
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(false)
 
-	h := NewMCPHandler(Deps{Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	_, err := h.describeTable(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpDescribeArgs{
 		Database: "prest-test", Schema: "public", Table: "users",
 	})
@@ -437,7 +438,7 @@ func TestMCPHandler_DescribeTable_FiltersColumnsByFieldPermissions(t *testing.T)
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(true)
 	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "users", "read", "").Return([]string{"id"}, nil)
 
-	h := NewMCPHandler(Deps{Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	result, err := h.describeTable(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpDescribeArgs{
 		Database: "prest-test", Schema: "public", Table: "users",
 	})
@@ -458,7 +459,7 @@ func TestMCPHandler_RPC_SelectTable(t *testing.T) {
 
 	executor, perms, db := setupSelectMocks(ctrl)
 
-	h := NewMCPHandler(Deps{Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	body := bytes.NewBufferString(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"prest.select_table","arguments":{"database":"prest-test","schema":"public","table":"users","limit":5}}}`)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/_mcp", body))
@@ -475,7 +476,7 @@ func TestMCPHandler_RPC_SchemaAwareSelectTool(t *testing.T) {
 
 	executor, perms, db := setupSelectMocks(ctrl)
 
-	h := NewMCPHandler(Deps{Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	body := bytes.NewBufferString(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"prest.select.prest-test.public.users"}}`)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/_mcp", body))
@@ -492,7 +493,7 @@ func TestMCPHandler_RPC_SchemaAwareSelectToolWithOverrides(t *testing.T) {
 
 	executor, perms, db := setupSelectMocks(ctrl)
 
-	h := NewMCPHandler(Deps{Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	body := bytes.NewBufferString(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"prest.select.prest-test.public.users","arguments":{"columns":["id"],"limit":10}}}`)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/_mcp", body))
@@ -519,7 +520,7 @@ func TestMCPHandler_ListDatabasesViaCatalog(t *testing.T) {
 	scanner.EXPECT().Err().Return(nil)
 	scanner.EXPECT().Bytes().Return([]byte(`[{"datname":"prest-test"}]`))
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}})
 	rows, err := h.listDatabases(httptest.NewRequest(http.MethodGet, "/_mcp", nil))
 	require.NoError(t, err)
 	require.Len(t, rows.([]map[string]any), 1)
@@ -541,7 +542,7 @@ func TestMCPHandler_SelectTable_NoPermission(t *testing.T) {
 	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","data_type":"integer","position":1}]`))
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(false)
 
-	h := NewMCPHandler(Deps{Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	_, err := h.selectTable(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpSelectArgs{
 		Database: "prest-test", Schema: "public", Table: "users",
 	})
@@ -566,7 +567,7 @@ func TestMCPHandler_SelectTable_UnsupportedColumn(t *testing.T) {
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(true)
 	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "users", "read", "").Return([]string{"id"}, nil)
 
-	h := NewMCPHandler(Deps{Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	_, err := h.selectTable(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpSelectArgs{
 		Database: "prest-test", Schema: "public", Table: "users", Columns: []string{"missing"},
 	})
@@ -596,13 +597,75 @@ func TestMCPHandler_SelectTable_LimitClampAndDuplicateColumns(t *testing.T) {
 	scanner.EXPECT().Err().Return(nil)
 	scanner.EXPECT().Bytes().Return([]byte(`[]`))
 
-	h := NewMCPHandler(Deps{Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	result, err := h.selectTable(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpSelectArgs{
 		Database: "prest-test", Schema: "public", Table: "users",
 		Columns: []string{"id", "id"}, Limit: 500, Offset: -1,
 	})
 	require.NoError(t, err)
 	require.Equal(t, 0, result.(mcpSelectResult).Count)
+}
+
+// mysqlMCPAdapter is a registry adapter with MySQL quoting and binds.
+type mysqlMCPAdapter struct {
+	*mockgen.MockAdapter
+}
+
+func (mysqlMCPAdapter) QuoteIdentifier(name string) (string, error) {
+	return mysqlDialect{}.QuoteIdentifier(name)
+}
+func (mysqlMCPAdapter) Placeholder(n int) string { return mysqlDialect{}.Placeholder(n) }
+
+func TestMCPHandler_SelectTable_UsesRegistryAdapterDialect(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// The default executor has no expectations: the alias's adapter must serve the query.
+	defaultExecutor := mockgen.NewMockQueryExecutor(ctrl)
+	shop := mysqlMCPAdapter{mockgen.NewMockAdapter(ctrl)}
+	registry := adapters.NewRegistry()
+	require.NoError(t, registry.Register("prest-test", shop))
+
+	showScanner := mockgen.NewMockScanner(ctrl)
+	shop.EXPECT().ShowTableCtx(gomock.Any(), "shop", "items").Return(showScanner)
+	showScanner.EXPECT().Err().Return(nil)
+	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","position":1},{"column_name":"name","position":2}]`))
+
+	scanner := mockgen.NewMockScanner(ctrl)
+	shop.EXPECT().QueryCtx(gomock.Any(),
+		"SELECT `id`, `name` FROM `shop`.`items` WHERE `name` IN (?, ?) ORDER BY `id` DESC LIMIT 2 OFFSET 0",
+		"ada", "bea").Return(scanner)
+	scanner.EXPECT().Err().Return(nil)
+	scanner.EXPECT().Bytes().Return([]byte(`[{"id":1,"name":"ada"}]`))
+
+	h := NewMCPHandler(Deps{Executor: defaultExecutor, Dialect: pgDialect{}, AdapterRegistry: registry, DB: mockDatabaseRegistry(ctrl), PGDatabase: "prest-test"})
+	result, err := h.selectTable(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpSelectArgs{
+		Database: "prest-test", Schema: "shop", Table: "items",
+		Filters: map[string]any{"name": []any{"ada", "bea"}}, OrderBy: []string{"-id"}, Limit: 2,
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, result.(mcpSelectResult).Count)
+}
+
+func TestMCPHandler_SelectTable_NoDialect(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	showScanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(showScanner)
+	showScanner.EXPECT().Err().Return(nil)
+	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","position":1}]`))
+
+	h := NewMCPHandler(Deps{Executor: executor, DB: mockDatabaseRegistry(ctrl), PGDatabase: "prest-test"})
+	_, err := h.selectTable(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpSelectArgs{
+		Database: "prest-test", Schema: "public", Table: "users",
+	})
+	require.ErrorIs(t, err, errMCPDialectMissing)
 }
 
 func TestMCPHandler_FilterAccessibleTables_SkipsNonQueryable(t *testing.T) {
@@ -782,38 +845,52 @@ func TestMCP_BuildFilterClause(t *testing.T) {
 	t.Parallel()
 
 	columns := map[string]mcpColumn{"id": {Name: "id"}, "name": {Name: "name"}}
-	clause, values, err := buildFilterClause(map[string]any{"id": float64(1), "name": "Alice"}, columns)
+	clause, values, err := buildFilterClause(pgDialect{}, map[string]any{"id": float64(1), "name": "Alice"}, columns)
 	require.NoError(t, err)
 	require.Contains(t, clause, `"id" = $1`)
 	require.Contains(t, clause, `"name" = $2`)
 	require.Len(t, values, 2)
 
-	nullClause, nullValues, err := buildFilterClause(map[string]any{"name": nil}, columns)
+	nullClause, nullValues, err := buildFilterClause(pgDialect{}, map[string]any{"name": nil}, columns)
 	require.NoError(t, err)
 	require.Contains(t, nullClause, `"name" IS NULL`)
 	require.Empty(t, nullValues)
 
-	inClause, inValues, err := buildFilterClause(map[string]any{"id": []any{float64(1), float64(2)}}, columns)
+	inClause, inValues, err := buildFilterClause(pgDialect{}, map[string]any{"id": []any{float64(1), float64(2)}}, columns)
 	require.NoError(t, err)
 	require.Contains(t, inClause, `"id" IN ($1, $2)`)
 	require.Len(t, inValues, 2)
 
-	_, _, err = buildFilterClause(map[string]any{"id": []any{}}, columns)
+	_, _, err = buildFilterClause(pgDialect{}, map[string]any{"id": []any{}}, columns)
 	require.Error(t, err)
 
-	_, _, err = buildFilterClause(map[string]any{"unknown": 1}, columns)
+	_, _, err = buildFilterClause(pgDialect{}, map[string]any{"unknown": 1}, columns)
 	require.Error(t, err)
+}
+
+func TestMCP_BuildFilterAndOrderClauseMySQLDialect(t *testing.T) {
+	t.Parallel()
+
+	columns := map[string]mcpColumn{"meta": {Name: "meta"}, "name": {Name: "name"}, "qty": {Name: "qty"}}
+	clause, values, err := buildFilterClause(mysqlDialect{}, map[string]any{"qty": []any{1, 2}, "name": "a", "meta": nil}, columns)
+	require.NoError(t, err)
+	require.Equal(t, "`meta` IS NULL AND `name` = ? AND `qty` IN (?, ?)", clause)
+	require.Equal(t, []interface{}{"a", 1, 2}, values)
+
+	order, err := buildOrderClause(mysqlDialect{}, []string{"-qty", "name"}, columns)
+	require.NoError(t, err)
+	require.Equal(t, "ORDER BY `qty` DESC, `name` ASC", order)
 }
 
 func TestMCP_BuildOrderClause(t *testing.T) {
 	t.Parallel()
 
 	columns := map[string]mcpColumn{"id": {Name: "id"}, "name": {Name: "name"}}
-	clause, err := buildOrderClause([]string{"-id", "name"}, columns)
+	clause, err := buildOrderClause(pgDialect{}, []string{"-id", "name"}, columns)
 	require.NoError(t, err)
 	require.Equal(t, `ORDER BY "id" DESC, "name" ASC`, clause)
 
-	_, err = buildOrderClause([]string{"missing"}, columns)
+	_, err = buildOrderClause(pgDialect{}, []string{"missing"}, columns)
 	require.Error(t, err)
 }
 
@@ -866,7 +943,7 @@ func TestMCPHandler_RPC_ToolsListViaHTTP(t *testing.T) {
 	tableScanner.EXPECT().Bytes().Return([]byte(`[]`)).AnyTimes()
 	expectShowColumns(t, ctrl, executor, `[]`)
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, DB: db, PGDatabase: "prest-test"})
 	body := bytes.NewBufferString(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/_mcp", body))
@@ -995,7 +1072,7 @@ func TestMCPHandler_ListTables_DefaultDatabase(t *testing.T) {
 
 	catalog, executor, perms, db := setupTableListMocks(ctrl, "")
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	result, err := h.listTables(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpListTablesArgs{})
 	require.NoError(t, err)
 	require.NotEmpty(t, result.([]map[string]any))
@@ -1027,7 +1104,7 @@ func TestMCPHandler_ListSchemas_DefaultDatabaseAndNilPerms(t *testing.T) {
 	tableScanner.EXPECT().Err().Return(nil)
 	tableScanner.EXPECT().Bytes().Return([]byte(`[]`))
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, DB: db, PGDatabase: "prest-test"})
 	result, err := h.listSchemas(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpListSchemasArgs{})
 	require.NoError(t, err)
 	require.Len(t, result.([]map[string]any), 1)
@@ -1058,7 +1135,7 @@ func TestMCPHandler_ListSchemas_QueryError(t *testing.T) {
 	tableScanner.EXPECT().Err().Return(nil)
 	tableScanner.EXPECT().Bytes().Return([]byte(`[]`))
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, DB: db, PGDatabase: "prest-test"})
 	_, err := h.listSchemas(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpListSchemasArgs{Database: "prest-test"})
 	require.Error(t, err)
 }
@@ -1076,7 +1153,7 @@ func TestMCPHandler_DescribeTable_DefaultDatabaseAndErrors(t *testing.T) {
 	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(showScanner)
 	showScanner.EXPECT().Err().Return(errors.New("describe failed"))
 
-	h := NewMCPHandler(Deps{Executor: executor, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, DB: db, PGDatabase: "prest-test"})
 	_, err := h.describeTable(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpDescribeArgs{Schema: "public", Table: "users"})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "describe table failed")
@@ -1094,7 +1171,7 @@ func TestMCPHandler_DescribeColumns_DecodeError(t *testing.T) {
 	showScanner.EXPECT().Err().Return(nil)
 	showScanner.EXPECT().Bytes().Return([]byte(`not-json`))
 
-	h := NewMCPHandler(Deps{Executor: executor, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, PGDatabase: "prest-test"})
 	_, err := h.describeColumns(httptest.NewRequest(http.MethodGet, "/_mcp", nil), "prest-test", "public", "users")
 	require.Error(t, err)
 }
@@ -1120,7 +1197,7 @@ func TestMCPHandler_SelectTable_DefaultDatabaseAndErrors(t *testing.T) {
 	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
 	scanner.EXPECT().Err().Return(errors.New("select failed"))
 
-	h := NewMCPHandler(Deps{Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	_, err := h.selectTable(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpSelectArgs{Schema: "public", Table: "users"})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "select table failed")
@@ -1143,7 +1220,7 @@ func TestMCPHandler_SelectTable_NoPermittedColumns(t *testing.T) {
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(true)
 	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "users", "read", "").Return([]string{}, nil)
 
-	h := NewMCPHandler(Deps{Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	_, err := h.selectTable(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpSelectArgs{
 		Database: "prest-test", Schema: "public", Table: "users",
 	})
@@ -1168,7 +1245,7 @@ func TestMCPHandler_SelectTable_FilterAndOrderErrors(t *testing.T) {
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(true).Times(2)
 	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "users", "read", "").Return([]string{"id"}, nil).Times(2)
 
-	h := NewMCPHandler(Deps{Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	_, err := h.selectTable(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpSelectArgs{
 		Database: "prest-test", Schema: "public", Table: "users",
 		Filters: map[string]any{"missing": 1},
@@ -1206,7 +1283,7 @@ func TestMCPHandler_SelectTable_DecodeResultError(t *testing.T) {
 	scanner.EXPECT().Err().Return(nil)
 	scanner.EXPECT().Bytes().Return([]byte(`not-json`))
 
-	h := NewMCPHandler(Deps{Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	_, err := h.selectTable(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpSelectArgs{
 		Database: "prest-test", Schema: "public", Table: "users",
 	})
@@ -1230,7 +1307,7 @@ func TestMCPHandler_SelectableColumns_PartialFieldsAndErrors(t *testing.T) {
 		{"column_name":"name","data_type":"text","position":2}
 	]`)).Times(3)
 
-	h := NewMCPHandler(Deps{Executor: executor, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, PGDatabase: "prest-test"})
 	columns, err := h.selectableColumns(httptest.NewRequest(http.MethodGet, "/_mcp", nil), "prest-test", "public", "users")
 	require.NoError(t, err)
 	require.Len(t, columns, 2)
@@ -1267,7 +1344,7 @@ func TestMCPHandler_FilterAccessibleTables_SelectableError(t *testing.T) {
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(true)
 	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "users", "read", "").Return(nil, errors.New("fields failed"))
 
-	h := NewMCPHandler(Deps{Executor: executor, Perms: perms, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, Perms: perms, PGDatabase: "prest-test"})
 	rows := []map[string]any{{"schema": "public", "name": "users", "type": "table"}}
 	_, err := h.filterAccessibleTables(httptest.NewRequest(http.MethodGet, "/_mcp", nil), "prest-test", rows)
 	require.Error(t, err)
@@ -1290,7 +1367,7 @@ func TestMCPHandler_RawTableRows_QueryError(t *testing.T) {
 	executor.EXPECT().QueryCtx(gomock.Any(), "SELECT table  ").Return(scanner)
 	scanner.EXPECT().Err().Return(errors.New("query failed"))
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, PGDatabase: "prest-test"})
 	_, err := h.rawTableRows(httptest.NewRequest(http.MethodGet, "/_mcp", nil), "prest-test", "")
 	require.Error(t, err)
 }
@@ -1324,7 +1401,7 @@ func TestMCPHandler_Tools_SkipsInvalidRowsAndDuplicates(t *testing.T) {
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(true).AnyTimes()
 	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "users", "read", "").Return([]string{"id"}, nil).AnyTimes()
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	tools, err := h.tools(httptest.NewRequest(http.MethodGet, "/_mcp", nil))
 	require.NoError(t, err)
 
@@ -1363,7 +1440,7 @@ func TestMCPHandler_Tools_BatchedColumnsBuildsTableTools(t *testing.T) {
 		{"table_schema":"public","table_name":"teams","column_name":"slug","data_type":"text","position":1}
 	]`)
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, DB: db, PGDatabase: "prest-test"})
 	tools, err := h.tools(httptest.NewRequest(http.MethodGet, "/_mcp", nil))
 	require.NoError(t, err)
 
@@ -1394,7 +1471,7 @@ func TestMCPHandler_Tools_ContinuesOnRawTableError(t *testing.T) {
 	scanner.EXPECT().Err().Return(errors.New("catalog failed"))
 	expectShowColumns(t, ctrl, executor, `[]`)
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, DB: db, PGDatabase: "prest-test"})
 	tools, err := h.tools(httptest.NewRequest(http.MethodGet, "/_mcp", nil))
 	require.NoError(t, err)
 	require.Len(t, tools, 5)
@@ -1620,7 +1697,7 @@ func TestMCPHandler_DispatchRPC_ToolsListError(t *testing.T) {
 	scanner.EXPECT().Err().Return(errors.New("catalog failed"))
 	expectShowColumns(t, ctrl, executor, `[]`)
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, DB: db, PGDatabase: "prest-test"})
 	_, err := h.dispatchRPC(httptest.NewRequest(http.MethodGet, "/_mcp", nil), "tools/list", nil)
 	require.NoError(t, err)
 }
@@ -1642,7 +1719,7 @@ func TestMCPHandler_AccessibleSchemas_Error(t *testing.T) {
 	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)
 	scanner.EXPECT().Err().Return(errors.New("tables failed"))
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, PGDatabase: "prest-test"})
 	_, err := h.accessibleSchemas(httptest.NewRequest(http.MethodGet, "/_mcp", nil), "prest-test")
 	require.Error(t, err)
 }
@@ -1664,7 +1741,7 @@ func TestMCPHandler_ListDatabasesViaCatalog_Error(t *testing.T) {
 	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)
 	scanner.EXPECT().Err().Return(errors.New("db query failed"))
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}})
 	_, err := h.listDatabases(httptest.NewRequest(http.MethodGet, "/_mcp", nil))
 	require.Error(t, err)
 }
@@ -1748,12 +1825,6 @@ func TestMCPHandler_ContainsString(t *testing.T) {
 	require.False(t, containsString([]string{"a"}, "c"))
 }
 
-func TestMCPHandler_QuotePathSegmentEscapesQuotes(t *testing.T) {
-	t.Parallel()
-
-	require.Equal(t, `"a""b"`, quotePathSegment(`a"b`))
-}
-
 func TestMCPHandler_ListSchemas_UnregisteredDatabase(t *testing.T) {
 	t.Parallel()
 
@@ -1783,7 +1854,7 @@ func TestMCPHandler_SelectableColumns_TableDenied(t *testing.T) {
 	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","data_type":"integer","position":1}]`))
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(false)
 
-	h := NewMCPHandler(Deps{Executor: executor, Perms: perms, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, Perms: perms, PGDatabase: "prest-test"})
 	columns, err := h.selectableColumns(httptest.NewRequest(http.MethodGet, "/_mcp", nil), "prest-test", "public", "users")
 	require.NoError(t, err)
 	require.Nil(t, columns)
@@ -1812,7 +1883,7 @@ func TestMCPHandler_Tools_SkipsWhenNoSelectableColumns(t *testing.T) {
 	expectShowColumns(t, ctrl, executor, `[{"table_schema":"public","table_name":"users","column_name":"id","data_type":"integer","position":1}]`)
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(false)
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	tools, err := h.tools(httptest.NewRequest(http.MethodGet, "/_mcp", nil))
 	require.NoError(t, err)
 	for _, tool := range tools {
@@ -1836,7 +1907,7 @@ func TestMCPHandler_RPC_SelectTableAccessDenied(t *testing.T) {
 	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","data_type":"integer","position":1}]`))
 	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(false)
 
-	h := NewMCPHandler(Deps{Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 	body := bytes.NewBufferString(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"prest.select_table","arguments":{"database":"prest-test","schema":"public","table":"users"}}}`)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/_mcp", body))
@@ -1862,7 +1933,7 @@ func TestMCPHandler_TableRows_WithPermissionsFetchesColumns(t *testing.T) {
 	defer ctrl.Finish()
 
 	catalog, executor, perms, db := setupTableListMocks(ctrl, "")
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
 
 	rows, err := h.tableRows(httptest.NewRequest(http.MethodGet, "/_mcp", nil), "prest-test", "")
 	require.NoError(t, err)
@@ -1889,7 +1960,7 @@ func TestMCPHandler_TableRows_WithoutPermissionsSkipsColumns(t *testing.T) {
 	scanner.EXPECT().Err().Return(nil)
 	scanner.EXPECT().Bytes().Return([]byte(`[{"schema":"public","name":"users","type":"table"}]`))
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, DB: db, PGDatabase: "prest-test"})
 	rows, err := h.tableRows(httptest.NewRequest(http.MethodGet, "/_mcp", nil), "prest-test", "")
 	require.NoError(t, err)
 	require.Len(t, rows, 1)
@@ -1921,7 +1992,7 @@ func TestMCPHandler_ListSchemas_AccessibleSchemasError(t *testing.T) {
 	executor.EXPECT().QueryCtx(gomock.Any(), "SELECT table  ").Return(tableScanner)
 	tableScanner.EXPECT().Err().Return(errors.New("tables failed"))
 
-	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, DB: db, PGDatabase: "prest-test"})
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, DB: db, PGDatabase: "prest-test"})
 	_, err := h.listSchemas(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpListSchemasArgs{Database: "prest-test"})
 	require.Error(t, err)
 }
@@ -2010,4 +2081,47 @@ func TestMCPHandler_ExposeDisabledKeepsListing(t *testing.T) {
 	result, err := h.listDatabases(httptest.NewRequest(http.MethodPost, "/_mcp", nil))
 	require.NoError(t, err)
 	require.NotNil(t, result)
+}
+
+// A registry adapter without the optional Dialect port falls back to the
+// handler's dialect instead of leaving the backend without one.
+func TestMCPHandler_Backend_RegistryAdapterWithoutDialectUsesDefault(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	shop := mockgen.NewMockAdapter(ctrl)
+	registry := adapters.NewRegistry()
+	require.NoError(t, registry.Register("prest-test", shop))
+
+	h := NewMCPHandler(Deps{Dialect: pgDialect{}, AdapterRegistry: registry})
+	b := h.backend("prest-test")
+	require.Equal(t, shop, b.catalog)
+	require.Equal(t, shop, b.executor)
+	require.Equal(t, pgDialect{}, b.dialect)
+}
+
+// With neither the registry adapter nor Deps providing a Dialect, select_table
+// reports errMCPDialectMissing rather than building unquoted SQL.
+func TestMCPHandler_SelectTable_RegistryAdapterWithoutDialect(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	shop := mockgen.NewMockAdapter(ctrl)
+	registry := adapters.NewRegistry()
+	require.NoError(t, registry.Register("prest-test", shop))
+
+	showScanner := mockgen.NewMockScanner(ctrl)
+	shop.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(showScanner)
+	showScanner.EXPECT().Err().Return(nil)
+	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","position":1}]`))
+
+	h := NewMCPHandler(Deps{AdapterRegistry: registry, DB: mockDatabaseRegistry(ctrl), PGDatabase: "prest-test"})
+	_, err := h.selectTable(httptest.NewRequest(http.MethodGet, "/_mcp", nil), mcpSelectArgs{
+		Database: "prest-test", Schema: "public", Table: "users",
+	})
+	require.ErrorIs(t, err, errMCPDialectMissing)
 }

@@ -1,13 +1,11 @@
 package middlewares
 
 import (
-	"bytes"
+	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net"
 	"net/http"
-	"net/netip"
 	"strings"
 
 	guardcore "github.com/rennf93/guard-core-go/v4/guardcore"
@@ -49,9 +47,10 @@ func GuardMiddleware(conf config.GuardConf) (negroni.Handler, error) {
 		c.EnableRedis = conf.RedisURL != ""
 		c.RedisURL = conf.RedisURL
 		c.RedisPrefix = conf.RedisPrefix
-		// When redis_url is explicitly configured a Redis outage must not
-		// silently drop shared rate limit and ban state: fail closed instead.
-		c.RedisFailOpen = false
+		// Default keeps pREST serving through a Redis outage (shared limits
+		// degrade to per-instance local state); redis_fail_open = false opts
+		// into failing requests closed while Redis is unreachable.
+		c.RedisFailOpen = conf.RedisFailOpen
 		// Records what the guard blocks (and, in passive mode, what it would
 		// block) for rate_limit and suspicious_activity checks.
 		c.OnBlock = logOnBlock
@@ -62,8 +61,10 @@ func GuardMiddleware(conf config.GuardConf) (negroni.Handler, error) {
 			c.RateLimit = conf.RateLimit
 			c.RateLimitWindow = conf.RateLimitWindow
 		}
-		c.EnablePenetrationDetection = true
-		c.EnableIPBanning = !conf.Passive
+		c.EnablePenetrationDetection = conf.PenetrationDetection
+		// Auto-banning is opt-in: with no trusted_proxies configured, a load
+		// balancer's address would absorb every client's bans.
+		c.EnableIPBanning = conf.AutoBan && !conf.Passive
 
 		c.Whitelist = conf.Whitelist
 		c.Blacklist = conf.Blacklist
@@ -90,7 +91,6 @@ func GuardMiddleware(conf config.GuardConf) (negroni.Handler, error) {
 	}
 
 	exclusions := newPathExclusions(conf.ExcludePaths)
-	whitelist := newIPList(conf.Whitelist)
 
 	return negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		// The engine still enforces some checks (rate limits, IP policy) on
@@ -103,27 +103,13 @@ func GuardMiddleware(conf config.GuardConf) (negroni.Handler, error) {
 
 		applyTrustedProxy(r, trustedProxies)
 
-		// The engine runs before the body scan so its verdicts take
-		// precedence: whitelisted clients keep full trust, blacklisted peers
-		// get 403, over-limit clients get 429, and only then does a body-only
-		// payload earn the 400. guard-core-go v4 has no exported API to feed
-		// these findings into its violation counter, so body-only threats do
-		// not contribute to auto-ban accounting.
-		wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Whitelisted clients are fully trusted by the engine (its IP,
-			// rate limit, and penetration checks all skip them), so the body
-			// scan does not apply to them either. Membership is checked per
-			// client rather than skipping the scan whenever a whitelist is
-			// configured, so body inspection still covers everyone else.
-			clientIP := requestClientHost(r)
-			if !whitelist.contains(clientIP) && scanRequestBody(r, maxBodyBytes, clientIP, conf.Passive) {
-				// Mirror the engine's suspicious_activity rejection shape.
-				w.WriteHeader(http.StatusBadRequest)
-				_, _ = w.Write([]byte(guardcore.SuspiciousBlockedMsg))
-				return
-			}
-			next(w, r)
-		})).ServeHTTP(w, r)
+		// Payload inspection is the engine pipeline's job end to end at
+		// guard-core-go v4.3.2+: the shim buffers up to maxBodyBytes and the
+		// detection pass scans the buffered body with the engine's
+		// request_body contexts, so body findings land in the same verdict
+		// (and ban accounting) as every other check, and whitelisted clients
+		// skip the whole pass natively.
+		wrap(next).ServeHTTP(w, r)
 	}), nil
 }
 
@@ -132,7 +118,16 @@ func GuardMiddleware(conf config.GuardConf) (negroni.Handler, error) {
 // operator asked for must never silently degrade to absent.
 func invalidGuardConfigMiddleware(err error) negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, _ *http.Request, _ http.HandlerFunc) {
-		http.Error(w, fmt.Sprintf(jsonErrFormat, err.Error()), http.StatusInternalServerError)
+		// json.Marshal escapes quotes and control characters, so an error
+		// carrying config input (PREST_GUARD_ENABLED=yes, say) stays one
+		// valid JSON document instead of breaking the body open.
+		payload, marshalErr := json.Marshal(map[string]string{"error": err.Error()})
+		if marshalErr != nil {
+			payload = []byte(`{"error":"guard config invalid"}`)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write(payload)
 	})
 }
 
@@ -306,95 +301,4 @@ func (p *pathExclusions) matches(path string) bool {
 		}
 	}
 	return false
-}
-
-// ipList is a pre-parsed whitelist entry set mirroring the engine's
-// ipMatchesList semantics: entries are exact IPs or CIDRs, and matching
-// accepts both the address and its IPv4-mapped form.
-type ipList struct {
-	ips  map[string]bool
-	nets []netip.Prefix
-}
-
-// newIPList parses whitelist entries. The engine already validated them at
-// startup, so entries that fail to parse here are skipped rather than fatal.
-func newIPList(entries []string) *ipList {
-	list := &ipList{ips: make(map[string]bool, len(entries))}
-	for _, entry := range entries {
-		entry = strings.TrimSpace(entry)
-		if entry == "" {
-			continue
-		}
-		if strings.Contains(entry, "/") {
-			if prefix, err := netip.ParsePrefix(entry); err == nil {
-				list.nets = append(list.nets, prefix)
-			}
-			continue
-		}
-		if addr, err := netip.ParseAddr(entry); err == nil {
-			list.ips[addr.String()] = true
-		}
-	}
-	return list
-}
-
-// contains reports whether ip belongs to the list.
-func (l *ipList) contains(ip string) bool {
-	if l == nil {
-		return false
-	}
-	addr, err := netip.ParseAddr(ip)
-	if err != nil {
-		return false
-	}
-	if l.ips[addr.String()] {
-		return true
-	}
-	for _, prefix := range l.nets {
-		if prefix.Contains(addr.Unmap()) || prefix.Contains(addr) {
-			return true
-		}
-	}
-	return false
-}
-
-// scanRequestBody inspects up to maxBodyBytes of the request body with the
-// engine's Detect, so body-only attack payloads get the same pattern source
-// as URL, query, and header inspection. It reports whether the request must
-// be rejected; in passive mode it only logs and lets the request through.
-//
-// The body is restored for downstream handlers: bytes already consumed are
-// replayed from memory ahead of the untouched remainder of the stream, and
-// the nethttp-guard shim then wraps and replays that restored reader.
-func scanRequestBody(r *http.Request, maxBodyBytes int64, clientIP string, passive bool) bool {
-	if r.Body == nil || maxBodyBytes <= 0 {
-		return false
-	}
-	prefix, readErr := io.ReadAll(io.LimitReader(r.Body, maxBodyBytes))
-	r.Body = io.NopCloser(io.MultiReader(bytes.NewReader(prefix), r.Body))
-	if readErr != nil {
-		slog.Warn("guard body prescan read failed, skipping scan", "err", readErr)
-		return false
-	}
-	if len(prefix) == 0 {
-		return false
-	}
-	result := guardcore.Detect(string(prefix), clientIP, "body")
-	if !result.IsThreat {
-		return false
-	}
-	categories := make([]string, 0, len(result.Threats))
-	seen := make(map[string]bool, len(result.Threats))
-	for _, threat := range result.Threats {
-		category, _ := threat["category"].(string)
-		if category == "" || seen[category] {
-			continue
-		}
-		seen[category] = true
-		categories = append(categories, category)
-	}
-	trigger := strings.Join(categories, ",")
-	logGuardBlockEvent(passive, "suspicious_activity",
-		"suspicious body content", trigger, clientIP, r.Method, r.URL.Path)
-	return !passive
 }

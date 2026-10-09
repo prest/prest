@@ -1,9 +1,11 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -637,4 +639,37 @@ func TestExtractQueryParameters_IgnoresReservedKeys(t *testing.T) {
 
 	// Ordinary parameters are unaffected.
 	require.Equal(t, "keep-me", data["slug"])
+}
+
+// The client only sees "check your prest logs", so the cause must be logged.
+// Not parallel: swaps the default slog logger.
+func TestScriptHandler_ExecuteScriptQuery_ExecuteErrorIsLogged(t *testing.T) {
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	defer slog.SetDefault(prev)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	scripts := mockgen.NewMockScriptRunner(ctrl)
+	scripts.EXPECT().ResolveScript(gomock.Any(), http.MethodGet, "queries", "bad", "").Return(adapters.ScriptSource{
+		Name: "bad.read.sql", Content: "SELECT bad",
+	}, nil)
+	scripts.EXPECT().ParseScriptTemplate("bad.read.sql", "SELECT bad", gomock.Any()).Return(`SELECT bad`, nil, nil)
+
+	scanner := mockgen.NewMockScanner(ctrl)
+	scanner.EXPECT().Err().Return(errors.New("column bad does not exist")).AnyTimes()
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	executor.EXPECT().ExecuteScriptsCtx(gomock.Any(), http.MethodGet, `SELECT bad`, gomock.Any()).Return(scanner)
+
+	h := NewScriptHandler(Deps{Scripts: scripts, Executor: executor, DB: mockgen.NewMockDatabaseRegistry(ctrl), PGDatabase: "prest-test"})
+	req := httptest.NewRequest(http.MethodGet, "/queries/bad", nil)
+	req = req.WithContext(withTestTimeout(req.Context()))
+
+	_, err := h.ExecuteScriptQuery(req, "queries", "bad")
+	require.Error(t, err)
+	require.Contains(t, buf.String(), "could not execute script")
+	require.Contains(t, buf.String(), "script=bad")
+	require.Contains(t, buf.String(), "column bad does not exist")
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/prest/prest/v2/adapters"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
+	"github.com/prest/prest/v2/internal/logsafe"
 	"github.com/prest/prest/v2/middlewares"
 
 	"github.com/structy/log"
@@ -63,6 +64,11 @@ func (h *CRUDHandler) Select(w http.ResponseWriter, r *http.Request) {
 
 	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := validateSchema(r, schema); err != nil {
+		jsonError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -192,12 +198,8 @@ func (h *CRUDHandler) Select(w http.ResponseWriter, r *http.Request) {
 	}
 	sc := runQuery(ctx, sqlSelect, values...)
 	if err = sc.Err(); err != nil {
-		log.Errorln(err)
-		if isRelationNotFound(err, schema, table) {
-			jsonError(w, err.Error(), http.StatusNotFound)
-			return
-		}
-		jsonError(w, err.Error(), http.StatusBadRequest)
+		log.Errorln(logsafe.Error(err))
+		writeStatementError(w, err, schema, table, "", "")
 		return
 	}
 
@@ -221,6 +223,11 @@ func (h *CRUDHandler) Insert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := validateSchema(r, schema); err != nil {
+		jsonError(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
 	if !validatePathSegments(database, schema, table) {
 		jsonError(w, "invalid identifier in path", http.StatusBadRequest)
 		return
@@ -240,13 +247,7 @@ func (h *CRUDHandler) Insert(w http.ResponseWriter, r *http.Request) {
 
 	sc := h.executor.InsertCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
-		if isRelationNotFound(err, schema, table) {
-			err = fmt.Errorf("relation does not exist: %v", err)
-			jsonError(w, err.Error(), http.StatusNotFound)
-			return
-		}
-		err = fmt.Errorf("could not perform InsertInTables: %v", err)
-		jsonError(w, err.Error(), http.StatusBadRequest)
+		writeStatementError(w, err, schema, table, "relation does not exist: ", "could not perform InsertInTables: ")
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -263,6 +264,11 @@ func (h *CRUDHandler) BatchInsert(w http.ResponseWriter, r *http.Request) {
 
 	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := validateSchema(r, schema); err != nil {
+		jsonError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -290,13 +296,7 @@ func (h *CRUDHandler) BatchInsert(w http.ResponseWriter, r *http.Request) {
 		sc = h.executor.BatchInsertCopyCtx(ctx, database, schema, table, strings.Split(names, ","), values...)
 	}
 	if err = sc.Err(); err != nil {
-		if isRelationNotFound(err, schema, table) {
-			err = fmt.Errorf("relation does not exist: %v", err)
-			jsonError(w, err.Error(), http.StatusNotFound)
-			return
-		}
-		err = fmt.Errorf("could not perform BatchInsertInTables: %v", err)
-		jsonError(w, err.Error(), http.StatusBadRequest)
+		writeStatementError(w, err, schema, table, "relation does not exist: ", "could not perform BatchInsertInTables: ")
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -313,6 +313,11 @@ func (h *CRUDHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := validateSchema(r, schema); err != nil {
+		jsonError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -349,13 +354,7 @@ func (h *CRUDHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	sc := h.executor.DeleteCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
-		if isRelationNotFound(err, schema, table) {
-			err = fmt.Errorf("relation does not exist: %v", err)
-			jsonError(w, err.Error(), http.StatusNotFound)
-			return
-		}
-		err = fmt.Errorf("could not perform DeleteFromTable: %v", err)
-		jsonError(w, err.Error(), http.StatusBadRequest)
+		writeStatementError(w, err, schema, table, "relation does not exist: ", "could not perform DeleteFromTable: ")
 		return
 	}
 	w.Write(sc.Bytes())
@@ -371,6 +370,11 @@ func (h *CRUDHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := validateSchema(r, schema); err != nil {
+		jsonError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -416,11 +420,7 @@ func (h *CRUDHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	sc := h.executor.UpdateCtx(ctx, sql, values...)
 	if err = sc.Err(); err != nil {
-		if isRelationNotFound(err, schema, table) {
-			jsonError(w, err.Error(), http.StatusNotFound)
-			return
-		}
-		jsonError(w, err.Error(), http.StatusBadRequest)
+		writeStatementError(w, err, schema, table, "", "")
 		return
 	}
 	w.Write(sc.Bytes())
