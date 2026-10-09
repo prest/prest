@@ -65,8 +65,8 @@ pREST screens them: anything carrying quotes, `--`, `::`, or — for multi-word
 values — a SQL keyword is refused, and a refused value that is interpolated fails
 the request with `400`.
 
-Bind free-form values instead, and the screen does not apply at all. A bound value
-travels to the database out of band, where it can never be parsed as SQL:
+Bind free-form values instead, and the screen does not apply at all. On PostgreSQL,
+a bound value travels to the database out of band, where it can never be parsed as SQL:
 
 ```sql
 -- interpolated: screened, and rejected for values like 'compra do mes'
@@ -82,7 +82,7 @@ SELECT * FROM articles WHERE slug = {{sqlVal "slug"}}
 | `{{sqlList "key"}}` | a repeated query parameter (`?tag=a&tag=b`) | `($1,$2)` |
 | `{{ident "key"}}` | a table/column name, which cannot be bound | `"public"."users"` |
 
-That table is the PostgreSQL rendering. On MySQL, `{{sqlVal "key"}}` renders `?`, `{{sqlList "key"}}` renders `(?,?)`, and `{{ident "key"}}` renders backtick names such as `` `shop`.`users` ``.
+That table is the PostgreSQL rendering. On MySQL, `{{sqlVal "key"}}` renders `?`, `{{sqlList "key"}}` renders `(?,?)`, and `{{ident "key"}}` renders backtick names such as `` `shop`.`users` ``. With the default `prepare = false`, MySQL interpolates those `?` placeholders into the statement. `prepare = true` uses binary prepared statements, and then the values travel out of band.
 
 `sqlVal` and `sqlList` also reach headers as `{{sqlVal "header.X-Application"}}`.
 Credential headers (`Authorization`, `Cookie`, …) are always withheld.
