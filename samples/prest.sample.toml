@@ -20,7 +20,7 @@ engine = "postgres"
 # Replace the connection fields in the real [pg] table further down
 # (host, port, user, pass, database, or url). Do not add a second [pg] table.
 # engine = "mysql"
-# url = "mysql://user:pass@tcp(127.0.0.1:3306)/mydb"
+# url = "mysql://user:pass@127.0.0.1:3306/mydb"
 # Port defaults to 3306 when unset. User and database are required.
 # Postgres defaults (user postgres, database prest, port 5432) are not copied.
 # PREST_DB_* is read first, then PREST_PG_*.
@@ -141,7 +141,7 @@ mode = "disable" # disable | require | verify-ca | verify-full
 # [[databases]]
 # alias = "shop"
 # engine = "mysql"
-# url = "mysql://user:pass@tcp(127.0.0.1:3306)/shop"
+# url = "mysql://user:pass@127.0.0.1:3306/shop"
 
 
 # ------------------------------------------------------------------------

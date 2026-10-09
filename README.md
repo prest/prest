@@ -46,12 +46,12 @@ MySQL 8.0.19+ uses the same path. `{schema}` is the MySQL database. Set the engi
 engine = "mysql"
 
 [pg]
-url = "mysql://user:pass@tcp(localhost:3306)/mydb"
+url = "mysql://user:pass@localhost:3306/mydb"
 ```
 
 ```sh
 export PREST_ENGINE=mysql
-export PREST_DB_URL='mysql://user:pass@tcp(localhost:3306)/mydb'
+export PREST_DB_URL='mysql://user:pass@localhost:3306/mydb'
 ```
 
 A missing user or database fails startup. Postgres defaults (user `postgres`, database `prest`, port 5432) are not copied onto a MySQL engine. Guide: [MySQL](https://docs.prestd.com/databases/mysql).
@@ -82,7 +82,7 @@ SELECT * FROM articles WHERE slug = {{sqlVal "slug"}}
 | `{{sqlList "key"}}` | a repeated query parameter (`?tag=a&tag=b`) | `($1,$2)` |
 | `{{ident "key"}}` | a table/column name, which cannot be bound | `"public"."users"` |
 
-That table is the PostgreSQL rendering. On MySQL, `{{sqlVal "key"}}` renders `?`, `{{sqlList "key"}}` renders `(?,?,?)`, and `{{ident "key"}}` renders backtick names such as `` `shop`.`users` ``.
+That table is the PostgreSQL rendering. On MySQL, `{{sqlVal "key"}}` renders `?`, `{{sqlList "key"}}` renders `(?,?)`, and `{{ident "key"}}` renders backtick names such as `` `shop`.`users` ``.
 
 `sqlVal` and `sqlList` also reach headers as `{{sqlVal "header.X-Application"}}`.
 Credential headers (`Authorization`, `Cookie`, …) are always withheld.
