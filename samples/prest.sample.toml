@@ -10,6 +10,21 @@
 
 version = 1
 
+# Dialect for the single [pg] connection below. Default "postgres", including
+# Timescale detection. "mysql" selects the MySQL 8.0.19+ adapter (v2.5.0;
+# read-only MCP from v2.5.1). Any other value fails startup.
+# Env: PREST_ENGINE. https://docs.prestd.com/databases/mysql
+engine = "postgres"
+
+# MySQL example (leave commented; the active engine above stays postgres).
+# Replace the connection fields in the real [pg] table further down
+# (host, port, user, pass, database, or url). Do not add a second [pg] table.
+# engine = "mysql"
+# url = "mysql://user:pass@127.0.0.1:3306/mydb"
+# Port defaults to 3306 when unset. User and database are required.
+# Postgres defaults (user postgres, database prest, port 5432) are not copied.
+# PREST_DB_* is read first, then PREST_PG_*.
+
 # Base path all pREST HTTP routes are served under.
 context = "/"
 
@@ -57,7 +72,7 @@ key = "/etc/certs/cert.key"
 
 
 # ------------------------------------------------------------------------
-# [pg] - the PostgreSQL connection pREST serves data from.
+# [pg] - the database connection (PostgreSQL unless `engine` is `mysql`) pREST serves data from.
 # ------------------------------------------------------------------------
 [pg]
 host = "127.0.0.1"
@@ -82,17 +97,29 @@ cache = true
 # above, which is about pREST's own HTTP listener.
 [pg.ssl]
 mode = "disable" # disable | require | verify-ca | verify-full
+# PostgreSQL modes: disable | require | verify-ca | verify-full.
+# MySQL modes: disable | require | skip-verify. A client cert, key, or
+# rootcert fails startup when engine is mysql.
 # cert = "/etc/certs/pg-client.crt"
 # key = "/etc/certs/pg-client.key"
 # rootcert = "/etc/certs/pg-root.crt"
 
 
 # ------------------------------------------------------------------------
+# [mysql] - MySQL driver options. Ignored when engine is postgres.
+# ------------------------------------------------------------------------
+# [mysql]
+# prepare = false  # false: interpolate params. true: binary prepare protocol.
+# Env: PREST_MYSQL_PREPARE
+
+
+# ------------------------------------------------------------------------
 # [[databases]] - optional multi-database registry.
 #
-# When present, pREST serves multiple named PostgreSQL databases instead of
-# the single [pg] connection above; each is reachable under its alias in the
-# URL path. Omit this section entirely to use only the [pg] database.
+# Each alias is its own connection; set `engine` per entry, or leave it empty
+# to inherit the root engine. A `mysql://` URL with no `engine` is MySQL. Any
+# other URL is not probed. Omit this section entirely to use only the [pg]
+# database.
 # ------------------------------------------------------------------------
 # [[databases]]
 # alias = "app"
@@ -110,6 +137,11 @@ mode = "disable" # disable | require | verify-ca | verify-full
 # user = "postgres"
 # pass = "postgres"
 # database = "reporting_db"
+#
+# [[databases]]
+# alias = "shop"
+# engine = "mysql"
+# url = "mysql://user:pass@127.0.0.1:3306/shop"
 
 
 # ------------------------------------------------------------------------

@@ -7,9 +7,11 @@
 [![Homebrew](https://img.shields.io/badge/dynamic/json.svg?url=https://formulae.brew.sh/api/formula/prestd.json&query=$.versions.stable&label=homebrew)](https://formulae.brew.sh/formula/prestd)
 [![Discord](https://img.shields.io/badge/discord-prestd-blue?logo=discord)](https://discord.gg/JnRjvu39w8)
 
-_p_**REST** (**P**_ostgreSQL_ **REST**) is a production-ready API that delivers instant REST and Model Context Protocol (MCP) APIs on top of your **existing or new Postgres** database (CRUD, custom SQL routes, auth, ACL, and a read-only MCP endpoint) without hand-writing a backend.
+_p_**REST** (**P**_ostgreSQL_ **REST**) is a production-ready API that delivers instant REST and Model Context Protocol (MCP) APIs on your existing or new SQL database — CRUD, custom SQL routes, auth, ACL, and a read-only MCP endpoint — without hand-writing a backend.
 
-> PostgreSQL version 9.5 or higher
+PostgreSQL 9.5+ is the default engine. **MySQL 8.0.19+** is a separate native dialect from [v2.5.0](https://docs.prestd.com/releases/v2.5.0). Read-only MCP on MySQL is [v2.5.1](https://docs.prestd.com/releases/v2.5.1). Set `engine = "mysql"` to select it. An unset `engine` stays PostgreSQL. MariaDB, TiDB, and Aurora MySQL stay on the [roadmap](https://docs.prestd.com/databases/roadmap).
+
+> PostgreSQL 9.5+ (default). MySQL 8.0.19+ with `engine = "mysql"`.
 
 Contributor License Agreement: [![CLA assistant](https://cla-assistant.io/readme/badge/prest/prest)](https://cla-assistant.io/prest/prest)
 
@@ -27,7 +29,9 @@ Contributor License Agreement: [![CLA assistant](https://cla-assistant.io/readme
 | MCP over HTTP | [MCP over HTTP](https://docs.prestd.com/get-started/mcp-over-http) |
 | Multi-database | [Multi-database](https://docs.prestd.com/get-started/multi-database) |
 | Databases & roadmap | [Databases](https://docs.prestd.com/databases) · [Roadmap](https://docs.prestd.com/databases/roadmap) |
+| MySQL 8 | [MySQL](https://docs.prestd.com/databases/mysql) · [v2.5.1](https://docs.prestd.com/releases/v2.5.1) |
 | AI clients (Cursor, Claude, …) | [AI and MCP](https://docs.prestd.com/ai) |
+
 ## Quick start
 
 Install and run options (Docker, Homebrew, or Go) are documented in [Get pREST](https://docs.prestd.com/get-prest). Point pREST at Postgres (`PREST_PG_URL` or `pg.*` / `DATABASE_URL`), then call:
@@ -35,6 +39,22 @@ Install and run options (Docker, Homebrew, or Go) are documented in [Get pREST](
 ```http
 GET /{database}/{schema}/{table}
 ```
+
+MySQL 8.0.19+ uses the same path. `{schema}` is the MySQL database. Set the engine and a `mysql://` URL. The port defaults to 3306 when unset. `PREST_DB_*` is read first, then the legacy `PREST_PG_*` names:
+
+```toml
+engine = "mysql"
+
+[pg]
+url = "mysql://user:pass@localhost:3306/mydb"
+```
+
+```sh
+export PREST_ENGINE=mysql
+export PREST_DB_URL='mysql://user:pass@localhost:3306/mydb'
+```
+
+A missing user or database fails startup. Postgres defaults (user `postgres`, database `prest`, port 5432) are not copied onto a MySQL engine. Guide: [MySQL](https://docs.prestd.com/databases/mysql).
 
 See [Configuring pREST](https://docs.prestd.com/get-started/configuring-prest) for auth, ACL, custom queries, and MCP.
 
@@ -45,8 +65,8 @@ pREST screens them: anything carrying quotes, `--`, `::`, or (for multi-word
 values) a SQL keyword is refused, and a refused value that is interpolated fails
 the request with `400`.
 
-Bind free-form values instead, and the screen does not apply at all. A bound value
-travels to Postgres out of band, where it can never be parsed as SQL:
+Bind free-form values instead, and the screen does not apply at all. On PostgreSQL,
+a bound value travels to the database out of band, where it can never be parsed as SQL:
 
 ```sql
 -- interpolated: screened, and rejected for values like 'compra do mes'
@@ -61,6 +81,8 @@ SELECT * FROM articles WHERE slug = {{sqlVal "slug"}}
 | `{{sqlVal "key"}}` | a single value | `$1` |
 | `{{sqlList "key"}}` | a repeated query parameter (`?tag=a&tag=b`) | `($1,$2)` |
 | `{{ident "key"}}` | a table/column name, which cannot be bound | `"public"."users"` |
+
+That table is the PostgreSQL rendering. On MySQL, `{{sqlVal "key"}}` renders `?`, `{{sqlList "key"}}` renders `(?,?)`, and `{{ident "key"}}` renders backtick names such as `` `shop`.`users` ``. With the default `prepare = false`, MySQL interpolates those `?` placeholders into the statement. `prepare = true` uses binary prepared statements, and then the values travel out of band.
 
 `sqlVal` and `sqlList` also reach headers as `{{sqlVal "header.X-Application"}}`.
 Credential headers (`Authorization`, `Cookie`, …) are always withheld.
@@ -150,7 +172,7 @@ Run unit tests locally:
 make test-unit
 ```
 
-Run integration suites inside Docker (no local Postgres required):
+Run integration suites inside Docker (no local database required):
 
 ```bash
 # Postgres (full stack: default, auth, multicluster, queries), also: make test-integration
@@ -158,6 +180,10 @@ make test-integration-postgres
 
 # TimescaleDB (Timescale-specific E2E only)
 make test-integration-timescaledb
+
+# MySQL 8 (./integration/mysql/... only). Default image mysql:8.4.
+# Override: MYSQL_IMAGE=mysql:8.0 make test-integration-mysql
+make test-integration-mysql
 ```
 
 Or with Docker Compose:
@@ -171,6 +197,7 @@ docker compose -f integration/postgres/docker-compose.yml down -v --remove-orpha
 
 Postgres compose runs `./integration/suites/...` and `./integration/postgres/...`.
 TimescaleDB compose runs `./integration/timescaledb/...` only (see `.github/workflows/test-integration-timescaledb.yml`).
+MySQL compose runs `./integration/mysql/...` only (see `.github/workflows/test-integration-mysql.yml`). CI runs `mysql:8.0`, `mysql:8.4`, and `mysql:latest`.
 Network tests require `PREST_TEST_URL` (and flavor-specific URLs for the Postgres job); outside Compose those tests skip when the URLs are unset.
 
 ## Example: Docker Build
