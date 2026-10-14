@@ -23,7 +23,6 @@ type CRUDHandler struct {
 	perms    adapters.PermissionsChecker
 	db       adapters.DatabaseRegistry
 	cache    ResponseCacher
-	singleDB bool
 }
 
 func (h *CRUDHandler) ports(r *http.Request) (builder adapters.RequestQueryBuilder, sql adapters.SQLBuilder, executor adapters.QueryExecutor, perms adapters.PermissionsChecker, db adapters.DatabaseRegistry) {
@@ -49,7 +48,6 @@ func NewCRUDHandler(deps Deps) *CRUDHandler {
 		perms:    deps.Perms,
 		db:       deps.DB,
 		cache:    deps.Cache,
-		singleDB: deps.SingleDB,
 	}
 }
 
@@ -62,12 +60,12 @@ func (h *CRUDHandler) Select(w http.ResponseWriter, r *http.Request) {
 	table := vars["table"]
 	queries := r.URL.Query()
 
-	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+	if err := validateDatabase(database, h.db); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := validateSchema(r, schema); err != nil {
+	if err := validateSchema(r, database, schema); err != nil {
 		jsonError(w, err.Error(), http.StatusNotFound)
 		return
 	}
@@ -218,12 +216,12 @@ func (h *CRUDHandler) Insert(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+	if err := validateDatabase(database, h.db); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := validateSchema(r, schema); err != nil {
+	if err := validateSchema(r, database, schema); err != nil {
 		jsonError(w, err.Error(), http.StatusNotFound)
 		return
 	}
@@ -262,12 +260,12 @@ func (h *CRUDHandler) BatchInsert(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+	if err := validateDatabase(database, h.db); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := validateSchema(r, schema); err != nil {
+	if err := validateSchema(r, database, schema); err != nil {
 		jsonError(w, err.Error(), http.StatusNotFound)
 		return
 	}
@@ -311,12 +309,12 @@ func (h *CRUDHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+	if err := validateDatabase(database, h.db); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := validateSchema(r, schema); err != nil {
+	if err := validateSchema(r, database, schema); err != nil {
 		jsonError(w, err.Error(), http.StatusNotFound)
 		return
 	}
@@ -368,12 +366,12 @@ func (h *CRUDHandler) Update(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+	if err := validateDatabase(database, h.db); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := validateSchema(r, schema); err != nil {
+	if err := validateSchema(r, database, schema); err != nil {
 		jsonError(w, err.Error(), http.StatusNotFound)
 		return
 	}

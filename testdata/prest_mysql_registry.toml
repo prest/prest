@@ -16,3 +16,9 @@ url = "mysql://prest:prest@mysql:3306/shop?tls=false"
 alias = "archive"
 engine = "mysql"
 url = "mysql://prest:prest@mysql:3306/other?tls=false"
+
+# Nothing listens on 3399: the entry is lazy and every request answers 503.
+[[databases]]
+alias = "down"
+engine = "mysql"
+url = "mysql://prest:prest@mysql:3399/shop?tls=false&timeout=2s"

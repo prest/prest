@@ -1,8 +1,11 @@
 package controllers_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/integration/testutils"
@@ -74,9 +77,13 @@ func TestMCPToolCalls(t *testing.T) {
 		payload      map[string]any
 		status       int
 		expectedBody string
+		// expectedBodies are extra substrings that must also be present.
+		expectedBodies []string
+		// unexpectedBody, when set, must not appear in the response.
+		unexpectedBody string
 	}{
 		{
-			description: "Call prest.list_databases; expect OK and prest-test physical_name",
+			description: "Call prest.list_databases; expect OK, prest-test and secondary-db, no postgres database",
 			payload: map[string]any{
 				"jsonrpc": "2.0",
 				"id":      3,
@@ -85,8 +92,10 @@ func TestMCPToolCalls(t *testing.T) {
 					"name": "prest.list_databases",
 				},
 			},
-			status:       http.StatusOK,
-			expectedBody: `"physical_name":"prest-test"`,
+			status:         http.StatusOK,
+			expectedBody:   `"physical_name":"prest-test"`,
+			expectedBodies: []string{`"physical_name":"secondary-db"`},
+			unexpectedBody: `"datname":"postgres"`,
 		},
 		{
 			description: "Call prest.list_schemas; expect OK and public schema",
@@ -161,9 +170,15 @@ func TestMCPToolCalls(t *testing.T) {
 
 	for _, tc := range toolCalls {
 		t.Run(tc.description, func(t *testing.T) {
-			testutils.DoRequest(
-				t, base+"/_mcp",
-				tc.payload, http.MethodPost, tc.status, tc.description, tc.expectedBody)
+			var raw json.RawMessage
+			testutils.DoRequestJSON(t, base+"/_mcp", tc.payload, http.MethodPost, tc.status, tc.description, &raw)
+			body := []byte(raw)
+			for _, want := range append([]string{tc.expectedBody}, tc.expectedBodies...) {
+				assert.Contains(t, string(body), want)
+			}
+			if tc.unexpectedBody != "" {
+				assert.NotContains(t, string(body), tc.unexpectedBody)
+			}
 		})
 	}
 }

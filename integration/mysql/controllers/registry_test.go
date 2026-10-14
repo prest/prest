@@ -1,11 +1,13 @@
 package mysql_test
 
 import (
+	"io"
 	"net/http"
 	"testing"
 
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/integration/testutils"
+	"github.com/stretchr/testify/require"
 )
 
 // prestd-registry runs testdata/prest_mysql_registry.toml: alias "store" opens
@@ -33,5 +35,19 @@ func TestMySQLRegistryDatabasesListsAliases(t *testing.T) {
 	// physical database name, not every database the MySQL user can see.
 	base := helpers.RegistryServerURL(t)
 	testutils.DoRequest(t, base+"/databases", nil, http.MethodGet, http.StatusOK, "databases",
-		`"datname":"store"`, `"datname":"archive"`, `"physical_name":"shop"`, `"physical_name":"other"`)
+		`"datname":"store"`, `"datname":"archive"`, `"datname":"down"`, `"physical_name":"shop"`, `"physical_name":"other"`)
+}
+
+func TestMySQLRegistryUnreachableAliasIs503(t *testing.T) {
+	// The "down" alias points at a closed port: it answers 503 without leaking
+	// the driver error (host or port).
+	base := helpers.RegistryServerURL(t)
+	resp, err := http.Get(base + "/down/shop/items")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode, "body: %s", body)
+	require.Contains(t, string(body), "database unavailable")
+	require.NotContains(t, string(body), "3399")
 }

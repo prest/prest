@@ -7,7 +7,7 @@ x-prest-env: &prest-env
   PREST_PG_USER: postgres
   PREST_PG_PASS: postgres
   PREST_PG_DATABASE: prest-test
-  # pg.single=false services serve only pg.database plus this list (suites hit /secondary-db/).
+  # Services without a registry serve only pg.database plus this list (suites hit /secondary-db/).
   PREST_PG_ALLOWED_DATABASES: secondary-db
   DATABASE_URL: postgres://postgres:postgres@postgres:5432/prest-test?sslmode=disable
   PGPASSWORD: postgres
@@ -79,7 +79,6 @@ services:
       PREST_JWT_DEFAULT: "false"
       PREST_CACHE_ENABLED: "false"
       PREST_ACCESS_RESTRICT: "false"
-      PREST_PG_SINGLE: "false"
       PREST_HTTP_PORT: "3000"
     command: >-
       bash -lc "export PATH=/usr/local/go/bin:/go/bin:$$PATH && apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && mkdir -p ./lib/middlewares && go build -buildmode=plugin -o ./lib/middlewares/hello.so ./lib/src/middlewares/hello.go && go run ./cmd/prestd/main.go"
@@ -130,7 +129,6 @@ services:
       PREST_CACHE_ENABLED: "false"
       PREST_AUTH_ENABLED: "true"
       PREST_JWT_KEY: integration-test-secret-key-32b!!
-      PREST_PG_SINGLE: "false"
       PREST_HTTP_PORT: "3002"
     command: >-
       bash -lc "export PATH=/usr/local/go/bin:/go/bin:$$PATH && apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && go run ./cmd/prestd/main.go"
@@ -155,7 +153,6 @@ services:
       PREST_JWT_DEFAULT: "false"
       PREST_AUTH_ENABLED: "true"
       PREST_JWT_KEY: integration-test-secret-key-32b!!
-      PREST_PG_SINGLE: "false"
       PREST_HTTP_PORT: "3004"
     command: >-
       bash -lc "export PATH=/usr/local/go/bin:/go/bin:$$PATH && apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && go run ./cmd/prestd/main.go"
@@ -181,12 +178,42 @@ services:
       PREST_CACHE_ENABLED: "false"
       PREST_AUTH_ENABLED: "true"
       PREST_JWT_KEY: integration-test-secret-key-32b!!
-      PREST_PG_SINGLE: "false"
       PREST_HTTP_PORT: "3003"
     command: >-
       bash -lc "export PATH=/usr/local/go/bin:/go/bin:$$PATH && apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && go run ./cmd/prestd/main.go"
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3003/_health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+
+  prestd-samehost:
+    <<: *prestd-service
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *prest-env
+      PREST_CONF: /workspace/testdata/prest.toml
+      PREST_DEBUG: "true"
+      PREST_JWT_DEFAULT: "false"
+      PREST_CACHE_ENABLED: "false"
+      PREST_ACCESS_RESTRICT: "false"
+      PREST_PG_ALLOWED_DATABASES: ""
+      DATABASE_ALIAS_1: main
+      DATABASE_URL_1: postgres://postgres:postgres@postgres:5432/prest-test?sslmode=disable
+      DATABASE_ALIAS_2: tenant
+      DATABASE_URL_2: postgres://postgres:postgres@postgres:5432/secondary-db?sslmode=disable
+      DATABASE_ALIAS_3: down
+      DATABASE_URL_3: postgres://postgres:postgres@postgres:6543/nowhere?sslmode=disable&connect_timeout=2
+      PREST_HTTP_PORT: "3005"
+    command: >-
+      bash -lc "export PATH=/usr/local/go/bin:/go/bin:$$PATH && apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && go run ./cmd/prestd/main.go"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3005/_health || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 30
@@ -205,9 +232,12 @@ services:
         condition: service_healthy
       prestd-cache:
         condition: service_healthy
+      prestd-samehost:
+        condition: service_healthy
     environment:
       <<: *prest-env
       PREST_CONF: /workspace/testdata/prest.toml
+      PREST_SAMEHOST_TEST_URL: http://prestd-samehost:3005
       PREST_TEST_URL: http://prestd:3000
       PREST_MULTICLUSTER_TEST_URL: http://prestd-multicluster:3001
       PREST_AUTH_TEST_URL: http://prestd-auth:3002

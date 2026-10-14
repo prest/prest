@@ -17,7 +17,6 @@ type CatalogHandler struct {
 	executor     adapters.QueryExecutor
 	db           adapters.DatabaseRegistry
 	registry     adapters.Registry
-	singleDB     bool
 	registryMode bool
 }
 
@@ -43,7 +42,6 @@ func NewCatalogHandler(deps Deps) *CatalogHandler {
 		executor:     deps.Executor,
 		db:           deps.DB,
 		registry:     deps.AdapterRegistry,
-		singleDB:     deps.SingleDB,
 		registryMode: deps.RegistryMode,
 	}
 }
@@ -232,12 +230,12 @@ func (h *CatalogHandler) ListTablesByDatabaseAndSchema(w http.ResponseWriter, r 
 	database := vars["database"]
 	schema := vars["schema"]
 
-	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+	if err := validateDatabase(database, h.db); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := validateSchema(r, schema); err != nil {
+	if err := validateSchema(r, database, schema); err != nil {
 		jsonError(w, err.Error(), http.StatusNotFound)
 		return
 	}

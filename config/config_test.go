@@ -132,7 +132,6 @@ func TestParse(t *testing.T) {
 		require.Equal(t, "postgres", cf.PGUser)
 		require.Equal(t, "postgres", cf.PGPass)
 		require.Equal(t, true, cf.PGCache)
-		require.Equal(t, true, cf.SingleDB)
 		require.Equal(t, "disable", cf.PGSSLMode)
 		require.Equal(t, false, cf.Debug)
 		require.Equal(t, false, cf.AccessConf.Restrict)

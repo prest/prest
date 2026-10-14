@@ -10,7 +10,6 @@ import (
 type TableHandler struct {
 	executor adapters.QueryExecutor
 	db       adapters.DatabaseRegistry
-	singleDB bool
 }
 
 func (h *TableHandler) ports(r *http.Request) (executor adapters.QueryExecutor, db adapters.DatabaseRegistry) {
@@ -28,11 +27,10 @@ func (h *TableHandler) bound(r *http.Request) *TableHandler {
 }
 
 // NewTableHandler creates a TableHandler.
-func NewTableHandler(executor adapters.QueryExecutor, db adapters.DatabaseRegistry, singleDB bool) *TableHandler {
+func NewTableHandler(executor adapters.QueryExecutor, db adapters.DatabaseRegistry) *TableHandler {
 	return &TableHandler{
 		executor: executor,
 		db:       db,
-		singleDB: singleDB,
 	}
 }
 
@@ -44,12 +42,12 @@ func (h *TableHandler) Show(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+	if err := validateDatabase(database, h.db); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := validateSchema(r, schema); err != nil {
+	if err := validateSchema(r, database, schema); err != nil {
 		jsonError(w, err.Error(), http.StatusNotFound)
 		return
 	}

@@ -127,7 +127,8 @@ func (p *postgres) PingAll(ctx context.Context) error {
 	return nil
 }
 
-// Aliases returns configured database aliases or the default database name.
+// Aliases returns the served databases: the registry aliases, or without a
+// registry pg.database plus pg.allowed_databases (nil when none).
 func (p *postgres) Aliases() []string {
 	if p.cfg.HasDatabaseRegistry() {
 		aliases := make([]string, 0, len(p.cfg.Databases))
@@ -136,18 +137,18 @@ func (p *postgres) Aliases() []string {
 		}
 		return aliases
 	}
-	if p.cfg.PGDatabase == "" {
-		return nil
+	if served := p.servedDatabases(); len(served) > 0 {
+		return served
 	}
-	return []string{p.cfg.PGDatabase}
+	return nil
 }
 
-// IsRegistered reports whether alias is a configured database registry entry.
+// IsRegistered reports whether alias is a served database.
 func (p *postgres) IsRegistered(alias string) bool {
 	if !p.cfg.HasDatabaseRegistry() {
 		// Without a registry only the configured database and the explicit
 		// allow-list are reachable; any other name would open a new pool on the host.
-		return alias == p.cfg.PGDatabase || slices.Contains(p.cfg.AllowedDatabases, alias)
+		return slices.Contains(p.servedDatabases(), alias)
 	}
 	_, ok := p.cfg.ProfileByAlias(alias)
 	return ok
@@ -2393,9 +2394,13 @@ func (adapter *postgres) UpdateSQL(database string, schema string, table string,
 	return fmt.Sprintf(`UPDATE %s SET %s`, adapter.tableReference(database, schema, table), setSyntax)
 }
 
-// DatabaseWhere generate database where syntax
+// DatabaseWhere generates the catalog WHERE clause. Without a registry it is
+// limited to the served databases so /databases does not list the whole host.
 func (adapter *postgres) DatabaseWhere(requestWhere string) (whereSyntax string) {
 	whereSyntax = statements.DatabasesWhere
+	if served := adapter.servedDatabases(); served != nil {
+		whereSyntax = fmt.Sprint(whereSyntax, " AND ", servedFilter(statements.FieldDatabaseName, served))
+	}
 	if requestWhere != "" {
 		whereSyntax = fmt.Sprint(whereSyntax, " AND ", requestWhere)
 	}

@@ -148,6 +148,7 @@ func TestCatalogSQL(t *testing.T) {
 	require.True(t, count)
 	require.Contains(t, q, "COUNT(datname)")
 	require.Contains(t, a.DatabaseWhere("`datname` = ?"), "WHERE 1=1 AND")
+	require.Contains(t, a.DatabaseWhere(""), "datname IN ('shop')")
 	require.Equal(t, " ORDER BY datname ASC", a.DatabaseOrderBy("", false))
 	require.Empty(t, a.DatabaseOrderBy("", true))
 

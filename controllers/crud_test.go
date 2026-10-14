@@ -932,7 +932,7 @@ func TestCRUDHandler_Select_UnregisteredDB(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
-// pg.single=false without [[databases]]: a name outside pg.database and
+// Without [[databases]], a name outside pg.database and
 // pg.allowed_databases is rejected with 400 before any query, so no pool is
 // opened for it.
 func TestCRUDHandler_Select_NoRegistry_UnknownDB_400(t *testing.T) {
@@ -946,7 +946,6 @@ func TestCRUDHandler_Select_NoRegistry_UnknownDB_400(t *testing.T) {
 
 	h := NewCRUDHandler(Deps{
 		DB:       db,
-		SingleDB: false,
 		Builder:  mockgen.NewMockRequestQueryBuilder(ctrl),
 		Executor: mockgen.NewMockQueryExecutor(ctrl),
 		Perms:    mockgen.NewMockPermissionsChecker(ctrl),
@@ -1315,25 +1314,6 @@ func TestCRUDHandler_Select_NoCacheOnHead(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Empty(t, cacher.key)
-}
-
-func TestCRUDHandler_Select_SingleDBMismatch(t *testing.T) {
-	t.Parallel()
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	db := mockDatabaseRegistry(ctrl)
-	h := NewCRUDHandler(Deps{DB: db, SingleDB: true})
-
-	req := crudRequest(http.MethodGet, "/other/public/test", map[string]string{
-		"database": "other", "schema": "public", "table": "test",
-	})
-	rec := httptest.NewRecorder()
-	h.Select(rec, req)
-
-	require.Equal(t, http.StatusBadRequest, rec.Code)
-	require.Contains(t, rec.Body.String(), "database not registered")
 }
 
 func TestCRUDHandler_Select_NonUserContextIgnored(t *testing.T) {
@@ -1829,10 +1809,8 @@ func TestCRUDHandler_Update_WithReturning(t *testing.T) {
 func TestNewCRUDHandler(t *testing.T) {
 	t.Parallel()
 
-	deps := Deps{SingleDB: true}
-	h := NewCRUDHandler(deps)
+	h := NewCRUDHandler(Deps{})
 	require.NotNil(t, h)
-	require.True(t, h.singleDB)
 }
 
 // A refused connection answers 503 with a fixed message: the driver text

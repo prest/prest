@@ -20,11 +20,20 @@ func setPostgresDefaults(v *viper.Viper) {
 	v.SetDefault("pg.maxidleconn", 0) // avoids db memory leak on req timeout
 	v.SetDefault("pg.maxopenconn", 10)
 	v.SetDefault("pg.conntimeout", 10)
-	v.SetDefault("pg.single", true)
 	v.SetDefault("pg.cache", true)
 	// todo: replace this with prefer, will need to replace lib/pq
 	// https://github.com/jackc/pgx/blob/47d631e34be7128997a0aa89b75885cc4ad4c82e/pgconn/config.go#L218
 	v.SetDefault("pg.ssl.mode", "disable")
+}
+
+// warnDeprecatedSingle logs when the removed pg.single key is still set in the
+// config file or environment; the value is ignored.
+func warnDeprecatedSingle(v *viper.Viper) {
+	_, fromEnv := lookupConfigEnv("pg.single")
+	if fromEnv || v.IsSet("pg.single") {
+		slog.Warn("config key ignored: pg.single was removed; use [[databases]] or pg.allowed_databases",
+			"key", "pg.single")
+	}
 }
 
 func parseDBConfig(v *viper.Viper, cfg *Prest) error {
@@ -32,6 +41,7 @@ func parseDBConfig(v *viper.Viper, cfg *Prest) error {
 	if cfg.Engine == "" {
 		cfg.Engine = EnginePostgres
 	}
+	warnDeprecatedSingle(v)
 	cfg.AllowedDatabases = configuredStringList(v, "pg.allowed_databases")
 	if cfg.Engine == EngineMySQL {
 		return parseMySQLDBConfig(v, cfg)
@@ -70,10 +80,6 @@ func parseDBConfig(v *viper.Viper, cfg *Prest) error {
 		return err
 	}
 	cfg.PGCache, err = configuredBool(v, "pg.cache")
-	if err != nil {
-		return err
-	}
-	cfg.SingleDB, err = configuredBool(v, "pg.single")
 	if err != nil {
 		return err
 	}

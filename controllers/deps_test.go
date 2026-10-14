@@ -20,7 +20,6 @@ func TestNewDepsFromConfig(t *testing.T) {
 	adapter := mockgen.NewMockAdapter(ctrl)
 	p := &config.Prest{
 		Adapter:      adapter,
-		SingleDB:     true,
 		PGDatabase:   "prest-test",
 		AuthEnabled:  true,
 		AuthType:     "body",
@@ -37,7 +36,6 @@ func TestNewDepsFromConfig(t *testing.T) {
 	require.Equal(t, adapter, deps.Catalog)
 	require.Equal(t, adapter, deps.DB)
 	require.Equal(t, adapter, deps.Executor)
-	require.True(t, deps.SingleDB)
 	require.Equal(t, "prest-test", deps.PGDatabase)
 	require.NotNil(t, deps.Cache)
 	require.True(t, deps.Auth.Enabled)

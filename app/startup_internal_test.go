@@ -125,21 +125,70 @@ func TestNew_RoutesRequestToMatchingAdapter(t *testing.T) {
 	}
 }
 
-// TestLogServedDatabases: with pg.single=false and no registry, start-up logs
-// exactly which database names are reachable; other modes log nothing.
+// TestLogServedDatabases: without a registry, start-up logs the deduplicated
+// database names that are reachable; registry mode logs nothing.
 func TestLogServedDatabases(t *testing.T) {
 	var buf bytes.Buffer
 	prev := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
 	t.Cleanup(func() { slog.SetDefault(prev) })
 
-	logServedDatabases(&config.Prest{PGDatabase: "main", AllowedDatabases: []string{"extra"}})
-	require.Contains(t, buf.String(), "pg.single=false")
+	logServedDatabases(&config.Prest{PGDatabase: "main", AllowedDatabases: []string{"extra", "main", ""}})
+	require.Contains(t, buf.String(), "serving databases")
+	require.Contains(t, buf.String(), `databases="[main extra]"`)
 	require.Contains(t, buf.String(), "main")
 	require.Contains(t, buf.String(), "extra")
 
 	buf.Reset()
-	logServedDatabases(&config.Prest{PGDatabase: "main", SingleDB: true})
 	logServedDatabases(&config.Prest{PGDatabase: "main", Databases: []config.DatabaseConf{{Alias: "a"}}})
 	require.Empty(t, buf.String())
+}
+
+// TestRegisterServedAliases: without a registry the one adapter is registered
+// under pg.database and every pg.allowed_databases name, so the selector
+// attaches it (and its schema scope) for each served {database}.
+func TestRegisterServedAliases(t *testing.T) {
+	t.Parallel()
+
+	a := mock.New(t)
+	reg := adapters.NewRegistry()
+	cfg := &config.Prest{PGDatabase: "shop", AllowedDatabases: []string{"other", "", "shop"}}
+	require.NoError(t, registerServedAliases(reg, cfg, a))
+	require.Equal(t, []string{"other", "shop"}, reg.GetAll())
+	got, err := reg.Get("other")
+	require.NoError(t, err)
+	require.Same(t, a, got)
+
+	reg = adapters.NewRegistry()
+	require.NoError(t, registerServedAliases(reg, &config.Prest{}, a))
+	require.Equal(t, []string{"prest"}, reg.GetAll())
+}
+
+// TestEnsureSchemaMigrated_NoRegistryMigratesPrimaryOnly: allow-listed names
+// share pg.database's adapter, so auth/queries tables are created only once,
+// in pg.database, never in the allowed databases.
+func TestEnsureSchemaMigrated_NoRegistryMigratesPrimaryOnly(t *testing.T) {
+	t.Parallel()
+
+	db, sqlMock, err := sqlmock.New()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+	sqlMock.ExpectExec(`CREATE TABLE IF NOT EXISTS "public"\."prest_users"`).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	// A nil *sqlx.DB on "other" would make the migration fail if it were tried.
+	registry := adapters.NewRegistry()
+	require.NoError(t, registry.Register("other", &migrateDBAdapter{}))
+	require.NoError(t, registry.Register("shop", &migrateDBAdapter{db: sqlx.NewDb(db, "postgres")}))
+
+	cfg := &config.Prest{
+		PGDatabase:           "shop",
+		AllowedDatabases:     []string{"other"},
+		AuthEnabled:          true,
+		AuthMigrateOnStartup: true,
+		AuthSchema:           "public",
+		AuthTable:            "prest_users",
+	}
+	require.NoError(t, ensureSchemaMigrated(cfg, registry, nil))
+	require.NoError(t, sqlMock.ExpectationsWereMet())
 }

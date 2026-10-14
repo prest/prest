@@ -10,13 +10,13 @@ import (
 // GetAdapterForRequest retrieves the appropriate adapter for a request.
 // For multi-database setups, this returns the adapter selected by the
 // AdapterSelectorMiddleware from the request context.
-// For single-database setups, this returns the default adapter.
+// Without a selected adapter, this returns the default adapter.
 func GetAdapterForRequest(r *http.Request, defaultAdapter adapters.Adapter) adapters.Adapter {
-	// Check if adapter was attached to context by AdapterSelectorMiddleware (multi-DB mode)
+	// Check if adapter was attached to context by AdapterSelectorMiddleware (registry mode)
 	if adapter, ok := r.Context().Value(pctx.AdapterKey).(adapters.Adapter); ok {
 		return adapter
 	}
-	// Fall back to default adapter (single-DB mode)
+	// Fall back to default adapter (no adapter selected for the request)
 	return defaultAdapter
 }
 

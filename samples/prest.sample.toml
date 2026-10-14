@@ -86,14 +86,9 @@ database = "prest"
 maxidleconn = 0  # 0 avoids DB connections leaking on request timeout
 maxopenconn = 10
 conntimeout = 10 # seconds
-# true: requests may only target `database` above. false: requests may also
-# target the names in `allowed_databases` on the same host (one pool each).
-# Any other {database} in the path answers 400. Ignored when a `[[databases]]`
-# registry (see below) is configured.
-single = true
-# Extra database names reachable when single = false. Env:
-# PREST_PG_ALLOWED_DATABASES="analytics,reports" (comma separated).
-# allowed_databases = ["analytics", "reports"]
+# Extra databases on this host served when no [[databases]] registry is configured (Postgres and MySQL).
+# Also limits what /databases lists. Env: PREST_DB_ALLOWED_DATABASES / PREST_PG_ALLOWED_DATABASES.
+allowed_databases = []
 # Enables query result caching against this database (see [cache] below).
 cache = true
 

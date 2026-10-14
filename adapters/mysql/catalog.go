@@ -19,6 +19,9 @@ func (a *Adapter) DatabaseClause(req *http.Request) (string, bool) {
 
 func (a *Adapter) DatabaseWhere(requestWhere string) string {
 	where := " WHERE 1=1"
+	if served := a.servedDatabases(); served != nil {
+		where += " AND " + servedFilter("datname", served)
+	}
 	if requestWhere != "" {
 		where += " AND " + requestWhere
 	}
@@ -42,7 +45,14 @@ func (a *Adapter) SchemaClause(req *http.Request) (string, bool) {
 		field = "COUNT(schema_name)"
 		hasCount = true
 	}
-	return fmt.Sprintf(statements.SchemasFrom, field), hasCount
+	// Schemas are databases on MySQL: without a registry list only the served
+	// ones. The filter sits inside the derived table, so the controller's
+	// appended " WHERE <request>" is unaffected.
+	filter := ""
+	if served := a.servedDatabases(); served != nil {
+		filter = " AND " + servedFilter("SCHEMA_NAME", served)
+	}
+	return fmt.Sprintf(statements.SchemasFrom, field, filter), hasCount
 }
 
 func (a *Adapter) SchemaOrderBy(order string, hasCount bool) string {

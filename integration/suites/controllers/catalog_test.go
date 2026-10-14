@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/integration/testutils"
 )
@@ -34,6 +36,22 @@ func TestGetDatabases(t *testing.T) {
 		t.Log(tc.description)
 		testutils.DoRequest(t, base+tc.url, nil, tc.method, tc.status, "GetDatabases")
 	}
+}
+
+func TestGetDatabasesListsOnlyServed(t *testing.T) {
+	base := helpers.ServerURL(t)
+
+	// /databases must list only the served databases, not every database on the host.
+	// Expected: exactly the configured database and the allowed one (no postgres/templates).
+	var rows []map[string]any
+	testutils.DoRequestJSON(t, base+"/databases", nil, http.MethodGet, http.StatusOK, "GetDatabasesListsOnlyServed", &rows)
+	got := make([]string, 0, len(rows))
+	for _, r := range rows {
+		if n, ok := r["datname"].(string); ok {
+			got = append(got, n)
+		}
+	}
+	assert.ElementsMatch(t, helpers.Databases(), got)
 }
 
 func TestGetSchemas(t *testing.T) {

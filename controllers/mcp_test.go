@@ -746,13 +746,6 @@ func TestMCPHandler_FilterAccessibleTables_SkipsNonQueryable(t *testing.T) {
 	require.Equal(t, "users", filtered[0]["name"])
 }
 
-func TestMCPHandler_DatabaseAliases_SingleDB(t *testing.T) {
-	t.Parallel()
-
-	h := NewMCPHandler(Deps{SingleDB: true, PGDatabase: "only-db"})
-	require.Equal(t, []string{"only-db"}, h.databaseAliases())
-}
-
 func TestMCPHandler_DefaultDatabaseFromRegistry(t *testing.T) {
 	t.Parallel()
 
@@ -1039,10 +1032,32 @@ func TestMCPHandler_DatabaseAliases_FallbackToPGDatabase(t *testing.T) {
 	require.Equal(t, []string{"fallback-db"}, h.databaseAliases())
 }
 
+// Aliases come from the registry (pg.database plus pg.allowed_databases).
+func TestMCPHandler_DatabaseAliases_FromRegistry(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	db := mockgen.NewMockDatabaseRegistry(ctrl)
+	db.EXPECT().Aliases().Return([]string{"main", "extra"}).AnyTimes()
+	db.EXPECT().PhysicalName(gomock.Any()).DoAndReturn(func(a string) string { return a }).AnyTimes()
+
+	h := NewMCPHandler(Deps{DB: db, PGDatabase: "main"})
+	require.ElementsMatch(t, []string{"main", "extra"}, h.databaseAliases())
+
+	body := bytes.NewBufferString(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"prest.list_databases"}}`)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/_mcp", body))
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), "main")
+	require.Contains(t, rec.Body.String(), "extra")
+}
+
 func TestMCPHandler_DatabaseAliases_EmptyWhenNoDefault(t *testing.T) {
 	t.Parallel()
 
-	h := NewMCPHandler(Deps{SingleDB: true})
+	h := NewMCPHandler(Deps{})
 	require.Nil(t, h.databaseAliases())
 }
 

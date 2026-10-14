@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -46,7 +47,7 @@ type App struct {
 // adapter (it connects on first use) and skipped by startup migrations.
 //
 // Returns an error when the database connection cannot be established: in
-// single-database mode on any failure, in registry mode on configuration
+// no-registry mode on any failure, in registry mode on configuration
 // errors or when no entry is reachable.
 func New(cfg *config.Prest) (*App, error) {
 	registry := adapters.NewRegistry()
@@ -59,26 +60,18 @@ func New(cfg *config.Prest) (*App, error) {
 			return nil, err
 		}
 	} else if cfg.Adapter == nil {
-		// Single database mode (backward compatibility): detect and create default adapter
+		// No registry: one adapter for pg.database; pg.allowed_databases share its host and credentials
 		adapter, err := detectAndCreateAdapter(cfg)
 		if err != nil {
 			return nil, err
 		}
 		cfg.Adapter = adapter
-		alias := cfg.PGDatabase
-		if alias == "" {
-			alias = "prest" // Use default alias when database name is not set
-		}
-		if err := registry.Register(alias, adapter); err != nil {
+		if err := registerServedAliases(registry, cfg, adapter); err != nil {
 			return nil, err
 		}
 	} else {
 		// Adapter already configured (injected): register it
-		alias := cfg.PGDatabase
-		if alias == "" {
-			alias = "prest" // Use default alias when database name is not set
-		}
-		if err := registry.Register(alias, cfg.Adapter); err != nil {
+		if err := registerServedAliases(registry, cfg, cfg.Adapter); err != nil {
 			return nil, err
 		}
 	}
@@ -158,15 +151,55 @@ func registerDatabases(cfg *config.Prest, registry adapters.Registry) (map[strin
 	return unreachable, nil
 }
 
+// registerServedAliases registers the single no-registry adapter under
+// pg.database ("prest" when unset) and every pg.allowed_databases name, so the
+// adapter selector attaches it, and its schema scope, for each served
+// {database}.
+func registerServedAliases(registry adapters.Registry, cfg *config.Prest, adapter adapters.Adapter) error {
+	alias := cfg.PGDatabase
+	if alias == "" {
+		alias = "prest" // Use default alias when database name is not set
+	}
+	seen := map[string]struct{}{alias: {}}
+	if err := registry.Register(alias, adapter); err != nil {
+		return err
+	}
+	for _, name := range cfg.AllowedDatabases {
+		if _, dup := seen[name]; dup || name == "" {
+			continue
+		}
+		seen[name] = struct{}{}
+		if err := registry.Register(name, adapter); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // logServedDatabases tells operators which database names are reachable when
-// pg.single=false runs without a registry: the configured database plus
-// pg.allowed_databases. Every other name is rejected.
+// there is no registry: pg.database plus pg.allowed_databases. Every other
+// name is rejected. Registry mode logs nothing here (each alias is logged on
+// registration).
 func logServedDatabases(cfg *config.Prest) {
-	if cfg.SingleDB || cfg.HasDatabaseRegistry() {
+	if cfg.HasDatabaseRegistry() {
 		return
 	}
-	served := append([]string{cfg.PGDatabase}, cfg.AllowedDatabases...)
-	slog.Info("pg.single=false: serving databases", "databases", served)
+	slog.Info("serving databases", "databases", servedDatabases(cfg))
+}
+
+// servedDatabases returns pg.database plus pg.allowed_databases without empty
+// or duplicate names.
+func servedDatabases(cfg *config.Prest) []string {
+	seen := make(map[string]struct{})
+	var served []string
+	for _, name := range append([]string{cfg.PGDatabase}, cfg.AllowedDatabases...) {
+		if _, dup := seen[name]; name == "" || dup {
+			continue
+		}
+		seen[name] = struct{}{}
+		served = append(served, name)
+	}
+	return served
 }
 
 // defaultAdapter picks the adapter behind requests without {database}, health
@@ -202,7 +235,12 @@ func ensureSchemaMigrated(cfg *config.Prest, registry adapters.Registry, skip ma
 	if registry == nil {
 		return nil
 	}
+	// Without a registry the allow-listed names share pg.database's adapter;
+	// auth/queries tables belong to pg.database only.
 	for _, alias := range registry.GetAll() {
+		if !cfg.HasDatabaseRegistry() && alias != cfg.PGDatabase && slices.Contains(cfg.AllowedDatabases, alias) {
+			continue
+		}
 		if _, down := skip[alias]; down {
 			slog.Warn("auth/queries table migration skipped: database unreachable at startup", "alias", alias)
 			continue

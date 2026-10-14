@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestValidateDatabase_SingleDBMatch(t *testing.T) {
+func TestValidateDatabase_Registered(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
@@ -16,25 +16,9 @@ func TestValidateDatabase_SingleDBMatch(t *testing.T) {
 
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
 	db.EXPECT().IsRegistered("prest-test").Return(true)
-	db.EXPECT().GetDatabase().Return("prest-test")
 
-	err := validateDatabase("prest-test", db, true)
+	err := validateDatabase("prest-test", db)
 	require.NoError(t, err)
-}
-
-func TestValidateDatabase_SingleDBMismatch(t *testing.T) {
-	t.Parallel()
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	db := mockgen.NewMockDatabaseRegistry(ctrl)
-	db.EXPECT().IsRegistered("other").Return(true)
-	db.EXPECT().GetDatabase().Return("prest-test")
-
-	err := validateDatabase("other", db, true)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "database not registered")
 }
 
 func TestValidateDatabase_MultiDB(t *testing.T) {
@@ -46,8 +30,21 @@ func TestValidateDatabase_MultiDB(t *testing.T) {
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
 	db.EXPECT().IsRegistered("anything").Return(true)
 
-	err := validateDatabase("anything", db, false)
+	err := validateDatabase("anything", db)
 	require.NoError(t, err)
+}
+
+// An allow-listed name is accepted from IsRegistered alone; no default-database lookup.
+func TestValidateDatabase_AllowListedAccepted(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	db := mockgen.NewMockDatabaseRegistry(ctrl)
+	db.EXPECT().IsRegistered("extra").Return(true)
+
+	require.NoError(t, validateDatabase("extra", db))
 }
 
 func TestValidateDatabase_RegistryUnknown(t *testing.T) {
@@ -59,7 +56,7 @@ func TestValidateDatabase_RegistryUnknown(t *testing.T) {
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
 	db.EXPECT().IsRegistered("unknown").Return(false)
 
-	err := validateDatabase("unknown", db, false)
+	err := validateDatabase("unknown", db)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "database not registered")
 }

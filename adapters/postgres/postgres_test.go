@@ -1221,12 +1221,12 @@ func TestCatalogSQLBuilders(t *testing.T) {
 		{
 			name: "DatabaseWhere empty",
 			got:  adapter.DatabaseWhere(""),
-			want: statements.DatabasesWhere,
+			want: statements.DatabasesWhere + " AND datname IN ('" + defaultMockDB + "')",
 		},
 		{
 			name: "DatabaseWhere with request",
 			got:  adapter.DatabaseWhere("extra = 1"),
-			want: fmt.Sprintf("%v AND extra = 1", statements.DatabasesWhere),
+			want: statements.DatabasesWhere + " AND datname IN ('" + defaultMockDB + "') AND extra = 1",
 		},
 		{
 			name: "DatabaseOrderBy explicit",

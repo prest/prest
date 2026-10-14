@@ -1,6 +1,8 @@
 package config
 
 import (
+	"bytes"
+	"log/slog"
 	"strings"
 	"testing"
 
@@ -114,4 +116,50 @@ func TestParseDBConfig_AllowedDatabasesMySQL(t *testing.T) {
 	cfg := &Prest{}
 	require.NoError(t, parseDBConfig(v, cfg))
 	require.Equal(t, []string{"shop"}, cfg.AllowedDatabases)
+}
+
+// TestWarnDeprecatedSingle checks that the removed pg.single key logs a
+// warning on both engines, from the config file or from the environment.
+func TestWarnDeprecatedSingle(t *testing.T) {
+	const msg = "config key ignored: pg.single was removed"
+	tests := []struct {
+		name   string
+		engine string
+		toml   string
+		env    map[string]string
+		warn   bool
+	}{
+		{name: "unset", warn: false},
+		{name: "toml true", toml: "[pg]\nsingle = true\n", warn: true},
+		{name: "legacy env false", env: map[string]string{"PREST_PG_SINGLE": "false"}, warn: true},
+		{name: "db env true", env: map[string]string{"PREST_DB_SINGLE": "true"}, warn: true},
+		{name: "mysql engine", engine: "mysql", toml: "[pg]\nsingle = true\n", warn: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			prev := slog.Default()
+			slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+			t.Cleanup(func() { slog.SetDefault(prev) })
+			for k, val := range tt.env {
+				t.Setenv(k, val)
+			}
+			v := viper.New()
+			setPostgresDefaults(v)
+			if tt.engine != "" {
+				v.Set("engine", tt.engine)
+			}
+			if tt.toml != "" {
+				v.SetConfigType("toml")
+				require.NoError(t, v.ReadConfig(strings.NewReader(tt.toml)))
+			}
+			_ = parseDBConfig(v, &Prest{})
+			if tt.warn {
+				require.Contains(t, buf.String(), msg)
+				require.Contains(t, buf.String(), "pg.single")
+			} else {
+				require.NotContains(t, buf.String(), msg)
+			}
+		})
+	}
 }

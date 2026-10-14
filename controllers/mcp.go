@@ -39,7 +39,6 @@ type MCPHandler struct {
 	registry adapters.Registry
 	db       adapters.DatabaseRegistry
 	perms    adapters.PermissionsChecker
-	singleDB bool
 	pgDB     string
 	expose   config.ExposeConf
 }
@@ -54,7 +53,6 @@ func NewMCPHandler(deps Deps) *MCPHandler {
 		registry: deps.AdapterRegistry,
 		db:       deps.DB,
 		perms:    deps.Perms,
-		singleDB: deps.SingleDB,
 		pgDB:     deps.PGDatabase,
 		expose:   deps.Expose,
 	}
@@ -68,8 +66,8 @@ type mcpBackend struct {
 }
 
 // backend returns the adapter registered for database so mixed-engine setups
-// build and run SQL on the right engine. Unregistered aliases and single-DB
-// handlers fall back to the defaults from Deps.
+// build and run SQL on the right engine. Unregistered aliases and handlers
+// without a registry fall back to the defaults from Deps.
 func (h *MCPHandler) backend(database string) mcpBackend {
 	if a, err := GetAdapterFromRegistry(h.registry, database); err == nil {
 		// Dialect is optional; without it fall back to the default so
@@ -399,7 +397,7 @@ func (h *MCPHandler) listSchemas(r *http.Request, args mcpListSchemasArgs) (any,
 	if args.Database == "" {
 		args.Database = h.defaultDatabase()
 	}
-	if err := validateDatabase(args.Database, h.db, h.singleDB); err != nil {
+	if err := validateDatabase(args.Database, h.db); err != nil {
 		return nil, err
 	}
 
@@ -451,7 +449,7 @@ func (h *MCPHandler) listTables(r *http.Request, args mcpListTablesArgs) (any, e
 	if args.Database == "" {
 		args.Database = h.defaultDatabase()
 	}
-	if err := validateDatabase(args.Database, h.db, h.singleDB); err != nil {
+	if err := validateDatabase(args.Database, h.db); err != nil {
 		return nil, err
 	}
 	if args.Schema != "" && !validatePathSegments(args.Schema) {
@@ -883,14 +881,14 @@ func (h *MCPHandler) validateToolTarget(database, schema, table string) error {
 	if database == "" {
 		database = h.defaultDatabase()
 	}
-	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+	if err := validateDatabase(database, h.db); err != nil {
 		return err
 	}
 	if !validatePathSegments(database, schema, table) {
 		return fmt.Errorf("invalid identifier in path")
 	}
 	if a, err := GetAdapterFromRegistry(h.registry, database); err == nil {
-		return checkSchemaScope(a, schema)
+		return checkSchemaScope(a, database, schema)
 	}
 	return nil
 }
@@ -900,7 +898,7 @@ func (h *MCPHandler) physicalDatabase(alias string) string {
 }
 
 func (h *MCPHandler) databaseAliases() []string {
-	return registryAliases(h.db, h.singleDB, h.defaultDatabase())
+	return registryAliases(h.db, h.defaultDatabase())
 }
 
 func (h *MCPHandler) defaultDatabase() string {

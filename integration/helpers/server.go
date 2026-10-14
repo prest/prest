@@ -23,6 +23,13 @@ func MultiClusterServerURL(t *testing.T) string {
 	return envURL(t, "PREST_MULTICLUSTER_TEST_URL")
 }
 
+// SameHostServerURL returns the base URL for the prestd service whose registry
+// aliases (main, tenant, down) map to databases on one Postgres host.
+func SameHostServerURL(t *testing.T) string {
+	t.Helper()
+	return envURL(t, "PREST_SAMEHOST_TEST_URL")
+}
+
 // AuthServerURL returns the base URL for the auth-enabled prestd service.
 func AuthServerURL(t *testing.T) string {
 	t.Helper()
