@@ -18,7 +18,9 @@ var ErrRelationNotFound = errors.New("relation not found")
 var ErrUnavailable = errors.New("database unavailable")
 
 // IsUnavailable reports connection-level failures from any engine: the
-// sentinel, stdlib network errors, and driver.ErrBadConn.
+// sentinel, stdlib network errors (dial, DNS, dial timeouts), and
+// driver.ErrBadConn. A bare context.DeadlineExceeded is not included: it is a
+// slow statement, not an unreachable database.
 func IsUnavailable(err error) bool {
 	if err == nil {
 		return false
@@ -27,5 +29,9 @@ func IsUnavailable(err error) bool {
 		return true
 	}
 	var op *net.OpError
-	return errors.As(err, &op)
+	if errors.As(err, &op) {
+		return true
+	}
+	var dns *net.DNSError
+	return errors.As(err, &dns)
 }

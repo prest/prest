@@ -27,6 +27,67 @@ func expectShowColumns(t *testing.T, ctrl *gomock.Controller, executor *mockgen.
 	scanner.EXPECT().Bytes().Return([]byte(body))
 }
 
+// A connection failure while running tools/call select_table answers 503 without the host:port.
+func TestMCPHandler_RPC_SelectTable_Unavailable(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	db := mockDatabaseRegistry(ctrl)
+
+	perms.EXPECT().TablePermissions("prest-test", "public", "users", "read", "").Return(true)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "users", "read", "").Return([]string{"id"}, nil)
+	showScanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(showScanner)
+	showScanner.EXPECT().Err().Return(nil)
+	showScanner.EXPECT().Bytes().Return([]byte(`[{"column_name":"id","data_type":"integer","position":1}]`))
+	scanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(scanner)
+	scanner.EXPECT().Err().Return(dialError())
+
+	h := NewMCPHandler(Deps{Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	body := bytes.NewBufferString(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"prest.select.prest-test.public.users"}}`)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/_mcp", body))
+
+	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	require.Contains(t, rec.Body.String(), "database unavailable")
+	requireNoAddressLeak(t, rec.Body.String())
+}
+
+// A failing column listing during list_tables answers 503 without the host:port.
+func TestMCPHandler_RPC_ListTables_ColumnsUnavailable(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	catalog, executor, db := mockgen.NewMockCatalogQuerier(ctrl), mockgen.NewMockQueryExecutor(ctrl), mockDatabaseRegistry(ctrl)
+	catalog.EXPECT().TableClause().Return("SELECT table").AnyTimes()
+	catalog.EXPECT().TableWhere("").Return("").AnyTimes()
+	catalog.EXPECT().TableOrderBy("").Return("").AnyTimes()
+	tableScanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().QueryCtx(gomock.Any(), gomock.Any()).Return(tableScanner).AnyTimes()
+	tableScanner.EXPECT().Err().Return(nil).AnyTimes()
+	tableScanner.EXPECT().Bytes().Return([]byte(`[{"schema":"public","name":"users","type":"table"}]`)).AnyTimes()
+	colScanner := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().ShowColumnsCtx(gomock.Any()).Return(colScanner).AnyTimes()
+	colScanner.EXPECT().Err().Return(dialError()).AnyTimes()
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	h := NewMCPHandler(Deps{Catalog: catalog, Executor: executor, Dialect: pgDialect{}, Perms: perms, DB: db, PGDatabase: "prest-test"})
+	body := bytes.NewBufferString(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"prest.list_tables","arguments":{"database":"prest-test"}}}`)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/_mcp", body))
+
+	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	require.Contains(t, rec.Body.String(), "database unavailable")
+	requireNoAddressLeak(t, rec.Body.String())
+}
+
 func TestMCPHandler_GetDiscovery(t *testing.T) {
 	t.Parallel()
 

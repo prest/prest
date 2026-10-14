@@ -99,6 +99,7 @@ type Prest struct {
 	PGUser               string
 	PGPass               string
 	PGDatabase           string
+	AllowedDatabases     []string // pg.allowed_databases: extra names reachable when pg.single=false without a registry
 	PGURL                string
 	PGSSLMode            string
 	PGSSLCert            string

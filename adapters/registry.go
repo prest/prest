@@ -2,6 +2,7 @@ package adapters
 
 import (
 	"errors"
+	"sort"
 	"sync"
 )
 
@@ -16,7 +17,7 @@ type Registry interface {
 	// Returns ErrAdapterNotFound if the alias is not registered.
 	Get(alias string) (Adapter, error)
 
-	// GetAll returns all registered adapter aliases.
+	// GetAll returns all registered adapter aliases, sorted alphabetically.
 	GetAll() []string
 
 	// Aliases is a convenience alias for GetAll (for compatibility).
@@ -67,7 +68,8 @@ func (r *SimpleRegistry) Get(alias string) (Adapter, error) {
 	return adapter, nil
 }
 
-// GetAll returns all registered aliases.
+// GetAll returns all registered aliases in alphabetical order, so callers do
+// not depend on map iteration order.
 func (r *SimpleRegistry) GetAll() []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -75,6 +77,7 @@ func (r *SimpleRegistry) GetAll() []string {
 	for alias := range r.adapters {
 		aliases = append(aliases, alias)
 	}
+	sort.Strings(aliases)
 	return aliases
 }
 

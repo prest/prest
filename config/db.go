@@ -32,6 +32,7 @@ func parseDBConfig(v *viper.Viper, cfg *Prest) error {
 	if cfg.Engine == "" {
 		cfg.Engine = EnginePostgres
 	}
+	cfg.AllowedDatabases = configuredStringList(v, "pg.allowed_databases")
 	if cfg.Engine == EngineMySQL {
 		return parseMySQLDBConfig(v, cfg)
 	}
@@ -77,6 +78,30 @@ func parseDBConfig(v *viper.Viper, cfg *Prest) error {
 		return err
 	}
 	return nil
+}
+
+// configuredStringList reads a list from the env (comma separated) or the
+// config file (array or comma-separated string). Items are trimmed and empty
+// items dropped.
+func configuredStringList(v *viper.Viper, key string) []string {
+	var raw []string
+	if val, ok := lookupConfigEnv(key); ok {
+		raw = strings.Split(val, ",")
+	} else if s, ok := v.Get(key).(string); ok {
+		raw = strings.Split(s, ",")
+	} else {
+		raw = v.GetStringSlice(key)
+	}
+	out := make([]string, 0, len(raw))
+	for _, item := range raw {
+		if item = strings.TrimSpace(item); item != "" {
+			out = append(out, item)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // parseDatabaseURL tries to get from URL the DB configs

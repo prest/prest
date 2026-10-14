@@ -57,6 +57,16 @@ func statusFor(err error, schema, table string) (int, string) {
 	}
 }
 
+// publicError returns the client-safe message for err: connection failures
+// become unavailableMsg (cause logged redacted), anything else is unchanged.
+func publicError(err error) (msg string, unavailable bool) {
+	if adapters.IsUnavailable(err) {
+		slog.Error(unavailableMsg, "err", logsafe.Error(err))
+		return unavailableMsg, true
+	}
+	return err.Error(), false
+}
+
 // writeStatementError answers a failed statement using statusFor. The
 // prefixes keep each endpoint's existing 404/400 messages; 503 never carries
 // one and logs the redacted cause instead.

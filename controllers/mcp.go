@@ -209,7 +209,12 @@ func (h *MCPHandler) handleRPC(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.dispatchRPC(r, req.Method, req.Params)
 	if err != nil {
-		h.writeRPCError(w, req.ID, http.StatusBadRequest, err.Error(), nil)
+		msg, unavailable := publicError(err)
+		status := http.StatusBadRequest
+		if unavailable {
+			status = http.StatusServiceUnavailable
+		}
+		h.writeRPCError(w, req.ID, status, msg, nil)
 		return
 	}
 
@@ -265,11 +270,12 @@ func (h *MCPHandler) dispatchRPC(r *http.Request, method string, params json.Raw
 func (h *MCPHandler) discoveryPayload(r *http.Request) mcpDiscoveryPayload {
 	tools, err := h.tools(r)
 	if err != nil {
+		msg, _ := publicError(err)
 		return mcpDiscoveryPayload{
 			Name:        mcpServerName,
 			Protocol:    mcpProtocolVersion,
 			Endpoint:    r.URL.Path,
-			Description: err.Error(),
+			Description: msg,
 		}
 	}
 

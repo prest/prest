@@ -58,6 +58,34 @@ A missing user or database fails startup. Postgres defaults (user `postgres`, da
 
 See [Configuring pREST](https://docs.prestd.com/get-started/configuring-prest) for auth, ACL, custom queries, and MCP.
 
+### Serving more than one database without `[[databases]]`
+
+With `pg.single = true` (the default) every request must target `pg.database`.
+With `pg.single = false` and no `[[databases]]` / `DATABASE_URL_<n>` registry,
+requests may target `pg.database` plus the names listed in `pg.allowed_databases`.
+They share the `[pg]` host and credentials. Any other `{database}` answers `400`
+(`database not registered`) and no connection is opened:
+
+```toml
+[pg]
+database = "prest"
+single = false
+allowed_databases = ["analytics", "reports"]
+```
+
+```sh
+export PREST_PG_SINGLE=false
+export PREST_PG_ALLOWED_DATABASES="analytics,reports"   # comma separated, blanks ignored
+```
+
+A single prestd opens at most 64 distinct connection pools. Past that limit a
+new database name answers `503`.
+
+> **Breaking:** before this release, `pg.single = false` without a registry
+> accepted any `{database}` in the path and opened a new pool for each name, so
+> every database the role could `CONNECT` to was reachable. To migrate, list the
+> databases you serve in `pg.allowed_databases`, or configure `[[databases]]`.
+
 ## Passing values to query scripts
 
 Values a `_QUERIES` script template interpolates become part of the SQL text, so

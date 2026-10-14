@@ -7,6 +7,8 @@ x-prest-env: &prest-env
   PREST_PG_USER: postgres
   PREST_PG_PASS: postgres
   PREST_PG_DATABASE: prest-test
+  # pg.single=false services serve only pg.database plus this list (suites hit /secondary-db/).
+  PREST_PG_ALLOWED_DATABASES: secondary-db
   DATABASE_URL: postgres://postgres:postgres@postgres:5432/prest-test?sslmode=disable
   PGPASSWORD: postgres
   GOTOOLCHAIN: auto

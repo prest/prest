@@ -479,7 +479,13 @@ func TestPermissionsJoinsAndConnect(t *testing.T) {
 	empty := New(&config.Prest{}).(*Adapter)
 	require.Equal(t, "x", empty.PhysicalName("x"))
 	require.Empty(t, empty.Aliases())
-	require.True(t, empty.IsRegistered("anything"))
+	require.False(t, empty.IsRegistered("anything"))
+	// Without a registry only pg.database and pg.allowed_databases are reachable.
+	legacy := New(&config.Prest{PGDatabase: "shop", AllowedDatabases: []string{"reports"}}).(*Adapter)
+	require.True(t, legacy.IsRegistered("shop"))
+	require.True(t, legacy.IsRegistered("reports"))
+	require.False(t, legacy.IsRegistered("anything"))
+	require.False(t, (&Adapter{}).IsRegistered("shop"))
 
 	var n sql.NullString
 	require.False(t, n.Valid)

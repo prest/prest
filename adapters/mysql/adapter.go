@@ -3,6 +3,7 @@ package mysql
 import (
 	"context"
 	"database/sql"
+	"slices"
 	"sync"
 
 	"github.com/jmoiron/sqlx"
@@ -89,10 +90,14 @@ func (a *Adapter) Aliases() []string {
 }
 
 // IsRegistered reports whether alias selects this adapter's connection.
-// Without a registry every name is accepted, matching the Postgres adapter.
+// Without a registry only pg.database and pg.allowed_databases are accepted,
+// matching the Postgres adapter.
 func (a *Adapter) IsRegistered(alias string) bool {
-	if a.cfg == nil || !a.cfg.HasDatabaseRegistry() {
-		return true
+	if a.cfg == nil {
+		return false
+	}
+	if !a.cfg.HasDatabaseRegistry() {
+		return alias == a.cfg.PGDatabase || slices.Contains(a.cfg.AllowedDatabases, alias)
 	}
 	return a.conn.Owns(alias)
 }

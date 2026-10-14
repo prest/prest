@@ -1,7 +1,16 @@
 DOCKER_COMPOSE?=docker-compose -f docker-compose.yml
 UNIT_PKGS = $(shell go list ./... | grep -v '/integration')
 
-.PHONY: build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb test-integration-mysql test-integration-log test-integration-postgres-log test-integration-timescaledb-log ci signoz-up signoz-down
+.PHONY: build build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb test-integration-mysql test-integration-log test-integration-postgres-log test-integration-timescaledb-log ci signoz-up signoz-down
+
+VERSION ?= $(shell git describe --tags --always --dirty)
+COMMIT  ?= $(shell git rev-parse --short HEAD)
+DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS := -X github.com/prest/prest/v2/helpers.Version=$(VERSION) -X github.com/prest/prest/v2/helpers.Commit=$(COMMIT) -X github.com/prest/prest/v2/helpers.Date=$(DATE)
+
+build:
+	go build -ldflags "$(LDFLAGS)" -o bin/prestd ./cmd/prestd
+
 build_test_image:
 	$(DOCKER_COMPOSE) up -d postgres
 

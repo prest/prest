@@ -145,7 +145,9 @@ func (p *postgres) Aliases() []string {
 // IsRegistered reports whether alias is a configured database registry entry.
 func (p *postgres) IsRegistered(alias string) bool {
 	if !p.cfg.HasDatabaseRegistry() {
-		return true
+		// Without a registry only the configured database and the explicit
+		// allow-list are reachable; any other name would open a new pool on the host.
+		return alias == p.cfg.PGDatabase || slices.Contains(p.cfg.AllowedDatabases, alias)
 	}
 	_, ok := p.cfg.ProfileByAlias(alias)
 	return ok

@@ -1439,8 +1439,15 @@ func TestIsRegistered(t *testing.T) {
 	require.True(t, adapter.IsRegistered("tenant-a"))
 	require.False(t, adapter.IsRegistered("unknown"))
 
-	legacyAdapter := testAdapter(defaultTestConf())
-	require.True(t, legacyAdapter.IsRegistered("anything"))
+	// Without a registry only pg.database and pg.allowed_databases are
+	// reachable; any other name would open a new pool on the host.
+	legacyCfg := defaultTestConf()
+	legacyCfg.AllowedDatabases = []string{"analytics"}
+	legacyAdapter := testAdapter(legacyCfg)
+	require.True(t, legacyAdapter.IsRegistered(legacyCfg.PGDatabase))
+	require.True(t, legacyAdapter.IsRegistered("analytics"))
+	require.False(t, legacyAdapter.IsRegistered("anything"))
+	require.False(t, legacyAdapter.IsRegistered(""))
 }
 
 func TestTablePermissionsTenantPrecedence(t *testing.T) {
