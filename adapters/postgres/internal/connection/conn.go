@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/internal/logsafe"
 
@@ -252,6 +253,18 @@ func (m *Manager) getDatabaseFromPool(name string) *sqlx.DB {
 	return DB
 }
 
+// maxPools caps the distinct connection pools one Manager opens. Callers are
+// expected to validate names first; this guards against one that does not.
+const maxPools = 64
+
+// errTooManyPools wraps adapters.ErrUnavailable so handlers answer 503.
+var errTooManyPools = fmt.Errorf("%w: connection pool limit (%d) reached", adapters.ErrUnavailable, maxPools)
+
+// poolFull reports whether no new pool may be added.
+func (p *Pool) poolFull() bool {
+	return len(p.DB) >= maxPools
+}
+
 // AddDatabaseToPool create and add connection to the pool
 func (m *Manager) AddDatabaseToPool(name string) (*sqlx.DB, error) {
 	if DB := m.getDatabaseFromPool(name); DB != nil {
@@ -262,6 +275,15 @@ func (m *Manager) AddDatabaseToPool(name string) (*sqlx.DB, error) {
 	result, err, _ := m.addDB.Do(uri, func() (interface{}, error) {
 		if DB := m.getDatabaseFromPool(name); DB != nil {
 			return DB, nil
+		}
+
+		p := m.getPool()
+		p.Mtx.RLock()
+		full := p.poolFull()
+		p.Mtx.RUnlock()
+		if full {
+			slog.Warn("refusing new database pool: limit reached", "database", name, "limit", maxPools)
+			return nil, errTooManyPools
 		}
 
 		DB, err := dbConnect(m.driverName, uri)
@@ -275,8 +297,14 @@ func (m *Manager) AddDatabaseToPool(name string) (*sqlx.DB, error) {
 			m.afterConnect(DB.DB)
 		}
 
-		p := m.getPool()
 		p.Mtx.Lock()
+		if p.poolFull() {
+			// Another name filled the last slot while this one connected.
+			p.Mtx.Unlock()
+			_ = DB.Close()
+			slog.Warn("refusing new database pool: limit reached", "database", name, "limit", maxPools)
+			return nil, errTooManyPools
+		}
 		p.DB[uri] = DB
 		p.Mtx.Unlock()
 		return DB, nil

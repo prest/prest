@@ -39,7 +39,6 @@ type MCPHandler struct {
 	registry adapters.Registry
 	db       adapters.DatabaseRegistry
 	perms    adapters.PermissionsChecker
-	singleDB bool
 	pgDB     string
 	expose   config.ExposeConf
 }
@@ -54,7 +53,6 @@ func NewMCPHandler(deps Deps) *MCPHandler {
 		registry: deps.AdapterRegistry,
 		db:       deps.DB,
 		perms:    deps.Perms,
-		singleDB: deps.SingleDB,
 		pgDB:     deps.PGDatabase,
 		expose:   deps.Expose,
 	}
@@ -68,8 +66,8 @@ type mcpBackend struct {
 }
 
 // backend returns the adapter registered for database so mixed-engine setups
-// build and run SQL on the right engine. Unregistered aliases and single-DB
-// handlers fall back to the defaults from Deps.
+// build and run SQL on the right engine. Unregistered aliases and handlers
+// without a registry fall back to the defaults from Deps.
 func (h *MCPHandler) backend(database string) mcpBackend {
 	if a, err := GetAdapterFromRegistry(h.registry, database); err == nil {
 		// Dialect is optional; without it fall back to the default so
@@ -209,7 +207,12 @@ func (h *MCPHandler) handleRPC(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.dispatchRPC(r, req.Method, req.Params)
 	if err != nil {
-		h.writeRPCError(w, req.ID, http.StatusBadRequest, err.Error(), nil)
+		msg, unavailable := publicError(err)
+		status := http.StatusBadRequest
+		if unavailable {
+			status = http.StatusServiceUnavailable
+		}
+		h.writeRPCError(w, req.ID, status, msg, nil)
 		return
 	}
 
@@ -265,11 +268,12 @@ func (h *MCPHandler) dispatchRPC(r *http.Request, method string, params json.Raw
 func (h *MCPHandler) discoveryPayload(r *http.Request) mcpDiscoveryPayload {
 	tools, err := h.tools(r)
 	if err != nil {
+		msg, _ := publicError(err)
 		return mcpDiscoveryPayload{
 			Name:        mcpServerName,
 			Protocol:    mcpProtocolVersion,
 			Endpoint:    r.URL.Path,
-			Description: err.Error(),
+			Description: msg,
 		}
 	}
 
@@ -393,7 +397,7 @@ func (h *MCPHandler) listSchemas(r *http.Request, args mcpListSchemasArgs) (any,
 	if args.Database == "" {
 		args.Database = h.defaultDatabase()
 	}
-	if err := validateDatabase(args.Database, h.db, h.singleDB); err != nil {
+	if err := validateDatabase(args.Database, h.db); err != nil {
 		return nil, err
 	}
 
@@ -445,11 +449,20 @@ func (h *MCPHandler) listTables(r *http.Request, args mcpListTablesArgs) (any, e
 	if args.Database == "" {
 		args.Database = h.defaultDatabase()
 	}
-	if err := validateDatabase(args.Database, h.db, h.singleDB); err != nil {
+	if err := validateDatabase(args.Database, h.db); err != nil {
 		return nil, err
 	}
 	if args.Schema != "" && !validatePathSegments(args.Schema) {
 		return nil, fmt.Errorf("invalid identifier in path")
+	}
+	if args.Schema != "" {
+		// Same pin as validateToolTarget: a MySQL entry lists only its own
+		// database's tables.
+		if a, err := GetAdapterFromRegistry(h.registry, args.Database); err == nil {
+			if err := checkSchemaScope(a, args.Database, args.Schema); err != nil {
+				return nil, err
+			}
+		}
 	}
 	return h.tableRows(r, args.Database, args.Schema)
 }
@@ -877,14 +890,14 @@ func (h *MCPHandler) validateToolTarget(database, schema, table string) error {
 	if database == "" {
 		database = h.defaultDatabase()
 	}
-	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+	if err := validateDatabase(database, h.db); err != nil {
 		return err
 	}
 	if !validatePathSegments(database, schema, table) {
 		return fmt.Errorf("invalid identifier in path")
 	}
 	if a, err := GetAdapterFromRegistry(h.registry, database); err == nil {
-		return checkSchemaScope(a, schema)
+		return checkSchemaScope(a, database, schema)
 	}
 	return nil
 }
@@ -894,7 +907,7 @@ func (h *MCPHandler) physicalDatabase(alias string) string {
 }
 
 func (h *MCPHandler) databaseAliases() []string {
-	return registryAliases(h.db, h.singleDB, h.defaultDatabase())
+	return registryAliases(h.db, h.defaultDatabase())
 }
 
 func (h *MCPHandler) defaultDatabase() string {

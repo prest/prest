@@ -2,6 +2,7 @@ package connection
 
 import (
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/jmoiron/sqlx"
@@ -22,8 +23,10 @@ type Pool struct {
 }
 
 // Manager is the MySQL connection pool for one pREST config.
-// It tracks the active alias. It does not issue USE, and it does not open a
-// connection for a name it does not already own.
+// It tracks the active alias and never issues USE. It keeps one pool per DSN:
+// pg.database (or the registry entry), plus, without a registry, one per
+// pg.allowed_databases name on the same host. Pools open lazily on first use,
+// so at most 1+len(AllowedDatabases) exist; unowned names never dial.
 type Manager struct {
 	cfg        *config.Prest
 	mu         sync.RWMutex
@@ -80,19 +83,47 @@ func (m *Manager) DSN() (string, error) {
 	)
 }
 
-// Owns reports whether name is this manager's alias or physical database.
+// Owns reports whether name is this manager's alias or physical database,
+// or, without a registry, one of pg.allowed_databases.
 // An empty name refers to the current connection.
 func (m *Manager) Owns(name string) bool {
 	if name == "" {
 		return true
 	}
-	m.mu.RLock()
-	alias := m.alias
-	m.mu.RUnlock()
-	if name == alias {
+	if name == m.GetDatabase() {
 		return true
 	}
-	return m.cfg != nil && name == m.cfg.PGDatabase
+	if m.cfg == nil {
+		return false
+	}
+	if name == m.cfg.PGDatabase {
+		return true
+	}
+	return !m.cfg.HasDatabaseRegistry() && slices.Contains(m.cfg.AllowedDatabases, name)
+}
+
+// dsnFor returns the DSN serving name. The empty name, the alias and
+// pg.database use DSN(); any other owned name is an allow-listed database on
+// the same [pg] host and credentials, with only the database swapped.
+func (m *Manager) dsnFor(name string) (string, error) {
+	if m.cfg == nil {
+		return "", fmt.Errorf("mysql config is nil")
+	}
+	if name == "" || name == m.GetDatabase() || name == m.cfg.PGDatabase {
+		return m.DSN()
+	}
+	return BuildDSN(
+		m.cfg.PGUser,
+		m.cfg.PGPass,
+		m.cfg.PGHost,
+		m.cfg.PGPort,
+		name,
+		m.cfg.PGSSLMode,
+		m.cfg.PGSSLCert,
+		m.cfg.PGSSLKey,
+		m.cfg.PGSSLRootCert,
+		m.cfg.MySQLPrepare,
+	)
 }
 
 // Get returns the pooled connection, opening it when this manager does not
@@ -108,21 +139,18 @@ func (m *Manager) Get() (*sqlx.DB, error) {
 	return m.open(dsn)
 }
 
-// GetOwned returns a connection this manager already holds when name is owned.
-// It does not open a connection for an unknown alias.
+// GetOwned returns the pool for an owned name, opening it on first use so
+// lazy adapters recover once the database is reachable. Names this manager
+// does not own are rejected without dialling.
 func (m *Manager) GetOwned(name string) (*sqlx.DB, error) {
 	if !m.Owns(name) {
 		return nil, fmt.Errorf("unknown database alias %q", name)
 	}
-	dsn, err := m.DSN()
+	dsn, err := m.dsnFor(name)
 	if err != nil {
 		return nil, err
 	}
-	db := m.pooled(dsn)
-	if db == nil {
-		return nil, fmt.Errorf("unknown database alias %q", name)
-	}
-	return db, nil
+	return m.open(dsn)
 }
 
 func (m *Manager) pooled(dsn string) *sqlx.DB {

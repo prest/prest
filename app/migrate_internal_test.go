@@ -67,7 +67,7 @@ func TestEnsureSchemaMigrated_MixedRegistry(t *testing.T) {
 		AuthTable:            "prest_users",
 	}
 
-	require.NoError(t, ensureSchemaMigrated(cfg, registry))
+	require.NoError(t, ensureSchemaMigrated(cfg, registry, nil))
 	require.NoError(t, sqlMock.ExpectationsWereMet())
 	require.Equal(t, 1, shop.authCalls)
 }
@@ -85,6 +85,6 @@ func TestEnsureSchemaMigrated_RootMySQLEnsurerOnly(t *testing.T) {
 		AuthMigrateOnStartup: true,
 	}
 
-	require.NoError(t, ensureSchemaMigrated(cfg, registry))
+	require.NoError(t, ensureSchemaMigrated(cfg, registry, nil))
 	require.Equal(t, 1, shop.authCalls)
 }

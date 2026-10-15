@@ -99,6 +99,7 @@ type Prest struct {
 	PGUser               string
 	PGPass               string
 	PGDatabase           string
+	AllowedDatabases     []string // pg.allowed_databases: extra databases on the [pg] host served without a registry
 	PGURL                string
 	PGSSLMode            string
 	PGSSLCert            string
@@ -134,7 +135,6 @@ type Prest struct {
 	MySQLPrepare         bool
 	Adapter              adapters.Adapter
 	EnableDefaultJWT     bool
-	SingleDB             bool
 	Databases            []DatabaseConf
 	HTTPSMode            bool
 	HTTPSCert            string

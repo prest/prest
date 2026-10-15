@@ -348,7 +348,6 @@ func TestCatalogHandler_ListTablesByDatabaseAndSchema_UnregisteredDatabase(t *te
 
 	h := NewCatalogHandler(Deps{
 		DB:       db,
-		SingleDB: true,
 		Builder:  mockgen.NewMockRequestQueryBuilder(ctrl),
 		Catalog:  mockgen.NewMockCatalogQuerier(ctrl),
 		Executor: mockgen.NewMockQueryExecutor(ctrl),
@@ -402,7 +401,7 @@ func TestCatalogHandler_ListDatabases_RegistryMode(t *testing.T) {
 	]`, rec.Body.String())
 }
 
-// A registry without registry mode (legacy single-adapter wiring) keeps
+// A registry without registry mode (no registry mode) keeps
 // querying the server catalog.
 func TestCatalogHandler_ListDatabases_RegistryWithoutRegistryMode(t *testing.T) {
 	t.Parallel()

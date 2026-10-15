@@ -147,6 +147,61 @@ func TestQueryRegistryHandler_List_UnregisteredRouteAlias(t *testing.T) {
 	require.Contains(t, rec.Body.String(), "database not registered")
 }
 
+// Connection failures answer 503 on every registry endpoint, never leaking host:port.
+func TestQueryRegistryHandler_Unavailable(t *testing.T) {
+	t.Parallel()
+
+	body := []byte(`{"location":"itest","name":"sample","read_sql":"SELECT 1"}`)
+	vars := map[string]string{"location": "itest", "name": "sample"}
+	for _, tc := range []struct {
+		name   string
+		expect func(r *mockgen.MockQueryRegistry)
+		call   func(h *QueryRegistryHandler, w http.ResponseWriter)
+	}{
+		{"list", func(r *mockgen.MockQueryRegistry) {
+			r.EXPECT().ListQueries(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, dialError())
+		}, func(h *QueryRegistryHandler, w http.ResponseWriter) {
+			h.List(w, queryRegistryRequest(http.MethodGet, "/_QUERIES/registry", nil, nil))
+		}},
+		{"get", func(r *mockgen.MockQueryRegistry) {
+			r.EXPECT().GetQuery(gomock.Any(), gomock.Any(), "itest", "sample").Return(adapters.StoredQuery{}, dialError())
+		}, func(h *QueryRegistryHandler, w http.ResponseWriter) {
+			h.Get(w, queryRegistryRequest(http.MethodGet, "/_QUERIES/registry/itest/sample", nil, vars))
+		}},
+		{"create", func(r *mockgen.MockQueryRegistry) {
+			r.EXPECT().UpsertQuery(gomock.Any(), gomock.Any()).Return(dialError())
+		}, func(h *QueryRegistryHandler, w http.ResponseWriter) {
+			h.Create(w, queryRegistryRequest(http.MethodPost, "/_QUERIES/registry", body, nil))
+		}},
+		{"update", func(r *mockgen.MockQueryRegistry) {
+			r.EXPECT().UpsertQuery(gomock.Any(), gomock.Any()).Return(dialError())
+		}, func(h *QueryRegistryHandler, w http.ResponseWriter) {
+			h.Update(w, queryRegistryRequest(http.MethodPut, "/_QUERIES/registry/itest/sample", body, vars))
+		}},
+		{"delete", func(r *mockgen.MockQueryRegistry) {
+			r.EXPECT().DeleteQuery(gomock.Any(), gomock.Any(), "itest", "sample").Return(dialError())
+		}, func(h *QueryRegistryHandler, w http.ResponseWriter) {
+			h.Delete(w, queryRegistryRequest(http.MethodDelete, "/_QUERIES/registry/itest/sample", nil, vars))
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			h, registry, _ := testQueryRegistryHandler(t, ctrl)
+			tc.expect(registry)
+
+			rec := httptest.NewRecorder()
+			tc.call(h, rec)
+
+			require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+			require.Contains(t, rec.Body.String(), "database unavailable")
+			requireNoAddressLeak(t, rec.Body.String())
+		})
+	}
+}
+
 func TestQueryRegistryHandler_List_Error(t *testing.T) {
 	t.Parallel()
 

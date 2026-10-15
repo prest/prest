@@ -48,6 +48,8 @@ func parseDatabaseRegistry(v *viper.Viper, cfg *Prest) {
 	merged := make(map[string]DatabaseConf)
 
 	for _, db := range parseDatabaseRegistryFromEnv() {
+		// Pool limits only: the URL stays authoritative for host and credentials.
+		fillPoolDefaults(&db, cfg)
 		addDatabaseConf(merged, db)
 	}
 	envAliases := make(map[string]struct{}, len(merged))
@@ -283,6 +285,15 @@ func fillDatabaseDefaults(db *DatabaseConf, cfg *Prest) {
 	if db.SSL.RootCert == "" {
 		db.SSL.RootCert = cfg.PGSSLRootCert
 	}
+	fillPoolDefaults(db, cfg)
+}
+
+// fillPoolDefaults copies the global pool limits into an entry that left them
+// unset; database/sql treats MaxOpenConns(0) as unlimited.
+func fillPoolDefaults(db *DatabaseConf, cfg *Prest) {
+	if cfg == nil {
+		return
+	}
 	if db.MaxOpenConn == 0 {
 		db.MaxOpenConn = cfg.PGMaxOpenConn
 	}
@@ -333,12 +344,7 @@ func fillMySQLDatabaseDefaults(db *DatabaseConf, cfg *Prest) {
 			db.SSL.RootCert = cfg.PGSSLRootCert
 		}
 	}
-	if db.MaxOpenConn == 0 && cfg != nil {
-		db.MaxOpenConn = cfg.PGMaxOpenConn
-	}
-	if db.MaxIdleConn == 0 && cfg != nil {
-		db.MaxIdleConn = cfg.PGMaxIdleConn
-	}
+	fillPoolDefaults(db, cfg)
 }
 
 func sortedDatabaseConfs(merged map[string]DatabaseConf) []DatabaseConf {

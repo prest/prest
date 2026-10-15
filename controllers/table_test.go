@@ -28,7 +28,7 @@ func TestTableHandler_Show_Success(t *testing.T) {
 
 	db := mockDatabaseRegistry(ctrl)
 
-	h := NewTableHandler(executor, db, false)
+	h := NewTableHandler(executor, db)
 	req := crudRequest(http.MethodGet, "/prest-test/public/users", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "users",
 	})
@@ -47,7 +47,7 @@ func TestTableHandler_Show_InvalidPath(t *testing.T) {
 
 	db := mockDatabaseRegistry(ctrl)
 
-	h := NewTableHandler(mockgen.NewMockQueryExecutor(ctrl), db, false)
+	h := NewTableHandler(mockgen.NewMockQueryExecutor(ctrl), db)
 	req := crudRequest(http.MethodGet, "/prest-test/bad@schema/users", map[string]string{
 		"database": "prest-test", "schema": "bad@schema", "table": "users",
 	})
@@ -72,7 +72,7 @@ func TestTableHandler_Show_QueryError(t *testing.T) {
 
 	db := mockDatabaseRegistry(ctrl)
 
-	h := NewTableHandler(executor, db, false)
+	h := NewTableHandler(executor, db)
 	req := crudRequest(http.MethodGet, "/prest-test/public/users", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "users",
 	})
@@ -96,7 +96,7 @@ func TestTableHandler_Show_RelationNotFoundIsBadRequest(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().ShowTableCtx(gomock.Any(), "public", "users").Return(scanner)
 
-	h := NewTableHandler(executor, mockDatabaseRegistry(ctrl), false)
+	h := NewTableHandler(executor, mockDatabaseRegistry(ctrl))
 	req := crudRequest(http.MethodGet, "/prest-test/public/users", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "users",
 	})

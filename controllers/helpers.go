@@ -23,11 +23,8 @@ func requestContext(r *http.Request, database string) (context.Context, context.
 	return context.WithTimeout(ctx, time.Second*time.Duration(timeout))
 }
 
-func validateDatabase(database string, registry adapters.DatabaseRegistry, singleDB bool) error {
+func validateDatabase(database string, registry adapters.DatabaseRegistry) error {
 	if registry != nil && !registry.IsRegistered(database) {
-		return fmt.Errorf("database not registered: %v", database)
-	}
-	if singleDB && registry != nil && registry.GetDatabase() != database {
 		return fmt.Errorf("database not registered: %v", database)
 	}
 	return nil
@@ -38,23 +35,32 @@ func validateDatabase(database string, registry adapters.DatabaseRegistry, singl
 var errSchemaNotInDatabase = errors.New("schema not served by this database")
 
 // validateSchema checks {schema} against the adapter selected for the request.
-// Adapters that do not implement adapters.SchemaScoper accept any schema.
-func validateSchema(r *http.Request, schema string) error {
-	return checkSchemaScope(GetAdapterForRequest(r, nil), schema)
+// Adapters implementing neither adapters.DatabaseSchemaScoper nor
+// adapters.SchemaScoper accept any schema.
+func validateSchema(r *http.Request, database, schema string) error {
+	return checkSchemaScope(GetAdapterForRequest(r, nil), database, schema)
 }
 
-func checkSchemaScope(a adapters.Adapter, schema string) error {
+// checkSchemaScope prefers the database-aware scoper and falls back to the
+// one-argument SchemaScoper.
+func checkSchemaScope(a adapters.Adapter, database, schema string) error {
+	if scoper, ok := a.(adapters.DatabaseSchemaScoper); ok {
+		if !scoper.AllowsDatabaseSchema(database, schema) {
+			return errSchemaNotInDatabase
+		}
+		return nil
+	}
 	if scoper, ok := a.(adapters.SchemaScoper); ok && !scoper.AllowsSchema(schema) {
 		return errSchemaNotInDatabase
 	}
 	return nil
 }
 
-// registryAliases lists the database aliases a server exposes: the default
-// database in single-DB mode, otherwise the registry's aliases, falling back
-// to the default database.
-func registryAliases(db adapters.DatabaseRegistry, singleDB bool, defaultDB string) []string {
-	if !singleDB && db != nil {
+// registryAliases lists the databases this server serves: registry aliases (or
+// pg.database plus pg.allowed_databases via the adapter), falling back to the
+// default database.
+func registryAliases(db adapters.DatabaseRegistry, defaultDB string) []string {
+	if db != nil {
 		if aliases := uniqueStrings(db.Aliases()); len(aliases) > 0 {
 			return aliases
 		}

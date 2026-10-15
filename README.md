@@ -58,6 +58,74 @@ A missing user or database fails startup. Postgres defaults (user `postgres`, da
 
 See [Configuring pREST](https://docs.prestd.com/get-started/configuring-prest) for auth, ACL, custom queries, and MCP.
 
+## Serving several databases
+
+pREST can serve multiple databases in two modes:
+
+### Registry mode
+
+Define a `[[databases]]` registry in `prest.toml` or use environment variables (`DATABASE_ALIAS_<n>` / `DATABASE_URL_<n>`). Aliases may differ from database names, and entries can be on the same host or different hosts:
+
+```toml
+[[databases]]
+alias = "main"
+url = "postgres://user:pass@localhost:5432/prest_main?sslmode=disable"
+
+[[databases]]
+alias = "tenant-1"
+url = "postgres://user:pass@localhost:5432/tenant_1?sslmode=disable"
+
+[[databases]]
+alias = "reporting"
+url = "mysql://user:pass@127.0.0.1:3306/reports?tls=false"
+```
+
+Or via environment:
+
+```sh
+DATABASE_ALIAS_1=main
+DATABASE_URL_1="postgres://user:pass@localhost:5432/prest_main?sslmode=disable"
+DATABASE_ALIAS_2=tenant-1
+DATABASE_URL_2="postgres://user:pass@localhost:5432/tenant_1?sslmode=disable"
+```
+
+An entry that is unreachable at start-up is logged and answers 503 ("database unavailable") until it comes up; start-up fails only when every entry is unreachable or the configuration is invalid.
+
+### No-registry mode
+
+Use `pg.database` plus `pg.allowed_databases` on the `[pg]` host with the `[pg]` credentials. Both Postgres and MySQL are supported. On MySQL, `{schema}` must equal `{database}`:
+
+```toml
+[pg]
+database = "prest"
+allowed_databases = ["secondary-db"]
+```
+
+Or via environment (comma-separated for allowed databases):
+
+```sh
+PREST_PG_DATABASE=prest
+PREST_PG_ALLOWED_DATABASES=secondary-db,another-db
+# or for MySQL:
+PREST_DB_DATABASE=mydb
+PREST_DB_ALLOWED_DATABASES=other-db
+```
+
+### Catalog and MCP
+
+The `/databases` endpoint and MCP `prest.list_databases` show only the served databases. In registry mode, that is the configured aliases. Without a registry, that is `pg.database` plus `pg.allowed_databases`.
+
+Postgres supports up to 64 open pools. MySQL creates one pool per served database.
+
+### Migrating from `pg.single`
+
+The `pg.single` configuration key has been removed and is ignored with a warning. Behavior changes:
+
+- **Allow-listed names are always served.** Previously, `pg.single = true` (the default) required requests to be for the main `pg.database`; allow-listed names were ignored. Now they are served whether the deprecated key is set or not.
+- **A registry is no longer limited to `pg.database`.** Previously, with both a registry and `pg.single = true`, every request was restricted to the main database. Now a registry serves its configured aliases freely.
+- **`/databases` and MCP list only served databases.** Requests for unlisted databases return 400 "database not registered".
+- **On MySQL without a registry, `/{database}/{other-schema}/…` returns 404.** On MySQL a schema is a database, so `{schema}` must equal `{database}`. Previously any database the MySQL user had grants on was reachable through `pg.database`.
+
 ## Passing values to query scripts
 
 Values a `_QUERIES` script template interpolates become part of the SQL text, so

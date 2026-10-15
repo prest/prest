@@ -48,6 +48,26 @@ func dialError() error {
 	return &net.OpError{Op: "dial", Net: "tcp", Addr: &net.TCPAddr{IP: net.ParseIP("10.0.0.5"), Port: 5432}, Err: syscall.ECONNREFUSED}
 }
 
+func requireNoAddressLeak(t *testing.T, body string) {
+	t.Helper()
+	for _, s := range []string{"10.0.0.5", "5432", "dial"} {
+		require.NotContains(t, body, s)
+	}
+}
+
+// publicError hides connection details and flags the outage; other errors pass through.
+func TestPublicError(t *testing.T) {
+	t.Parallel()
+
+	msg, unavailable := publicError(fmt.Errorf("select: %w", dialError()))
+	require.True(t, unavailable)
+	require.Equal(t, "database unavailable", msg)
+
+	msg, unavailable = publicError(errors.New("bad column"))
+	require.False(t, unavailable)
+	require.Equal(t, "bad column", msg)
+}
+
 func TestStatusFor(t *testing.T) {
 	t.Parallel()
 

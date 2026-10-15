@@ -86,10 +86,9 @@ database = "prest"
 maxidleconn = 0  # 0 avoids DB connections leaking on request timeout
 maxopenconn = 10
 conntimeout = 10 # seconds
-# Whether a single shared DB connection is used (true) or the per-request
-# lifecycle is used (false). Ignored when a `[[databases]]` registry (see
-# below) is configured.
-single = true
+# Extra databases on this host served when no [[databases]] registry is configured (Postgres and MySQL).
+# Also limits what /databases lists. Env: PREST_DB_ALLOWED_DATABASES / PREST_PG_ALLOWED_DATABASES.
+allowed_databases = []
 # Enables query result caching against this database (see [cache] below).
 cache = true
 

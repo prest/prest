@@ -3,6 +3,7 @@ package mysql
 import (
 	"context"
 	"database/sql"
+	"slices"
 	"sync"
 
 	"github.com/jmoiron/sqlx"
@@ -28,7 +29,7 @@ var (
 	_ adapters.QueryRegistry            = (*Adapter)(nil)
 	_ adapters.ScriptPermissionsChecker = (*Adapter)(nil)
 	_ adapters.SystemTableEnsurer       = (*Adapter)(nil)
-	_ adapters.SchemaScoper             = (*Adapter)(nil)
+	_ adapters.DatabaseSchemaScoper     = (*Adapter)(nil)
 )
 
 // New creates a MySQL adapter without connecting.
@@ -77,29 +78,70 @@ func (a *Adapter) SetDatabase(name string) { a.conn.SetDatabase(name) }
 // GetDatabase returns the active alias.
 func (a *Adapter) GetDatabase() string { return a.conn.GetDatabase() }
 
-// Aliases returns the alias this adapter serves.
+// servedDatabases lists the databases reachable without a registry:
+// pg.database plus pg.allowed_databases, empties and duplicates dropped.
+// nil in registry mode, where the alias is the source of truth; empty (not
+// nil) for a nil config, so catalog filters match nothing.
+func (a *Adapter) servedDatabases() []string {
+	if a.cfg == nil {
+		return []string{}
+	}
+	if a.cfg.HasDatabaseRegistry() {
+		return nil
+	}
+	return dedupeNonEmpty(append([]string{a.cfg.PGDatabase}, a.cfg.AllowedDatabases...))
+}
+
+// dedupeNonEmpty keeps the first occurrence of each non-empty name, in order.
+func dedupeNonEmpty(names []string) []string {
+	out := make([]string, 0, len(names))
+	for _, n := range names {
+		if n != "" && !slices.Contains(out, n) {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+// Aliases returns the names this adapter serves: the registry alias, or
+// without a registry pg.database plus pg.allowed_databases.
 func (a *Adapter) Aliases() []string {
+	if a.cfg == nil || !a.cfg.HasDatabaseRegistry() {
+		if served := a.servedDatabases(); len(served) > 0 {
+			return served
+		}
+		return nil
+	}
 	if name := a.GetDatabase(); name != "" {
 		return []string{name}
 	}
-	if a.cfg != nil && a.cfg.PGDatabase != "" {
+	if a.cfg.PGDatabase != "" {
 		return []string{a.cfg.PGDatabase}
 	}
 	return nil
 }
 
 // IsRegistered reports whether alias selects this adapter's connection.
-// Without a registry every name is accepted, matching the Postgres adapter.
+// Without a registry only the served databases are accepted, matching the
+// Postgres adapter.
 func (a *Adapter) IsRegistered(alias string) bool {
-	if a.cfg == nil || !a.cfg.HasDatabaseRegistry() {
-		return true
+	if a.cfg == nil {
+		return false
+	}
+	if !a.cfg.HasDatabaseRegistry() {
+		return slices.Contains(a.servedDatabases(), alias)
 	}
 	return a.conn.Owns(alias)
 }
 
-// PhysicalName is the MySQL database this connection was opened against.
+// PhysicalName is the MySQL database alias resolves to. Without a registry a
+// served name is itself a database; otherwise it is the connection's
+// pg.database.
 func (a *Adapter) PhysicalName(alias string) string {
 	if a.cfg == nil {
+		return alias
+	}
+	if alias != "" && !a.cfg.HasDatabaseRegistry() && slices.Contains(a.servedDatabases(), alias) {
 		return alias
 	}
 	if a.cfg.PGDatabase != "" {
@@ -108,11 +150,12 @@ func (a *Adapter) PhysicalName(alias string) string {
 	return alias
 }
 
-// AllowsSchema pins {schema} to this connection's database when a registry
-// is configured, so one alias cannot reach another alias's database.
-func (a *Adapter) AllowsSchema(schema string) bool {
+// AllowsDatabaseSchema pins {schema} to the routed database, since MySQL schemas are
+// databases: with a registry, the entry's physical database; without one,
+// {database} itself. One served name can never reach another's database.
+func (a *Adapter) AllowsDatabaseSchema(database, schema string) bool {
 	if a.cfg == nil || !a.cfg.HasDatabaseRegistry() {
-		return true
+		return schema == database
 	}
 	return schema == a.PhysicalName("")
 }

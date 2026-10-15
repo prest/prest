@@ -19,6 +19,9 @@ func (a *Adapter) DatabaseClause(req *http.Request) (string, bool) {
 
 func (a *Adapter) DatabaseWhere(requestWhere string) string {
 	where := " WHERE 1=1"
+	if served := a.servedDatabases(); served != nil {
+		where += " AND " + servedFilter("datname", served)
+	}
 	if requestWhere != "" {
 		where += " AND " + requestWhere
 	}
@@ -42,7 +45,14 @@ func (a *Adapter) SchemaClause(req *http.Request) (string, bool) {
 		field = "COUNT(schema_name)"
 		hasCount = true
 	}
-	return fmt.Sprintf(statements.SchemasFrom, field), hasCount
+	// Schemas are databases on MySQL: without a registry list only the served
+	// ones. The filter sits inside the derived table, so the controller's
+	// appended " WHERE <request>" is unaffected.
+	filter := ""
+	if served := a.servedDatabases(); served != nil {
+		filter = " AND " + servedFilter("SCHEMA_NAME", served)
+	}
+	return fmt.Sprintf(statements.SchemasFrom, field, filter), hasCount
 }
 
 func (a *Adapter) SchemaOrderBy(order string, hasCount bool) string {
@@ -57,8 +67,10 @@ func (a *Adapter) SchemaOrderBy(order string, hasCount bool) string {
 
 func (a *Adapter) TableClause() string { return statements.TablesFrom }
 
+// TableWhere limits table listings to the served databases' tables; the
+// MySQL user may see databases pREST does not serve.
 func (a *Adapter) TableWhere(requestWhere string) string {
-	where := "WHERE 1=1"
+	where := "WHERE 1=1 AND " + a.tableScope()
 	if requestWhere != "" {
 		where += " AND " + requestWhere
 	}
@@ -87,4 +99,13 @@ func (a *Adapter) SchemaTablesOrderBy(order string) string {
 		return order
 	}
 	return " ORDER BY `name` ASC"
+}
+
+// tableScope pins the `schema` column of TablesFrom: a registry entry serves
+// only its physical database, otherwise pg.database plus pg.allowed_databases.
+func (a *Adapter) tableScope() string {
+	if a.cfg != nil && a.cfg.HasDatabaseRegistry() {
+		return "`schema` = " + quoteLiteral(a.PhysicalName(""))
+	}
+	return servedFilter("`schema`", a.servedDatabases())
 }

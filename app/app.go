@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/prest/prest/v2/config"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers"
+	"github.com/prest/prest/v2/internal/logsafe"
 	"github.com/prest/prest/v2/middlewares"
 	"github.com/prest/prest/v2/plugins"
 	"github.com/prest/prest/v2/router"
@@ -41,48 +43,42 @@ type App struct {
 // Handlers, CRUD middleware, routes, global middleware, and plugins are wired into
 // a single http.Handler.
 //
-// Returns an error when the database connection cannot be established.
+// In registry mode an entry that is unreachable at startup is served by a lazy
+// adapter (it connects on first use) and skipped by startup migrations.
+//
+// Returns an error when the database connection cannot be established: in
+// no-registry mode on any failure, in registry mode on configuration
+// errors or when no entry is reachable.
 func New(cfg *config.Prest) (*App, error) {
 	registry := adapters.NewRegistry()
+	var unreachable map[string]struct{}
 
 	// Multi-database mode: create adapter for each configured database
 	if cfg.HasDatabaseRegistry() {
-		for _, dbConf := range cfg.Databases {
-			adapter, err := createAdapterForDatabase(cfg, &dbConf)
-			if err != nil {
-				return nil, err
-			}
-			if err := registry.Register(dbConf.Alias, adapter); err != nil {
-				return nil, err
-			}
-			slog.Info("registered adapter for database", "alias", dbConf.Alias)
+		var err error
+		if unreachable, err = registerDatabases(cfg, registry); err != nil {
+			return nil, err
 		}
 	} else if cfg.Adapter == nil {
-		// Single database mode (backward compatibility): detect and create default adapter
+		// No registry: one adapter for pg.database; pg.allowed_databases share its host and credentials
 		adapter, err := detectAndCreateAdapter(cfg)
 		if err != nil {
 			return nil, err
 		}
 		cfg.Adapter = adapter
-		alias := cfg.PGDatabase
-		if alias == "" {
-			alias = "prest" // Use default alias when database name is not set
-		}
-		if err := registry.Register(alias, adapter); err != nil {
+		if err := registerServedAliases(registry, cfg, adapter); err != nil {
 			return nil, err
 		}
 	} else {
 		// Adapter already configured (injected): register it
-		alias := cfg.PGDatabase
-		if alias == "" {
-			alias = "prest" // Use default alias when database name is not set
-		}
-		if err := registry.Register(alias, cfg.Adapter); err != nil {
+		if err := registerServedAliases(registry, cfg, cfg.Adapter); err != nil {
 			return nil, err
 		}
 	}
 
-	if err := ensureSchemaMigrated(cfg, registry); err != nil {
+	logServedDatabases(cfg)
+
+	if err := ensureSchemaMigrated(cfg, registry, unreachable); err != nil {
 		return nil, err
 	}
 
@@ -91,11 +87,8 @@ func New(cfg *config.Prest) (*App, error) {
 	}
 
 	// For multi-database mode, set a default adapter for health checks and schema operations
-	// Use the first registered adapter if no primary adapter is configured
-	if cfg.Adapter == nil && len(registry.GetAll()) > 0 {
-		aliases := registry.GetAll()
-		defaultAdapter, _ := registry.Get(aliases[0])
-		cfg.Adapter = defaultAdapter
+	if cfg.Adapter == nil {
+		cfg.Adapter = defaultAdapter(cfg, registry, unreachable)
 	}
 
 	deps := controllers.NewDepsFromConfig(cfg)
@@ -130,7 +123,109 @@ func New(cfg *config.Prest) (*App, error) {
 	return &App{Config: cfg, Handler: handler, Adapters: registry, pg: cfg.Adapter}, nil
 }
 
-func ensureSchemaMigrated(cfg *config.Prest, registry adapters.Registry) error {
+// registerDatabases connects and registers an adapter for every registry
+// entry. An unreachable entry gets a lazy adapter and is returned in the
+// unreachable set; any other error is fatal, as is every entry being down.
+func registerDatabases(cfg *config.Prest, registry adapters.Registry) (map[string]struct{}, error) {
+	unreachable := make(map[string]struct{})
+	for _, dbConf := range cfg.Databases {
+		dbCfg := scopedConfig(cfg, &dbConf)
+		adapter, err := connectAdapter(&dbCfg, &dbConf)
+		if err != nil {
+			// Auth failures, unknown engines and bad URLs are config mistakes, not outages.
+			if !adapters.IsUnavailable(err) {
+				return nil, err
+			}
+			slog.Warn("database unreachable at startup; serving lazily", "alias", dbConf.Alias, "err", logsafe.Error(err))
+			adapter = lazyAdapterForDatabase(&dbCfg, &dbConf)
+			unreachable[dbConf.Alias] = struct{}{}
+		}
+		if err := registry.Register(dbConf.Alias, adapter); err != nil {
+			return nil, err
+		}
+		slog.Info("registered adapter for database", "alias", dbConf.Alias)
+	}
+	if len(unreachable) == len(cfg.Databases) {
+		return nil, fmt.Errorf("no configured database reachable: %w", adapters.ErrUnavailable)
+	}
+	return unreachable, nil
+}
+
+// registerServedAliases registers the single no-registry adapter under
+// pg.database ("prest" when unset) and every pg.allowed_databases name, so the
+// adapter selector attaches it, and its schema scope, for each served
+// {database}.
+func registerServedAliases(registry adapters.Registry, cfg *config.Prest, adapter adapters.Adapter) error {
+	alias := cfg.PGDatabase
+	if alias == "" {
+		alias = "prest" // Use default alias when database name is not set
+	}
+	seen := map[string]struct{}{alias: {}}
+	if err := registry.Register(alias, adapter); err != nil {
+		return err
+	}
+	for _, name := range cfg.AllowedDatabases {
+		if _, dup := seen[name]; dup || name == "" {
+			continue
+		}
+		seen[name] = struct{}{}
+		if err := registry.Register(name, adapter); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// logServedDatabases tells operators which database names are reachable when
+// there is no registry: pg.database plus pg.allowed_databases. Every other
+// name is rejected. Registry mode logs nothing here (each alias is logged on
+// registration).
+func logServedDatabases(cfg *config.Prest) {
+	if cfg.HasDatabaseRegistry() {
+		return
+	}
+	slog.Info("serving databases", "databases", servedDatabases(cfg))
+}
+
+// servedDatabases returns pg.database plus pg.allowed_databases without empty
+// or duplicate names.
+func servedDatabases(cfg *config.Prest) []string {
+	seen := make(map[string]struct{})
+	var served []string
+	for _, name := range append([]string{cfg.PGDatabase}, cfg.AllowedDatabases...) {
+		if _, dup := seen[name]; name == "" || dup {
+			continue
+		}
+		seen[name] = struct{}{}
+		served = append(served, name)
+	}
+	return served
+}
+
+// defaultAdapter picks the adapter behind requests without {database}, health
+// checks and script permissions: the first configured alias that was
+// reachable at startup, else the first configured alias.
+func defaultAdapter(cfg *config.Prest, registry adapters.Registry, unreachable map[string]struct{}) adapters.Adapter {
+	if len(cfg.Databases) == 0 {
+		return nil
+	}
+	alias := cfg.Databases[0].Alias
+	for _, dbConf := range cfg.Databases {
+		if _, down := unreachable[dbConf.Alias]; !down {
+			alias = dbConf.Alias
+			break
+		}
+	}
+	adapter, err := registry.Get(alias)
+	if err != nil {
+		return nil
+	}
+	return adapter
+}
+
+// ensureSchemaMigrated runs the startup migrations on every registered alias
+// except those in skip (unreachable at startup); they migrate on a later start.
+func ensureSchemaMigrated(cfg *config.Prest, registry adapters.Registry, skip map[string]struct{}) error {
 	needAuth := cfg.AuthEnabled && cfg.AuthMigrateOnStartup
 	needQueries := cfg.QueriesConf.Storage == config.QueriesStorageDatabase && cfg.QueriesConf.MigrateOnStartup
 	if !needAuth && !needQueries {
@@ -140,7 +235,16 @@ func ensureSchemaMigrated(cfg *config.Prest, registry adapters.Registry) error {
 	if registry == nil {
 		return nil
 	}
+	// Without a registry the allow-listed names share pg.database's adapter;
+	// auth/queries tables belong to pg.database only.
 	for _, alias := range registry.GetAll() {
+		if !cfg.HasDatabaseRegistry() && alias != cfg.PGDatabase && slices.Contains(cfg.AllowedDatabases, alias) {
+			continue
+		}
+		if _, down := skip[alias]; down {
+			slog.Warn("auth/queries table migration skipped: database unreachable at startup", "alias", alias)
+			continue
+		}
 		adapter, err := registry.Get(alias)
 		if err != nil || adapter == nil {
 			continue
@@ -311,11 +415,16 @@ func detectAndCreateAdapter(cfg *config.Prest) (adapters.Adapter, error) {
 	}
 	// Try TimescaleDB first
 	tsAdapter := timescaledb.New(cfg)
-	if err := timescaledb.Connect(tsAdapter); err == nil {
+	err := timescaledb.Connect(tsAdapter)
+	if err == nil {
 		slog.Info("detected TimescaleDB; using timescaledb adapter")
 		return tsAdapter, nil
 	}
-	// Fallback to PostgreSQL
+	if adapters.IsUnavailable(err) {
+		// Unreachable host: a Postgres retry would only wait for a second timeout.
+		return nil, err
+	}
+	// Reachable but not TimescaleDB: fall back to PostgreSQL
 	pgAdapter := postgres.New(cfg)
 	if err := postgres.Connect(pgAdapter); err != nil {
 		return nil, err
@@ -324,12 +433,11 @@ func detectAndCreateAdapter(cfg *config.Prest) (adapters.Adapter, error) {
 	return pgAdapter, nil
 }
 
-// createAdapterForDatabase creates and connects an adapter for a specific database configuration.
-// Currently all databases use the postgres adapter (wire-compatible mode).
-// In the future, this can route to TimescaleDB, MySQL, or other adapters based on detection.
-func createAdapterForDatabase(cfg *config.Prest, dbConf *config.DatabaseConf) (adapters.Adapter, error) {
+// scopedConfig returns a copy of cfg scoped to one registry entry. Pool limits
+// are copied only when set, so an entry never passes 0 (unlimited) to
+// database/sql; cfg itself is not modified.
+func scopedConfig(cfg *config.Prest, dbConf *config.DatabaseConf) config.Prest {
 	eng := config.EffectiveEngine(dbConf, cfg)
-	// Create a temporary config scoped to this database for adapter creation
 	dbCfg := *cfg
 	dbCfg.Engine = eng
 	dbCfg.PGHost = dbConf.Host
@@ -337,8 +445,12 @@ func createAdapterForDatabase(cfg *config.Prest, dbConf *config.DatabaseConf) (a
 	dbCfg.PGUser = dbConf.User
 	dbCfg.PGPass = dbConf.Pass
 	dbCfg.PGDatabase = dbConf.Database
-	dbCfg.PGMaxOpenConn = dbConf.MaxOpenConn
-	dbCfg.PGMaxIdleConn = dbConf.MaxIdleConn
+	if dbConf.MaxOpenConn > 0 {
+		dbCfg.PGMaxOpenConn = dbConf.MaxOpenConn
+	}
+	if dbConf.MaxIdleConn > 0 {
+		dbCfg.PGMaxIdleConn = dbConf.MaxIdleConn
+	}
 	dbCfg.PGSSLMode = dbConf.SSL.Mode
 	dbCfg.PGSSLCert = dbConf.SSL.Cert
 	dbCfg.PGSSLKey = dbConf.SSL.Key
@@ -348,7 +460,19 @@ func createAdapterForDatabase(cfg *config.Prest, dbConf *config.DatabaseConf) (a
 	}
 	if eng == config.EngineMySQL {
 		config.ApplyMySQLRegistrySchemas(&dbCfg, dbConf.Database)
-		my := mysql.New(&dbCfg)
+	}
+	return dbCfg
+}
+
+// connectAdapter is the registry-mode connector; tests replace it to inject adapters.
+var connectAdapter = connectAdapterForDatabase
+
+// connectAdapterForDatabase creates and connects an adapter for one registry
+// entry, using dbCfg from scopedConfig. Postgres entries are probed as
+// TimescaleDB first; an unreachable host is reported without a Postgres retry.
+func connectAdapterForDatabase(dbCfg *config.Prest, dbConf *config.DatabaseConf) (adapters.Adapter, error) {
+	if dbCfg.Engine == config.EngineMySQL {
+		my := mysql.New(dbCfg)
 		if err := mysql.Connect(my); err != nil {
 			return nil, fmt.Errorf("failed to connect to database %s: %w", dbConf.Alias, err)
 		}
@@ -356,22 +480,43 @@ func createAdapterForDatabase(cfg *config.Prest, dbConf *config.DatabaseConf) (a
 		slog.Info("using mysql adapter for database", "alias", dbConf.Alias)
 		return my, nil
 	}
-	if eng != config.EnginePostgres {
-		return nil, fmt.Errorf("database %s: unknown database engine %q", dbConf.Alias, eng)
+	if dbCfg.Engine != config.EnginePostgres {
+		return nil, fmt.Errorf("database %s: unknown database engine %q", dbConf.Alias, dbCfg.Engine)
 	}
 
 	// Try TimescaleDB first, fall back to PostgreSQL
-	tsAdapter := timescaledb.New(&dbCfg)
-	if err := timescaledb.Connect(tsAdapter); err == nil {
+	tsAdapter := timescaledb.New(dbCfg)
+	err := timescaledb.Connect(tsAdapter)
+	if err == nil {
 		slog.Info("detected TimescaleDB for database", "alias", dbConf.Alias)
 		return tsAdapter, nil
 	}
+	if adapters.IsUnavailable(err) {
+		return nil, fmt.Errorf("failed to connect to database %s: %w", dbConf.Alias, err)
+	}
 
-	// Fallback to PostgreSQL
-	pgAdapter := postgres.New(&dbCfg)
+	// Reachable but not TimescaleDB: fall back to PostgreSQL
+	pgAdapter := postgres.New(dbCfg)
 	if err := postgres.Connect(pgAdapter); err != nil {
 		return nil, fmt.Errorf("failed to connect to database %s: %w", dbConf.Alias, err)
 	}
 	slog.Info("using postgres adapter for database", "alias", dbConf.Alias)
 	return pgAdapter, nil
+}
+
+// lazyAdapterForDatabase builds an unconnected adapter of the entry's engine;
+// its pool dials on first use, so requests recover once the database is up.
+// TimescaleDB detection is skipped: hypertable endpoints for the alias stay
+// unavailable until restart.
+func lazyAdapterForDatabase(dbCfg *config.Prest, dbConf *config.DatabaseConf) adapters.Adapter {
+	if dbCfg.Engine == config.EngineMySQL {
+		my := mysql.New(dbCfg)
+		my.SetDatabase(dbConf.Alias)
+		return my
+	}
+	slog.Warn("timescaledb detection skipped: database unreachable at startup", "alias", dbConf.Alias)
+	pg := postgres.New(dbCfg)
+	// Same database selection postgres.Connect would have made.
+	pg.SetDatabase(dbCfg.PGDatabase)
+	return pg
 }

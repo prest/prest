@@ -3,6 +3,9 @@ package app_test
 import (
 	"context"
 	"errors"
+	"net"
+	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/prest/prest/v2/adapters"
@@ -144,6 +147,31 @@ func stubTimescaleConnect(t *testing.T) {
 		expectTimescaleExtension(mock, true)
 		return sqlxDB, nil
 	})
+}
+
+// refusedErr is what a dial to a stopped database returns.
+func refusedErr() error {
+	return &net.OpError{Op: "dial", Net: "tcp", Err: syscall.ECONNREFUSED}
+}
+
+// stubConnectFailure makes Postgres dials to the named databases fail with a
+// refused connection; every other dial succeeds as plain Postgres (Timescale
+// detection fails, the fallback connects). The map counts failing dials by
+// database name. Callers must not use t.Parallel().
+func stubConnectFailure(t *testing.T, databases ...string) map[string]int {
+	t.Helper()
+	dials := make(map[string]int)
+	stubDBConnect(t, func(_, dsn string) (*sqlx.DB, error) {
+		for _, name := range databases {
+			if strings.Contains(dsn, "dbname="+name+" ") {
+				dials[name]++
+				return nil, refusedErr()
+			}
+		}
+		sqlxDB, _ := newPingableSQLMock(t)
+		return sqlxDB, nil
+	})
+	return dials
 }
 
 func connectablePrest(database string) *config.Prest {

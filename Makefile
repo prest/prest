@@ -1,7 +1,17 @@
 DOCKER_COMPOSE?=docker-compose -f docker-compose.yml
 UNIT_PKGS = $(shell go list ./... | grep -v '/integration')
 
-.PHONY: build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb test-integration-mysql test-integration-log test-integration-postgres-log test-integration-timescaledb-log ci signoz-up signoz-down
+.PHONY: build build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb test-integration-mysql test-integration-log test-integration-postgres-log test-integration-timescaledb-log ci signoz-up signoz-down
+.DEFAULT_GOAL := build_test_image
+
+VERSION ?= $(shell git describe --tags --always --dirty)
+COMMIT  ?= $(shell git rev-parse --short HEAD)
+DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS := -X github.com/prest/prest/v2/helpers.Version=$(VERSION) -X github.com/prest/prest/v2/helpers.Commit=$(COMMIT) -X github.com/prest/prest/v2/helpers.Date=$(DATE)
+
+build:
+	go build -ldflags "$(LDFLAGS)" -o bin/prestd ./cmd/prestd
+
 build_test_image:
 	$(DOCKER_COMPOSE) up -d postgres
 
@@ -32,7 +42,7 @@ MYSQL_COMPOSE=docker compose -f integration/mysql/docker-compose.yml
 test-integration: test-integration-postgres
 
 test-integration-postgres:
-	$(POSTGRES_COMPOSE) up -d --wait postgres postgres-b db-init prestd prestd-multicluster prestd-auth prestd-queries prestd-cache && \
+	$(POSTGRES_COMPOSE) up -d --wait postgres postgres-b db-init prestd prestd-multicluster prestd-auth prestd-queries prestd-cache prestd-samehost && \
 	$(POSTGRES_COMPOSE) run --rm --no-deps tests; \
 	status=$$?; \
 	$(POSTGRES_COMPOSE) down -v --remove-orphans; \
@@ -60,7 +70,7 @@ test-integration-log:
 test-integration-postgres-log:
 	@echo "Writing full Postgres integration output to $(INTEGRATION_LOG)"
 	@{ \
-	  $(POSTGRES_COMPOSE) up -d --wait postgres postgres-b db-init prestd prestd-multicluster prestd-auth prestd-queries prestd-cache && \
+	  $(POSTGRES_COMPOSE) up -d --wait postgres postgres-b db-init prestd prestd-multicluster prestd-auth prestd-queries prestd-cache prestd-samehost && \
 	  $(POSTGRES_COMPOSE) run --rm --no-deps tests; \
 	  echo $$? > .integration-status.$$$$; \
 	  $(POSTGRES_COMPOSE) down -v --remove-orphans; \

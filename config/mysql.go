@@ -77,10 +77,6 @@ func parseMySQLDBConfig(v *viper.Viper, cfg *Prest) error {
 	if err != nil {
 		return err
 	}
-	cfg.SingleDB, err = configuredBool(v, "pg.single")
-	if err != nil {
-		return err
-	}
 
 	if rawURL, ok := mysqlExplicitString(v, "pg.url"); ok {
 		cfg.PGURL = rawURL

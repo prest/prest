@@ -212,7 +212,30 @@ func TestAuthHandler_Login_BodyQueryError(t *testing.T) {
 	h.Login(rec, req)
 
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
-	require.Contains(t, rec.Body.String(), "db down")
+	require.Contains(t, rec.Body.String(), "authentication failed")
+	require.NotContains(t, rec.Body.String(), "db down")
+}
+
+// A connection failure during login answers 503 without leaking host:port.
+func TestAuthHandler_Login_DatabaseUnavailable(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	sc := mockgen.NewMockScanner(ctrl)
+	executor.EXPECT().Query(gomock.Any(), gomock.Any(), gomock.Any()).Return(sc)
+	sc.EXPECT().Err().Return(dialError()).Times(2)
+
+	h := NewAuthHandler(executor, pgDialect{}, testAuthConfig())
+	body := bytes.NewBufferString(`{"username":"alice","password":"secret"}`)
+	rec := httptest.NewRecorder()
+	h.Login(rec, httptest.NewRequest(http.MethodPost, "/auth", body))
+
+	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	require.Contains(t, rec.Body.String(), "database unavailable")
+	requireNoAddressLeak(t, rec.Body.String())
 }
 
 func TestAuthHandler_Login_BasicMissingCredentials(t *testing.T) {

@@ -760,3 +760,53 @@ func TestApplyMySQLURLDoesNotUsePostgresParser(t *testing.T) {
 	require.Empty(t, pg.Host)
 	require.Empty(t, pg.User)
 }
+
+// Test_parseDatabaseRegistry_envEntryInheritsPoolLimits guards DATABASE_URL_<n>
+// entries: without the global limits they reached database/sql as 0, which
+// means an unlimited open pool and no idle connections.
+func Test_parseDatabaseRegistry_envEntryInheritsPoolLimits(t *testing.T) {
+	cases := []struct {
+		name string
+		url  string
+	}{
+		{"postgres", "postgres://user:pass@cluster-a.example.com:5432/app_a?sslmode=disable"},
+		{"mysql", "mysql://user:pass@mysql-a.example.com:3306/app_a"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			resetViperForTest(t)
+			unsetEnvForTest(t, "DATABASE_ALIAS_2")
+			unsetEnvForTest(t, "DATABASE_URL_2")
+			t.Setenv("DATABASE_ALIAS_1", "tenant-a")
+			t.Setenv("DATABASE_URL_1", tc.url)
+
+			cfg := &Prest{PGMaxOpenConn: 10, PGMaxIdleConn: 2}
+			parseDatabaseRegistry(viper.New(), cfg)
+			require.Len(t, cfg.Databases, 1)
+			require.Equal(t, 10, cfg.Databases[0].MaxOpenConn)
+			require.Equal(t, 2, cfg.Databases[0].MaxIdleConn)
+		})
+	}
+}
+
+// Test_fillPoolDefaults covers both branches: unset limits take the global
+// values and explicit ones are kept.
+func Test_fillPoolDefaults(t *testing.T) {
+	t.Parallel()
+
+	cfg := &Prest{PGMaxOpenConn: 10, PGMaxIdleConn: 2}
+
+	unset := &DatabaseConf{}
+	fillPoolDefaults(unset, cfg)
+	require.Equal(t, 10, unset.MaxOpenConn)
+	require.Equal(t, 2, unset.MaxIdleConn)
+
+	explicit := &DatabaseConf{MaxOpenConn: 25, MaxIdleConn: 5}
+	fillPoolDefaults(explicit, cfg)
+	require.Equal(t, 25, explicit.MaxOpenConn)
+	require.Equal(t, 5, explicit.MaxIdleConn)
+
+	nilCfg := &DatabaseConf{}
+	fillPoolDefaults(nilCfg, nil)
+	require.Zero(t, nilCfg.MaxOpenConn)
+}
