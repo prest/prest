@@ -151,3 +151,34 @@ func TestUnreachableDatabaseIsUnavailable(t *testing.T) {
 	require.NotContains(t, err.Error(), "db.internal")
 	require.NotContains(t, err.Error(), "3306")
 }
+
+// TestTableWhere_ServedDatabases limits /tables and MCP list_tables to the
+// served databases' tables: one MySQL user often sees databases pREST must
+// not name.
+func TestTableWhere_ServedDatabases(t *testing.T) {
+	t.Parallel()
+
+	plain := testCfg()
+	plain.AllowedDatabases = []string{"other"}
+
+	reg := testCfg()
+	reg.PGDatabase = "other"
+	reg.Databases = []config.DatabaseConf{{Alias: "archive", Database: "other"}}
+
+	cases := []struct {
+		name    string
+		adapter *Adapter
+		request string
+		want    string
+	}{
+		{"no registry", New(plain).(*Adapter), "", "WHERE 1=1 AND `schema` IN ('shop', 'other')"},
+		{"registry entry", New(reg).(*Adapter), "", "WHERE 1=1 AND `schema` = 'other'"},
+		{"nil cfg", &Adapter{}, "", "WHERE 1=1 AND 1=0"},
+		{"with request", New(plain).(*Adapter), "`name` = ?", "WHERE 1=1 AND `schema` IN ('shop', 'other') AND `name` = ?"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, tc.adapter.TableWhere(tc.request))
+		})
+	}
+}

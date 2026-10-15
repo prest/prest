@@ -64,21 +64,20 @@ func buildSetting(key string) string {
 	return ""
 }
 
-// PrestCommit returns the effective commit hash.
+// PrestCommit returns the effective commit hash: the ldflags Commit, then the
+// explicit CommitHash, then the vcs.revision build setting.
 func PrestCommit() string {
 	if Commit != "" {
 		return Commit
 	}
-	if ch := buildSetting("vcs.revision"); ch != "" {
-		return ch
+	if CommitHash != "" {
+		return CommitHash
 	}
-	return CommitHash
+	return buildSetting("vcs.revision")
 }
 
-// PrestBuildDate returns the effective build date.
+// PrestBuildDate returns the ldflags build date; empty for builds without
+// -ldflags (vcs.time is the commit time, not the build time).
 func PrestBuildDate() string {
-	if Date != "" {
-		return Date
-	}
-	return buildSetting("vcs.time")
+	return Date
 }

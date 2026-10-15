@@ -118,9 +118,21 @@ func TestPrestCommit(t *testing.T) {
 			expected:    "abc123",
 		},
 		{
-			name:       "falls back to vcs.revision from build info",
+			name:       "CommitHash wins over vcs.revision",
 			commit:     "",
 			commitHash: "def456",
+			buildInfo: &debug.BuildInfo{
+				Settings: []debug.BuildSetting{
+					{Key: "vcs.revision", Value: "xyz789"},
+				},
+			},
+			buildInfoOk: true,
+			expected:    "def456",
+		},
+		{
+			name:       "falls back to vcs.revision when CommitHash unset",
+			commit:     "",
+			commitHash: "",
 			buildInfo: &debug.BuildInfo{
 				Settings: []debug.BuildSetting{
 					{Key: "vcs.revision", Value: "xyz789"},
@@ -202,7 +214,8 @@ func TestPrestBuildDate(t *testing.T) {
 			expected:    "2026-01-01T00:00:00Z",
 		},
 		{
-			name: "falls back to vcs.time from build info",
+			// vcs.time is the commit time, not the build time.
+			name: "ignores vcs.time when Date unset",
 			date: "",
 			buildInfo: &debug.BuildInfo{
 				Settings: []debug.BuildSetting{
@@ -210,7 +223,7 @@ func TestPrestBuildDate(t *testing.T) {
 				},
 			},
 			buildInfoOk: true,
-			expected:    "2025-01-01T00:00:00Z",
+			expected:    "",
 		},
 		{
 			name:        "returns empty string when both sources empty",

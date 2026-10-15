@@ -2,6 +2,7 @@ DOCKER_COMPOSE?=docker-compose -f docker-compose.yml
 UNIT_PKGS = $(shell go list ./... | grep -v '/integration')
 
 .PHONY: build build_test_image test test-unit test-integration test-integration-postgres test-integration-timescaledb test-integration-mysql test-integration-log test-integration-postgres-log test-integration-timescaledb-log ci signoz-up signoz-down
+.DEFAULT_GOAL := build_test_image
 
 VERSION ?= $(shell git describe --tags --always --dirty)
 COMMIT  ?= $(shell git rev-parse --short HEAD)

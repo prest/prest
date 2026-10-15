@@ -173,7 +173,7 @@ func TestOperatorsBuildersAndErrors(t *testing.T) {
 	require.Contains(t, a.TableOrderBy(""), "`schema`")
 	require.Equal(t, " ORDER BY id", a.SchemaTablesOrderBy(" ORDER BY id"))
 	require.Contains(t, a.SchemaTablesOrderBy(""), "`name`")
-	require.Equal(t, "WHERE 1=1", a.TableWhere(""))
+	require.Equal(t, "WHERE 1=1 AND `schema` IN ('shop')", a.TableWhere(""))
 	require.Contains(t, a.SchemaTablesWhere(""), "TABLE_SCHEMA = ?")
 
 	_, err = a.OrderByRequest(req("/t?_order=bad name"))

@@ -35,13 +35,22 @@ func validateDatabase(database string, registry adapters.DatabaseRegistry) error
 var errSchemaNotInDatabase = errors.New("schema not served by this database")
 
 // validateSchema checks {schema} against the adapter selected for the request.
-// Adapters that do not implement adapters.SchemaScoper accept any schema.
+// Adapters implementing neither adapters.DatabaseSchemaScoper nor
+// adapters.SchemaScoper accept any schema.
 func validateSchema(r *http.Request, database, schema string) error {
 	return checkSchemaScope(GetAdapterForRequest(r, nil), database, schema)
 }
 
+// checkSchemaScope prefers the database-aware scoper and falls back to the
+// one-argument SchemaScoper.
 func checkSchemaScope(a adapters.Adapter, database, schema string) error {
-	if scoper, ok := a.(adapters.SchemaScoper); ok && !scoper.AllowsSchema(database, schema) {
+	if scoper, ok := a.(adapters.DatabaseSchemaScoper); ok {
+		if !scoper.AllowsDatabaseSchema(database, schema) {
+			return errSchemaNotInDatabase
+		}
+		return nil
+	}
+	if scoper, ok := a.(adapters.SchemaScoper); ok && !scoper.AllowsSchema(schema) {
 		return errSchemaNotInDatabase
 	}
 	return nil

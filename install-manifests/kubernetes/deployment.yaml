@@ -18,7 +18,7 @@ spec:
         app: prest
     spec:
       containers:
-        - image: prest/prest:v1
+        - image: prest/prest:v2
           imagePullPolicy: IfNotPresent
           name: prest
           env:

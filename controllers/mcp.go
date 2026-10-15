@@ -455,6 +455,15 @@ func (h *MCPHandler) listTables(r *http.Request, args mcpListTablesArgs) (any, e
 	if args.Schema != "" && !validatePathSegments(args.Schema) {
 		return nil, fmt.Errorf("invalid identifier in path")
 	}
+	if args.Schema != "" {
+		// Same pin as validateToolTarget: a MySQL entry lists only its own
+		// database's tables.
+		if a, err := GetAdapterFromRegistry(h.registry, args.Database); err == nil {
+			if err := checkSchemaScope(a, args.Database, args.Schema); err != nil {
+				return nil, err
+			}
+		}
+	}
 	return h.tableRows(r, args.Database, args.Schema)
 }
 

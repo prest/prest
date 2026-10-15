@@ -1,7 +1,10 @@
 package mysql_test
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"testing"
@@ -75,4 +78,84 @@ func TestMySQLSameHostAllowList_MCP(t *testing.T) {
 	// MCP list_databases reports the served databases only.
 	base := helpers.ServerURL(t)
 	testutils.DoRequest(t, base+"/_mcp", mcpCall(20, "prest.list_databases", map[string]any{}), http.MethodPost, http.StatusOK, "list_databases", "shop", "other")
+}
+
+// rawRequest sends payload (JSON-encoded when non-nil) and returns the status
+// and body, for assertions on what a response must not contain.
+func rawRequest(t *testing.T, method, target string, payload any) (int, string) {
+	t.Helper()
+	var body io.Reader
+	if payload != nil {
+		b, err := json.Marshal(payload)
+		require.NoError(t, err)
+		body = bytes.NewReader(b)
+	}
+	req, err := http.NewRequest(method, target, body)
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	out, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	return resp.StatusCode, string(out)
+}
+
+func TestMySQLSameHostAllowList_TableListingPinned(t *testing.T) {
+	// /{database}/{schema} lists tables only for the database's own schema.
+	base := helpers.ServerURL(t)
+	testutils.DoRequest(t, base+"/shop/other", nil, http.MethodGet, http.StatusNotFound, "shop lists other tables", "schema not served")
+	testutils.DoRequest(t, base+"/other/other", nil, http.MethodGet, http.StatusOK, "other lists own tables", "tags")
+}
+
+func TestMySQLSameHostAllowList_AllWritesPinned(t *testing.T) {
+	// Update, delete and batch insert through the shop entry cannot touch
+	// other's rows; the seeded row is unchanged afterwards.
+	base := helpers.ServerURL(t)
+	name := fmt.Sprintf("samehost-w-%d", time.Now().UnixNano())
+	own := base + "/other/other/tags?name=$eq." + url.QueryEscape(name)
+	cross := base + "/shop/other/tags?name=$eq." + url.QueryEscape(name)
+	t.Cleanup(func() {
+		testutils.DoRequest(t, own, nil, http.MethodDelete, http.StatusOK, "cleanup tag", "rows_affected")
+	})
+	testutils.DoRequest(t, base+"/other/other/tags", map[string]any{"name": name}, http.MethodPost, http.StatusCreated, "seed tag", name)
+
+	testutils.DoRequest(t, cross, map[string]any{"name": "x"}, http.MethodPatch, http.StatusNotFound, "patch via shop")
+	testutils.DoRequest(t, cross, map[string]any{"name": "x"}, http.MethodPut, http.StatusNotFound, "put via shop")
+	testutils.DoRequest(t, cross, nil, http.MethodDelete, http.StatusNotFound, "delete via shop")
+	testutils.DoRequest(t, base+"/batch/shop/other/tags", []map[string]any{{"name": "y"}}, http.MethodPost, http.StatusNotFound, "batch via shop")
+
+	testutils.DoRequest(t, own, nil, http.MethodGet, http.StatusOK, "row unchanged", name)
+}
+
+func TestMySQLSameHostAllowList_MCPSchemaPinned(t *testing.T) {
+	// MCP select, describe and list_tables reject another database as schema.
+	base := helpers.ServerURL(t)
+	cross := map[string]any{"database": "shop", "schema": "other", "table": "tags"}
+	testutils.DoRequest(t, base+"/_mcp", mcpCall(30, "prest.select_table", cross), http.MethodPost, http.StatusBadRequest, "mcp select cross", "schema not served")
+	testutils.DoRequest(t, base+"/_mcp", mcpCall(31, "prest.describe_table", cross), http.MethodPost, http.StatusBadRequest, "mcp describe cross", "schema not served")
+	testutils.DoRequest(t, base+"/_mcp", mcpCall(32, "prest.list_tables", map[string]any{"database": "shop", "schema": "other"}), http.MethodPost, http.StatusBadRequest, "mcp list_tables cross", "schema not served")
+	testutils.DoRequest(t, base+"/_mcp", mcpCall(33, "prest.list_tables", map[string]any{"database": "other", "schema": "other"}), http.MethodPost, http.StatusOK, "mcp list_tables own", "tags")
+}
+
+func TestMySQLSameHostAllowList_UnservedDatabaseHidden(t *testing.T) {
+	// hidden is granted to the MySQL user but not served: no listing names it
+	// and no path reaches it.
+	base := helpers.ServerURL(t)
+	for _, path := range []string{"/tables", "/databases", "/schemas"} {
+		status, body := rawRequest(t, http.MethodGet, base+path, nil)
+		require.Equal(t, http.StatusOK, status, path)
+		require.NotContains(t, body, "hidden", path)
+		require.NotContains(t, body, "secret", path)
+	}
+	_, tables := rawRequest(t, http.MethodGet, base+"/tables", nil)
+	require.Contains(t, tables, "items")
+	require.Contains(t, tables, "tags")
+
+	status, body := rawRequest(t, http.MethodPost, base+"/_mcp", mcpCall(34, "prest.list_tables", map[string]any{"database": "shop"}))
+	require.Equal(t, http.StatusOK, status)
+	require.NotContains(t, body, "secret")
+
+	testutils.DoRequest(t, base+"/hidden/hidden/secret", nil, http.MethodGet, http.StatusBadRequest, "hidden database", "database not registered")
+	testutils.DoRequest(t, base+"/shop/hidden/secret", nil, http.MethodGet, http.StatusNotFound, "hidden via shop")
 }

@@ -24,7 +24,7 @@ func TestAllowsSchema(t *testing.T) {
 
 	cases := []struct {
 		name             string
-		scoper           adapters.SchemaScoper
+		scoper           adapters.DatabaseSchemaScoper
 		database, schema string
 		want             bool
 	}{
@@ -39,7 +39,7 @@ func TestAllowsSchema(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.want, tc.scoper.AllowsSchema(tc.database, tc.schema))
+			require.Equal(t, tc.want, tc.scoper.AllowsDatabaseSchema(tc.database, tc.schema))
 		})
 	}
 }

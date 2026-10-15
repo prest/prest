@@ -29,7 +29,7 @@ var (
 	_ adapters.QueryRegistry            = (*Adapter)(nil)
 	_ adapters.ScriptPermissionsChecker = (*Adapter)(nil)
 	_ adapters.SystemTableEnsurer       = (*Adapter)(nil)
-	_ adapters.SchemaScoper             = (*Adapter)(nil)
+	_ adapters.DatabaseSchemaScoper     = (*Adapter)(nil)
 )
 
 // New creates a MySQL adapter without connecting.
@@ -150,10 +150,10 @@ func (a *Adapter) PhysicalName(alias string) string {
 	return alias
 }
 
-// AllowsSchema pins {schema} to the routed database, since MySQL schemas are
+// AllowsDatabaseSchema pins {schema} to the routed database, since MySQL schemas are
 // databases: with a registry, the entry's physical database; without one,
 // {database} itself. One served name can never reach another's database.
-func (a *Adapter) AllowsSchema(database, schema string) bool {
+func (a *Adapter) AllowsDatabaseSchema(database, schema string) bool {
 	if a.cfg == nil || !a.cfg.HasDatabaseRegistry() {
 		return schema == database
 	}

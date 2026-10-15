@@ -67,8 +67,10 @@ func (a *Adapter) SchemaOrderBy(order string, hasCount bool) string {
 
 func (a *Adapter) TableClause() string { return statements.TablesFrom }
 
+// TableWhere limits table listings to the served databases' tables; the
+// MySQL user may see databases pREST does not serve.
 func (a *Adapter) TableWhere(requestWhere string) string {
-	where := "WHERE 1=1"
+	where := "WHERE 1=1 AND " + a.tableScope()
 	if requestWhere != "" {
 		where += " AND " + requestWhere
 	}
@@ -97,4 +99,13 @@ func (a *Adapter) SchemaTablesOrderBy(order string) string {
 		return order
 	}
 	return " ORDER BY `name` ASC"
+}
+
+// tableScope pins the `schema` column of TablesFrom: a registry entry serves
+// only its physical database, otherwise pg.database plus pg.allowed_databases.
+func (a *Adapter) tableScope() string {
+	if a.cfg != nil && a.cfg.HasDatabaseRegistry() {
+		return "`schema` = " + quoteLiteral(a.PhysicalName(""))
+	}
+	return servedFilter("`schema`", a.servedDatabases())
 }
