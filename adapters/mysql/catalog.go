@@ -3,8 +3,10 @@ package mysql
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/prest/prest/v2/adapters/mysql/statements"
+	"github.com/prest/prest/v2/config"
 )
 
 func (a *Adapter) DatabaseClause(req *http.Request) (string, bool) {
@@ -51,6 +53,9 @@ func (a *Adapter) SchemaClause(req *http.Request) (string, bool) {
 	filter := ""
 	if served := a.servedDatabases(); served != nil {
 		filter = " AND " + servedFilter("SCHEMA_NAME", served)
+	} else if reg := a.registryPhysicalNames(); reg != nil {
+		// Registry mode: /schemas must not list databases no entry serves.
+		filter = " AND " + servedFilter("SCHEMA_NAME", reg)
 	}
 	return fmt.Sprintf(statements.SchemasFrom, field, filter), hasCount
 }
@@ -108,4 +113,32 @@ func (a *Adapter) tableScope() string {
 		return "`schema` = " + quoteLiteral(a.PhysicalName(""))
 	}
 	return servedFilter("`schema`", a.servedDatabases())
+}
+
+// registryPhysicalNames lists the physical database of every registry entry
+// served over this adapter's own MySQL connection: entries on another engine,
+// host or port name databases this connection does not serve. An entry's
+// database is its configured name, else its alias (as PhysicalName resolves
+// it at runtime). nil without a registry; empty when nothing matches.
+//
+// a.cfg is scoped to this adapter's entry, so its Engine is mysql and an
+// engine-less entry resolves to mysql here; the host:port match is what keeps
+// an engine-less Postgres entry out, since one port serves one engine.
+func (a *Adapter) registryPhysicalNames() []string {
+	if a.cfg == nil || !a.cfg.HasDatabaseRegistry() {
+		return nil
+	}
+	names := make([]string, 0, len(a.cfg.Databases))
+	for _, db := range a.cfg.Databases {
+		if config.EffectiveEngine(&db, a.cfg) != config.EngineMySQL ||
+			!strings.EqualFold(db.Host, a.cfg.PGHost) || db.Port != a.cfg.PGPort {
+			continue
+		}
+		name := db.Database
+		if name == "" {
+			name = db.Alias
+		}
+		names = append(names, name)
+	}
+	return dedupeNonEmpty(names)
 }

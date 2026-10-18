@@ -147,6 +147,10 @@ mode = "disable" # disable | require | verify-ca | verify-full
 # [auth] - basic username/password authentication against a users table.
 # ------------------------------------------------------------------------
 [auth]
+# When enabled, every data route requires a token: CRUD, /_QUERIES, /_mcp, the
+# catalog (/databases, /schemas, /tables, /{db}/{schema}, /show/...) and
+# /_PLUGIN. Only /auth, /_health, /_ready and /_studio assets stay public; add a
+# pattern to [jwt].whitelist to exempt anything else.
 enabled = false
 # migrate_on_startup = true   # default true when enabled=true; also: prestd migrate up auth
 schema = "public"
