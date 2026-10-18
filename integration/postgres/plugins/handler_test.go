@@ -10,6 +10,8 @@ import (
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/integration/testutils"
 	"github.com/prest/prest/v2/plugins"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func initPluginRoutes(cfg *config.Prest) *mux.Router {
@@ -34,10 +36,31 @@ func TestPlugins(t *testing.T) {
 		{"GET plugin Hello returns NotFound when lib is missing or unloadable", "/_PLUGIN/hello/Hello", "GET", http.StatusNotFound},
 		{"GET plugin HelloWithStatus returns NotFound when lib is missing or unloadable", "/_PLUGIN/hello/HelloWithStatus", "GET", http.StatusNotFound},
 		{"POST plugin Hello returns NotFound when lib is missing or unloadable", "/_PLUGIN/hello/Hello", "POST", http.StatusNotFound},
+		// GHSA-fmr6-9j48-xrqp: names that could escape pluginpath or are not
+		// Go identifiers are rejected before any file lookup.
+		{"GET plugin file with a dot is rejected as invalid name", "/_PLUGIN/hello.evil/Hello", "GET", http.StatusBadRequest},
+		{"GET plugin func starting with a digit is rejected as invalid name", "/_PLUGIN/hello/1bad", "GET", http.StatusBadRequest},
 	}
 
 	for _, tc := range testCases {
 		t.Log(tc.description)
 		testutils.DoRequest(t, server.URL+tc.url, nil, tc.method, tc.status, tc.description)
 	}
+}
+
+// TestPluginsDotDotFileNeverServed guards GHSA-fmr6-9j48-xrqp. gorilla/mux
+// cleans "/_PLUGIN/%2E%2E/Hello" to "/Hello" and redirects, so the handler may
+// never see file=".."; either way the request must not succeed.
+func TestPluginsDotDotFileNeverServed(t *testing.T) {
+	cfg := helpers.LoadTestConfig(t)
+	cfg.PluginPath = helpers.PluginLibDir()
+	server := httptest.NewServer(initPluginRoutes(cfg))
+	defer server.Close()
+
+	// Encoded dot-dot as the plugin file name.
+	// Expected: any status other than 200 (400 if routed, 404 after mux cleaning).
+	resp, err := http.Get(server.URL + "/_PLUGIN/%2E%2E/Hello")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.NotEqual(t, http.StatusOK, resp.StatusCode)
 }
