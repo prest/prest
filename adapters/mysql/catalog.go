@@ -51,6 +51,9 @@ func (a *Adapter) SchemaClause(req *http.Request) (string, bool) {
 	filter := ""
 	if served := a.servedDatabases(); served != nil {
 		filter = " AND " + servedFilter("SCHEMA_NAME", served)
+	} else if reg := a.registryPhysicalNames(); reg != nil {
+		// Registry mode: /schemas must not list databases no entry serves.
+		filter = " AND " + servedFilter("SCHEMA_NAME", reg)
 	}
 	return fmt.Sprintf(statements.SchemasFrom, field, filter), hasCount
 }
@@ -108,4 +111,24 @@ func (a *Adapter) tableScope() string {
 		return "`schema` = " + quoteLiteral(a.PhysicalName(""))
 	}
 	return servedFilter("`schema`", a.servedDatabases())
+}
+
+// registryPhysicalNames lists the physical database of every registry entry
+// (entry database, else pg.database, else alias); nil without a registry.
+func (a *Adapter) registryPhysicalNames() []string {
+	if a.cfg == nil || !a.cfg.HasDatabaseRegistry() {
+		return nil
+	}
+	names := make([]string, 0, len(a.cfg.Databases))
+	for _, db := range a.cfg.Databases {
+		name := db.Database
+		if name == "" {
+			name = a.cfg.PGDatabase
+		}
+		if name == "" {
+			name = db.Alias
+		}
+		names = append(names, name)
+	}
+	return dedupeNonEmpty(names)
 }

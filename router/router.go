@@ -34,13 +34,19 @@ func RegisterRoutes(
 		router.Use(otelRouteTagMiddleware)
 	}
 
+	// Every route except /auth, /_health, /_ready and the /_studio static
+	// assets must be registered behind a stack (crudRoute, catalogRoute,
+	// queryRoute, adminRoute or authRoute). The catalog routes once sat outside
+	// it and served metadata without a token (GHSA-fhf5-m388-4w4p).
+	catalogStack := middlewares.NewCatalogStack(cfg, cfg.Adapter)
+
 	if cfg.AuthEnabled {
 		router.HandleFunc("/auth", h.Auth.Login).Methods("POST")
 	}
-	router.Handle("/_mcp", mcpRoute(cfg, h.MCP.Handler())).Methods("GET", "POST")
-	router.HandleFunc("/databases", h.Catalog.ListDatabases).Methods("GET")
-	router.HandleFunc("/schemas", h.Catalog.ListSchemas).Methods("GET")
-	router.HandleFunc("/tables", h.Catalog.ListTables).Methods("GET")
+	router.Handle("/_mcp", authRoute(cfg, h.MCP.Handler())).Methods("GET", "POST")
+	router.Handle("/databases", catalogRoute(catalogStack, h.Catalog.ListDatabases)).Methods("GET")
+	router.Handle("/schemas", catalogRoute(catalogStack, h.Catalog.ListSchemas)).Methods("GET")
+	router.Handle("/tables", catalogRoute(catalogStack, h.Catalog.ListTables)).Methods("GET")
 
 	if h.QueryRegistry != nil && adminStack != nil {
 		router.Handle("/_QUERIES/registry", adminRoute(adminStack, h.QueryRegistry.List)).Methods("GET")
@@ -59,14 +65,14 @@ func RegisterRoutes(
 	router.Handle("/_QUERIES/{database}/{queriesLocation}/{script}", queryRoute(queryStack, h.Script.Execute))
 
 	if runtime.GOOS != "windows" {
-		router.HandleFunc("/_PLUGIN/{file}/{func}", plg.Handler())
+		router.Handle("/_PLUGIN/{file}/{func}", authRoute(cfg, plg.Handler()))
 	}
 
 	// Studio must be registered before /{database}/{schema} catch-alls.
 	router.PathPrefix("/_studio").Handler(studio.Handler(cfg.StudioConf.Enabled))
 
-	router.HandleFunc("/{database}/{schema}", h.Catalog.ListTablesByDatabaseAndSchema).Methods("GET")
-	router.HandleFunc("/show/{database}/{schema}/{table}", h.Table.Show).Methods("GET")
+	router.Handle("/{database}/{schema}", catalogRoute(catalogStack, h.Catalog.ListTablesByDatabaseAndSchema)).Methods("GET")
+	router.Handle("/show/{database}/{schema}/{table}", catalogRoute(catalogStack, h.Table.Show)).Methods("GET")
 	router.HandleFunc("/_health", h.Health.Handler()).Methods("GET")
 	router.HandleFunc("/_ready", h.Ready.Handler()).Methods("GET")
 
@@ -103,6 +109,10 @@ func crudRoute(stack *middlewares.CRUDStack, handler http.HandlerFunc) http.Hand
 	return negroni.New(append(stack.Handlers(), negroni.Wrap(handler))...)
 }
 
+func catalogRoute(stack *middlewares.CatalogStack, handler http.HandlerFunc) http.Handler {
+	return negroni.New(append(stack.Handlers(), negroni.Wrap(handler))...)
+}
+
 func queryRoute(stack *middlewares.QueryStack, handler http.HandlerFunc) http.Handler {
 	if stack == nil || len(stack.Handlers()) == 0 {
 		return handler
@@ -114,7 +124,9 @@ func adminRoute(stack *middlewares.AdminQueryStack, handler http.HandlerFunc) ht
 	return negroni.New(append(stack.Handlers(), negroni.Wrap(handler))...)
 }
 
-func mcpRoute(cfg *config.Prest, handler http.HandlerFunc) http.Handler {
+// authRoute enforces auth.enabled on routes that have no table ACL
+// (/_mcp, /_PLUGIN).
+func authRoute(cfg *config.Prest, handler http.HandlerFunc) http.Handler {
 	if !cfg.AuthEnabled {
 		return handler
 	}

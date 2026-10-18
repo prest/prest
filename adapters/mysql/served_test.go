@@ -44,7 +44,7 @@ func TestDatabaseWhere_ServedDatabases(t *testing.T) {
 }
 
 // TestSchemaClause_ServedDatabases: on MySQL schemas are databases, so
-// /schemas lists only the served ones; registry mode keeps the full list.
+// /schemas lists only the served ones; registry mode lists only the registered databases.
 func TestSchemaClause_ServedDatabases(t *testing.T) {
 	t.Parallel()
 	cfg := testCfg()
@@ -63,7 +63,7 @@ func TestSchemaClause_ServedDatabases(t *testing.T) {
 	reg := testCfg()
 	reg.Databases = []config.DatabaseConf{{Alias: "x"}}
 	q, _ = New(reg).(*Adapter).SchemaClause(req("/schemas"))
-	require.NotContains(t, q, "SCHEMA_NAME IN (")
+	require.Contains(t, q, "AND SCHEMA_NAME IN ('shop')")
 	require.NotContains(t, q, "1=0")
 }
 
