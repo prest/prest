@@ -14,6 +14,7 @@ import (
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
+	"github.com/prest/prest/v2/adapters/access"
 	"github.com/prest/prest/v2/adapters/postgres/internal/connection"
 	"github.com/prest/prest/v2/adapters/postgres/statements"
 	"github.com/prest/prest/v2/config"
@@ -4211,4 +4212,51 @@ func Test_joinTargetsByRequest_NoQueriedTable(t *testing.T) {
 	targets, err = joinTargetsByRequest(req, "public", "")
 	require.ErrorIs(t, err, ErrInvalidJoinClause)
 	require.Nil(t, targets)
+}
+
+func TestFieldsPermissionsRejectsReservedTables(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		description string
+		table       string
+		join        string
+		queriesTbl  string
+		reserved    bool
+	}{
+		{"queried table itself is reserved", "prest_queries", "", "", true},
+		{"unqualified join target prest_queries", "test", "inner:prest_queries:test.id:$eq:prest_queries.id", "", true},
+		{"schema-qualified join target prest_users", "test", "inner:public.prest_users:test.id:$eq:prest_users.id", "", true},
+		{"join target in another schema", "test", "inner:other.prest_queries:test.id:$eq:prest_queries.id", "", true},
+		{"upper-case join target", "test", "inner:PREST_QUERIES:test.id:$eq:PREST_QUERIES.id", "", true},
+		{"configured custom queries table", "test", "inner:stored_sql:test.id:$eq:stored_sql.id", "stored_sql", true},
+		{"ordinary join target is not reserved", "test", "inner:test2:test.id:$eq:test2.id", "", false},
+	}
+
+	for _, restrict := range []bool{false, true} {
+		for _, tc := range testCases {
+			t.Run(fmt.Sprintf("restrict=%v/%s", restrict, tc.description), func(t *testing.T) {
+				cfg := permissionTestConf()
+				cfg.AccessConf.Restrict = restrict
+				if tc.queriesTbl != "" {
+					cfg.QueriesConf.Table = tc.queriesTbl
+				}
+				adapter := testAdapter(cfg)
+
+				target := "/db/public/" + tc.table
+				if tc.join != "" {
+					target += "?_join=" + url.QueryEscape(tc.join)
+				}
+				req, err := http.NewRequest(http.MethodGet, target, nil)
+				require.NoError(t, err)
+
+				_, err = adapter.FieldsPermissions(req, "db", "public", tc.table, "read", "")
+				if tc.reserved {
+					require.True(t, errors.Is(err, access.ErrReservedTable), "got %v", err)
+					return
+				}
+				require.False(t, errors.Is(err, access.ErrReservedTable), "got %v", err)
+			})
+		}
+	}
 }

@@ -30,6 +30,16 @@ func (a *Adapter) FieldsPermissions(r *http.Request, database, schema, table, op
 	if err != nil {
 		return nil, err
 	}
+	// Control-plane tables are rejected in both restrict modes, before the
+	// !restrict early return; join targets carry the last segment of db.table.
+	if access.ReservedTable(a.cfg, table) {
+		return nil, access.ErrReservedTable
+	}
+	for _, target := range targets {
+		if access.ReservedTable(a.cfg, target.table) {
+			return nil, access.ErrReservedTable
+		}
+	}
 	restrict := a.cfg != nil && a.cfg.AccessConf.Restrict
 	if !restrict || op == "delete" {
 		if len(cols) > 0 {

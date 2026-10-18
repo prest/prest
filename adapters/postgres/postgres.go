@@ -1897,6 +1897,18 @@ func (adapter *postgres) FieldsPermissions(r *http.Request, database, schema, ta
 		return nil, err
 	}
 
+	// Control-plane tables (stored queries, auth) are never readable through
+	// data routes, as the queried table or a join target. Runs before the
+	// restrict check so it applies in both restrict modes.
+	if access.ReservedTable(adapter.cfg, table) {
+		return nil, access.ErrReservedTable
+	}
+	for _, target := range targets {
+		if access.ReservedTable(adapter.cfg, target.table) {
+			return nil, access.ErrReservedTable
+		}
+	}
+
 	restrict := adapter.cfg.AccessConf.Restrict
 	if !restrict || op == "delete" {
 		if len(cols) > 0 {
