@@ -3,6 +3,8 @@ package plugins_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/gorilla/mux"
@@ -63,4 +65,24 @@ func TestPluginsDotDotFileNeverServed(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.NotEqual(t, http.StatusOK, resp.StatusCode)
+}
+
+// TestPluginsSymlinkEscapeRejected guards GHSA-fmr6-9j48-xrqp: a validly named
+// hello.so inside pluginpath that is a symlink to a library outside it passes
+// the name and lexical checks, so only the resolved-path check can stop it.
+func TestPluginsSymlinkEscapeRejected(t *testing.T) {
+	outside := filepath.Join(t.TempDir(), "evil.so")
+	require.NoError(t, os.WriteFile(outside, nil, 0o600))
+	pluginDir := t.TempDir()
+	require.NoError(t, os.Symlink(outside, filepath.Join(pluginDir, "hello.so")))
+
+	cfg := helpers.LoadTestConfig(t)
+	cfg.PluginPath = pluginDir
+	server := httptest.NewServer(initPluginRoutes(cfg))
+	defer server.Close()
+
+	// hello.so resolves outside pluginpath.
+	// Expected: 400 invalid plugin name, before the library is ever opened.
+	testutils.DoRequest(t, server.URL+"/_PLUGIN/hello/Hello", nil, http.MethodGet,
+		http.StatusBadRequest, "symlink escaping pluginpath is rejected")
 }

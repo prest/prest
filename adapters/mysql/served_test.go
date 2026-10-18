@@ -61,7 +61,7 @@ func TestSchemaClause_ServedDatabases(t *testing.T) {
 	require.Contains(t, q, "AND 1=0")
 
 	reg := testCfg()
-	reg.Databases = []config.DatabaseConf{{Alias: "x"}}
+	reg.Databases = []config.DatabaseConf{{Alias: "x", Host: "db.internal", Port: 3306, Database: "shop"}}
 	q, _ = New(reg).(*Adapter).SchemaClause(req("/schemas"))
 	require.Contains(t, q, "AND SCHEMA_NAME IN ('shop')")
 	require.NotContains(t, q, "1=0")

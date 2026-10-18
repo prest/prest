@@ -3,8 +3,10 @@ package mysql
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/prest/prest/v2/adapters/mysql/statements"
+	"github.com/prest/prest/v2/config"
 )
 
 func (a *Adapter) DatabaseClause(req *http.Request) (string, bool) {
@@ -114,17 +116,25 @@ func (a *Adapter) tableScope() string {
 }
 
 // registryPhysicalNames lists the physical database of every registry entry
-// (entry database, else pg.database, else alias); nil without a registry.
+// served over this adapter's own MySQL connection: entries on another engine,
+// host or port name databases this connection does not serve. An entry's
+// database is its configured name, else its alias (as PhysicalName resolves
+// it at runtime). nil without a registry; empty when nothing matches.
+//
+// a.cfg is scoped to this adapter's entry, so its Engine is mysql and an
+// engine-less entry resolves to mysql here; the host:port match is what keeps
+// an engine-less Postgres entry out, since one port serves one engine.
 func (a *Adapter) registryPhysicalNames() []string {
 	if a.cfg == nil || !a.cfg.HasDatabaseRegistry() {
 		return nil
 	}
 	names := make([]string, 0, len(a.cfg.Databases))
 	for _, db := range a.cfg.Databases {
-		name := db.Database
-		if name == "" {
-			name = a.cfg.PGDatabase
+		if config.EffectiveEngine(&db, a.cfg) != config.EngineMySQL ||
+			!strings.EqualFold(db.Host, a.cfg.PGHost) || db.Port != a.cfg.PGPort {
+			continue
 		}
+		name := db.Database
 		if name == "" {
 			name = db.Alias
 		}
