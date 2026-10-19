@@ -135,6 +135,16 @@ func TestParse(t *testing.T) {
 		require.Equal(t, "disable", cf.PGSSLMode)
 		require.Equal(t, false, cf.Debug)
 		require.Equal(t, false, cf.AccessConf.Restrict)
+		require.False(t, cf.AccessConf.AllowUnscopedWrites, "unscoped writes must be off by default")
+	})
+
+	t.Run("PREST_ACCESS_ALLOW_UNSCOPED_WRITES", func(t *testing.T) {
+		t.Setenv("PREST_CONF", "../notfound.toml")
+		t.Setenv("PREST_ACCESS_ALLOW_UNSCOPED_WRITES", "true")
+		cf := &Prest{}
+		v, configPath := viperCfg()
+		requireParse(t, v, cf, configPath)
+		require.True(t, cf.AccessConf.AllowUnscopedWrites)
 	})
 
 	t.Run("PREST_CONF", func(t *testing.T) {

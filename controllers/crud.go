@@ -23,6 +23,8 @@ type CRUDHandler struct {
 	perms    adapters.PermissionsChecker
 	db       adapters.DatabaseRegistry
 	cache    ResponseCacher
+
+	allowUnscopedWrites bool
 }
 
 func (h *CRUDHandler) ports(r *http.Request) (builder adapters.RequestQueryBuilder, sql adapters.SQLBuilder, executor adapters.QueryExecutor, perms adapters.PermissionsChecker, db adapters.DatabaseRegistry) {
@@ -48,6 +50,8 @@ func NewCRUDHandler(deps Deps) *CRUDHandler {
 		perms:    deps.Perms,
 		db:       deps.DB,
 		cache:    deps.Cache,
+
+		allowUnscopedWrites: deps.AllowUnscopedWrites,
 	}
 }
 
@@ -330,6 +334,9 @@ func (h *CRUDHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	if h.rejectUnscopedWrite(w, r, where) {
+		return
+	}
 
 	sql := h.sql.DeleteSQL(database, schema, table)
 	if where != "" {
@@ -397,6 +404,9 @@ func (h *CRUDHandler) Update(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	if h.rejectUnscopedWrite(w, r, where) {
+		return
+	}
 
 	if where != "" {
 		sql = fmt.Sprint(sql, " WHERE ", where)
@@ -422,6 +432,21 @@ func (h *CRUDHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write(sc.Bytes())
+}
+
+// rejectUnscopedWrite writes 400 and returns true when a DELETE/PUT/PATCH has
+// no WHERE condition, unless access.allow_unscoped_writes is set. Without it an
+// empty or filter-less query string would modify every row (GHSA-r867-ghgv-mrp9).
+func (h *CRUDHandler) rejectUnscopedWrite(w http.ResponseWriter, r *http.Request, where string) bool {
+	if where != "" || h.allowUnscopedWrites {
+		return false
+	}
+	jsonError(w,
+		fmt.Sprintf(
+			"refusing %s without a WHERE condition: add a filter query parameter",
+			r.Method),
+		http.StatusBadRequest)
+	return true
 }
 
 func isRelationNotFound(err error, schema, table string) bool {

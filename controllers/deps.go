@@ -44,6 +44,8 @@ type Deps struct {
 	PGDatabase      string
 	Auth            AuthConfig
 	Expose          config.ExposeConf
+	// AllowUnscopedWrites lets DELETE/PUT/PATCH run without a WHERE condition.
+	AllowUnscopedWrites bool
 }
 
 // NewDepsFromConfig builds handler dependencies from application config.
@@ -66,22 +68,23 @@ func NewDepsFromConfig(p *config.Prest) Deps {
 		dialect = d
 	}
 	return Deps{
-		Catalog:       p.Adapter,
-		Builder:       p.Adapter,
-		Executor:      p.Adapter,
-		SQL:           p.Adapter,
-		Dialect:       dialect,
-		Perms:         p.Adapter,
-		Scripts:       p.Adapter,
-		QueryRegistry: queryRegistry,
-		ScriptPerms:   scriptPerms,
-		DB:            p.Adapter,
-		Pinger:        p.Adapter,
-		Readiness:     p.Adapter,
-		Cache:         cacher,
-		RegistryMode:  p.HasDatabaseRegistry(),
-		PGDatabase:    p.PGDatabase,
-		Expose:        p.ExposeConf,
+		Catalog:             p.Adapter,
+		Builder:             p.Adapter,
+		Executor:            p.Adapter,
+		SQL:                 p.Adapter,
+		Dialect:             dialect,
+		Perms:               p.Adapter,
+		Scripts:             p.Adapter,
+		QueryRegistry:       queryRegistry,
+		ScriptPerms:         scriptPerms,
+		DB:                  p.Adapter,
+		Pinger:              p.Adapter,
+		Readiness:           p.Adapter,
+		Cache:               cacher,
+		RegistryMode:        p.HasDatabaseRegistry(),
+		PGDatabase:          p.PGDatabase,
+		Expose:              p.ExposeConf,
+		AllowUnscopedWrites: p.AccessConf.AllowUnscopedWrites,
 		Auth: AuthConfig{
 			Enabled:  p.AuthEnabled,
 			AuthType: p.AuthType,

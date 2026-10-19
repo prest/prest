@@ -38,6 +38,16 @@ func TestMySQLInsertUpdateDelete(t *testing.T) {
 	testutils.DoRequest(t, base+"/shop/shop/items?name=$eq.bea", nil, http.MethodDelete, http.StatusOK, "delete", "rows_affected")
 }
 
+func TestMySQLUnscopedWritesRejected(t *testing.T) {
+	// GHSA-r867-ghgv-mrp9: DELETE/PATCH without a filter must return 400 on
+	// MySQL too, instead of touching every row in shop.items.
+	base := helpers.ServerURL(t)
+	testutils.DoRequest(t, base+"/shop/shop/items", nil, http.MethodDelete, http.StatusBadRequest, "unscoped delete", "without a WHERE condition")
+	testutils.DoRequest(t, base+"/shop/shop/items", map[string]any{"qty": 0}, http.MethodPatch, http.StatusBadRequest, "unscoped patch", "without a WHERE condition")
+	// Seed rows are still readable, so nothing was deleted.
+	testutils.DoRequest(t, base+"/shop/shop/items?name=$eq.ada", nil, http.MethodGet, http.StatusOK, "rows intact", "ada")
+}
+
 func TestMySQLJSONObjectInsertAndPatch(t *testing.T) {
 	// JSON objects in the body bind as utf8mb4 strings, so the default
 	// interpolateParams mode writes them into a JSON column (no error 3144).

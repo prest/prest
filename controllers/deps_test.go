@@ -30,6 +30,7 @@ func TestNewDepsFromConfig(t *testing.T) {
 		AuthPassword: "password",
 		AuthEncrypt:  "MD5",
 		Cache:        cache.Config{Enabled: true},
+		AccessConf:   config.AccessConf{AllowUnscopedWrites: true},
 	}
 
 	deps := NewDepsFromConfig(p)
@@ -41,6 +42,7 @@ func TestNewDepsFromConfig(t *testing.T) {
 	require.True(t, deps.Auth.Enabled)
 	require.Equal(t, "body", deps.Auth.AuthType)
 	require.Equal(t, "test-jwt-hmac-secret-key-32bytes", deps.Auth.JWTKey)
+	require.True(t, deps.AllowUnscopedWrites)
 }
 
 func TestNewDepsFromConfig_CacheDisabled(t *testing.T) {

@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"testing"
+	"time"
 
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/integration/testutils"
@@ -249,11 +251,13 @@ func TestDeleteFromTable(t *testing.T) {
 		request     map[string]interface{}
 		status      int
 	}{
-		{"execute delete in a table without custom where clause", "/prest-test/public/test", nil, http.StatusOK},
+		// GHSA-r867-ghgv-mrp9: a DELETE without a filter would wipe the table.
+		{"reject delete in a table without custom where clause", "/prest-test/public/test", nil, http.StatusBadRequest},
+		{"reject delete with only _returning and no filter", "/prest-test/public/test?_returning=*", nil, http.StatusBadRequest},
 		{"excute delete in a table with where clause", "/prest-test/public/test?name=$eq.test", nil, http.StatusOK},
 		{"execute delete in a table with invalid database", "/0prest-test/public/test", nil, http.StatusBadRequest},
-		{"execute delete in a table with invalid schema", "/prest-test/0public/test", nil, http.StatusNotFound},
-		{"execute delete in a table with invalid table", "/prest-test/public/0test", nil, http.StatusNotFound},
+		{"execute delete in a table with invalid schema", "/prest-test/0public/test?name=$eq.test", nil, http.StatusNotFound},
+		{"execute delete in a table with invalid table", "/prest-test/public/0test?name=$eq.test", nil, http.StatusNotFound},
 		{"execute delete in a table with invalid where clause", "/prest-test/public/test?0name=$eq.nuveo", nil, http.StatusBadRequest},
 		{"execute delete in a invalid db", "/invalid/public/0test", nil, http.StatusBadRequest},
 	}
@@ -276,13 +280,14 @@ func TestUpdateFromTable(t *testing.T) {
 		request     map[string]interface{}
 		status      int
 	}{
-		{"execute update in a table without custom where clause", "/prest-test/public/test", m, http.StatusOK},
+		// GHSA-r867-ghgv-mrp9: an UPDATE without a filter would rewrite every row.
+		{"reject update in a table without custom where clause", "/prest-test/public/test", m, http.StatusBadRequest},
 		{"execute update in a table with where clause", "/prest-test/public/test?name=$eq.test", m, http.StatusOK},
 		{"execute update in a table with where clause and returning all fields", "/prest-test/public/test?id=1&_returning=*", m, http.StatusOK},
 		{"execute update in a table with where clause and returning name field", "/prest-test/public/test?id=2&_returning=name", m, http.StatusOK},
 		{"execute update in a table with invalid database", "/0prest-test/public/test", m, http.StatusBadRequest},
-		{"execute update in a table with invalid schema", "/prest-test/0public/test", m, http.StatusNotFound},
-		{"execute update in a table with invalid table", "/prest-test/public/0test", m, http.StatusNotFound},
+		{"execute update in a table with invalid schema", "/prest-test/0public/test?name=$eq.test", m, http.StatusNotFound},
+		{"execute update in a table with invalid table", "/prest-test/public/0test?name=$eq.test", m, http.StatusNotFound},
 		{"execute update in a table with invalid where clause", "/prest-test/public/test?0name=$eq.nuveo", m, http.StatusBadRequest},
 		{"execute update in a table with invalid body", "/prest-test/public/test?name=$eq.nuveo", nil, http.StatusBadRequest},
 		{"execute update in a invalid db", "/invalid/public/test", m, http.StatusBadRequest},
@@ -294,6 +299,42 @@ func TestUpdateFromTable(t *testing.T) {
 		testutils.DoRequest(t, base+tc.url, tc.request, "PUT", tc.status, "UpdateTable")
 		testutils.DoRequest(t, base+tc.url, tc.request, "PATCH", tc.status, "UpdateTable")
 	}
+}
+
+// TestUnscopedWritesRejected guards GHSA-r867-ghgv-mrp9: DELETE/PUT/PATCH
+// without a filter must return 400 and leave every row untouched, instead of
+// running a bare DELETE FROM / UPDATE against the whole table.
+func TestUnscopedWritesRejected(t *testing.T) {
+	base := helpers.ServerURL(t)
+	table := base + "/prest-test/public/test"
+	name := fmt.Sprintf("unscoped-%d", time.Now().UnixNano())
+	filter := "?name=" + url.QueryEscape("$eq."+name)
+
+	t.Cleanup(func() {
+		testutils.DoRequest(t, table+filter, nil, http.MethodDelete, http.StatusOK, "UnscopedCleanup")
+	})
+
+	// Seed a row we can look up afterwards to prove nothing was deleted or rewritten.
+	testutils.DoRequest(t, table, map[string]interface{}{"name": name},
+		http.MethodPost, http.StatusCreated, "UnscopedSeed", name)
+
+	// No query string at all: the advisory's exact repro. Expect 400, not rows_affected.
+	testutils.DoRequest(t, table, nil,
+		http.MethodDelete, http.StatusBadRequest, "UnscopedDelete", "without a WHERE condition")
+
+	// Only reserved "_" params yield no WHERE either; must still be rejected.
+	testutils.DoRequest(t, table+"?_returning=*", nil,
+		http.MethodDelete, http.StatusBadRequest, "UnscopedDeleteReturning", "without a WHERE condition")
+
+	// PUT and PATCH without a filter would rewrite every row's name.
+	for _, method := range []string{http.MethodPut, http.MethodPatch} {
+		testutils.DoRequest(t, table, map[string]interface{}{"name": "rewritten"},
+			method, http.StatusBadRequest, "Unscoped"+method, "refusing "+method+" without a WHERE condition")
+	}
+
+	// The seeded row is still there with its original name.
+	testutils.DoRequest(t, table+filter, nil,
+		http.MethodGet, http.StatusOK, "UnscopedRowSurvives", name)
 }
 
 func TestShowTable(t *testing.T) {

@@ -194,6 +194,11 @@ whitelist = ["^\\/auth$"]
 # everything else returns 401.
 restrict = false
 ignore_table = []
+# When false (default), DELETE/PUT/PATCH on /{db}/{schema}/{table} without a
+# filter query parameter (no WHERE condition) return 400. Setting it to true
+# lets a single request delete or rewrite every row in the table.
+# Env: PREST_ACCESS_ALLOW_UNSCOPED_WRITES
+allow_unscoped_writes = false
 
 # [[access.tables]]
 # name = "customers"

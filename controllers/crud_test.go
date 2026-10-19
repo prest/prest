@@ -863,7 +863,7 @@ func TestCRUDHandler_Update_RelationNotFound(t *testing.T) {
 
 	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
 	builder.EXPECT().SetByRequest(gomock.Any(), 1).Return(`name=$1`, []interface{}{"x"}, nil)
-	builder.EXPECT().WhereByRequest(gomock.Any(), 2).Return("", nil, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 2).Return("id=$2", []interface{}{1}, nil)
 	builder.EXPECT().ReturningByRequest(gomock.Any()).Return("", nil)
 
 	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
@@ -873,7 +873,7 @@ func TestCRUDHandler_Update_RelationNotFound(t *testing.T) {
 	scanner.EXPECT().Err().Return(errors.New(`pq: relation "public.missing" does not exist`))
 
 	executor := mockgen.NewMockQueryExecutor(ctrl)
-	executor.EXPECT().UpdateCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
+	executor.EXPECT().UpdateCtx(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
 
 	db := mockDatabaseRegistry(ctrl)
 
@@ -1567,7 +1567,7 @@ func TestCRUDHandler_Delete_ReturningByRequestError(t *testing.T) {
 	defer ctrl.Finish()
 
 	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
-	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("id=$1", []interface{}{1}, nil)
 	builder.EXPECT().ReturningByRequest(gomock.Any()).Return("", errors.New("bad returning"))
 
 	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
@@ -1591,7 +1591,7 @@ func TestCRUDHandler_Delete_RelationNotFound(t *testing.T) {
 	defer ctrl.Finish()
 
 	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
-	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("id=$1", []interface{}{1}, nil)
 	builder.EXPECT().ReturningByRequest(gomock.Any()).Return("", nil)
 
 	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
@@ -1601,7 +1601,7 @@ func TestCRUDHandler_Delete_RelationNotFound(t *testing.T) {
 	scanner.EXPECT().Err().Return(errors.New(`pq: relation "public.missing" does not exist`))
 
 	executor := mockgen.NewMockQueryExecutor(ctrl)
-	executor.EXPECT().DeleteCtx(gomock.Any(), gomock.Any()).Return(scanner)
+	executor.EXPECT().DeleteCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
 
 	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
 	req := crudRequest(http.MethodDelete, "/prest-test/public/missing", map[string]string{
@@ -1621,7 +1621,7 @@ func TestCRUDHandler_Delete_ExecutorError(t *testing.T) {
 	defer ctrl.Finish()
 
 	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
-	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("id=$1", []interface{}{1}, nil)
 	builder.EXPECT().ReturningByRequest(gomock.Any()).Return("", nil)
 
 	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
@@ -1631,7 +1631,7 @@ func TestCRUDHandler_Delete_ExecutorError(t *testing.T) {
 	scanner.EXPECT().Err().Return(errors.New("delete failed"))
 
 	executor := mockgen.NewMockQueryExecutor(ctrl)
-	executor.EXPECT().DeleteCtx(gomock.Any(), gomock.Any()).Return(scanner)
+	executor.EXPECT().DeleteCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
 
 	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
 	req := crudRequest(http.MethodDelete, "/prest-test/public/test", map[string]string{
@@ -1644,7 +1644,34 @@ func TestCRUDHandler_Delete_ExecutorError(t *testing.T) {
 	require.Contains(t, rec.Body.String(), "DeleteFromTable")
 }
 
-func TestCRUDHandler_Delete_NoWhereNoReturning(t *testing.T) {
+// An empty WHERE (no filter query params) must never reach the executor:
+// a bare DELETE wipes the whole table (GHSA-r867-ghgv-mrp9).
+func TestCRUDHandler_Delete_UnscopedRejected(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+
+	h := NewCRUDHandler(Deps{
+		Builder:  builder,
+		SQL:      mockgen.NewMockSQLBuilder(ctrl),
+		Executor: mockgen.NewMockQueryExecutor(ctrl),
+		DB:       mockDatabaseRegistry(ctrl),
+	})
+	req := crudRequest(http.MethodDelete, "/prest-test/public/test?_returning=*", map[string]string{
+		"database": "prest-test", "schema": "public", "table": "test",
+	})
+	rec := httptest.NewRecorder()
+	h.Delete(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Contains(t, rec.Body.String(), "refusing DELETE without a WHERE condition")
+}
+
+func TestCRUDHandler_Delete_UnscopedAllowedByConfig(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
@@ -1664,12 +1691,85 @@ func TestCRUDHandler_Delete_NoWhereNoReturning(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().DeleteCtx(gomock.Any(), `DELETE FROM test`).Return(scanner)
 
-	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
+	h := NewCRUDHandler(Deps{
+		Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl),
+		AllowUnscopedWrites: true,
+	})
 	req := crudRequest(http.MethodDelete, "/prest-test/public/test", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "test",
 	})
 	rec := httptest.NewRecorder()
 	h.Delete(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+}
+
+// PUT and PATCH share Update; an empty WHERE would rewrite every row.
+func TestCRUDHandler_Update_UnscopedRejected(t *testing.T) {
+	t.Parallel()
+
+	for _, method := range []string{http.MethodPut, http.MethodPatch} {
+		t.Run(method, func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+			builder.EXPECT().SetByRequest(gomock.Any(), 1).Return(`name=$1`, []interface{}{"x"}, nil)
+			builder.EXPECT().WhereByRequest(gomock.Any(), 2).Return("", nil, nil)
+
+			sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
+			sqlBuilder.EXPECT().UpdateSQL("prest-test", "public", "test", `name=$1`).Return(`UPDATE test SET name=$1`)
+
+			h := NewCRUDHandler(Deps{
+				Builder:  builder,
+				SQL:      sqlBuilder,
+				Executor: mockgen.NewMockQueryExecutor(ctrl),
+				DB:       mockDatabaseRegistry(ctrl),
+			})
+			req := crudRequest(method, "/prest-test/public/test", map[string]string{
+				"database": "prest-test", "schema": "public", "table": "test",
+			})
+			rec := httptest.NewRecorder()
+			h.Update(rec, req)
+
+			require.Equal(t, http.StatusBadRequest, rec.Code)
+			require.Contains(t, rec.Body.String(), "refusing "+method+" without a WHERE condition")
+		})
+	}
+}
+
+func TestCRUDHandler_Update_UnscopedAllowedByConfig(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+	builder.EXPECT().SetByRequest(gomock.Any(), 1).Return(`name=$1`, []interface{}{"x"}, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 2).Return("", nil, nil)
+	builder.EXPECT().ReturningByRequest(gomock.Any()).Return("", nil)
+
+	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
+	sqlBuilder.EXPECT().UpdateSQL("prest-test", "public", "test", `name=$1`).Return(`UPDATE test SET name=$1`)
+
+	scanner := mockgen.NewMockScanner(ctrl)
+	scanner.EXPECT().Err().Return(nil)
+	scanner.EXPECT().Bytes().Return([]byte(`{"rows_affected":2}`))
+
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	executor.EXPECT().UpdateCtx(gomock.Any(), `UPDATE test SET name=$1`, "x").Return(scanner)
+
+	h := NewCRUDHandler(Deps{
+		Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl),
+		AllowUnscopedWrites: true,
+	})
+	req := crudRequest(http.MethodPatch, "/prest-test/public/test", map[string]string{
+		"database": "prest-test", "schema": "public", "table": "test",
+	})
+	rec := httptest.NewRecorder()
+	h.Update(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code)
 }
@@ -1726,7 +1826,7 @@ func TestCRUDHandler_Update_ReturningByRequestError(t *testing.T) {
 
 	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
 	builder.EXPECT().SetByRequest(gomock.Any(), 1).Return(`name=$1`, []interface{}{"x"}, nil)
-	builder.EXPECT().WhereByRequest(gomock.Any(), 2).Return("", nil, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 2).Return("id=$2", []interface{}{1}, nil)
 	builder.EXPECT().ReturningByRequest(gomock.Any()).Return("", errors.New("bad returning"))
 
 	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
@@ -1751,7 +1851,7 @@ func TestCRUDHandler_Update_ExecutorError(t *testing.T) {
 
 	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
 	builder.EXPECT().SetByRequest(gomock.Any(), 1).Return(`name=$1`, []interface{}{"x"}, nil)
-	builder.EXPECT().WhereByRequest(gomock.Any(), 2).Return("", nil, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 2).Return("id=$2", []interface{}{1}, nil)
 	builder.EXPECT().ReturningByRequest(gomock.Any()).Return("", nil)
 
 	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
@@ -1761,7 +1861,7 @@ func TestCRUDHandler_Update_ExecutorError(t *testing.T) {
 	scanner.EXPECT().Err().Return(errors.New("update failed"))
 
 	executor := mockgen.NewMockQueryExecutor(ctrl)
-	executor.EXPECT().UpdateCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
+	executor.EXPECT().UpdateCtx(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
 
 	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
 	req := crudRequest(http.MethodPatch, "/prest-test/public/test", map[string]string{
@@ -1858,17 +1958,17 @@ func TestCRUDHandler_Writes_DatabaseUnavailable(t *testing.T) {
 			e.EXPECT().BatchInsertValuesCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(sc)
 		}, (*CRUDHandler).BatchInsert},
 		{"delete", http.MethodDelete, func(b *mockgen.MockRequestQueryBuilder, s *mockgen.MockSQLBuilder, e *mockgen.MockQueryExecutor, sc *mockgen.MockScanner) {
-			b.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+			b.EXPECT().WhereByRequest(gomock.Any(), 1).Return("id=$1", []interface{}{1}, nil)
 			b.EXPECT().ReturningByRequest(gomock.Any()).Return("", nil)
 			s.EXPECT().DeleteSQL(gomock.Any(), gomock.Any(), gomock.Any()).Return(`DELETE`)
-			e.EXPECT().DeleteCtx(gomock.Any(), gomock.Any()).Return(sc)
+			e.EXPECT().DeleteCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(sc)
 		}, (*CRUDHandler).Delete},
 		{"update", http.MethodPut, func(b *mockgen.MockRequestQueryBuilder, s *mockgen.MockSQLBuilder, e *mockgen.MockQueryExecutor, sc *mockgen.MockScanner) {
 			b.EXPECT().SetByRequest(gomock.Any(), 1).Return(`"name"=$1`, []interface{}{"x"}, nil)
-			b.EXPECT().WhereByRequest(gomock.Any(), 2).Return("", nil, nil)
+			b.EXPECT().WhereByRequest(gomock.Any(), 2).Return("id=$2", []interface{}{1}, nil)
 			b.EXPECT().ReturningByRequest(gomock.Any()).Return("", nil)
 			s.EXPECT().UpdateSQL(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(`UPDATE`)
-			e.EXPECT().UpdateCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(sc)
+			e.EXPECT().UpdateCtx(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(sc)
 		}, (*CRUDHandler).Update},
 	}
 	for _, tc := range cases {
