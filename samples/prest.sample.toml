@@ -204,6 +204,10 @@ allow_unscoped_writes = false
 # name = "customers"
 # permissions = ["read", "write", "delete"]
 # fields = ["id", "name", "email"]
+# fields limits the columns a caller may read AND write: POST/PUT/PATCH bodies
+# setting any other column get 400. Omit it to allow writing every column.
+# Write responses (INSERT rows, _returning) only echo columns the caller may
+# read; a caller without "read" on the table gets {} back.
 #
 # Per-user overrides: if a user has no entry here, the table-level
 # permissions above apply.
