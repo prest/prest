@@ -111,6 +111,17 @@ name = "employee_badge"
 permissions = ["read"]
 fields = ["emp_id", "badge"]
 
+# Write-field allowlist fixtures (GHSA-h25q-9rmj-646h): fields limits writes and
+# what write responses echo; a write-only grant echoes no column at all.
+[[access.tables]]
+name = "write_fields_restricted"
+permissions = ["read", "write", "delete"]
+fields = ["id", "name"]
+
+[[access.tables]]
+name = "write_only_restricted"
+permissions = ["write", "delete"]
+
 
 # Access for user
 [[access.tables]]

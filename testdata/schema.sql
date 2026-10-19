@@ -75,3 +75,12 @@ INSERT INTO employee_badge (emp_id, badge) VALUES (1, 'badge-001'), (2, 'badge-0
 -- DEFAULT, including a NOT NULL column (c); big and nums cover UseNumber
 -- precision and numeric arrays.
 CREATE TABLE batch_defaults(id serial PRIMARY KEY, a text, b text DEFAULT 'dflt', c text NOT NULL DEFAULT 'req', big bigint, nums int[]);
+
+-- Write-field allowlist fixtures (GHSA-h25q-9rmj-646h). role is the privilege
+-- column a field-restricted caller must neither set nor see echoed back.
+-- write_fields_restricted: read+write limited to id, name.
+-- write_only_restricted: write+delete, no read, no fields -> writes unrestricted,
+-- but no column may appear in a write response.
+CREATE TABLE write_fields_restricted(id serial PRIMARY KEY, name text, role text NOT NULL DEFAULT 'user');
+INSERT INTO write_fields_restricted(name) VALUES ('alice');
+CREATE TABLE write_only_restricted(id serial PRIMARY KEY, name text, role text NOT NULL DEFAULT 'user');
