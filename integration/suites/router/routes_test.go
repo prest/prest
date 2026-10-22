@@ -60,7 +60,8 @@ func TestDefaultRouters(t *testing.T) {
 		{"GET table rows returns OK", "/prest-test/public/test", "GET", http.StatusOK},
 		{"POST table without body returns BadRequest", "/prest-test/public/test", "POST", http.StatusBadRequest},
 		{"POST batch without body returns BadRequest", "/batch/prest-test/public/test", "POST", http.StatusBadRequest},
-		{"DELETE table rows returns OK", "/prest-test/public/test", "DELETE", http.StatusOK},
+		// Unfiltered DELETE would wipe the table (GHSA-r867-ghgv-mrp9).
+		{"DELETE table without a filter returns BadRequest", "/prest-test/public/test", "DELETE", http.StatusBadRequest},
 		{"PUT table without body returns BadRequest", "/prest-test/public/test", "PUT", http.StatusBadRequest},
 		{"PATCH table without body returns BadRequest", "/prest-test/public/test", "PATCH", http.StatusBadRequest},
 		{"GET /auth on default server returns NotFound", "/auth", "GET", http.StatusNotFound},

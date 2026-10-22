@@ -18,11 +18,22 @@ import (
 type scopedAdapter struct {
 	*mockgen.MockAdapter
 	allow bool
+	// onlyDB, when set, allows a schema only when database == schema.
+	onlyDB bool
+	seen   *[]string
 }
 
-func (a scopedAdapter) AllowsSchema(string) bool { return a.allow }
+func (a scopedAdapter) AllowsDatabaseSchema(database, schema string) bool {
+	if a.seen != nil {
+		*a.seen = append(*a.seen, database)
+	}
+	if a.onlyDB {
+		return database == schema
+	}
+	return a.allow
+}
 
-var _ adapters.SchemaScoper = scopedAdapter{}
+var _ adapters.DatabaseSchemaScoper = scopedAdapter{}
 
 func newScopedAdapter(ctrl *gomock.Controller, allow bool) scopedAdapter {
 	a := scopedAdapter{MockAdapter: mockgen.NewMockAdapter(ctrl), allow: allow}
@@ -35,6 +46,39 @@ func withAdapter(req *http.Request, a adapters.Adapter) *http.Request {
 	return req.WithContext(context.WithValue(req.Context(), pctx.AdapterKey, a))
 }
 
+// validateSchema hands the request's {database} to AllowsDatabaseSchema.
+func TestValidateSchema_PassesDatabase(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	var seen []string
+	a := newScopedAdapter(ctrl, false)
+	a.onlyDB, a.seen = true, &seen
+	req := withAdapter(httptest.NewRequest(http.MethodGet, "/", nil), a)
+
+	require.NoError(t, validateSchema(req, "shop", "shop"))
+	require.ErrorIs(t, validateSchema(req, "shop", "other"), errSchemaNotInDatabase)
+	require.Equal(t, []string{"shop", "shop"}, seen)
+}
+
+func TestMCPHandler_ValidateToolTarget_PassesDatabase(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	a := newScopedAdapter(ctrl, false)
+	a.onlyDB = true
+	registry := adapters.NewRegistry()
+	require.NoError(t, registry.Register("shop", a))
+	h := NewMCPHandler(Deps{AdapterRegistry: registry, DB: mockDatabaseRegistry(ctrl), PGDatabase: "shop"})
+
+	require.NoError(t, h.validateToolTarget("shop", "shop", "items"))
+	require.Error(t, h.validateToolTarget("shop", "other", "items"))
+}
+
 func TestValidateSchema(t *testing.T) {
 	t.Parallel()
 
@@ -43,11 +87,11 @@ func TestValidateSchema(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	// No adapter on the request: nothing to scope.
-	require.NoError(t, validateSchema(req, "other"))
+	require.NoError(t, validateSchema(req, "", "other"))
 	// A plain adapter (Postgres) does not scope schemas.
-	require.NoError(t, validateSchema(withAdapter(req, mockgen.NewMockAdapter(ctrl)), "other"))
-	require.NoError(t, validateSchema(withAdapter(req, newScopedAdapter(ctrl, true)), "shop"))
-	require.ErrorIs(t, validateSchema(withAdapter(req, newScopedAdapter(ctrl, false)), "other"), errSchemaNotInDatabase)
+	require.NoError(t, validateSchema(withAdapter(req, mockgen.NewMockAdapter(ctrl)), "", "other"))
+	require.NoError(t, validateSchema(withAdapter(req, newScopedAdapter(ctrl, true)), "", "shop"))
+	require.ErrorIs(t, validateSchema(withAdapter(req, newScopedAdapter(ctrl, false)), "", "other"), errSchemaNotInDatabase)
 }
 
 // A MySQL alias must not reach another physical database through {schema}:
@@ -76,7 +120,7 @@ func TestHandlers_RejectSchemaOutsideAlias(t *testing.T) {
 			NewCRUDHandler(Deps{}).Delete(w, r)
 		}},
 		{"table show", func(c *gomock.Controller, w http.ResponseWriter, r *http.Request) {
-			NewTableHandler(nil, nil, false).Show(w, r)
+			NewTableHandler(nil, nil).Show(w, r)
 		}},
 		{"list tables by schema", func(c *gomock.Controller, w http.ResponseWriter, r *http.Request) {
 			NewCatalogHandler(Deps{}).ListTablesByDatabaseAndSchema(w, r)
@@ -116,7 +160,7 @@ func TestTableHandler_Show_AllowedSchemaProceeds(t *testing.T) {
 		"database": "shop", "schema": "shop", "table": "items",
 	}), a)
 	rec := httptest.NewRecorder()
-	NewTableHandler(nil, nil, false).Show(rec, req)
+	NewTableHandler(nil, nil).Show(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Contains(t, rec.Body.String(), "column_name")
@@ -161,17 +205,20 @@ func TestRegistryAliases(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	require.Nil(t, registryAliases(nil, false, ""))
-	require.Equal(t, []string{"only"}, registryAliases(nil, true, "only"))
-	require.Nil(t, registryAliases(nil, true, ""))
+	require.Nil(t, registryAliases(nil, ""))
+	require.Equal(t, []string{"only"}, registryAliases(nil, "only"))
+	require.Nil(t, registryAliases(nil, ""))
 
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
 	db.EXPECT().Aliases().Return([]string{"a", "b", "a"})
-	require.Equal(t, []string{"a", "b"}, registryAliases(db, false, "a"))
+	require.Equal(t, []string{"a", "b"}, registryAliases(db, "a"))
 
 	empty := mockgen.NewMockDatabaseRegistry(ctrl)
 	empty.EXPECT().Aliases().Return(nil)
-	require.Equal(t, []string{"fallback"}, registryAliases(empty, false, "fallback"))
+	require.Equal(t, []string{"fallback"}, registryAliases(empty, "fallback"))
+
+	// Nil registry and empty default: nothing to list.
+	require.Nil(t, registryAliases(nil, ""))
 }
 
 func TestPhysicalName(t *testing.T) {
@@ -184,4 +231,47 @@ func TestPhysicalName(t *testing.T) {
 	db := mockgen.NewMockDatabaseRegistry(ctrl)
 	db.EXPECT().PhysicalName("alias").Return("real_db")
 	require.Equal(t, "real_db", physicalName(db, "alias"))
+}
+
+// legacyScopedAdapter implements only the one-argument SchemaScoper, as an
+// adapter written before DatabaseSchemaScoper existed.
+type legacyScopedAdapter struct {
+	*mockgen.MockAdapter
+	allow bool
+}
+
+func (a legacyScopedAdapter) AllowsSchema(string) bool { return a.allow }
+
+var _ adapters.SchemaScoper = legacyScopedAdapter{}
+
+// checkSchemaScope falls back to the one-argument SchemaScoper, and an adapter
+// with neither interface accepts any schema.
+func TestCheckSchemaScope_LegacySchemaScoper(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	require.NoError(t, checkSchemaScope(legacyScopedAdapter{MockAdapter: mockgen.NewMockAdapter(ctrl), allow: true}, "shop", "other"))
+	require.ErrorIs(t, checkSchemaScope(legacyScopedAdapter{MockAdapter: mockgen.NewMockAdapter(ctrl)}, "shop", "other"), errSchemaNotInDatabase)
+	require.NoError(t, checkSchemaScope(mockgen.NewMockAdapter(ctrl), "shop", "other"))
+}
+
+// MCP list_tables applies the schema scope before querying: a MySQL entry
+// cannot list another database's table names through its {schema} argument.
+func TestMCPHandler_ListTables_SchemaScope(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	a := newScopedAdapter(ctrl, false)
+	a.onlyDB = true
+	registry := adapters.NewRegistry()
+	require.NoError(t, registry.Register("shop", a))
+	h := NewMCPHandler(Deps{AdapterRegistry: registry, DB: mockDatabaseRegistry(ctrl), PGDatabase: "shop"})
+
+	req := httptest.NewRequest(http.MethodPost, "/_mcp", nil)
+	_, err := h.listTables(req, mcpListTablesArgs{Database: "shop", Schema: "other"})
+	require.ErrorIs(t, err, errSchemaNotInDatabase)
 }

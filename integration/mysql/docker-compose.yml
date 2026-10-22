@@ -62,7 +62,8 @@ services:
       PREST_JWT_DEFAULT: "false"
       PREST_CACHE_ENABLED: "false"
       PREST_ACCESS_RESTRICT: "false"
-      PREST_DB_SINGLE: "false"
+      # pg.database=shop plus other on the same host: both served, schema pinned.
+      PREST_DB_ALLOWED_DATABASES: other
       PREST_HTTP_PORT: "3000"
     command: >-
       bash -lc "export PATH=/usr/local/go/bin:/go/bin:$$PATH && apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && go run ./cmd/prestd/main.go"
@@ -87,7 +88,6 @@ services:
       PREST_JWT_DEFAULT: "false"
       PREST_CACHE_ENABLED: "false"
       PREST_ACCESS_RESTRICT: "false"
-      PREST_DB_SINGLE: "false"
       PREST_AUTH_ENABLED: "true"
       PREST_JWT_KEY: integration-test-secret-key-32b!!
       PREST_HTTP_PORT: "3002"
@@ -118,7 +118,6 @@ services:
       # prest_queries.toml pins auth.schema = "public", which MySQL does not have.
       PREST_AUTH_SCHEMA: shop
       PREST_QUERIES_LOCATION: /workspace/testdata/queries
-      PREST_DB_SINGLE: "false"
       PREST_HTTP_PORT: "3003"
     command: >-
       bash -lc "export PATH=/usr/local/go/bin:/go/bin:$$PATH && apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && go run ./cmd/prestd/main.go"
@@ -145,7 +144,6 @@ services:
       PREST_JWT_DEFAULT: "false"
       PREST_CACHE_ENABLED: "false"
       PREST_ACCESS_RESTRICT: "false"
-      PREST_DB_SINGLE: "false"
       PREST_HTTP_PORT: "3004"
     command: >-
       bash -lc "export PATH=/usr/local/go/bin:/go/bin:$$PATH && apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && go run ./cmd/prestd/main.go"

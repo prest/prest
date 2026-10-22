@@ -88,7 +88,7 @@ func (brokenExecutor) QueryCtx(...) adapters.Scanner { panic("not implemented") 
 
 Depend on the smallest interface that suffices; avoid fat interfaces at call sites.
 
-**pREST mapping:** `NewAuthHandler(executor adapters.QueryExecutor, …)` needs only query execution. `NewTableHandler(executor, db, singleDB)` needs executor + registry, not full `Adapter`. Split ports live in `adapters/*.go`; composite `Adapter` is for the composition root only.
+**pREST mapping:** `NewAuthHandler(executor adapters.QueryExecutor, …)` needs only query execution. `NewTableHandler(executor, db)` needs executor + registry, not full `Adapter`. Split ports live in `adapters/*.go`; composite `Adapter` is for the composition root only.
 
 ```go
 // GOOD: narrow dependency

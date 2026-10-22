@@ -1,12 +1,15 @@
 package plugins
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"plugin"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -430,4 +433,169 @@ func TestLoadedMiddlewareCacheConcurrency(t *testing.T) {
 	loadedMiddlewareMu.Unlock()
 	require.True(t, ok)
 	assert.True(t, entry.Loaded)
+}
+
+// recordingOpen returns a plg.open fake that records every path it is asked
+// to load, so tests can prove a rejected name never reaches plugin.Open.
+func recordingOpen(lib pluginLib) (func(string) (pluginLib, error), func() []string) {
+	var mu sync.Mutex
+	var calls []string
+	open := func(path string) (pluginLib, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		calls = append(calls, path)
+		if lib == nil {
+			return nil, errors.New("fake open: no plugin")
+		}
+		return lib, nil
+	}
+	return open, func() []string {
+		mu.Lock()
+		defer mu.Unlock()
+		return append([]string(nil), calls...)
+	}
+}
+
+// GHSA-fmr6-9j48-xrqp: {file} and {func} come from the URL and must never be
+// able to steer plugin.Open outside PluginPath.
+func TestLoadFuncRejectsUnsafeNames(t *testing.T) {
+	dir := t.TempDir()
+	cases := []struct {
+		description string
+		file        string
+		fn          string
+	}{
+		{"file: reporter traversal to /tmp/sample is rejected", "../../../../tmp/sample", "someFunction"},
+		{"file: bare parent dir is rejected", "..", "Hello"},
+		{"file: nested path with slash is rejected", "a/b", "Hello"},
+		{"file: dotted name is rejected", "a.b", "Hello"},
+		{"file: empty name is rejected", "", "Hello"},
+		{"file: 64-char name exceeds segment limit", strings.Repeat("a", 64), "Hello"},
+		{"func: traversal in func name is rejected", "hello", "../x"},
+		{"func: dotted func name is rejected", "hello", "a.b"},
+		{"func: empty func name is rejected", "hello", ""},
+		{"func: func name starting with digit is rejected", "hello", "1abc"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.description, func(t *testing.T) {
+			plg := New(&config.Prest{PluginPath: dir})
+			open, calls := recordingOpen(nil)
+			plg.open = open
+			r := mux.SetURLVars(httptest.NewRequest(http.MethodGet, "/_PLUGIN/x/y", nil), map[string]string{
+				"file": tc.file, "func": tc.fn,
+			})
+			_, err := plg.loadFunc(tc.file, tc.fn, r)
+			require.Error(t, err)
+			assert.True(t, errors.Is(err, ErrInvalidPluginPath), "want ErrInvalidPluginPath, got %v", err)
+			assert.Empty(t, calls(), "plugin.Open must not be reached for a rejected name")
+		})
+	}
+}
+
+// A symlink placed inside PluginPath that targets a .so elsewhere passes the
+// lexical check; the resolved check must still reject it before open.
+func TestLoadFuncRejectsSymlinkEscape(t *testing.T) {
+	dir := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "evil.so")
+	require.NoError(t, os.WriteFile(outside, []byte("placeholder"), 0o644))
+	require.NoError(t, os.Symlink(outside, filepath.Join(dir, "hello.so")))
+
+	plg := New(&config.Prest{PluginPath: dir})
+	open, calls := recordingOpen(nil)
+	plg.open = open
+	r := mux.SetURLVars(httptest.NewRequest(http.MethodGet, "/_PLUGIN/hello/Hello", nil), map[string]string{
+		"file": "hello", "func": "Hello",
+	})
+	_, err := plg.loadFunc("hello", "Hello", r)
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, ErrInvalidPluginPath), "want ErrInvalidPluginPath, got %v", err)
+	assert.Empty(t, calls())
+}
+
+// Reporter PoC: Handler() with file=../../../../tmp/sample must answer 400
+// without echoing the name and without calling plugin.Open.
+func TestHandlerRejectsTraversalPoC(t *testing.T) {
+	plg := New(&config.Prest{PluginPath: t.TempDir()})
+	open, calls := recordingOpen(fakePluginLib{symbols: map[string]any{
+		"GETsomeFunctionHandler": func() string { return "pwned" },
+	}})
+	plg.open = open
+
+	r := mux.SetURLVars(httptest.NewRequest(http.MethodGet, "/_PLUGIN/x/someFunction", nil), map[string]string{
+		"file": "../../../../tmp/sample", "func": "someFunction",
+	})
+	rec := httptest.NewRecorder()
+	plg.Handler().ServeHTTP(rec, r)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	body, _ := io.ReadAll(rec.Body)
+	assert.Contains(t, string(body), "invalid plugin name")
+	assert.NotContains(t, string(body), "tmp/sample", "attacker input must not be echoed")
+	assert.NotContains(t, string(body), "pwned")
+	assert.Empty(t, calls())
+}
+
+func TestLoadMiddlewareFuncRejectsTraversal(t *testing.T) {
+	plg := New(&config.Prest{PluginPath: t.TempDir()})
+	open, calls := recordingOpen(nil)
+	plg.open = open
+
+	_, err := plg.loadMiddlewareFunc("../../../../tmp/sample", "Hello")
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, ErrInvalidPluginPath), "want ErrInvalidPluginPath, got %v", err)
+	assert.Empty(t, calls())
+
+	// Middleware() falls back to the no-op when the configured name is unsafe.
+	plg.cfg.PluginMiddlewareList = []config.PluginMiddleware{{File: "../../../../tmp/sample", Func: "Hello"}}
+	called := false
+	plg.Middleware().ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil),
+		func(http.ResponseWriter, *http.Request) { called = true })
+	assert.True(t, called)
+	assert.Empty(t, calls())
+}
+
+// A missing plugin under a valid name is a plain not-found, not an invalid
+// name, so Handler keeps answering 404; open is not reached for it either.
+func TestLoadFuncMissingPluginIsNotInvalid(t *testing.T) {
+	dir := t.TempDir()
+	plg := New(&config.Prest{PluginPath: dir})
+	open, calls := recordingOpen(nil)
+	plg.open = open
+	r := mux.SetURLVars(httptest.NewRequest(http.MethodGet, "/_PLUGIN/missing/Hello", nil), map[string]string{
+		"file": "missing", "func": "Hello",
+	})
+	_, err := plg.loadFunc("missing", "Hello", r)
+	require.Error(t, err)
+	assert.False(t, errors.Is(err, ErrInvalidPluginPath))
+	assert.Empty(t, calls())
+}
+
+// Regression: a valid name whose .so exists inside PluginPath still reaches
+// open with the expected path.
+func TestLoadFuncValidNameReachesOpen(t *testing.T) {
+	dir := t.TempDir()
+	soPath := filepath.Join(dir, "valid-plugin_1.so")
+	require.NoError(t, os.WriteFile(soPath, nil, 0o644))
+	t.Cleanup(func() {
+		loadedFuncMu.Lock()
+		delete(loadedFunc, soPath)
+		loadedFuncMu.Unlock()
+	})
+
+	httpVars := map[string]string{}
+	urlQuery := map[string][]string{}
+	plg := New(&config.Prest{PluginPath: dir})
+	open, calls := recordingOpen(fakePluginLib{symbols: map[string]any{
+		"HTTPVars":        &httpVars,
+		"URLQuery":        &urlQuery,
+		"GETHelloHandler": func() string { return `{"ok":true}` },
+	}})
+	plg.open = open
+	r := mux.SetURLVars(httptest.NewRequest(http.MethodGet, "/_PLUGIN/valid-plugin_1/Hello", nil), map[string]string{
+		"file": "valid-plugin_1", "func": "Hello",
+	})
+	ret, err := plg.loadFunc("valid-plugin_1", "Hello", r)
+	require.NoError(t, err)
+	assert.Equal(t, `{"ok":true}`, ret.ReturnJson)
+	assert.Equal(t, []string{soPath}, calls())
 }

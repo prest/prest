@@ -4,13 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
 	"github.com/prest/prest/v2/adapters"
+	"github.com/prest/prest/v2/adapters/access"
 	"github.com/prest/prest/v2/adapters/mockgen"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
@@ -638,7 +641,7 @@ func TestCRUDHandler_Insert_Success(t *testing.T) {
 
 	db := mockDatabaseRegistry(ctrl)
 
-	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: db})
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl), Builder: builder, SQL: sqlBuilder, Executor: executor, DB: db})
 	req := crudRequest(http.MethodPost, "/prest-test/public/test", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "test",
 	})
@@ -669,7 +672,7 @@ func TestCRUDHandler_Insert_RelationNotFound(t *testing.T) {
 
 	db := mockDatabaseRegistry(ctrl)
 
-	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: db})
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl), Builder: builder, SQL: sqlBuilder, Executor: executor, DB: db})
 	req := crudRequest(http.MethodPost, "/prest-test/public/missing", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "missing",
 	})
@@ -726,7 +729,7 @@ func TestCRUDHandler_BatchInsert_Values(t *testing.T) {
 
 	db := mockDatabaseRegistry(ctrl)
 
-	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: db})
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl), Builder: builder, SQL: sqlBuilder, Executor: executor, DB: db})
 	req := crudRequest(http.MethodPost, "/prest-test/public/test", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "test",
 	})
@@ -754,7 +757,7 @@ func TestCRUDHandler_BatchInsert_Copy(t *testing.T) {
 
 	db := mockDatabaseRegistry(ctrl)
 
-	h := NewCRUDHandler(Deps{Builder: builder, SQL: mockgen.NewMockSQLBuilder(ctrl), Executor: executor, DB: db})
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl), Builder: builder, SQL: mockgen.NewMockSQLBuilder(ctrl), Executor: executor, DB: db})
 	req := crudRequest(http.MethodPost, "/prest-test/public/test", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "test",
 	})
@@ -787,7 +790,7 @@ func TestCRUDHandler_Delete_Success(t *testing.T) {
 
 	db := mockDatabaseRegistry(ctrl)
 
-	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: db})
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl), Builder: builder, SQL: sqlBuilder, Executor: executor, DB: db})
 	req := crudRequest(http.MethodDelete, "/prest-test/public/test?id=1", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "test",
 	})
@@ -845,7 +848,7 @@ func TestCRUDHandler_Update_Success(t *testing.T) {
 
 	db := mockDatabaseRegistry(ctrl)
 
-	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: db})
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl), Builder: builder, SQL: sqlBuilder, Executor: executor, DB: db})
 	req := crudRequest(http.MethodPatch, "/prest-test/public/test", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "test",
 	})
@@ -863,7 +866,7 @@ func TestCRUDHandler_Update_RelationNotFound(t *testing.T) {
 
 	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
 	builder.EXPECT().SetByRequest(gomock.Any(), 1).Return(`name=$1`, []interface{}{"x"}, nil)
-	builder.EXPECT().WhereByRequest(gomock.Any(), 2).Return("", nil, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 2).Return("id=$2", []interface{}{1}, nil)
 	builder.EXPECT().ReturningByRequest(gomock.Any()).Return("", nil)
 
 	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
@@ -873,11 +876,11 @@ func TestCRUDHandler_Update_RelationNotFound(t *testing.T) {
 	scanner.EXPECT().Err().Return(errors.New(`pq: relation "public.missing" does not exist`))
 
 	executor := mockgen.NewMockQueryExecutor(ctrl)
-	executor.EXPECT().UpdateCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
+	executor.EXPECT().UpdateCtx(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
 
 	db := mockDatabaseRegistry(ctrl)
 
-	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: db})
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl), Builder: builder, SQL: sqlBuilder, Executor: executor, DB: db})
 	req := crudRequest(http.MethodPatch, "/prest-test/public/missing", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "missing",
 	})
@@ -930,6 +933,35 @@ func TestCRUDHandler_Select_UnregisteredDB(t *testing.T) {
 	h.Select(rec, req)
 
 	require.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+// Without [[databases]], a name outside pg.database and
+// pg.allowed_databases is rejected with 400 before any query, so no pool is
+// opened for it.
+func TestCRUDHandler_Select_NoRegistry_UnknownDB_400(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	db := mockgen.NewMockDatabaseRegistry(ctrl)
+	db.EXPECT().IsRegistered("anything").Return(false)
+
+	h := NewCRUDHandler(Deps{
+		DB:       db,
+		Builder:  mockgen.NewMockRequestQueryBuilder(ctrl),
+		Executor: mockgen.NewMockQueryExecutor(ctrl),
+		Perms:    mockgen.NewMockPermissionsChecker(ctrl),
+	})
+
+	req := crudRequest(http.MethodGet, "/anything/public/test", map[string]string{
+		"database": "anything", "schema": "public", "table": "test",
+	})
+	rec := httptest.NewRecorder()
+	h.Select(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Contains(t, rec.Body.String(), "database not registered")
 }
 
 func TestCRUDHandler_Select_PermissionErrorOnFields(t *testing.T) {
@@ -1287,25 +1319,6 @@ func TestCRUDHandler_Select_NoCacheOnHead(t *testing.T) {
 	require.Empty(t, cacher.key)
 }
 
-func TestCRUDHandler_Select_SingleDBMismatch(t *testing.T) {
-	t.Parallel()
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	db := mockDatabaseRegistry(ctrl)
-	h := NewCRUDHandler(Deps{DB: db, SingleDB: true})
-
-	req := crudRequest(http.MethodGet, "/other/public/test", map[string]string{
-		"database": "other", "schema": "public", "table": "test",
-	})
-	rec := httptest.NewRecorder()
-	h.Select(rec, req)
-
-	require.Equal(t, http.StatusBadRequest, rec.Code)
-	require.Contains(t, rec.Body.String(), "database not registered")
-}
-
 func TestCRUDHandler_Select_NonUserContextIgnored(t *testing.T) {
 	t.Parallel()
 
@@ -1340,7 +1353,7 @@ func TestCRUDHandler_Insert_ParseInsertError(t *testing.T) {
 	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
 	builder.EXPECT().ParseInsertRequest(gomock.Any()).Return("", "", nil, errors.New("bad body"))
 
-	h := NewCRUDHandler(Deps{
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl),
 		Builder: builder,
 		DB:      mockDatabaseRegistry(ctrl),
 	})
@@ -1372,7 +1385,7 @@ func TestCRUDHandler_Insert_ExecutorError(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().InsertCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
 
-	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl), Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
 	req := crudRequest(http.MethodPost, "/prest-test/public/test", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "test",
 	})
@@ -1409,7 +1422,7 @@ func TestCRUDHandler_BatchInsert_ParseError(t *testing.T) {
 	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
 	builder.EXPECT().ParseBatchInsertRequest(gomock.Any()).Return("", "", nil, errors.New("bad batch"))
 
-	h := NewCRUDHandler(Deps{Builder: builder, DB: mockDatabaseRegistry(ctrl)})
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl), Builder: builder, DB: mockDatabaseRegistry(ctrl)})
 	req := crudRequest(http.MethodPost, "/prest-test/public/test", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "test",
 	})
@@ -1438,7 +1451,7 @@ func TestCRUDHandler_BatchInsert_ValuesRelationNotFound(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().BatchInsertValuesCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
 
-	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl), Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
 	req := crudRequest(http.MethodPost, "/prest-test/public/missing", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "missing",
 	})
@@ -1464,7 +1477,7 @@ func TestCRUDHandler_BatchInsert_CopyRelationNotFound(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().BatchInsertCopyCtx(gomock.Any(), "prest-test", "public", "missing", []string{"name"}, "a").Return(scanner)
 
-	h := NewCRUDHandler(Deps{Builder: builder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl), Builder: builder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
 	req := crudRequest(http.MethodPost, "/prest-test/public/missing", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "missing",
 	})
@@ -1493,7 +1506,7 @@ func TestCRUDHandler_BatchInsert_ValuesExecutorError(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().BatchInsertValuesCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
 
-	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl), Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
 	req := crudRequest(http.MethodPost, "/prest-test/public/test", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "test",
 	})
@@ -1519,7 +1532,7 @@ func TestCRUDHandler_BatchInsert_CopyExecutorError(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().BatchInsertCopyCtx(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
 
-	h := NewCRUDHandler(Deps{Builder: builder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl), Builder: builder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
 	req := crudRequest(http.MethodPost, "/prest-test/public/test", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "test",
 	})
@@ -1557,7 +1570,7 @@ func TestCRUDHandler_Delete_ReturningByRequestError(t *testing.T) {
 	defer ctrl.Finish()
 
 	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
-	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("id=$1", []interface{}{1}, nil)
 	builder.EXPECT().ReturningByRequest(gomock.Any()).Return("", errors.New("bad returning"))
 
 	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
@@ -1581,7 +1594,7 @@ func TestCRUDHandler_Delete_RelationNotFound(t *testing.T) {
 	defer ctrl.Finish()
 
 	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
-	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("id=$1", []interface{}{1}, nil)
 	builder.EXPECT().ReturningByRequest(gomock.Any()).Return("", nil)
 
 	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
@@ -1591,7 +1604,7 @@ func TestCRUDHandler_Delete_RelationNotFound(t *testing.T) {
 	scanner.EXPECT().Err().Return(errors.New(`pq: relation "public.missing" does not exist`))
 
 	executor := mockgen.NewMockQueryExecutor(ctrl)
-	executor.EXPECT().DeleteCtx(gomock.Any(), gomock.Any()).Return(scanner)
+	executor.EXPECT().DeleteCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
 
 	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
 	req := crudRequest(http.MethodDelete, "/prest-test/public/missing", map[string]string{
@@ -1611,7 +1624,7 @@ func TestCRUDHandler_Delete_ExecutorError(t *testing.T) {
 	defer ctrl.Finish()
 
 	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
-	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("id=$1", []interface{}{1}, nil)
 	builder.EXPECT().ReturningByRequest(gomock.Any()).Return("", nil)
 
 	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
@@ -1621,7 +1634,7 @@ func TestCRUDHandler_Delete_ExecutorError(t *testing.T) {
 	scanner.EXPECT().Err().Return(errors.New("delete failed"))
 
 	executor := mockgen.NewMockQueryExecutor(ctrl)
-	executor.EXPECT().DeleteCtx(gomock.Any(), gomock.Any()).Return(scanner)
+	executor.EXPECT().DeleteCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
 
 	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
 	req := crudRequest(http.MethodDelete, "/prest-test/public/test", map[string]string{
@@ -1634,7 +1647,34 @@ func TestCRUDHandler_Delete_ExecutorError(t *testing.T) {
 	require.Contains(t, rec.Body.String(), "DeleteFromTable")
 }
 
-func TestCRUDHandler_Delete_NoWhereNoReturning(t *testing.T) {
+// An empty WHERE (no filter query params) must never reach the executor:
+// a bare DELETE wipes the whole table (GHSA-r867-ghgv-mrp9).
+func TestCRUDHandler_Delete_UnscopedRejected(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+
+	h := NewCRUDHandler(Deps{
+		Builder:  builder,
+		SQL:      mockgen.NewMockSQLBuilder(ctrl),
+		Executor: mockgen.NewMockQueryExecutor(ctrl),
+		DB:       mockDatabaseRegistry(ctrl),
+	})
+	req := crudRequest(http.MethodDelete, "/prest-test/public/test?_returning=*", map[string]string{
+		"database": "prest-test", "schema": "public", "table": "test",
+	})
+	rec := httptest.NewRecorder()
+	h.Delete(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Contains(t, rec.Body.String(), "refusing DELETE without a WHERE condition")
+}
+
+func TestCRUDHandler_Delete_UnscopedAllowedByConfig(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
@@ -1654,12 +1694,85 @@ func TestCRUDHandler_Delete_NoWhereNoReturning(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().DeleteCtx(gomock.Any(), `DELETE FROM test`).Return(scanner)
 
-	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
+	h := NewCRUDHandler(Deps{
+		Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl),
+		AllowUnscopedWrites: true,
+	})
 	req := crudRequest(http.MethodDelete, "/prest-test/public/test", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "test",
 	})
 	rec := httptest.NewRecorder()
 	h.Delete(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+}
+
+// PUT and PATCH share Update; an empty WHERE would rewrite every row.
+func TestCRUDHandler_Update_UnscopedRejected(t *testing.T) {
+	t.Parallel()
+
+	for _, method := range []string{http.MethodPut, http.MethodPatch} {
+		t.Run(method, func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+			builder.EXPECT().SetByRequest(gomock.Any(), 1).Return(`name=$1`, []interface{}{"x"}, nil)
+			builder.EXPECT().WhereByRequest(gomock.Any(), 2).Return("", nil, nil)
+
+			sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
+			sqlBuilder.EXPECT().UpdateSQL("prest-test", "public", "test", `name=$1`).Return(`UPDATE test SET name=$1`)
+
+			h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl),
+				Builder:  builder,
+				SQL:      sqlBuilder,
+				Executor: mockgen.NewMockQueryExecutor(ctrl),
+				DB:       mockDatabaseRegistry(ctrl),
+			})
+			req := crudRequest(method, "/prest-test/public/test", map[string]string{
+				"database": "prest-test", "schema": "public", "table": "test",
+			})
+			rec := httptest.NewRecorder()
+			h.Update(rec, req)
+
+			require.Equal(t, http.StatusBadRequest, rec.Code)
+			require.Contains(t, rec.Body.String(), "refusing "+method+" without a WHERE condition")
+		})
+	}
+}
+
+func TestCRUDHandler_Update_UnscopedAllowedByConfig(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+	builder.EXPECT().SetByRequest(gomock.Any(), 1).Return(`name=$1`, []interface{}{"x"}, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 2).Return("", nil, nil)
+	builder.EXPECT().ReturningByRequest(gomock.Any()).Return("", nil)
+
+	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
+	sqlBuilder.EXPECT().UpdateSQL("prest-test", "public", "test", `name=$1`).Return(`UPDATE test SET name=$1`)
+
+	scanner := mockgen.NewMockScanner(ctrl)
+	scanner.EXPECT().Err().Return(nil)
+	scanner.EXPECT().Bytes().Return([]byte(`{"rows_affected":2}`))
+
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	executor.EXPECT().UpdateCtx(gomock.Any(), `UPDATE test SET name=$1`, "x").Return(scanner)
+
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl),
+		Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl),
+		AllowUnscopedWrites: true,
+	})
+	req := crudRequest(http.MethodPatch, "/prest-test/public/test", map[string]string{
+		"database": "prest-test", "schema": "public", "table": "test",
+	})
+	rec := httptest.NewRecorder()
+	h.Update(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code)
 }
@@ -1673,7 +1786,7 @@ func TestCRUDHandler_Update_SetByRequestError(t *testing.T) {
 	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
 	builder.EXPECT().SetByRequest(gomock.Any(), 1).Return("", nil, errors.New("bad set"))
 
-	h := NewCRUDHandler(Deps{Builder: builder, DB: mockDatabaseRegistry(ctrl)})
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl), Builder: builder, DB: mockDatabaseRegistry(ctrl)})
 	req := crudRequest(http.MethodPatch, "/prest-test/public/test", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "test",
 	})
@@ -1697,7 +1810,7 @@ func TestCRUDHandler_Update_WhereByRequestError(t *testing.T) {
 	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
 	sqlBuilder.EXPECT().UpdateSQL("prest-test", "public", "test", `name=$1`).Return(`UPDATE test SET name=$1`)
 
-	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, DB: mockDatabaseRegistry(ctrl)})
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl), Builder: builder, SQL: sqlBuilder, DB: mockDatabaseRegistry(ctrl)})
 	req := crudRequest(http.MethodPatch, "/prest-test/public/test", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "test",
 	})
@@ -1716,13 +1829,13 @@ func TestCRUDHandler_Update_ReturningByRequestError(t *testing.T) {
 
 	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
 	builder.EXPECT().SetByRequest(gomock.Any(), 1).Return(`name=$1`, []interface{}{"x"}, nil)
-	builder.EXPECT().WhereByRequest(gomock.Any(), 2).Return("", nil, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 2).Return("id=$2", []interface{}{1}, nil)
 	builder.EXPECT().ReturningByRequest(gomock.Any()).Return("", errors.New("bad returning"))
 
 	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
 	sqlBuilder.EXPECT().UpdateSQL("prest-test", "public", "test", `name=$1`).Return(`UPDATE test SET name=$1`)
 
-	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, DB: mockDatabaseRegistry(ctrl)})
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl), Builder: builder, SQL: sqlBuilder, DB: mockDatabaseRegistry(ctrl)})
 	req := crudRequest(http.MethodPatch, "/prest-test/public/test", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "test",
 	})
@@ -1741,7 +1854,7 @@ func TestCRUDHandler_Update_ExecutorError(t *testing.T) {
 
 	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
 	builder.EXPECT().SetByRequest(gomock.Any(), 1).Return(`name=$1`, []interface{}{"x"}, nil)
-	builder.EXPECT().WhereByRequest(gomock.Any(), 2).Return("", nil, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 2).Return("id=$2", []interface{}{1}, nil)
 	builder.EXPECT().ReturningByRequest(gomock.Any()).Return("", nil)
 
 	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
@@ -1751,9 +1864,9 @@ func TestCRUDHandler_Update_ExecutorError(t *testing.T) {
 	scanner.EXPECT().Err().Return(errors.New("update failed"))
 
 	executor := mockgen.NewMockQueryExecutor(ctrl)
-	executor.EXPECT().UpdateCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
+	executor.EXPECT().UpdateCtx(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
 
-	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl), Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
 	req := crudRequest(http.MethodPatch, "/prest-test/public/test", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "test",
 	})
@@ -1785,7 +1898,7 @@ func TestCRUDHandler_Update_WithReturning(t *testing.T) {
 	executor := mockgen.NewMockQueryExecutor(ctrl)
 	executor.EXPECT().UpdateCtx(gomock.Any(), `UPDATE test SET name=$1 WHERE id=$2 RETURNING "id","name"`, "new", 1).Return(scanner)
 
-	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
+	h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl), Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
 	req := crudRequest(http.MethodPatch, "/prest-test/public/test", map[string]string{
 		"database": "prest-test", "schema": "public", "table": "test",
 	})
@@ -1799,10 +1912,8 @@ func TestCRUDHandler_Update_WithReturning(t *testing.T) {
 func TestNewCRUDHandler(t *testing.T) {
 	t.Parallel()
 
-	deps := Deps{SingleDB: true}
-	h := NewCRUDHandler(deps)
+	h := NewCRUDHandler(Deps{})
 	require.NotNil(t, h)
-	require.True(t, h.singleDB)
 }
 
 // A refused connection answers 503 with a fixed message: the driver text
@@ -1850,17 +1961,17 @@ func TestCRUDHandler_Writes_DatabaseUnavailable(t *testing.T) {
 			e.EXPECT().BatchInsertValuesCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(sc)
 		}, (*CRUDHandler).BatchInsert},
 		{"delete", http.MethodDelete, func(b *mockgen.MockRequestQueryBuilder, s *mockgen.MockSQLBuilder, e *mockgen.MockQueryExecutor, sc *mockgen.MockScanner) {
-			b.EXPECT().WhereByRequest(gomock.Any(), 1).Return("", nil, nil)
+			b.EXPECT().WhereByRequest(gomock.Any(), 1).Return("id=$1", []interface{}{1}, nil)
 			b.EXPECT().ReturningByRequest(gomock.Any()).Return("", nil)
 			s.EXPECT().DeleteSQL(gomock.Any(), gomock.Any(), gomock.Any()).Return(`DELETE`)
-			e.EXPECT().DeleteCtx(gomock.Any(), gomock.Any()).Return(sc)
+			e.EXPECT().DeleteCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(sc)
 		}, (*CRUDHandler).Delete},
 		{"update", http.MethodPut, func(b *mockgen.MockRequestQueryBuilder, s *mockgen.MockSQLBuilder, e *mockgen.MockQueryExecutor, sc *mockgen.MockScanner) {
 			b.EXPECT().SetByRequest(gomock.Any(), 1).Return(`"name"=$1`, []interface{}{"x"}, nil)
-			b.EXPECT().WhereByRequest(gomock.Any(), 2).Return("", nil, nil)
+			b.EXPECT().WhereByRequest(gomock.Any(), 2).Return("id=$2", []interface{}{1}, nil)
 			b.EXPECT().ReturningByRequest(gomock.Any()).Return("", nil)
 			s.EXPECT().UpdateSQL(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(`UPDATE`)
-			e.EXPECT().UpdateCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(sc)
+			e.EXPECT().UpdateCtx(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(sc)
 		}, (*CRUDHandler).Update},
 	}
 	for _, tc := range cases {
@@ -1876,13 +1987,479 @@ func TestCRUDHandler_Writes_DatabaseUnavailable(t *testing.T) {
 			scanner.EXPECT().Err().Return(dialError())
 			tc.setup(builder, sqlBuilder, executor, scanner)
 
-			h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
+			h := NewCRUDHandler(Deps{Perms: permsAllowAll(ctrl), Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl)})
 			rec := httptest.NewRecorder()
 			tc.call(h, rec, crudRequest(tc.method, "/prest-test/public/test", vars))
 
 			require.Equal(t, http.StatusServiceUnavailable, rec.Code)
 			require.Contains(t, rec.Body.String(), "database unavailable")
 			require.NotContains(t, rec.Body.String(), "10.0.0.5")
+		})
+	}
+}
+
+// permsFor returns a PermissionsChecker with the given write and read field
+// allowlists; readGranted is the table-level "read" permission.
+func permsFor(ctrl *gomock.Controller, write, read []string, readGranted bool) *mockgen.MockPermissionsChecker {
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	perms.EXPECT().
+		FieldsPermissions(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), "write", gomock.Any()).
+		Return(write, nil).AnyTimes()
+	perms.EXPECT().
+		FieldsPermissions(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), "read", gomock.Any()).
+		Return(read, nil).AnyTimes()
+	perms.EXPECT().
+		TablePermissions(gomock.Any(), gomock.Any(), gomock.Any(), "read", gomock.Any()).
+		Return(readGranted).AnyTimes()
+	return perms
+}
+
+// permsAllowAll is an unrestricted PermissionsChecker for write tests that are
+// not about field permissions.
+func permsAllowAll(ctrl *gomock.Controller) *mockgen.MockPermissionsChecker {
+	return permsFor(ctrl, []string{"*"}, []string{"*"}, true)
+}
+
+func crudRequestBody(method, path, body string, vars map[string]string) *http.Request {
+	req := httptest.NewRequest(method, path, strings.NewReader(body))
+	req = mux.SetURLVars(req, vars)
+	return req.WithContext(withTestTimeout(req.Context()))
+}
+
+var testTableVars = map[string]string{"database": "prest-test", "schema": "public", "table": "test"}
+
+// strippedQuery matches a request whose query string was removed, proving the
+// field allowlist cannot be steered by _select/_join on a write.
+type strippedQuery struct{}
+
+func (strippedQuery) Matches(x interface{}) bool {
+	r, ok := x.(*http.Request)
+	return ok && r.URL.RawQuery == ""
+}
+
+func (strippedQuery) String() string { return "request without query string" }
+
+// GHSA-h25q-9rmj-646h: a body setting a column outside the write allowlist is
+// rejected before any SQL is built (strict mocks: no builder call expected).
+func TestCRUDHandler_Insert_RejectsUnwritableField(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	h := NewCRUDHandler(Deps{
+		Builder: mockgen.NewMockRequestQueryBuilder(ctrl), SQL: mockgen.NewMockSQLBuilder(ctrl),
+		Executor: mockgen.NewMockQueryExecutor(ctrl), DB: mockDatabaseRegistry(ctrl),
+		Perms: permsFor(ctrl, []string{"id", "name"}, []string{"id", "name"}, true),
+	})
+	req := crudRequestBody(http.MethodPost, "/prest-test/public/test", `{"name":"x","role":"admin"}`, testTableVars)
+	rec := httptest.NewRecorder()
+	h.Insert(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Contains(t, rec.Body.String(), `column \"role\" is not writable`)
+}
+
+func TestCRUDHandler_Insert_AllowedFieldsReachBuilder(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	const body = `{"name":"x"}`
+	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+	builder.EXPECT().ParseInsertRequest(gomock.Any()).DoAndReturn(
+		func(r *http.Request) (string, string, []interface{}, error) {
+			// The gate consumed the body; the builder must still get every byte.
+			got, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			require.Equal(t, body, string(got))
+			return `"name"`, "$1", []interface{}{"x"}, nil
+		})
+	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
+	sqlBuilder.EXPECT().InsertSQL(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(`INSERT`)
+	scanner := mockgen.NewMockScanner(ctrl)
+	scanner.EXPECT().Err().Return(nil)
+	scanner.EXPECT().Bytes().Return([]byte(`{"id":1,"name":"x"}`))
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	executor.EXPECT().InsertCtx(gomock.Any(), `INSERT`, "x").Return(scanner)
+
+	h := NewCRUDHandler(Deps{
+		Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl),
+		Perms: permsFor(ctrl, []string{"id", "name"}, []string{"id", "name"}, true),
+	})
+	rec := httptest.NewRecorder()
+	h.Insert(rec, crudRequestBody(http.MethodPost, "/prest-test/public/test", body, testTableVars))
+
+	require.Equal(t, http.StatusCreated, rec.Code)
+	require.Equal(t, `{"id":1,"name":"x"}`, rec.Body.String())
+}
+
+// insertReachesBuilder runs an Insert whose builder and executor succeed and
+// returns the recorder, for tests about which requests pass the gate.
+func insertReachesBuilder(t *testing.T, ctrl *gomock.Controller, perms adapters.PermissionsChecker, body, response string) *httptest.ResponseRecorder {
+	t.Helper()
+	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+	builder.EXPECT().ParseInsertRequest(gomock.Any()).Return(`"role"`, "$1", []interface{}{"admin"}, nil)
+	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
+	sqlBuilder.EXPECT().InsertSQL(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(`INSERT`)
+	scanner := mockgen.NewMockScanner(ctrl)
+	scanner.EXPECT().Err().Return(nil)
+	scanner.EXPECT().Bytes().Return([]byte(response))
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	executor.EXPECT().InsertCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
+
+	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl), Perms: perms})
+	rec := httptest.NewRecorder()
+	h.Insert(rec, crudRequestBody(http.MethodPost, "/prest-test/public/test", body, testTableVars))
+	return rec
+}
+
+func TestCRUDHandler_Insert_WriteWildcardSkipsGate(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	rec := insertReachesBuilder(t, ctrl, permsAllowAll(ctrl), `{"role":"admin"}`, `{"id":1}`)
+	require.Equal(t, http.StatusCreated, rec.Code)
+}
+
+// No fields configured on the write grant keeps writes unrestricted.
+func TestCRUDHandler_Insert_EmptyWriteAllowlistUnrestricted(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	rec := insertReachesBuilder(t, ctrl, permsFor(ctrl, nil, []string{"*"}, true), `{"role":"admin"}`, `{"id":1}`)
+	require.Equal(t, http.StatusCreated, rec.Code)
+}
+
+func TestCRUDHandler_Insert_WriteAllowlistIgnoresQuery(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	perms.EXPECT().
+		FieldsPermissions(strippedQuery{}, "prest-test", "public", "test", "write", "ada").
+		Return([]string{"name"}, nil)
+	h := NewCRUDHandler(Deps{
+		Builder: mockgen.NewMockRequestQueryBuilder(ctrl), SQL: mockgen.NewMockSQLBuilder(ctrl),
+		Executor: mockgen.NewMockQueryExecutor(ctrl), DB: mockDatabaseRegistry(ctrl), Perms: perms,
+	})
+	req := crudRequestBody(http.MethodPost, "/prest-test/public/test?_select=role", `{"role":"admin"}`, testTableVars)
+	req = req.WithContext(context.WithValue(req.Context(), pctx.UserInfoKey, auth.User{Username: "ada"}))
+	rec := httptest.NewRecorder()
+	h.Insert(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestCRUDHandler_Insert_GateRejections(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		description string
+		body        string
+		contains    string
+	}{
+		// The builder only decodes the first value, so the first value is what counts.
+		{"first JSON value carries an unwritable key", `{"role":"a"} {"name":"x"}`, "not writable"},
+		{"column match is case-sensitive", `{"Name":"x"}`, "not writable"},
+		{"truncated body fails closed", `{`, "could not parse request body"},
+		{"dotted key needs an exact allowlist entry", `{"name.x":"y"}`, "not writable"},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			h := NewCRUDHandler(Deps{
+				Builder: mockgen.NewMockRequestQueryBuilder(ctrl), SQL: mockgen.NewMockSQLBuilder(ctrl),
+				Executor: mockgen.NewMockQueryExecutor(ctrl), DB: mockDatabaseRegistry(ctrl),
+				Perms: permsFor(ctrl, []string{"name"}, []string{"name"}, true),
+			})
+			rec := httptest.NewRecorder()
+			h.Insert(rec, crudRequestBody(http.MethodPost, "/prest-test/public/test", tc.body, testTableVars))
+
+			require.Equal(t, http.StatusBadRequest, rec.Code)
+			require.Contains(t, rec.Body.String(), tc.contains)
+		})
+	}
+}
+
+func TestCRUDHandler_Insert_WritePermissionsError(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), "write", gomock.Any()).
+		Return(nil, access.ErrReservedTable)
+	h := NewCRUDHandler(Deps{
+		Builder: mockgen.NewMockRequestQueryBuilder(ctrl), SQL: mockgen.NewMockSQLBuilder(ctrl),
+		Executor: mockgen.NewMockQueryExecutor(ctrl), DB: mockDatabaseRegistry(ctrl), Perms: perms,
+	})
+	rec := httptest.NewRecorder()
+	h.Insert(rec, crudRequestBody(http.MethodPost, "/prest-test/public/test", `{"name":"x"}`, testTableVars))
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestCRUDHandler_Update_RejectsUnwritableField(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	h := NewCRUDHandler(Deps{
+		Builder: mockgen.NewMockRequestQueryBuilder(ctrl), SQL: mockgen.NewMockSQLBuilder(ctrl),
+		Executor: mockgen.NewMockQueryExecutor(ctrl), DB: mockDatabaseRegistry(ctrl),
+		Perms: permsFor(ctrl, []string{"name"}, []string{"name"}, true),
+	})
+	req := crudRequestBody(http.MethodPatch, "/prest-test/public/test?name=$eq.alice", `{"role":"superadmin"}`, testTableVars)
+	rec := httptest.NewRecorder()
+	h.Update(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Contains(t, rec.Body.String(), "not writable")
+}
+
+func TestCRUDHandler_BatchInsert_RejectsUnwritableField(t *testing.T) {
+	t.Parallel()
+
+	for _, method := range []string{"", "copy"} {
+		t.Run("batch method "+method, func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			h := NewCRUDHandler(Deps{
+				Builder: mockgen.NewMockRequestQueryBuilder(ctrl), SQL: mockgen.NewMockSQLBuilder(ctrl),
+				Executor: mockgen.NewMockQueryExecutor(ctrl), DB: mockDatabaseRegistry(ctrl),
+				Perms: permsFor(ctrl, []string{"name"}, []string{"name"}, true),
+			})
+			// The unwritable key only appears in the second record.
+			req := crudRequestBody(http.MethodPost, "/batch/prest-test/public/test",
+				`[{"name":"a"},{"name":"b","role":"admin"}]`, testTableVars)
+			if method != "" {
+				req.Header.Set("Prest-Batch-Method", method)
+			}
+			rec := httptest.NewRecorder()
+			h.BatchInsert(rec, req)
+
+			require.Equal(t, http.StatusBadRequest, rec.Code)
+			require.Contains(t, rec.Body.String(), "not writable")
+		})
+	}
+}
+
+// In multi-database mode the request's adapter (and its config) decides, not
+// the handler's default permissions checker.
+func TestCRUDHandler_Insert_UsesContextAdapterPerms(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	selected := mockgen.NewMockAdapter(ctrl)
+	selected.EXPECT().IsRegistered("prest-test").Return(true)
+	selected.EXPECT().FieldsPermissions(gomock.Any(), "prest-test", "public", "test", "write", "").Return([]string{"name"}, nil)
+
+	h := NewCRUDHandler(Deps{
+		Perms: permsAllowAll(ctrl), SQL: mockgen.NewMockSQLBuilder(ctrl),
+		Builder: mockgen.NewMockRequestQueryBuilder(ctrl), Executor: mockgen.NewMockQueryExecutor(ctrl),
+		DB: mockgen.NewMockDatabaseRegistry(ctrl),
+	})
+	req := crudRequestBody(http.MethodPost, "/prest-test/public/test", `{"role":"admin"}`, testTableVars)
+	req = req.WithContext(context.WithValue(req.Context(), pctx.AdapterKey, selected))
+	rec := httptest.NewRecorder()
+	h.Insert(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+// GHSA-h25q-9rmj-646h (C:L): write responses only echo readable columns.
+func TestCRUDHandler_Insert_ResponseFiltering(t *testing.T) {
+	t.Parallel()
+
+	const row = `{"id":1,"name":"x","role":"admin"}`
+	testCases := []struct {
+		description string
+		read        []string
+		readGranted bool
+		want        string
+	}{
+		{"read allowlist drops role", []string{"id", "name"}, true, `{"id":1,"name":"x"}`},
+		{"write-only caller sees no column", []string{"*"}, false, `{}`},
+		{"read wildcard leaves the response untouched", []string{"*"}, true, row},
+		{"read grant without fields echoes nothing", nil, true, `{}`},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			rec := insertReachesBuilder(t, ctrl, permsFor(ctrl, []string{"*"}, tc.read, tc.readGranted), `{"name":"x"}`, row)
+
+			require.Equal(t, http.StatusCreated, rec.Code)
+			require.Equal(t, tc.want, rec.Body.String())
+		})
+	}
+}
+
+// A read-permission error must surface before the write executes.
+func TestCRUDHandler_Insert_ReadPermissionsErrorBeforeExec(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), "write", gomock.Any()).Return([]string{"*"}, nil)
+	perms.EXPECT().TablePermissions(gomock.Any(), gomock.Any(), gomock.Any(), "read", gomock.Any()).Return(true)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), "read", gomock.Any()).
+		Return(nil, errors.New("bad read rule"))
+	h := NewCRUDHandler(Deps{
+		Builder: mockgen.NewMockRequestQueryBuilder(ctrl), SQL: mockgen.NewMockSQLBuilder(ctrl),
+		Executor: mockgen.NewMockQueryExecutor(ctrl), DB: mockDatabaseRegistry(ctrl), Perms: perms,
+	})
+	rec := httptest.NewRecorder()
+	h.Insert(rec, crudRequestBody(http.MethodPost, "/prest-test/public/test", `{"name":"x"}`, testTableVars))
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+// A response that cannot be filtered is never sent as-is.
+func TestCRUDHandler_Insert_UnfilterableResponse(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	rec := insertReachesBuilder(t, ctrl, permsFor(ctrl, []string{"*"}, []string{"id"}, true), `{"name":"x"}`, `not json`)
+
+	require.Equal(t, http.StatusInternalServerError, rec.Code)
+	require.Contains(t, rec.Body.String(), "could not filter response columns")
+	require.NotContains(t, rec.Body.String(), "not json")
+}
+
+func TestCRUDHandler_BatchInsert_ResponseFiltering(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		description string
+		copyMethod  bool
+		response    string
+		want        string
+	}{
+		{"values filters every row", false, `[{"id":1,"role":"a"},{"id":2,"role":"b"}]`, `[{"id":1},{"id":2}]`},
+		{"copy empty body passes through", true, ``, ``},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+			builder.EXPECT().ParseBatchInsertRequest(gomock.Any()).Return(`name`, "", []interface{}{"a"}, nil)
+			scanner := mockgen.NewMockScanner(ctrl)
+			scanner.EXPECT().Err().Return(nil)
+			scanner.EXPECT().Bytes().Return([]byte(tc.response))
+			executor := mockgen.NewMockQueryExecutor(ctrl)
+			sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
+			if tc.copyMethod {
+				executor.EXPECT().BatchInsertCopyCtx(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
+			} else {
+				sqlBuilder.EXPECT().InsertSQL(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(`INSERT`)
+				executor.EXPECT().BatchInsertValuesCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
+			}
+
+			h := NewCRUDHandler(Deps{
+				Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl),
+				Perms: permsFor(ctrl, []string{"*"}, []string{"id"}, true),
+			})
+			req := crudRequestBody(http.MethodPost, "/batch/prest-test/public/test", `[{"name":"a"}]`, testTableVars)
+			if tc.copyMethod {
+				req.Header.Set("Prest-Batch-Method", "copy")
+			}
+			rec := httptest.NewRecorder()
+			h.BatchInsert(rec, req)
+
+			require.Equal(t, http.StatusCreated, rec.Code)
+			require.Equal(t, tc.want, rec.Body.String())
+		})
+	}
+}
+
+func TestCRUDHandler_Update_ReturningFiltered(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+	builder.EXPECT().SetByRequest(gomock.Any(), 1).Return(`name=$1`, []interface{}{"y"}, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 2).Return("id=$2", []interface{}{1}, nil)
+	builder.EXPECT().ReturningByRequest(gomock.Any()).Return(`*`, nil)
+	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
+	sqlBuilder.EXPECT().UpdateSQL(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(`UPDATE test SET name=$1`)
+	scanner := mockgen.NewMockScanner(ctrl)
+	scanner.EXPECT().Err().Return(nil)
+	scanner.EXPECT().Bytes().Return([]byte(`[{"id":1,"name":"y","role":"a"}]`))
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	executor.EXPECT().UpdateCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
+
+	h := NewCRUDHandler(Deps{
+		Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl),
+		Perms: permsFor(ctrl, []string{"name"}, []string{"name"}, true),
+	})
+	rec := httptest.NewRecorder()
+	h.Update(rec, crudRequestBody(http.MethodPatch, "/prest-test/public/test?id=1&_returning=*", `{"name":"y"}`, testTableVars))
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, `[{"name":"y"}]`, rec.Body.String())
+}
+
+// Without _returning the response is only a row count, so the read rule is not
+// consulted (strict mock: no read expectation).
+func TestCRUDHandler_Update_NoReturningSkipsReadCheck(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	perms := mockgen.NewMockPermissionsChecker(ctrl)
+	perms.EXPECT().FieldsPermissions(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), "write", gomock.Any()).Return([]string{"name"}, nil)
+	builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+	builder.EXPECT().SetByRequest(gomock.Any(), 1).Return(`name=$1`, []interface{}{"y"}, nil)
+	builder.EXPECT().WhereByRequest(gomock.Any(), 2).Return("id=$2", []interface{}{1}, nil)
+	builder.EXPECT().ReturningByRequest(gomock.Any()).Return("", nil)
+	sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
+	sqlBuilder.EXPECT().UpdateSQL(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(`UPDATE test SET name=$1`)
+	scanner := mockgen.NewMockScanner(ctrl)
+	scanner.EXPECT().Err().Return(nil)
+	scanner.EXPECT().Bytes().Return([]byte(`{"rows_affected":1}`))
+	executor := mockgen.NewMockQueryExecutor(ctrl)
+	executor.EXPECT().UpdateCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
+
+	h := NewCRUDHandler(Deps{Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl), Perms: perms})
+	rec := httptest.NewRecorder()
+	h.Update(rec, crudRequestBody(http.MethodPatch, "/prest-test/public/test?id=1", `{"name":"y"}`, testTableVars))
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, `{"rows_affected":1}`, rec.Body.String())
+}
+
+func TestCRUDHandler_Delete_ReturningFiltered(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		description string
+		response    string
+		want        string
+	}{
+		{"rows lose unreadable columns", `[{"id":1,"name":"x","role":"a"}]`, `[{"name":"x"}]`},
+		{"no deleted rows (null) passes through", `null`, `null`},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			builder := mockgen.NewMockRequestQueryBuilder(ctrl)
+			builder.EXPECT().WhereByRequest(gomock.Any(), 1).Return("id=$1", []interface{}{1}, nil)
+			builder.EXPECT().ReturningByRequest(gomock.Any()).Return(`*`, nil)
+			sqlBuilder := mockgen.NewMockSQLBuilder(ctrl)
+			sqlBuilder.EXPECT().DeleteSQL(gomock.Any(), gomock.Any(), gomock.Any()).Return(`DELETE FROM test`)
+			scanner := mockgen.NewMockScanner(ctrl)
+			scanner.EXPECT().Err().Return(nil)
+			scanner.EXPECT().Bytes().Return([]byte(tc.response))
+			executor := mockgen.NewMockQueryExecutor(ctrl)
+			executor.EXPECT().DeleteCtx(gomock.Any(), gomock.Any(), gomock.Any()).Return(scanner)
+
+			h := NewCRUDHandler(Deps{
+				Builder: builder, SQL: sqlBuilder, Executor: executor, DB: mockDatabaseRegistry(ctrl),
+				Perms: permsFor(ctrl, []string{"*"}, []string{"name"}, true),
+			})
+			rec := httptest.NewRecorder()
+			h.Delete(rec, crudRequestBody(http.MethodDelete, "/prest-test/public/test?id=1&_returning=*", ``, testTableVars))
+
+			require.Equal(t, http.StatusOK, rec.Code)
+			require.Equal(t, tc.want, rec.Body.String())
 		})
 	}
 }

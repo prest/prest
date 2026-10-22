@@ -40,11 +40,12 @@ type Deps struct {
 	Cache           ResponseCacher
 	AdapterRegistry adapters.Registry // Multi-database adapter registry
 	AdapterName     string            // Default engine name reported by /_health
-	SingleDB        bool
-	RegistryMode    bool // [[databases]] configured: aliases come from AdapterRegistry
+	RegistryMode    bool              // [[databases]] configured: aliases come from AdapterRegistry
 	PGDatabase      string
 	Auth            AuthConfig
 	Expose          config.ExposeConf
+	// AllowUnscopedWrites lets DELETE/PUT/PATCH run without a WHERE condition.
+	AllowUnscopedWrites bool
 }
 
 // NewDepsFromConfig builds handler dependencies from application config.
@@ -67,23 +68,23 @@ func NewDepsFromConfig(p *config.Prest) Deps {
 		dialect = d
 	}
 	return Deps{
-		Catalog:       p.Adapter,
-		Builder:       p.Adapter,
-		Executor:      p.Adapter,
-		SQL:           p.Adapter,
-		Dialect:       dialect,
-		Perms:         p.Adapter,
-		Scripts:       p.Adapter,
-		QueryRegistry: queryRegistry,
-		ScriptPerms:   scriptPerms,
-		DB:            p.Adapter,
-		Pinger:        p.Adapter,
-		Readiness:     p.Adapter,
-		Cache:         cacher,
-		SingleDB:      p.SingleDB,
-		RegistryMode:  p.HasDatabaseRegistry(),
-		PGDatabase:    p.PGDatabase,
-		Expose:        p.ExposeConf,
+		Catalog:             p.Adapter,
+		Builder:             p.Adapter,
+		Executor:            p.Adapter,
+		SQL:                 p.Adapter,
+		Dialect:             dialect,
+		Perms:               p.Adapter,
+		Scripts:             p.Adapter,
+		QueryRegistry:       queryRegistry,
+		ScriptPerms:         scriptPerms,
+		DB:                  p.Adapter,
+		Pinger:              p.Adapter,
+		Readiness:           p.Adapter,
+		Cache:               cacher,
+		RegistryMode:        p.HasDatabaseRegistry(),
+		PGDatabase:          p.PGDatabase,
+		Expose:              p.ExposeConf,
+		AllowUnscopedWrites: p.AccessConf.AllowUnscopedWrites,
 		Auth: AuthConfig{
 			Enabled:  p.AuthEnabled,
 			AuthType: p.AuthType,
@@ -119,7 +120,7 @@ func NewHandlers(deps Deps, cfg *config.Prest) *Handlers {
 		Auth:    NewAuthHandler(deps.Executor, deps.Dialect, deps.Auth),
 		Catalog: NewCatalogHandler(deps),
 		MCP:     NewMCPHandler(deps),
-		Table:   NewTableHandler(deps.Executor, deps.DB, deps.SingleDB),
+		Table:   NewTableHandler(deps.Executor, deps.DB),
 		CRUD:    NewCRUDHandler(deps),
 		Script:  NewScriptHandler(deps),
 		Health:  health,

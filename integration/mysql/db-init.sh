@@ -9,9 +9,13 @@ export MYSQL_PWD="${MYSQL_ROOT_PASSWORD:?root password is required}"
 mysql -h "$host" -P "$port" -u root <<'SQL'
 CREATE DATABASE IF NOT EXISTS shop;
 CREATE DATABASE IF NOT EXISTS other;
+-- hidden is granted to the app user but served by no prestd: listings must
+-- never name it.
+CREATE DATABASE IF NOT EXISTS hidden;
 CREATE USER IF NOT EXISTS 'prest'@'%' IDENTIFIED BY 'prest';
 GRANT ALL PRIVILEGES ON shop.* TO 'prest'@'%';
 GRANT ALL PRIVILEGES ON other.* TO 'prest'@'%';
+GRANT ALL PRIVILEGES ON hidden.* TO 'prest'@'%';
 FLUSH PRIVILEGES;
 SQL
 
@@ -72,6 +76,13 @@ SQL
 
 mysql -h "$host" -P "$port" -u "${PREST_PG_USER}" other <<'SQL'
 CREATE TABLE IF NOT EXISTS tags (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  name TEXT
+);
+SQL
+
+mysql -h "$host" -P "$port" -u "${PREST_PG_USER}" hidden <<'SQL'
+CREATE TABLE IF NOT EXISTS secret (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   name TEXT
 );

@@ -27,6 +27,26 @@ func quoteIdent(s string) (string, error) {
 	return "`" + strings.ReplaceAll(s, "`", "``") + "`", nil
 }
 
+// quoteLiteral renders s as one single-quoted MySQL string literal, escaping
+// backslashes and single quotes. Only for config values, never request input.
+func quoteLiteral(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
+}
+
+// servedFilter restricts field to names, inlined as literals so the request
+// filter's "?" placeholders keep their order. No names yields 1=0.
+func servedFilter(field string, names []string) string {
+	if len(names) == 0 {
+		return "1=0"
+	}
+	quoted := make([]string, len(names))
+	for i, n := range names {
+		quoted[i] = quoteLiteral(n)
+	}
+	return field + " IN (" + strings.Join(quoted, ", ") + ")"
+}
+
 func mustQuote(s string) string {
 	q, err := quoteIdent(s)
 	if err != nil {

@@ -39,6 +39,9 @@ type AccessConf struct {
 	IgnoreTable []string
 	Tables      []TablesConf
 	Users       []UsersConf
+	// AllowUnscopedWrites lets DELETE/PUT/PATCH run without a WHERE condition,
+	// touching every row of the table. Off by default (GHSA-r867-ghgv-mrp9).
+	AllowUnscopedWrites bool
 }
 
 // ExposeConf (expose data) information
@@ -99,6 +102,7 @@ type Prest struct {
 	PGUser               string
 	PGPass               string
 	PGDatabase           string
+	AllowedDatabases     []string // pg.allowed_databases: extra databases on the [pg] host served without a registry
 	PGURL                string
 	PGSSLMode            string
 	PGSSLCert            string
@@ -134,7 +138,6 @@ type Prest struct {
 	MySQLPrepare         bool
 	Adapter              adapters.Adapter
 	EnableDefaultJWT     bool
-	SingleDB             bool
 	Databases            []DatabaseConf
 	HTTPSMode            bool
 	HTTPSCert            string
@@ -313,6 +316,7 @@ func Parse(v *viper.Viper, cfg *Prest, configPath string) error {
 
 	cfg.AccessConf.Restrict = v.GetBool("access.restrict")
 	cfg.AccessConf.IgnoreTable = v.GetStringSlice("access.ignore_table")
+	cfg.AccessConf.AllowUnscopedWrites = v.GetBool("access.allow_unscoped_writes")
 	cfg.QueriesPath = v.GetString("queries.location")
 	parseQueriesConfig(v, cfg)
 	cfg.authSchemaSet = mysqlConfigured(v, "auth.schema")

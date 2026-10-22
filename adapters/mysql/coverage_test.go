@@ -173,7 +173,7 @@ func TestOperatorsBuildersAndErrors(t *testing.T) {
 	require.Contains(t, a.TableOrderBy(""), "`schema`")
 	require.Equal(t, " ORDER BY id", a.SchemaTablesOrderBy(" ORDER BY id"))
 	require.Contains(t, a.SchemaTablesOrderBy(""), "`name`")
-	require.Equal(t, "WHERE 1=1", a.TableWhere(""))
+	require.Equal(t, "WHERE 1=1 AND `schema` IN ('shop')", a.TableWhere(""))
 	require.Contains(t, a.SchemaTablesWhere(""), "TABLE_SCHEMA = ?")
 
 	_, err = a.OrderByRequest(req("/t?_order=bad name"))
@@ -479,7 +479,13 @@ func TestPermissionsJoinsAndConnect(t *testing.T) {
 	empty := New(&config.Prest{}).(*Adapter)
 	require.Equal(t, "x", empty.PhysicalName("x"))
 	require.Empty(t, empty.Aliases())
-	require.True(t, empty.IsRegistered("anything"))
+	require.False(t, empty.IsRegistered("anything"))
+	// Without a registry only pg.database and pg.allowed_databases are reachable.
+	legacy := New(&config.Prest{PGDatabase: "shop", AllowedDatabases: []string{"reports"}}).(*Adapter)
+	require.True(t, legacy.IsRegistered("shop"))
+	require.True(t, legacy.IsRegistered("reports"))
+	require.False(t, legacy.IsRegistered("anything"))
+	require.False(t, (&Adapter{}).IsRegistered("shop"))
 
 	var n sql.NullString
 	require.False(t, n.Valid)

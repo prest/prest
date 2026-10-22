@@ -23,7 +23,8 @@ type CRUDHandler struct {
 	perms    adapters.PermissionsChecker
 	db       adapters.DatabaseRegistry
 	cache    ResponseCacher
-	singleDB bool
+
+	allowUnscopedWrites bool
 }
 
 func (h *CRUDHandler) ports(r *http.Request) (builder adapters.RequestQueryBuilder, sql adapters.SQLBuilder, executor adapters.QueryExecutor, perms adapters.PermissionsChecker, db adapters.DatabaseRegistry) {
@@ -49,7 +50,8 @@ func NewCRUDHandler(deps Deps) *CRUDHandler {
 		perms:    deps.Perms,
 		db:       deps.DB,
 		cache:    deps.Cache,
-		singleDB: deps.SingleDB,
+
+		allowUnscopedWrites: deps.AllowUnscopedWrites,
 	}
 }
 
@@ -62,12 +64,12 @@ func (h *CRUDHandler) Select(w http.ResponseWriter, r *http.Request) {
 	table := vars["table"]
 	queries := r.URL.Query()
 
-	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+	if err := validateDatabase(database, h.db); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := validateSchema(r, schema); err != nil {
+	if err := validateSchema(r, database, schema); err != nil {
 		jsonError(w, err.Error(), http.StatusNotFound)
 		return
 	}
@@ -218,18 +220,27 @@ func (h *CRUDHandler) Insert(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+	if err := validateDatabase(database, h.db); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := validateSchema(r, schema); err != nil {
+	if err := validateSchema(r, database, schema); err != nil {
 		jsonError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
 	if !validatePathSegments(database, schema, table) {
 		jsonError(w, "invalid identifier in path", http.StatusBadRequest)
+		return
+	}
+
+	if h.rejectUnwritableFields(w, r, database, schema, table, false) {
+		return
+	}
+	readable, all, err := h.readableColumns(r, database, schema, table)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -250,8 +261,7 @@ func (h *CRUDHandler) Insert(w http.ResponseWriter, r *http.Request) {
 		writeStatementError(w, err, schema, table, "relation does not exist: ", "could not perform InsertInTables: ")
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	w.Write(sc.Bytes())
+	writeFiltered(w, http.StatusCreated, sc.Bytes(), readable, all)
 }
 
 // BatchInsert performs a batch INSERT on a table.
@@ -262,18 +272,27 @@ func (h *CRUDHandler) BatchInsert(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+	if err := validateDatabase(database, h.db); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := validateSchema(r, schema); err != nil {
+	if err := validateSchema(r, database, schema); err != nil {
 		jsonError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
 	if !validatePathSegments(database, schema, table) {
 		jsonError(w, "invalid identifier in path", http.StatusBadRequest)
+		return
+	}
+
+	if h.rejectUnwritableFields(w, r, database, schema, table, true) {
+		return
+	}
+	readable, all, err := h.readableColumns(r, database, schema, table)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -299,8 +318,7 @@ func (h *CRUDHandler) BatchInsert(w http.ResponseWriter, r *http.Request) {
 		writeStatementError(w, err, schema, table, "relation does not exist: ", "could not perform BatchInsertInTables: ")
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	w.Write(sc.Bytes())
+	writeFiltered(w, http.StatusCreated, sc.Bytes(), readable, all)
 }
 
 // Delete performs a DELETE on a table.
@@ -311,12 +329,12 @@ func (h *CRUDHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+	if err := validateDatabase(database, h.db); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := validateSchema(r, schema); err != nil {
+	if err := validateSchema(r, database, schema); err != nil {
 		jsonError(w, err.Error(), http.StatusNotFound)
 		return
 	}
@@ -330,6 +348,9 @@ func (h *CRUDHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		err = fmt.Errorf("could not perform WhereByRequest: %v", err)
 		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if h.rejectUnscopedWrite(w, r, where) {
 		return
 	}
 
@@ -349,6 +370,12 @@ func (h *CRUDHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		sql = fmt.Sprint(sql, " RETURNING ", returningSyntax)
 	}
 
+	readable, all, err := h.returningColumns(r, database, schema, table, returningSyntax)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	ctx, cancel := requestContext(r, database)
 	defer cancel()
 
@@ -357,7 +384,7 @@ func (h *CRUDHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		writeStatementError(w, err, schema, table, "relation does not exist: ", "could not perform DeleteFromTable: ")
 		return
 	}
-	w.Write(sc.Bytes())
+	writeFiltered(w, http.StatusOK, sc.Bytes(), readable, all)
 }
 
 // Update performs an UPDATE on a table.
@@ -368,18 +395,22 @@ func (h *CRUDHandler) Update(w http.ResponseWriter, r *http.Request) {
 	schema := vars["schema"]
 	table := vars["table"]
 
-	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+	if err := validateDatabase(database, h.db); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := validateSchema(r, schema); err != nil {
+	if err := validateSchema(r, database, schema); err != nil {
 		jsonError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
 	if !validatePathSegments(database, schema, table) {
 		jsonError(w, "invalid identifier in path", http.StatusBadRequest)
+		return
+	}
+
+	if h.rejectUnwritableFields(w, r, database, schema, table, false) {
 		return
 	}
 
@@ -399,6 +430,9 @@ func (h *CRUDHandler) Update(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	if h.rejectUnscopedWrite(w, r, where) {
+		return
+	}
 
 	if where != "" {
 		sql = fmt.Sprint(sql, " WHERE ", where)
@@ -415,6 +449,13 @@ func (h *CRUDHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if returningSyntax != "" {
 		sql = fmt.Sprint(sql, " RETURNING ", returningSyntax)
 	}
+
+	readable, all, err := h.returningColumns(r, database, schema, table, returningSyntax)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	ctx, cancel := requestContext(r, database)
 	defer cancel()
 
@@ -423,7 +464,22 @@ func (h *CRUDHandler) Update(w http.ResponseWriter, r *http.Request) {
 		writeStatementError(w, err, schema, table, "", "")
 		return
 	}
-	w.Write(sc.Bytes())
+	writeFiltered(w, http.StatusOK, sc.Bytes(), readable, all)
+}
+
+// rejectUnscopedWrite writes 400 and returns true when a DELETE/PUT/PATCH has
+// no WHERE condition, unless access.allow_unscoped_writes is set. Without it an
+// empty or filter-less query string would modify every row (GHSA-r867-ghgv-mrp9).
+func (h *CRUDHandler) rejectUnscopedWrite(w http.ResponseWriter, r *http.Request, where string) bool {
+	if where != "" || h.allowUnscopedWrites {
+		return false
+	}
+	jsonError(w,
+		fmt.Sprintf(
+			"refusing %s without a WHERE condition: add a filter query parameter",
+			r.Method),
+		http.StatusBadRequest)
+	return true
 }
 
 func isRelationNotFound(err error, schema, table string) bool {

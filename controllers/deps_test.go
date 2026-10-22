@@ -20,7 +20,6 @@ func TestNewDepsFromConfig(t *testing.T) {
 	adapter := mockgen.NewMockAdapter(ctrl)
 	p := &config.Prest{
 		Adapter:      adapter,
-		SingleDB:     true,
 		PGDatabase:   "prest-test",
 		AuthEnabled:  true,
 		AuthType:     "body",
@@ -31,18 +30,19 @@ func TestNewDepsFromConfig(t *testing.T) {
 		AuthPassword: "password",
 		AuthEncrypt:  "MD5",
 		Cache:        cache.Config{Enabled: true},
+		AccessConf:   config.AccessConf{AllowUnscopedWrites: true},
 	}
 
 	deps := NewDepsFromConfig(p)
 	require.Equal(t, adapter, deps.Catalog)
 	require.Equal(t, adapter, deps.DB)
 	require.Equal(t, adapter, deps.Executor)
-	require.True(t, deps.SingleDB)
 	require.Equal(t, "prest-test", deps.PGDatabase)
 	require.NotNil(t, deps.Cache)
 	require.True(t, deps.Auth.Enabled)
 	require.Equal(t, "body", deps.Auth.AuthType)
 	require.Equal(t, "test-jwt-hmac-secret-key-32bytes", deps.Auth.JWTKey)
+	require.True(t, deps.AllowUnscopedWrites)
 }
 
 func TestNewDepsFromConfig_CacheDisabled(t *testing.T) {

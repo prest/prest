@@ -39,6 +39,13 @@ func Test_getVars(t *testing.T) {
 	// have an arbitrary segment dropped.
 	require.Nil(t, getVars("prest/public/users/extra"))
 	require.Nil(t, getVars("/prest/public/users/extra"))
+
+	// /show/{database}/{schema}/{table} describes a table, so AccessControl
+	// must see it as a table path too (GHSA-fhf5-m388-4w4p).
+	got = getVars("/show/prest/public/users")
+	require.Equal(t, "prest", got["database"])
+	require.Equal(t, "public", got["schema"])
+	require.Equal(t, "users", got["table"])
 }
 
 func Test_permissionByMethod(t *testing.T) {

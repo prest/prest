@@ -7,7 +7,6 @@ port = 5432
 user = "postgres"
 pass = "postgres"
 database = "prest-test"
-single = false
 
 [[databases]]
 alias = "prest-test"

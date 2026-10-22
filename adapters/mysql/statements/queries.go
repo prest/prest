@@ -11,11 +11,13 @@ SELECT %s FROM (
   WHERE SCHEMA_NAME NOT IN (` + SystemSchemas + `)
 ) d`
 
+	// SchemasFrom takes the selected field and an optional " AND ..." filter
+	// on SCHEMA_NAME applied inside the derived table.
 	SchemasFrom = `
 SELECT %s FROM (
   SELECT SCHEMA_NAME AS schema_name
   FROM information_schema.schemata
-  WHERE SCHEMA_NAME NOT IN (` + SystemSchemas + `)
+  WHERE SCHEMA_NAME NOT IN (` + SystemSchemas + `)%s
 ) s`
 
 	TablesFrom = `

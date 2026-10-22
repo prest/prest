@@ -32,7 +32,6 @@ type ScriptHandler struct {
 	db       adapters.DatabaseRegistry
 	cache    ResponseCacher
 	pgDB     string
-	singleDB bool
 }
 
 func (h *ScriptHandler) ports(r *http.Request) (scripts adapters.ScriptRunner, executor adapters.QueryExecutor, db adapters.DatabaseRegistry) {
@@ -57,7 +56,6 @@ func NewScriptHandler(deps Deps) *ScriptHandler {
 		db:       deps.DB,
 		cache:    deps.Cache,
 		pgDB:     deps.PGDatabase,
-		singleDB: deps.SingleDB,
 	}
 }
 
@@ -76,7 +74,7 @@ func (h *ScriptHandler) Execute(w http.ResponseWriter, r *http.Request) {
 	// Same gate every other controller applies before touching the connection
 	// layer: reject an unregistered/attacker-chosen database name here, rather
 	// than letting dbFromCtx open a real outbound connection for it.
-	if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+	if err := validateDatabase(database, h.db); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}

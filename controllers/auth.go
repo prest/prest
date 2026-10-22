@@ -5,13 +5,16 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/controllers/auth"
+	"github.com/prest/prest/v2/internal/logsafe"
 	"golang.org/x/crypto/bcrypt"
 
 	jose "github.com/go-jose/go-jose/v4"
@@ -77,7 +80,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	loggedUser, err := h.basicPasswordCheck(strings.ToLower(login.Username), login.Password)
 	if err != nil {
-		jsonError(w, err.Error(), http.StatusUnauthorized)
+		switch {
+		case adapters.IsUnavailable(err):
+			writeStatementError(w, err, "", "", "", "")
+		case errors.Is(err, ErrUserNotFound):
+			jsonError(w, err.Error(), http.StatusUnauthorized)
+		default:
+			// Raw SQL/driver text must not reach the client.
+			slog.Error("login failed", "err", logsafe.Error(err))
+			jsonError(w, "authentication failed", http.StatusUnauthorized)
+		}
 		return
 	}
 	token, err := h.token(loggedUser)

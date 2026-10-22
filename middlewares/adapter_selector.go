@@ -30,7 +30,7 @@ func NewAdapterSelectorMiddleware(registry adapters.Registry, next http.Handler)
 
 // ServeHTTP implements http.Handler, selecting the adapter for the requested database.
 func (m *AdapterSelectorMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// If no registry (single-database mode), pass through
+	// If no registry , pass through
 	if m.registry == nil {
 		m.next.ServeHTTP(w, r)
 		return

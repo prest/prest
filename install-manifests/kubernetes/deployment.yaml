@@ -18,7 +18,7 @@ spec:
         app: prest
     spec:
       containers:
-        - image: prest/prest:v1
+        - image: prest/prest:v2
           imagePullPolicy: IfNotPresent
           name: prest
           env:
@@ -37,7 +37,10 @@ spec:
                 secretKeyRef:
                   name: tenant-b-db
                   key: url
-            # Legacy single-DB fallback when no registry env vars are set:
+            # No registry: pg.database plus pg.allowed_databases when no registry env vars are set:
+            # - name: PREST_PG_ALLOWED_DATABASES
+            #   value: secondary-db
+            # Or use DATABASE_URL (Postgres), or PREST_DB_URL (MySQL):
             # - name: DATABASE_URL
             #   value: postgres://username:password@hostname:port/dbname
             - name: PREST_DEBUG

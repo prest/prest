@@ -32,13 +32,14 @@ var (
 // rather than inferred from segment count alone — that used to make any
 // 4-element split fall through to "not a table path" (nil, which
 // AccessControl treats as unenforced), silently skipping TablePermissions on
-// /batch/{database}/{schema}/{table}.
+// /batch/{database}/{schema}/{table}. /show/{database}/{schema}/{table} is
+// stripped the same way so describing a table honours its read permission.
 func getVars(path string) (paths map[string]string) {
 	segments := strings.Split(path, "/")
 	if len(segments) > 0 && segments[0] == "" {
 		segments = segments[1:]
 	}
-	if len(segments) == 4 && segments[0] == "batch" {
+	if len(segments) == 4 && (segments[0] == "batch" || segments[0] == "show") {
 		segments = segments[1:]
 	}
 	if len(segments) != 3 {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
+	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/config"
 	"github.com/stretchr/testify/require"
 )
@@ -105,6 +106,80 @@ func TestAddDatabaseToPool_appliesPoolLimits(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 	require.Equal(t, 25, db.Stats().MaxOpenConnections)
+}
+
+// Once maxPools distinct pools exist, a new name is refused with
+// adapters.ErrUnavailable (HTTP 503) and no connection is attempted. Names
+// already pooled keep working.
+func TestAddDatabaseToPool_CapsDistinctPools(t *testing.T) {
+	m := testManager(t)
+
+	var connectCalls int32
+	origConnect := dbConnect
+	dbConnect = func(driverName, dataSourceName string) (*sqlx.DB, error) {
+		atomic.AddInt32(&connectCalls, 1)
+		mockDB, _, err := sqlmock.New()
+		if err != nil {
+			return nil, err
+		}
+		return sqlx.NewDb(mockDB, "sqlmock"), nil
+	}
+	t.Cleanup(func() { dbConnect = origConnect })
+	t.Cleanup(func() {
+		for _, db := range m.GetPool().DB {
+			_ = db.Close()
+		}
+	})
+
+	for i := range maxPools {
+		_, err := m.AddDatabaseToPool(fmt.Sprintf("db%d", i))
+		require.NoError(t, err)
+	}
+	require.Equal(t, int32(maxPools), connectCalls)
+
+	_, err := m.AddDatabaseToPool("one-too-many")
+	require.Error(t, err)
+	require.ErrorIs(t, err, adapters.ErrUnavailable)
+	require.True(t, adapters.IsUnavailable(err))
+	require.Equal(t, int32(maxPools), connectCalls)
+	require.Len(t, m.GetPool().DB, maxPools)
+
+	got, err := m.AddDatabaseToPool("db0")
+	require.NoError(t, err)
+	require.NotNil(t, got)
+}
+
+// The cap is rechecked after connecting: if other names filled the last slot
+// meanwhile, the fresh connection is closed and ErrUnavailable returned.
+func TestAddDatabaseToPool_CapRecheckedAfterConnect(t *testing.T) {
+	m := testManager(t)
+
+	origConnect := dbConnect
+	dbConnect = func(driverName, dataSourceName string) (*sqlx.DB, error) {
+		for i := range maxPools {
+			mockDB, _, err := sqlmock.New()
+			if err != nil {
+				return nil, err
+			}
+			m.InjectDBForTest(fmt.Sprintf("racer-%d", i), sqlx.NewDb(mockDB, "sqlmock"))
+		}
+		mockDB, mock, err := sqlmock.New()
+		if err != nil {
+			return nil, err
+		}
+		mock.ExpectClose()
+		return sqlx.NewDb(mockDB, "sqlmock"), nil
+	}
+	t.Cleanup(func() { dbConnect = origConnect })
+	t.Cleanup(func() {
+		for _, db := range m.GetPool().DB {
+			_ = db.Close()
+		}
+	})
+
+	_, err := m.AddDatabaseToPool("late")
+	require.ErrorIs(t, err, adapters.ErrUnavailable)
+	require.Len(t, m.GetPool().DB, maxPools)
 }
 
 func TestGetFromPool_returnsInjectedDB(t *testing.T) {

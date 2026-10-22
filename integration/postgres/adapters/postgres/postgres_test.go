@@ -2656,15 +2656,16 @@ func Test_Postgres_GeneratesFuncs(t *testing.T) {
 		{
 			name: "test_DatabaseWhere_Empty",
 			args: args{
+				// An empty config serves no database, so the listing matches none.
 				gotByFunc: pg.DatabaseWhere(""),
-				expect:    statements.DatabasesWhere,
+				expect:    statements.DatabasesWhere + " AND FALSE",
 			},
 		},
 		{
 			name: "test_DatabaseWhere_withRequest",
 			args: args{
 				gotByFunc: pg.DatabaseWhere("testrequestwhere"),
-				expect:    fmt.Sprintf(`%v AND testrequestwhere`, statements.DatabasesWhere),
+				expect:    fmt.Sprintf(`%v AND FALSE AND testrequestwhere`, statements.DatabasesWhere),
 			},
 		},
 		{

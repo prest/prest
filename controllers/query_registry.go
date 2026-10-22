@@ -20,7 +20,6 @@ type QueryRegistryHandler struct {
 	registry adapters.QueryRegistry
 	db       adapters.DatabaseRegistry
 	cfg      config.QueriesConf
-	singleDB bool
 }
 
 func (h *QueryRegistryHandler) ports(r *http.Request) (adapters.QueryRegistry, adapters.DatabaseRegistry) {
@@ -51,7 +50,6 @@ func NewQueryRegistryHandler(deps Deps, cfg config.QueriesConf) *QueryRegistryHa
 		registry: deps.QueryRegistry,
 		db:       deps.DB,
 		cfg:      cfg,
-		singleDB: deps.SingleDB,
 	}
 }
 
@@ -59,7 +57,7 @@ func NewQueryRegistryHandler(deps Deps, cfg config.QueriesConf) *QueryRegistryHa
 func (h *QueryRegistryHandler) List(w http.ResponseWriter, r *http.Request) {
 	h = h.bound(r)
 	if database := mux.Vars(r)["database"]; database != "" {
-		if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+		if err := validateDatabase(database, h.db); err != nil {
 			jsonError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -76,7 +74,7 @@ func (h *QueryRegistryHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	queries, err := h.registry.ListQueries(ctx, database, location)
 	if err != nil {
-		jsonError(w, err.Error(), http.StatusBadRequest)
+		writeStatementError(w, err, "", "", "", "")
 		return
 	}
 	writeJSON(w, queries)
@@ -96,6 +94,10 @@ func (h *QueryRegistryHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	q, err := h.registry.GetQuery(ctx, database, vars["location"], vars["name"])
 	if err != nil {
+		if adapters.IsUnavailable(err) {
+			writeStatementError(w, err, "", "", "", "")
+			return
+		}
 		jsonError(w, err.Error(), http.StatusNotFound)
 		return
 	}
@@ -106,7 +108,7 @@ func (h *QueryRegistryHandler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *QueryRegistryHandler) Create(w http.ResponseWriter, r *http.Request) {
 	h = h.bound(r)
 	if database := mux.Vars(r)["database"]; database != "" {
-		if err := validateDatabase(database, h.db, h.singleDB); err != nil {
+		if err := validateDatabase(database, h.db); err != nil {
 			jsonError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -125,7 +127,7 @@ func (h *QueryRegistryHandler) Create(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	if err := h.registry.UpsertQuery(ctx, q); err != nil {
-		jsonError(w, err.Error(), http.StatusBadRequest)
+		writeStatementError(w, err, "", "", "", "")
 		return
 	}
 	writeJSONStatus(w, http.StatusCreated, q)
@@ -151,7 +153,7 @@ func (h *QueryRegistryHandler) Update(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	if err := h.registry.UpsertQuery(ctx, q); err != nil {
-		jsonError(w, err.Error(), http.StatusBadRequest)
+		writeStatementError(w, err, "", "", "", "")
 		return
 	}
 	writeJSON(w, q)
@@ -170,6 +172,10 @@ func (h *QueryRegistryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	if err := h.registry.DeleteQuery(ctx, database, vars["location"], vars["name"]); err != nil {
+		if adapters.IsUnavailable(err) {
+			writeStatementError(w, err, "", "", "", "")
+			return
+		}
 		jsonError(w, err.Error(), http.StatusNotFound)
 		return
 	}

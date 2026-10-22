@@ -9,7 +9,11 @@ import (
 // TableAllowed reports whether op is permitted on database.schema.table.
 // restrict off allows every table. IgnoreTable entries are always allowed.
 // A matching user rule replaces the table rule for that user.
+// Reserved control-plane tables are denied before any of that is consulted.
 func TableAllowed(cfg *config.Prest, database, schema, table, op, userName string) bool {
+	if ReservedTable(cfg, table) {
+		return false
+	}
 	if cfg == nil || !cfg.AccessConf.Restrict {
 		return true
 	}
