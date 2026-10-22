@@ -108,8 +108,8 @@ github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/redis/go-redis/v9 v9.23.0 h1:/TTVdJa8BRNsybwwGGnmiYktHNlUXtbOQxlWpHBPL3s=
 github.com/redis/go-redis/v9 v9.23.0/go.mod h1:EWP2UUk+XDaI1s5nQB5mablZN6vccXlmBQTyfnF87D0=
-github.com/rennf93/guard-core-go/v4 v4.3.2 h1:UpEUaSw1MNIoPcMbikG2hPZr+rhqp8vtCDasNh0m5DQ=
-github.com/rennf93/guard-core-go/v4 v4.3.2/go.mod h1:zbSvFuYHn8Oo6bMwJ7jJ3iR8CEHBIYUvf1ALd1qMAvU=
+github.com/rennf93/guard-core-go/v4 v4.4.1 h1:tRLMLUGpbD9vNpP5xjPUWFayCrhiS04y66/ypzZhdq0=
+github.com/rennf93/guard-core-go/v4 v4.4.1/go.mod h1:6KcajSAwPjYhYxY48nqdrgihH+sXf0NIt6lGMNpKyaU=
 github.com/rennf93/nethttp-guard v1.4.0 h1:7CArpfVqAbfk0I5HYVr1Vvcbb2P9D8RiPbv3wrgiBDE=
 github.com/rennf93/nethttp-guard v1.4.0/go.mod h1:DP766KRBdBQXFJ44j08drxWLjV9WvO1vA4gXMJqTu+k=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=

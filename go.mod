@@ -57,7 +57,7 @@ require (
 	github.com/lestrrat-go/httprc/v3 v3.0.6 // indirect
 	github.com/lestrrat-go/option/v2 v2.0.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
-	github.com/rennf93/guard-core-go/v4 v4.3.2
+	github.com/rennf93/guard-core-go/v4 v4.4.1
 	github.com/rennf93/nethttp-guard v1.4.0
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
