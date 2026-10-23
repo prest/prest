@@ -38,7 +38,7 @@
 		"lucide-react": "^1.52.0",
 		"react": "^19.3.0",
 		"react-dom": "^19.3.0",
-		"react-hook-form": "^7.89.0",
+		"react-hook-form": "^7.90.0",
 		"tailwind-merge": "^3.7.0",
 		"zod": "^4.6.5"
 	},
