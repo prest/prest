@@ -670,17 +670,29 @@ func TestJoinRestricted_ReferenceOraclesRejected(t *testing.T) {
 	base := helpers.AuthServerURL(t)
 	token := helpers.LoginToken(t, base, "test@postgres.rest", "123456")
 
-	for _, suffix := range []string{
-		"&employee_secret.ssn=$like.ssn%25",
-		"&_or=employee_secret.ssn=$eq.x%20OR%20dept=$eq.Maths",
-		"&_order=employee_secret.ssn",
-		"&_count=employee_secret.ssn",
-		"&_select=dept&_groupby=dept->>having:count:employee_secret.ssn:$gt:0",
-		"&_select=dept&_groupby=dept,lower(employee_secret.ssn)",
-		"&ssn=$like.%25",
-	} {
-		t.Run(suffix, func(t *testing.T) {
-			body := doAuthBody(t, base+secretJoin+suffix, token, http.StatusForbidden)
+	var testCases = []struct {
+		description string
+		suffix      string
+	}{
+		{"a filter on an unreadable joined column is rejected",
+			"&employee_secret.ssn=$like.ssn%25"},
+		{"an _or group on an unreadable joined column is rejected",
+			"&_or=employee_secret.ssn=$eq.x%20OR%20dept=$eq.Maths"},
+		{"ordering by an unreadable joined column is rejected",
+			"&_order=employee_secret.ssn"},
+		{"counting an unreadable joined column is rejected",
+			"&_count=employee_secret.ssn"},
+		{"a HAVING aggregate over an unreadable joined column is rejected",
+			"&_select=dept&_groupby=dept->>having:count:employee_secret.ssn:$gt:0"},
+		{"a _groupby function over an unreadable joined column is rejected",
+			"&_select=dept&_groupby=dept,lower(employee_secret.ssn)"},
+		{"a bare name that resolves to the unreadable joined table is rejected",
+			"&ssn=$like.%25"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			body := doAuthBody(t, base+secretJoin+tc.suffix, token, http.StatusForbidden)
 			require.Contains(t, body, "is not readable on this table")
 			require.NotContains(t, body, "ssn-top-secret")
 		})
