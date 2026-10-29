@@ -30,6 +30,7 @@ var (
 	_ adapters.ScriptPermissionsChecker = (*Adapter)(nil)
 	_ adapters.SystemTableEnsurer       = (*Adapter)(nil)
 	_ adapters.DatabaseSchemaScoper     = (*Adapter)(nil)
+	_ adapters.RequestColumnsLister     = (*Adapter)(nil)
 )
 
 // New creates a MySQL adapter without connecting.
