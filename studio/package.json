@@ -40,7 +40,7 @@
 		"react-dom": "^19.3.0",
 		"react-hook-form": "^7.90.0",
 		"tailwind-merge": "^3.7.0",
-		"zod": "^4.6.5"
+		"zod": "^4.6.7"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
