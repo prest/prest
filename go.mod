@@ -21,7 +21,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.12.1
 	github.com/tidwall/buntdb v1.3.2
-	github.com/urfave/negroni/v3 v3.1.1
+	github.com/urfave/negroni/v3 v3.1.2
 	go.opentelemetry.io/contrib/bridges/otelslog v0.21.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.23.0
 	go.opentelemetry.io/otel/log v1.47.0
