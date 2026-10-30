@@ -71,6 +71,7 @@ var (
 	_ adapters.DatabasePinger           = (*postgres)(nil)
 	_ adapters.QueryRegistry            = (*postgres)(nil)
 	_ adapters.ScriptPermissionsChecker = (*postgres)(nil)
+	_ adapters.RequestColumnsLister     = (*postgres)(nil)
 )
 
 // New creates a Postgres adapter without connecting.
