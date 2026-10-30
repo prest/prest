@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -364,6 +365,7 @@ func TestGuardBodyScan(t *testing.T) {
 func TestGuardInvalidConfigBodyIsValidJSON(t *testing.T) {
 	// The fail-closed middleware mounts through New(), not GuardMiddleware
 	// (which returns the error), so the full stack is the unit under test.
+	logs := captureSlog(t)
 	n := newGuardTestStack(t, func(g *config.GuardConf) {
 		g.Invalid = errors.New(`guard.enabled: "yes" is not a valid boolean`)
 	})
@@ -374,7 +376,10 @@ func TestGuardInvalidConfigBodyIsValidJSON(t *testing.T) {
 	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 	var parsed map[string]string
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &parsed))
-	require.Contains(t, parsed["error"], "not a valid boolean")
+	require.Equal(t, "guard configuration invalid", parsed["error"])
+	require.NotContains(t, rec.Body.String(), "yes")
+	require.NotContains(t, rec.Body.String(), "not a valid boolean")
+	require.Contains(t, logs.String(), "not a valid boolean")
 }
 
 // TestGuardEngineRunsBeforeBodyScan verifies the engine's verdicts take
@@ -411,4 +416,107 @@ func TestGuardEngineRunsBeforeBodyScan(t *testing.T) {
 	rec = httptest.NewRecorder()
 	n.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusForbidden, rec.Code)
+}
+
+func TestGuardMiddlewareRejectsUnusableConfig(t *testing.T) {
+	t.Run("carried invalid error", func(t *testing.T) {
+		_, err := GuardMiddleware(config.GuardConf{Invalid: errors.New("boom")})
+		require.ErrorContains(t, err, "guard config invalid")
+		require.ErrorContains(t, err, "boom")
+	})
+	t.Run("bad trusted proxy entry", func(t *testing.T) {
+		_, err := GuardMiddleware(config.GuardConf{TrustedProxies: []string{"not-an-ip"}})
+		require.ErrorContains(t, err, "trusted_proxies[0]")
+	})
+	t.Run("unknown cloud provider", func(t *testing.T) {
+		_, err := GuardMiddleware(config.GuardConf{BlockCloudProviders: []string{"not-a-provider"}})
+		require.Error(t, err)
+	})
+}
+
+func TestGuardZeroMaxBodyBytesStillScansBody(t *testing.T) {
+	n := newGuardOnlyStack(t, func(g *config.GuardConf) { g.MaxBodyBytes = 0 })
+	req := httptest.NewRequest(http.MethodPost, "/teste",
+		strings.NewReader(`{"name": "1' OR '1'='1"}`))
+	req.RemoteAddr = "192.0.2.1:1234"
+	rec := httptest.NewRecorder()
+	n.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestTrustedProxySetParsing(t *testing.T) {
+	require.Nil(t, mustTrustedSet(t, nil))
+
+	set := mustTrustedSet(t, []string{" 10.0.0.9 ", "", "192.168.0.0/16", "::1"})
+	require.True(t, set.contains(net.ParseIP("10.0.0.9")))
+	require.True(t, set.contains(net.ParseIP("192.168.5.5")))
+	require.True(t, set.contains(net.ParseIP("::1")))
+	require.False(t, set.contains(net.ParseIP("10.0.0.10")))
+	require.False(t, set.contains(nil))
+	require.False(t, (*trustedProxySet)(nil).contains(net.ParseIP("10.0.0.9")))
+
+	_, err := newTrustedProxySet([]string{"10.0.0.1", "300.0.0.0/8"})
+	require.ErrorContains(t, err, `trusted_proxies[1]: "300.0.0.0/8" is not an IP or CIDR`)
+}
+
+func mustTrustedSet(t *testing.T, entries []string) *trustedProxySet {
+	t.Helper()
+	set, err := newTrustedProxySet(entries)
+	require.NoError(t, err)
+	return set
+}
+
+func TestApplyTrustedProxyEdgeCases(t *testing.T) {
+	trusted := mustTrustedSet(t, []string{"10.0.0.0/8"})
+	cases := []struct {
+		name       string
+		trusted    *trustedProxySet
+		remoteAddr string
+		xff        []string
+		want       string
+	}{
+		{"no trusted set", nil, "10.0.0.1:1", []string{"1.2.3.4"}, "10.0.0.1:1"},
+		{"empty forwarded header", trusted, "10.0.0.1:1", []string{"  "}, "10.0.0.1:1"},
+		{"malformed hop keeps peer", trusted, "10.0.0.1:1", []string{"1.2.3.4, garbage"}, "10.0.0.1:1"},
+		{"all hops trusted uses leftmost", trusted, "10.0.0.1:1", []string{"10.0.0.5, 10.0.0.6"}, "10.0.0.5:0"},
+		{"peer without port", trusted, "10.0.0.1", []string{"1.2.3.4"}, "1.2.3.4:0"},
+		{"untrusted peer ignored", trusted, "9.9.9.9:1", []string{"1.2.3.4"}, "9.9.9.9:1"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.RemoteAddr = c.remoteAddr
+			for _, h := range c.xff {
+				req.Header.Add("X-Forwarded-For", h)
+			}
+			applyTrustedProxy(req, c.trusted)
+			require.Equal(t, c.want, req.RemoteAddr)
+		})
+	}
+}
+
+func TestPathExclusionsNormalizeAndMatch(t *testing.T) {
+	ex := newPathExclusions([]string{" /health ", "", "  "})
+	require.Equal(t, []string{"/health"}, ex.entries)
+	require.True(t, ex.matches("/health/ready"))
+	require.False(t, ex.matches("/healthcheck"))
+	require.True(t, newPathExclusions([]string{"/"}).matches("/anything"))
+	require.False(t, newPathExclusions(nil).matches("/health"))
+}
+
+func TestLogOnBlockWritesMetadataOnly(t *testing.T) {
+	logs := captureSlog(t)
+	logOnBlock(nil, map[string]any{
+		"passive_mode": true, "check_name": "rate_limit", "reason": "too many",
+		"trigger_info": "t", "client_ip": "192.0.2.1", "method": "GET", "path": "/x",
+		"secret": "hunter2",
+	})
+	out := logs.String()
+	for _, want := range []string{"passive=true", "check=rate_limit", "client_ip=192.0.2.1", "path=/x"} {
+		require.Contains(t, out, want)
+	}
+	require.NotContains(t, out, "hunter2")
+
+	require.Equal(t, "", strVal(5))
+	require.False(t, boolVal("x"))
 }

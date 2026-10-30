@@ -1,7 +1,6 @@
 package middlewares
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net"
@@ -35,7 +34,7 @@ func GuardMiddleware(conf config.GuardConf) (negroni.Handler, error) {
 		return nil, fmt.Errorf("guard config invalid: %w", err)
 	}
 
-	// MaxBodyBytes comes from config (default 1 MiB via parseGuardConfig),
+	// MaxBodyBytes comes from config (default 8 KiB via parseGuardConfig),
 	// but fall back to the shim default so a zero value never silently
 	// disables the body pre-scan.
 	maxBodyBytes := conf.MaxBodyBytes
@@ -118,13 +117,11 @@ func GuardMiddleware(conf config.GuardConf) (negroni.Handler, error) {
 // operator asked for must never silently degrade to absent.
 func invalidGuardConfigMiddleware(err error) negroni.Handler {
 	return negroni.HandlerFunc(func(w http.ResponseWriter, _ *http.Request, _ http.HandlerFunc) {
-		// json.Marshal escapes quotes and control characters, so an error
-		// carrying config input (PREST_GUARD_ENABLED=yes, say) stays one
-		// valid JSON document instead of breaking the body open.
-		payload, marshalErr := json.Marshal(map[string]string{"error": err.Error()})
-		if marshalErr != nil {
-			payload = []byte(`{"error":"guard config invalid"}`)
-		}
+		// The detail can echo config values (PREST_GUARD_ENABLED=yes, say) and
+		// this response reaches unauthenticated clients, so it only goes to
+		// the server log.
+		slog.Error("guard config invalid, failing closed", "err", err)
+		payload := []byte(`{"error":"guard configuration invalid"}`)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write(payload)

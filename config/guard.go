@@ -63,7 +63,7 @@ type GuardConf struct {
 	// RateLimitWindow is the rate limit window in seconds. Default 60.
 	RateLimitWindow int
 	// MaxBodyBytes caps how much of a request body the inspection layer
-	// reads. Default 1 MiB.
+	// reads. Default 8 KiB.
 	MaxBodyBytes int64
 	// Blacklist blocks these IPs/CIDRs. Whitelist allows them unconditionally
 	// (both empty by default).
