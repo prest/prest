@@ -91,6 +91,10 @@ conntimeout = 10 # seconds
 allowed_databases = []
 # Enables query result caching against this database (see [cache] below).
 cache = true
+# Name pREST's connections report in pg_stat_activity, sent as libpq's
+# fallback_application_name, so an application_name already in the URL wins.
+# Empty disables. Env: PREST_DB_APPLICATION_NAME / PREST_PG_APPLICATION_NAME.
+application_name = "prestd"
 
 # TLS for the connection to PostgreSQL itself. This is unrelated to [https]
 # above, which is about pREST's own HTTP listener.
