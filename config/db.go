@@ -21,6 +21,7 @@ func setPostgresDefaults(v *viper.Viper) {
 	v.SetDefault("pg.maxopenconn", 10)
 	v.SetDefault("pg.conntimeout", 10)
 	v.SetDefault("pg.cache", true)
+	v.SetDefault("pg.application_name", "prestd")
 	// todo: replace this with prefer, will need to replace lib/pq
 	// https://github.com/jackc/pgx/blob/47d631e34be7128997a0aa89b75885cc4ad4c82e/pgconn/config.go#L218
 	v.SetDefault("pg.ssl.mode", "disable")
@@ -60,6 +61,7 @@ func parseDBConfig(v *viper.Viper, cfg *Prest) error {
 	cfg.PGSSLKey = configuredString(v, "pg.ssl.key")
 	cfg.PGSSLCert = configuredString(v, "pg.ssl.cert")
 	cfg.PGSSLRootCert = configuredString(v, "pg.ssl.rootcert")
+	cfg.PGApplicationName = configuredString(v, "pg.application_name")
 
 	if os.Getenv("DATABASE_URL") != "" {
 		// cloud factor support: https://devcenter.heroku.com/changelog-items/438

@@ -108,6 +108,7 @@ type Prest struct {
 	PGSSLCert            string
 	PGSSLKey             string
 	PGSSLRootCert        string
+	PGApplicationName    string // pg.application_name: fallback application_name of pooled connections; empty disables
 	ContextPath          string
 	PGMaxIdleConn        int
 	PGMaxOpenConn        int

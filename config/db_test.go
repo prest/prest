@@ -163,3 +163,52 @@ func TestWarnDeprecatedSingle(t *testing.T) {
 		})
 	}
 }
+
+func TestParseDBConfig_ApplicationNameDefault(t *testing.T) {
+	v := viper.New()
+	setPostgresDefaults(v)
+	cfg := &Prest{}
+	require.NoError(t, parseDBConfig(v, cfg))
+	require.Equal(t, "prestd", cfg.PGApplicationName)
+}
+
+func TestParseDBConfig_ApplicationNameFromTOML(t *testing.T) {
+	v := viper.New()
+	v.SetConfigType("toml")
+	require.NoError(t, v.ReadConfig(strings.NewReader(`
+[pg]
+application_name = "orders-api"
+`)))
+	cfg := &Prest{}
+	require.NoError(t, parseDBConfig(v, cfg))
+	require.Equal(t, "orders-api", cfg.PGApplicationName)
+}
+
+func TestParseDBConfig_ApplicationNameFromDBEnv(t *testing.T) {
+	// PREST_DB_* is read before the legacy PREST_PG_* name.
+	t.Setenv("PREST_PG_APPLICATION_NAME", "orders-api")
+	t.Setenv("PREST_DB_APPLICATION_NAME", "billing-api")
+	v := viper.New()
+	setPostgresDefaults(v)
+	cfg := &Prest{}
+	require.NoError(t, parseDBConfig(v, cfg))
+	require.Equal(t, "billing-api", cfg.PGApplicationName)
+}
+
+func TestParseDBConfig_ApplicationNameFromLegacyEnv(t *testing.T) {
+	t.Setenv("PREST_PG_APPLICATION_NAME", "orders-api")
+	v := viper.New()
+	setPostgresDefaults(v)
+	cfg := &Prest{}
+	require.NoError(t, parseDBConfig(v, cfg))
+	require.Equal(t, "orders-api", cfg.PGApplicationName)
+}
+
+func TestParseDBConfig_ApplicationNameEmptyDisables(t *testing.T) {
+	t.Setenv("PREST_DB_APPLICATION_NAME", "")
+	v := viper.New()
+	setPostgresDefaults(v)
+	cfg := &Prest{}
+	require.NoError(t, parseDBConfig(v, cfg))
+	require.Empty(t, cfg.PGApplicationName)
+}
