@@ -598,6 +598,10 @@ func (adapter *postgres) whereKeyAndValue(rawKey, v string, pid *int) (key strin
 				key = fmt.Sprintf(`%s = %s ($%d)`, jsonLeft, op, *pid)
 				values = append(values, formatters.FormatArray(strings.Split(value, ",")))
 				*pid++
+			case "CONTAINS":
+				// ->> yields text, which has no array containment.
+				err = ErrInvalidOperator
+				return
 			case "IS NULL", "IS NOT NULL", "IS TRUE", "IS NOT TRUE", "IS FALSE", "IS NOT FALSE":
 				key = fmt.Sprintf(`%s %s`, jsonLeft, op)
 			default: // "=", "!=", ">", ">=", "<", "<="
@@ -659,6 +663,10 @@ func (adapter *postgres) whereKeyAndValue(rawKey, v string, pid *int) (key strin
 		key = fmt.Sprintf(`%s %s (%s)`, quotedKey, op, strings.Join(keyParams, ","))
 	case "ANY", "SOME", "ALL":
 		key = fmt.Sprintf(`%s = %s ($%d)`, quotedKey, op, *pid)
+		values = append(values, formatters.FormatArray(strings.Split(value, ",")))
+		*pid++
+	case "CONTAINS":
+		key = fmt.Sprintf(`%s @> $%d`, quotedKey, *pid)
 		values = append(values, formatters.FormatArray(strings.Split(value, ",")))
 		*pid++
 	case "IS NULL", "IS NOT NULL", "IS TRUE", "IS NOT TRUE", "IS FALSE", "IS NOT FALSE":
@@ -1806,6 +1814,10 @@ func GetQueryOperator(op string) (string, error) {
 		return "SOME", nil
 	case "all":
 		return "ALL", nil
+	case "contains":
+		// Rendered as @> with an array parameter by whereKeyAndValue; the ltree
+		// operators also map to @> but bind a scalar, so it needs its own token.
+		return "CONTAINS", nil
 	case "notnull":
 		return "IS NOT NULL", nil
 	case "null":

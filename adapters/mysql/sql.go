@@ -196,7 +196,7 @@ func queryOperator(op string) (string, error) {
 		return "IS FALSE", nil
 	case "notfalse":
 		return "IS NOT FALSE", nil
-	case "all", "tsquery", "vecdist", "ltreelanc", "ltreerdesc", "ltreematch", "ltreematchtxt":
+	case "all", "contains", "tsquery", "vecdist", "ltreelanc", "ltreerdesc", "ltreematch", "ltreematchtxt":
 		return "", errUnsupported
 	default:
 		return "", errInvalidOperator
