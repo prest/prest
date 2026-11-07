@@ -275,7 +275,10 @@ func (s *Stmt) PrepareContext(ctx context.Context, dbKey string, db *sqlx.DB, tx
 }
 
 func init() {
-	removeOperatorRegex = regexp.MustCompile(`\$[a-z]+.`)
+	// Anchored so only a leading $op token is an operator: the rest of the value
+	// is user data and may itself contain "$word." sequences. The separator is
+	// optional so value-less operators like $null match.
+	removeOperatorRegex = regexp.MustCompile(`^\$[a-z]+(?:[. ]|$)`)
 	insertTableNameRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.|-]*\.)*([\w|-]+)\s*\(`)
 	insertTableNameQuotesRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.|"|-]*\.)*"([\w|-]+)"\s*\(`)
 	groupRegex = regexp.MustCompile(`\"(.+?)\"`)
