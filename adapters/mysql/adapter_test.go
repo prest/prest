@@ -82,6 +82,8 @@ func TestWhereOrderJoinSelect(t *testing.T) {
 	require.ErrorIs(t, err, errUnsupported)
 	_, _, err = a.WhereByRequest(req("/t?n=$all.1,2"), 1)
 	require.ErrorIs(t, err, errUnsupported)
+	_, _, err = a.WhereByRequest(req("/t?tags=$contains.x"), 1)
+	require.ErrorIs(t, err, errUnsupported)
 
 	where, vals, err = a.WhereByRequest(req("/t?meta->>kind:jsonb=$eq.hat"), 1)
 	require.NoError(t, err)
