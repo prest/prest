@@ -6,13 +6,13 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/avelino/slugify v0.0.0-20180501145920-855f152bd774
 	github.com/clbanning/mxj v1.8.4
-	github.com/go-jose/go-jose/v4 v4.1.6
+	github.com/go-jose/go-jose/v4 v4.1.9
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/gosidekick/migration/v3 v3.0.0
 	github.com/jmoiron/sqlx v1.4.0
-	github.com/lestrrat-go/jwx/v3 v3.3.0
+	github.com/lestrrat-go/jwx/v3 v3.4.0
 	github.com/lib/pq v1.12.3
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1
@@ -21,7 +21,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.12.1
 	github.com/tidwall/buntdb v1.3.2
-	github.com/urfave/negroni/v3 v3.1.1
+	github.com/urfave/negroni/v3 v3.1.2
 	go.opentelemetry.io/contrib/bridges/otelslog v0.21.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.23.0
 	go.opentelemetry.io/otel/log v1.47.0
