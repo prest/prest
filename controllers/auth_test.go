@@ -10,11 +10,13 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	jose "github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/golang/mock/gomock"
 	"github.com/prest/prest/v2/adapters/mockgen"
+	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers/auth"
 	"github.com/prest/prest/v2/internal/ident"
 	"github.com/stretchr/testify/require"
@@ -310,6 +312,38 @@ func TestAuthHandler_token(t *testing.T) {
 	sig, err := jose.ParseSigned(token, []jose.SignatureAlgorithm{jose.HS256})
 	require.NoError(t, err)
 	require.Equal(t, "HS256", string(sig.Signatures[0].Header.Algorithm))
+}
+
+func TestAuthHandler_tokenExpiry(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		ttl  time.Duration
+		want time.Duration
+	}{
+		{name: "configured ttl", ttl: 15 * time.Minute, want: 15 * time.Minute},
+		{name: "long ttl", ttl: 72 * time.Hour, want: 72 * time.Hour},
+		{name: "zero falls back to default", ttl: 0, want: config.DefaultAuthTokenTTL},
+		{name: "negative falls back to default", ttl: -time.Minute, want: config.DefaultAuthTokenTTL},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			h := NewAuthHandler(nil, pgDialect{}, AuthConfig{JWTKey: testAuthJWTKey, TokenTTL: tc.ttl})
+			token, err := h.token(auth.User{Username: "jwt-user"})
+			require.NoError(t, err)
+
+			parsed, err := jwt.ParseSigned(token, []jose.SignatureAlgorithm{jose.HS256})
+			require.NoError(t, err)
+			var claims auth.Claims
+			require.NoError(t, parsed.Claims([]byte(testAuthJWTKey), &claims))
+			require.NotNil(t, claims.NotBefore)
+			require.NotNil(t, claims.Expiry)
+			require.Equal(t, tc.want, claims.Expiry.Time().Sub(claims.NotBefore.Time()))
+		})
+	}
 }
 
 func TestAuthHandler_tokenWrapsSerializeError(t *testing.T) {

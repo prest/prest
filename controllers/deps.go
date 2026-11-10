@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"time"
+
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/cache"
 	"github.com/prest/prest/v2/config"
@@ -21,6 +23,9 @@ type AuthConfig struct {
 	Username string
 	Password string
 	Encrypt  string
+	// TokenTTL is how long tokens issued by Login stay valid; zero means
+	// config.DefaultAuthTokenTTL.
+	TokenTTL time.Duration
 }
 
 // Deps bundles dependencies for HTTP handlers.
@@ -94,6 +99,7 @@ func NewDepsFromConfig(p *config.Prest) Deps {
 			Username: p.AuthUsername,
 			Password: p.AuthPassword,
 			Encrypt:  p.AuthEncrypt,
+			TokenTTL: p.AuthTokenTTL,
 		},
 	}
 }

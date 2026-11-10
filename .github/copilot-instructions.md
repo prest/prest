@@ -323,6 +323,7 @@ Wrong or partial configuration must **not** block API startup. Log `slog.Warn`, 
 - Invalid `access.tables`, `access.users`, `pluginmiddlewarelist`, `cache.endpoints`: warn and use empty slices.
 - Queries or cache storage path unavailable: warn, retry default path, disable feature if both fail.
 - Auth enabled without `jwt.key`, or `jwt.default` enabled without verification material: warn and disable the feature (`jwt.default` defaults to `false`).
+- Invalid `auth.token_ttl` (unparsable or under 1s): `Load` returns `ErrInvalidAuthTokenTTL`. Falling back to the 6h default could issue tokens that live longer than configured.
 
 ## Performance and Reliability
 
