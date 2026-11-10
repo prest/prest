@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/prest/prest/v2/adapters"
+	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/controllers/auth"
 	"github.com/prest/prest/v2/internal/logsafe"
 	"golang.org/x/crypto/bcrypt"
@@ -109,8 +110,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) token(u auth.User) (t string, err error) {
+	ttl := h.cfg.TokenTTL
+	if ttl <= 0 {
+		ttl = config.DefaultAuthTokenTTL
+	}
 	getToken := time.Now()
-	expireToken := time.Now().Add(time.Hour * 6)
+	expireToken := getToken.Add(ttl)
 
 	sig, err := jose.NewSigner(
 		jose.SigningKey{

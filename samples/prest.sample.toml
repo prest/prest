@@ -164,6 +164,9 @@ metadata = ["first_name", "last_name"]
 # Where credentials are read from on login: request body, basic auth header,
 # etc.
 type = "body"
+# How long a token issued by /auth stays valid: a duration ("30m", "12h") or
+# a number of seconds. A value that is invalid or under 1s stops startup.
+token_ttl = "6h"
 
 
 # ------------------------------------------------------------------------

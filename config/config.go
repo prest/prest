@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/cache"
@@ -94,6 +95,7 @@ type Prest struct {
 	AuthEncrypt          string
 	AuthMetadata         []string
 	AuthType             string
+	AuthTokenTTL         time.Duration
 	HTTPHost             string // HTTPHost Declare which http address the PREST used
 	HTTPPort             int    // HTTPPort Declare which http port the PREST used
 	HTTPTimeout          int
@@ -286,15 +288,17 @@ func getPrestConfFile(prestConf string) string {
 // Parse pREST config. Invalid or missing config files log warnings and fall
 // back to viper defaults and environment overrides; structured keys that fail
 // to unmarshal use zero values. A mysql URL that cannot be parsed, including
-// a non-numeric or overflowing port, returns an error. Other config content
-// does not fail startup.
+// a non-numeric or overflowing port, and an invalid auth.token_ttl return an
+// error. Other config content does not fail startup.
 func Parse(v *viper.Viper, cfg *Prest, configPath string) error {
 	if err := v.ReadInConfig(); err != nil {
 		slog.Warn("config file unavailable, falling back to default settings", "file", configPath, "err", err)
 		cfg.PGSSLMode = "disable"
 	}
 
-	parseAuthConfig(v, cfg)
+	if err := parseAuthConfig(v, cfg); err != nil {
+		return err
+	}
 	parseHTTPConfig(v, cfg)
 	portFromEnv(cfg)
 	if err := parseDBConfig(v, cfg); err != nil {
