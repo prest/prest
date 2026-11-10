@@ -320,6 +320,7 @@ Wrong or partial configuration must **not** block API startup. Log `slog.Warn`, 
 **Parse / Load behavior**
 
 - Missing, unreadable, or malformed TOML: warn and use viper defaults + `PREST_*` env overrides.
+- `PREST_CONFIG_JSON` / `PREST_CONFIG_JSON_B64` that is not a JSON object, over 1 MiB, or puts a value where a table belongs (or the reverse): fail `Load()`. Infra keys in it (`http`, `https`, `engine`, `pg`, `mysql`, `databases`, `queries.location`): warn and ignore.
 - Invalid `access.tables`, `access.users`, `pluginmiddlewarelist`, `cache.endpoints`: warn and use empty slices.
 - Queries or cache storage path unavailable: warn, retry default path, disable feature if both fail.
 - Auth enabled without `jwt.key`, or `jwt.default` enabled without verification material: warn and disable the feature (`jwt.default` defaults to `false`).

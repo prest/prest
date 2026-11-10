@@ -43,6 +43,13 @@ spec:
             # Or use DATABASE_URL (Postgres), or PREST_DB_URL (MySQL):
             # - name: DATABASE_URL
             #   value: postgres://username:password@hostname:port/dbname
+            # Application config (auth, ACL, queries, ...) without a mounted prest.toml:
+            # prestd config export-json -f prest.toml > config.json
+            # - name: PREST_CONFIG_JSON
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: prest-app-config
+            #       key: config.json
             - name: PREST_DEBUG
               value: "true"
             - name: PREST_JWT_DEFAULT
