@@ -1,6 +1,8 @@
 package middlewares
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -23,9 +25,9 @@ func TestRenderTable(t *testing.T) {
 		},
 		{
 			desc:    "values keep their exact bytes",
-			body:    `[{"big":12345678901234567890,"price":1.50,"data":{"b":[1,2],"a":null},"tags":["x","y"],"html":"<b>&</b>"}]`,
-			rows:    `{"metadata":["big","price","data","tags","html"],"rows":[[12345678901234567890,1.50,{"b":[1,2],"a":null},["x","y"],"<b>&</b>"]]}`,
-			columns: `{"metadata":["big","price","data","tags","html"],"columns":[[12345678901234567890],[1.50],[{"b":[1,2],"a":null}],[["x","y"]],["<b>&</b>"]]}`,
+			body:    `[{"big":12345678901234567890,"price":1.50,"data":{"b": [1, 2], "a": null},"tags":["x","y"],"html":"<b>&</b>","<k>":"\u00e9"}]`,
+			rows:    `{"metadata":["big","price","data","tags","html","<k>"],"rows":[[12345678901234567890,1.50,{"b": [1, 2], "a": null},["x","y"],"<b>&</b>","\u00e9"]]}`,
+			columns: `{"metadata":["big","price","data","tags","html","<k>"],"columns":[[12345678901234567890],[1.50],[{"b": [1, 2], "a": null}],[["x","y"]],["<b>&</b>"],["\u00e9"]]}`,
 		},
 		{
 			desc:    "a column missing from some rows is null there",
@@ -89,4 +91,19 @@ func TestRenderTable_NonTabularBodyUnchanged(t *testing.T) {
 			require.Equal(t, body, string(renderTable([]byte(body), true)))
 		})
 	}
+}
+
+func TestRenderTable_SparseBodyUnchanged(t *testing.T) {
+	t.Parallel()
+
+	// Every row brings a key of its own: as a table that is one column per
+	// row, so the output would grow with the square of the body.
+	rows := make([]string, 200)
+	for i := range rows {
+		rows[i] = fmt.Sprintf(`{"k%d":%d}`, i, i)
+	}
+	body := "[" + strings.Join(rows, ",") + "]"
+
+	require.Equal(t, body, string(renderTable([]byte(body), false)))
+	require.Equal(t, body, string(renderTable([]byte(body), true)))
 }

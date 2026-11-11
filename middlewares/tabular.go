@@ -32,18 +32,26 @@ type columnKey struct {
 	occurrence int
 }
 
-// table is a response body split into column names and per-row values. Each
-// value keeps its exact bytes (numbers, nested JSON); a nil value stands for a
-// column the row does not have and is encoded as null.
+// cell is one value of a row: the index of its column and the value's bytes
+// exactly as they appear in the response body (numbers, nested JSON,
+// whitespace).
+type cell struct {
+	column int
+	value  json.RawMessage
+}
+
+// table is a response body split into column names and rows. A row holds only
+// the cells it has; a column it does not have is written as null.
 type table struct {
 	columns []string
-	rows    [][]json.RawMessage
+	rows    [][]cell
 	index   map[columnKey]int
 }
 
 // renderTable reshapes body for the rows renderer, or with byColumn for the
-// columns renderer. A body that is not a row object or an array of row objects
-// is returned unchanged.
+// columns renderer. A body that is not a row object or an array of row
+// objects, or whose rows share too few columns to fill a table, is returned
+// unchanged.
 func renderTable(body []byte, byColumn bool) []byte {
 	t, err := parseTable(body)
 	if err != nil {
@@ -63,7 +71,7 @@ func renderTable(body []byte, byColumn bool) []byte {
 func parseTable(body []byte) (*table, error) {
 	t := &table{
 		columns: []string{},
-		rows:    [][]json.RawMessage{},
+		rows:    [][]cell{},
 		index:   map[columnKey]int{},
 	}
 	dec := json.NewDecoder(bytes.NewReader(body))
@@ -97,13 +105,21 @@ func parseTable(body []byte) (*table, error) {
 	if _, err = dec.Token(); err != io.EOF {
 		return nil, errNotTabular
 	}
+	// Both layouts write a value, null if missing, for every column of every
+	// row. Rows that each bring keys of their own would make that grow with
+	// the square of the body, so a table with more cells than the body has
+	// bytes is left as it is. Rows that share their columns, as query results
+	// do, always fit: every value takes several bytes of the body.
+	if len(t.columns)*len(t.rows) > len(body) {
+		return nil, errNotTabular
+	}
 	return t, nil
 }
 
 // readRow appends the object whose opening brace dec has just read as a row,
 // adding any column not seen before, and consumes its closing brace.
 func (t *table) readRow(dec *json.Decoder) error {
-	row := make([]json.RawMessage, len(t.columns))
+	row := make([]cell, 0, len(t.columns))
 	occurrences := map[string]int{}
 	for dec.More() {
 		tok, err := dec.Token()
@@ -126,10 +142,7 @@ func (t *table) readRow(dec *json.Decoder) error {
 			t.index[key] = i
 			t.columns = append(t.columns, name)
 		}
-		if i >= len(row) {
-			row = append(row, make([]json.RawMessage, i+1-len(row))...)
-		}
-		row[i] = value
+		row = append(row, cell{column: i, value: value})
 	}
 	if _, err := dec.Token(); err != nil { // closing }
 		return err
@@ -140,42 +153,92 @@ func (t *table) readRow(dec *json.Decoder) error {
 
 // encode writes the table as {"metadata": [...], "rows": [...]}, or with
 // byColumn as {"metadata": [...], "columns": [...]} holding one array of
-// values per column.
+// values per column. Values are copied from the body, not re-encoded.
 func (t *table) encode(byColumn bool) ([]byte, error) {
-	width := len(t.columns)
-	for i, row := range t.rows {
-		if len(row) < width {
-			t.rows[i] = append(row, make([]json.RawMessage, width-len(row))...)
-		}
-	}
-
-	var payload any
-	if byColumn {
-		columns := make([][]json.RawMessage, width)
-		for c := range columns {
-			columns[c] = make([]json.RawMessage, len(t.rows))
-			for r, row := range t.rows {
-				columns[c][r] = row[c]
-			}
-		}
-		payload = struct {
-			Metadata []string            `json:"metadata"`
-			Columns  [][]json.RawMessage `json:"columns"`
-		}{t.columns, columns}
-	} else {
-		payload = struct {
-			Metadata []string            `json:"metadata"`
-			Rows     [][]json.RawMessage `json:"rows"`
-		}{t.columns, t.rows}
+	var names bytes.Buffer
+	enc := json.NewEncoder(&names)
+	// Keep <, > and & in column names as they are, as the values and the
+	// default JSON renderer do.
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(t.columns); err != nil {
+		return nil, err
 	}
 
 	var out bytes.Buffer
-	enc := json.NewEncoder(&out)
-	// Keep string values byte-for-byte as the database returned them, as the
-	// default JSON renderer does, instead of escaping <, > and &.
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(payload); err != nil {
-		return nil, err
+	out.WriteString(`{"metadata":`)
+	out.Write(bytes.TrimSuffix(names.Bytes(), []byte("\n")))
+	if byColumn {
+		out.WriteString(`,"columns":`)
+		t.writeColumns(&out)
+	} else {
+		out.WriteString(`,"rows":`)
+		t.writeRows(&out)
 	}
-	return bytes.TrimSuffix(out.Bytes(), []byte("\n")), nil
+	out.WriteByte('}')
+	return out.Bytes(), nil
+}
+
+// writeRows writes one array per row with a value for every column.
+func (t *table) writeRows(out *bytes.Buffer) {
+	values := make([]json.RawMessage, len(t.columns))
+	out.WriteByte('[')
+	for r, row := range t.rows {
+		clear(values)
+		for _, c := range row {
+			values[c.column] = c.value
+		}
+		if r > 0 {
+			out.WriteByte(',')
+		}
+		out.WriteByte('[')
+		for i, value := range values {
+			if i > 0 {
+				out.WriteByte(',')
+			}
+			writeValue(out, value)
+		}
+		out.WriteByte(']')
+	}
+	out.WriteByte(']')
+}
+
+// writeColumns writes one array per column with a value for every row.
+func (t *table) writeColumns(out *bytes.Buffer) {
+	// The cells of each column in row order, with the row index in place of
+	// the column index.
+	columns := make([][]cell, len(t.columns))
+	for r, row := range t.rows {
+		for _, c := range row {
+			columns[c.column] = append(columns[c.column], cell{column: r, value: c.value})
+		}
+	}
+	out.WriteByte('[')
+	for i, cells := range columns {
+		if i > 0 {
+			out.WriteByte(',')
+		}
+		out.WriteByte('[')
+		for r := range t.rows {
+			if r > 0 {
+				out.WriteByte(',')
+			}
+			if len(cells) > 0 && cells[0].column == r {
+				writeValue(out, cells[0].value)
+				cells = cells[1:]
+			} else {
+				writeValue(out, nil)
+			}
+		}
+		out.WriteByte(']')
+	}
+	out.WriteByte(']')
+}
+
+// writeValue writes value, or null for a column the row does not have.
+func writeValue(out *bytes.Buffer, value json.RawMessage) {
+	if value == nil {
+		out.WriteString("null")
+		return
+	}
+	out.Write(value)
 }
