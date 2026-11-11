@@ -38,10 +38,15 @@ func connectUserCreator(cfg *config.Prest) (userCreator, error) {
 	return controllers.NewAuthHandler(deps.Executor, deps.Dialect, deps.Auth), nil
 }
 
-var authCmd = &cobra.Command{
-	Use:   "auth",
-	Short: "Manage the users of the auth endpoint",
-	Long:  "Manage the users that log in through the /auth endpoint",
+// newAuthCmd builds the `auth` command group with its subcommands.
+func newAuthCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "auth",
+		Short: "Manage the users of the auth endpoint",
+		Long:  "Manage the users that log in through the /auth endpoint",
+	}
+	cmd.AddCommand(newAuthCreateUserCmd(connectUserCreator))
+	return cmd
 }
 
 // newAuthCreateUserCmd builds `auth create-user`, which stores the user

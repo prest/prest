@@ -58,6 +58,7 @@ func TestAuthTokenTTL(t *testing.T) {
 // when they are not set, and the mixed-case username is stored in lower case
 // the way /auth looks it up.
 func TestAuthCreateUser(t *testing.T) {
+	authURL := helpers.AuthServerURL(t)
 	cfg := helpers.LoadTestConfig(t)
 	deps := controllers.NewDepsFromConfig(cfg)
 	h := controllers.NewAuthHandler(deps.Executor, deps.Dialect, deps.Auth)
@@ -73,7 +74,9 @@ func TestAuthCreateUser(t *testing.T) {
 	require.Equal(t, strings.ToLower(username), user.Username)
 	require.NotZero(t, user.ID)
 
-	token := helpers.LoginToken(t, helpers.AuthServerURL(t), user.Username, "s3cret!")
+	// POST /auth on the auth-enabled service with the new credentials must
+	// return a token: the stored hash is what login checks against.
+	token := helpers.LoginToken(t, authURL, user.Username, "s3cret!")
 	require.NotEmpty(t, token)
 
 	_, err = h.CreateUser(ctx, controllers.NewUser{Username: username, Password: "other"})

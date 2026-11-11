@@ -59,10 +59,9 @@ func Execute(ctx context.Context, cfg *config.Prest) {
 	migrateCmd.AddCommand(redoCmd)
 	migrateCmd.AddCommand(upCmd)
 	migrateCmd.AddCommand(resetCmd)
-	authCmd.AddCommand(newAuthCreateUserCmd(connectUserCreator))
 	RootCmd.AddCommand(versionCmd)
 	RootCmd.AddCommand(migrateCmd)
-	RootCmd.AddCommand(authCmd)
+	RootCmd.AddCommand(newAuthCmd())
 	migrateCmd.PersistentFlags().StringVar(&path, "path", cfg.MigrationsPath, "Migrations directory")
 
 	RootCmd.SetContext(withConfig(ctx, cfg))
