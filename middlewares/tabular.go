@@ -119,7 +119,15 @@ func parseTable(body []byte) (*table, error) {
 // readRow appends the object whose opening brace dec has just read as a row,
 // adding any column not seen before, and consumes its closing brace.
 func (t *table) readRow(dec *json.Decoder) error {
-	row := make([]cell, 0, len(t.columns))
+	// Size the row like the one before it: query results share their columns,
+	// and sizing it by the columns seen so far would let rows that each bring
+	// keys of their own allocate the square of the body before the check in
+	// parseTable runs.
+	size := 0
+	if n := len(t.rows); n > 0 {
+		size = len(t.rows[n-1])
+	}
+	row := make([]cell, 0, size)
 	occurrences := map[string]int{}
 	for dec.More() {
 		tok, err := dec.Token()

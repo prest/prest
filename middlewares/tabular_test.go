@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -106,4 +107,24 @@ func TestRenderTable_SparseBodyUnchanged(t *testing.T) {
 
 	require.Equal(t, body, string(renderTable([]byte(body), false)))
 	require.Equal(t, body, string(renderTable([]byte(body), true)))
+}
+
+// Not parallel, so no other test allocates while the memory is measured.
+func TestParseTable_SparseBodyAllocatesLinearly(t *testing.T) {
+	// Every row brings a key of its own. Sizing each row by the columns seen so
+	// far would allocate about rows*rows/2 cells (over 100 MB here) before the
+	// table is rejected.
+	rows := make([]string, 3000)
+	for i := range rows {
+		rows[i] = fmt.Sprintf(`{"k%d":%d}`, i, i)
+	}
+	body := []byte("[" + strings.Join(rows, ",") + "]")
+
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	_, err := parseTable(body)
+	runtime.ReadMemStats(&after)
+
+	require.ErrorIs(t, err, errNotTabular)
+	require.Less(t, after.TotalAlloc-before.TotalAlloc, uint64(16<<20))
 }
