@@ -86,7 +86,7 @@ func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, fo
 		// Only a successful response is row data; an error keeps its
 		// {"error": ...} body so clients handle it the same way for every
 		// renderer.
-		byt = renderTable(byt, format)
+		byt = renderTable(byt, format == columnsRenderer)
 	}
 	switch format {
 	case "xml":

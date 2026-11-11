@@ -60,8 +60,8 @@ func TestRenderTable(t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, tc.rows, string(renderTable([]byte(tc.body), rowsRenderer)))
-			require.Equal(t, tc.columns, string(renderTable([]byte(tc.body), columnsRenderer)))
+			require.Equal(t, tc.rows, string(renderTable([]byte(tc.body), false)))
+			require.Equal(t, tc.columns, string(renderTable([]byte(tc.body), true)))
 		})
 	}
 }
@@ -85,8 +85,8 @@ func TestRenderTable_NonTabularBodyUnchanged(t *testing.T) {
 	} {
 		t.Run(body, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, body, string(renderTable([]byte(body), rowsRenderer)))
-			require.Equal(t, body, string(renderTable([]byte(body), columnsRenderer)))
+			require.Equal(t, body, string(renderTable([]byte(body), false)))
+			require.Equal(t, body, string(renderTable([]byte(body), true)))
 		})
 	}
 }

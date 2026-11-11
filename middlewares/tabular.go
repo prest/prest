@@ -41,14 +41,15 @@ type table struct {
 	index   map[columnKey]int
 }
 
-// renderTable reshapes body for the rows or columns renderer. A body that is
-// not a row object or an array of row objects is returned unchanged.
-func renderTable(body []byte, format string) []byte {
+// renderTable reshapes body for the rows renderer, or with byColumn for the
+// columns renderer. A body that is not a row object or an array of row objects
+// is returned unchanged.
+func renderTable(body []byte, byColumn bool) []byte {
 	t, err := parseTable(body)
 	if err != nil {
 		return body
 	}
-	out, err := t.encode(format == columnsRenderer)
+	out, err := t.encode(byColumn)
 	if err != nil {
 		return body
 	}
