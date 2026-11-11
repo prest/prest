@@ -148,6 +148,50 @@ func TestHandlerSet_XMLRenderer(t *testing.T) {
 	require.Contains(t, rec.Body.String(), "prest")
 }
 
+func TestHandlerSet_RowsAndColumnsRenderers(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		renderer string
+		want     string
+	}{
+		{"rows", `{"metadata":["name","age"],"rows":[["joao",20],["maria",19]]}`},
+		{"columns", `{"metadata":["name","age"],"columns":[["joao","maria"],[20,19]]}`},
+	} {
+		t.Run(tc.renderer, func(t *testing.T) {
+			t.Parallel()
+
+			req := httptest.NewRequest(http.MethodGet, "/?_renderer="+tc.renderer, nil)
+			rec := httptest.NewRecorder()
+
+			HandlerSet().ServeHTTP(rec, req, func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`[{"name":"joao","age":20},{"name":"maria","age":19}]`))
+			})
+
+			require.Equal(t, http.StatusOK, rec.Code)
+			require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+			require.Equal(t, tc.want, rec.Body.String())
+		})
+	}
+}
+
+func TestHandlerSet_RowsRendererKeepsErrorBody(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequest(http.MethodGet, "/?_renderer=rows", nil)
+	rec := httptest.NewRecorder()
+
+	HandlerSet().ServeHTTP(rec, req, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"invalid column"}`))
+	})
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+	require.JSONEq(t, `{"error":"invalid column"}`, rec.Body.String())
+}
+
 func TestSetTimeoutToContext(t *testing.T) {
 	t.Parallel()
 
