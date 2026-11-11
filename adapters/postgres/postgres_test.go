@@ -3814,6 +3814,78 @@ func TestDelete_ReturningByteColumn(t *testing.T) {
 	require.JSONEq(t, `[{"name":"alice"}]`, string(sc.Bytes()))
 }
 
+// A RETURNING statement that fails when it runs (a constraint violation, a
+// filter value of the wrong type) must come back as an error. The error used
+// to be dropped and the nil *sql.Rows dereferenced, so the request panicked.
+func TestDelete_ReturningQueryError(t *testing.T) {
+	t.Parallel()
+
+	adapter, mock := withSQLMock(t)
+	sql := `DELETE FROM "test"."public"."users" WHERE "id"=$1 RETURNING "id"`
+	queryErr := errors.New(`invalid input syntax for type integer: "abc"`)
+	mock.ExpectPrepare(`DELETE FROM`).
+		ExpectQuery().
+		WithArgs("abc").
+		WillReturnError(queryErr)
+
+	sc := adapter.Delete(sql, "abc")
+	require.ErrorIs(t, sc.Err(), queryErr)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestUpdate_ReturningQueryError(t *testing.T) {
+	t.Parallel()
+
+	adapter, mock := withSQLMock(t)
+	sql := `UPDATE "test"."public"."users" SET "name"=$1 WHERE "id"=$2 RETURNING *`
+	queryErr := errors.New(`duplicate key value violates unique constraint "users_name_key"`)
+	mock.ExpectPrepare(`UPDATE "test"."public"."users"`).
+		ExpectQuery().
+		WithArgs("alice", 2).
+		WillReturnError(queryErr)
+
+	sc := adapter.UpdateCtx(context.Background(), sql, "alice", 2)
+	require.ErrorIs(t, sc.Err(), queryErr)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// An error raised while the returned rows are read, such as a constraint
+// violation on a later row of a multi-row UPDATE, must not be answered with
+// the rows read before it as if the statement had succeeded.
+func TestUpdate_ReturningRowError(t *testing.T) {
+	t.Parallel()
+
+	adapter, mock := withSQLMock(t)
+	sql := `UPDATE "test"."public"."users" SET "name"=$1 RETURNING "id"`
+	rowErr := errors.New(`duplicate key value violates unique constraint "users_name_key"`)
+	mock.ExpectPrepare(`UPDATE "test"."public"."users"`).
+		ExpectQuery().
+		WithArgs("alice").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1).AddRow(2).RowError(1, rowErr)).
+		RowsWillBeClosed()
+
+	sc := adapter.Update(sql, "alice")
+	require.ErrorIs(t, sc.Err(), rowErr)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestDelete_ReturningRows(t *testing.T) {
+	t.Parallel()
+
+	adapter, mock := withSQLMock(t)
+	sql := `DELETE FROM "test"."public"."users" WHERE "id"=$1 RETURNING "id", "name"`
+	mock.ExpectPrepare(`DELETE FROM`).
+		ExpectQuery().
+		WithArgs(1).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(1, "alice")).
+		RowsWillBeClosed()
+
+	sc := adapter.DeleteCtx(context.Background(), sql, 1)
+	require.NoError(t, sc.Err())
+	require.JSONEq(t, `[{"id":1,"name":"alice"}]`, string(sc.Bytes()))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestDbFromCtx_AddDatabaseToPoolFailure(t *testing.T) {
 	adapter := withFailingDBConnect(t, "pool add failed")
 	ctx := context.WithValue(context.Background(), pctx.DBNameKey, "missing-db")
