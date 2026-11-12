@@ -1,8 +1,6 @@
 package controllers_test
 
 import (
-	"encoding/json"
-	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -14,20 +12,17 @@ import (
 
 const sessionTimezonePath = "/_QUERIES/timezone/session"
 
+// getSessionTimezone runs the session probe script once on base and returns
+// the session TimeZone and the fixed instant 2024-01-01T12:00:00Z as rendered
+// in that zone; it fails the test unless the response is 200 with one row.
 func getSessionTimezone(t *testing.T, base string) (string, string) {
 	t.Helper()
-	testutils.DoRequest(t, base+sessionTimezonePath, nil, "GET", http.StatusOK, "ExecuteScriptQuery")
-	resp, err := http.Get(base + sessionTimezonePath)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-	raw, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
 	var rows []struct {
 		Timezone string `json:"timezone"`
 		TS       string `json:"ts"`
 	}
-	require.NoError(t, json.Unmarshal(raw, &rows), string(raw))
-	require.Len(t, rows, 1, string(raw))
+	testutils.DoRequestJSON(t, base+sessionTimezonePath, nil, "GET", http.StatusOK, "ExecuteScriptQuery", &rows)
+	require.Len(t, rows, 1)
 	return rows[0].Timezone, rows[0].TS
 }
 
