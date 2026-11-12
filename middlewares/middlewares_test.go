@@ -22,6 +22,7 @@ import (
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/negroni/v3"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // testJWTHS256Key meets go-jose/v4's RFC 7518 minimum (32 bytes) for HS256.
@@ -190,6 +191,57 @@ func TestHandlerSet_RowsRendererKeepsErrorBody(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 	require.JSONEq(t, `{"error":"invalid column"}`, rec.Body.String())
+}
+
+func TestHandlerSet_MsgpackRenderer(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		desc   string
+		status int
+		body   string
+		want   string // the msgpack body, decoded and written as JSON
+	}{
+		{"rows", http.StatusOK, `[{"name":"joao","age":20}]`, `[{"name":"joao","age":20}]`},
+		{"error already JSON", http.StatusBadRequest, `{"error":"invalid column"}`, `{"error":"invalid column"}`},
+		{"plain-text error", http.StatusNotFound, "table not found\n", `{"error":"table not found"}`},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			t.Parallel()
+
+			req := httptest.NewRequest(http.MethodGet, "/?_renderer=msgpack", nil)
+			rec := httptest.NewRecorder()
+
+			HandlerSet().ServeHTTP(rec, req, func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tc.status)
+				w.Write([]byte(tc.body))
+			})
+
+			require.Equal(t, tc.status, rec.Code)
+			require.Equal(t, "application/vnd.msgpack", rec.Header().Get("Content-Type"))
+			var got any
+			require.NoError(t, msgpack.Unmarshal(rec.Body.Bytes(), &got))
+			gotJSON, err := json.Marshal(got)
+			require.NoError(t, err)
+			require.JSONEq(t, tc.want, string(gotJSON))
+		})
+	}
+}
+
+func TestHandlerSet_MsgpackRendererKeepsNonJSONBody(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequest(http.MethodGet, "/?_renderer=msgpack", nil)
+	rec := httptest.NewRecorder()
+
+	HandlerSet().ServeHTTP(rec, req, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("not json"))
+	})
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+	require.Equal(t, "not json", rec.Body.String())
 }
 
 func TestSetTimeoutToContext(t *testing.T) {
