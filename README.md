@@ -56,6 +56,8 @@ export PREST_DB_URL='mysql://user:pass@localhost:3306/mydb'
 
 A missing user or database fails startup. Postgres defaults (user `postgres`, database `prest`, port 5432) are not copied onto a MySQL engine. Guide: [MySQL](https://docs.prestd.com/databases/mysql).
 
+Set `PREST_PG_TIMEZONE` (IANA name, e.g. `America/Sao_Paulo`) to choose the PostgreSQL session TimeZone; see [`samples/prest.sample.toml`](samples/prest.sample.toml). Postgres and TimescaleDB only; MySQL ignores it.
+
 See [Configuring pREST](https://docs.prestd.com/get-started/configuring-prest) for auth, ACL, custom queries, and MCP.
 
 ## Serving several databases
