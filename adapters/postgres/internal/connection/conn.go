@@ -401,18 +401,26 @@ func (m *Manager) AddDatabaseToPool(name string) (*sqlx.DB, error) {
 // connect opens uri. When the server rejects its session timezone (its tzdata
 // lacks a zone Go accepted), it warns and reconnects once without the zone, so
 // the database keeps the server default instead of failing every request. The
-// probe ping of sqlx.Connect makes this decision once per pool.
+// probe ping of sqlx.Connect makes this decision once per pool. Errors name the
+// database and the failed attempt, wrap the driver error, and omit the DSN.
 func (m *Manager) connect(name, uri string) (*sqlx.DB, error) {
 	DB, err := dbConnect(m.driverName, uri)
-	if err == nil || !isTimezoneRejected(err) {
-		return DB, err
+	if err == nil {
+		return DB, nil
+	}
+	if !isTimezoneRejected(err) {
+		return nil, fmt.Errorf("connect database %q: %w", name, err)
 	}
 	fallback := withoutTimezone(uri)
 	if fallback == uri {
-		return nil, err
+		return nil, fmt.Errorf("connect database %q: %w", name, err)
 	}
 	slog.Warn("postgres rejected session timezone, using server default", "database", name, "error", err)
-	return dbConnect(m.driverName, fallback)
+	DB, err = dbConnect(m.driverName, fallback)
+	if err != nil {
+		return nil, fmt.Errorf("connect database %q without session timezone: %w", name, err)
+	}
+	return DB, nil
 }
 
 // isTimezoneRejected reports whether err is the server refusing the TimeZone

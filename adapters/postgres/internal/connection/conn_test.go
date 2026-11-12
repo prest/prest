@@ -1253,3 +1253,44 @@ func TestAddDatabaseToPool_NoRetryForOtherErrors(t *testing.T) {
 		})
 	}
 }
+
+// Connect errors name the database and the failed attempt, keep the driver
+// error reachable via errors.Is/As, and never leak the DSN (password, host).
+func TestAddDatabaseToPool_WrapsConnectErrors(t *testing.T) {
+	cfg := &config.Prest{PGDatabase: "testdb", PGHost: "dbhost", PGUser: "u",
+		PGPass: "secret", PGSSLMode: "disable", PGTimezone: "Europe/Kyiv"}
+
+	t.Run("initial attempt", func(t *testing.T) {
+		authErr := &pq.Error{Severity: "FATAL", Code: "28P01", Message: "password authentication failed"}
+		origConnect := dbConnect
+		dbConnect = func(string, string) (*sqlx.DB, error) { return nil, authErr }
+		t.Cleanup(func() { dbConnect = origConnect })
+
+		_, err := NewManager(cfg).AddDatabaseToPool("testdb")
+		require.ErrorIs(t, err, authErr)
+		require.Contains(t, err.Error(), `"testdb"`)
+		require.NotContains(t, err.Error(), "without session timezone")
+		require.NotContains(t, err.Error(), "secret")
+		require.NotContains(t, err.Error(), "dbhost")
+	})
+
+	t.Run("retry without timezone", func(t *testing.T) {
+		tzErr := &pq.Error{Severity: "FATAL", Code: "22023", Message: `invalid value for parameter "TimeZone": "X"`}
+		retryErr := errors.New("dial tcp: connection refused")
+		origConnect := dbConnect
+		dbConnect = func(_, dsn string) (*sqlx.DB, error) {
+			if strings.Contains(dsn, "timezone=") {
+				return nil, tzErr
+			}
+			return nil, retryErr
+		}
+		t.Cleanup(func() { dbConnect = origConnect })
+
+		_, err := NewManager(cfg).AddDatabaseToPool("testdb")
+		require.ErrorIs(t, err, retryErr)
+		require.Contains(t, err.Error(), `"testdb"`)
+		require.Contains(t, err.Error(), "without session timezone")
+		require.NotContains(t, err.Error(), "secret")
+		require.NotContains(t, err.Error(), "dbhost")
+	})
+}
