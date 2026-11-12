@@ -60,6 +60,7 @@ func parseDBConfig(v *viper.Viper, cfg *Prest) error {
 	cfg.PGSSLKey = configuredString(v, "pg.ssl.key")
 	cfg.PGSSLCert = configuredString(v, "pg.ssl.cert")
 	cfg.PGSSLRootCert = configuredString(v, "pg.ssl.rootcert")
+	cfg.PGTimezone, _ = validTimezone("pg.timezone", "", configuredString(v, "pg.timezone"))
 
 	if os.Getenv("DATABASE_URL") != "" {
 		// cloud factor support: https://devcenter.heroku.com/changelog-items/438
@@ -145,4 +146,5 @@ func parseDatabaseURL(cfg *Prest) {
 	if u.Query().Get("sslmode") != "" {
 		cfg.PGSSLMode = u.Query().Get("sslmode")
 	}
+	applyURLTimezone(&cfg.PGTimezone, "pg.url timezone", "", u.Query())
 }
