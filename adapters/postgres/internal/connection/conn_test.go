@@ -1,7 +1,10 @@
 package connection
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"strings"
 	"sync"
@@ -11,6 +14,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/config"
 	"github.com/stretchr/testify/require"
@@ -1135,4 +1139,117 @@ func TestManager_Get_passesTimezoneToConnector(t *testing.T) {
 	require.Equal(t, "postgres://u@h/b?timezone=UTC", dsns[1])
 	require.Contains(t, dsns[2], "dbname=legacydb")
 	require.Contains(t, dsns[2], " timezone=UTC")
+}
+
+// rejectTimezoneConnect fakes a Postgres server whose tzdata lacks the
+// configured zone: any DSN carrying timezone= fails with the server's FATAL
+// 22023 (optionally wrapped, as an instrumented driver may do), any other DSN
+// connects. It records every DSN it was given.
+func rejectTimezoneConnect(t *testing.T, dsns *[]string, wrap bool) {
+	t.Helper()
+	origConnect := dbConnect
+	dbConnect = func(_, dsn string) (*sqlx.DB, error) {
+		*dsns = append(*dsns, dsn)
+		if strings.Contains(dsn, "timezone=") {
+			var err error = &pq.Error{Severity: "FATAL", Code: "22023",
+				Message: `invalid value for parameter "TimeZone": "Europe/Kyiv"`}
+			if wrap {
+				err = fmt.Errorf("otel: %w", err)
+			}
+			return nil, err
+		}
+		mockDB, _, err := sqlmock.New()
+		if err != nil {
+			return nil, err
+		}
+		return sqlx.NewDb(mockDB, "sqlmock"), nil
+	}
+	t.Cleanup(func() { dbConnect = origConnect })
+}
+
+// captureLogs routes slog to a buffer for the test and returns it.
+func captureLogs(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var buf bytes.Buffer
+	orig := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(orig) })
+	return &buf
+}
+
+// The server rejects a zone Go accepted (older server tzdata): the pool
+// reconnects once without the timezone parameter, keeps the other DSN params,
+// warns naming the database, and later lookups reuse that pool.
+func TestAddDatabaseToPool_RetriesWithoutRejectedTimezone(t *testing.T) {
+	kv := &config.Prest{PGDatabase: "testdb", PGHost: "localhost", PGPort: 5432,
+		PGUser: "u", PGPass: "secret", PGSSLMode: "disable", PGTimezone: "Europe/Kyiv"}
+	byURL := &config.Prest{PGTimezone: "Europe/Kyiv", Databases: []config.DatabaseConf{
+		{Alias: "tenant", URL: "postgres://u:secret@localhost:5432/testdb?sslmode=disable"}}}
+	cases := []struct {
+		name string
+		cfg  *config.Prest
+		db   string
+		wrap bool
+	}{
+		{"key/value DSN", kv, "testdb", false},
+		{"URL DSN", byURL, "tenant", false},
+		{"wrapped driver error", kv, "testdb", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			logs := captureLogs(t)
+			var dsns []string
+			rejectTimezoneConnect(t, &dsns, tc.wrap)
+			m := NewManager(tc.cfg)
+
+			db, err := m.AddDatabaseToPool(tc.db)
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = db.Close() })
+
+			require.Len(t, dsns, 2)
+			require.Contains(t, dsns[0], "timezone=Europe")
+			require.NotContains(t, dsns[1], "timezone")
+			require.Contains(t, dsns[1], "sslmode=disable")
+			require.Contains(t, logs.String(), "level=WARN")
+			require.Contains(t, logs.String(), "database="+tc.db)
+
+			again, err := m.AddDatabaseToPool(tc.db)
+			require.NoError(t, err)
+			require.Same(t, db, again)
+			require.Len(t, dsns, 2)
+		})
+	}
+}
+
+// Only the server's TimeZone rejection triggers the retry: other connect
+// errors, and a TimeZone error on a DSN without a zone, are returned as-is.
+func TestAddDatabaseToPool_NoRetryForOtherErrors(t *testing.T) {
+	authErr := &pq.Error{Severity: "FATAL", Code: "28P01", Message: "password authentication failed"}
+	tzErr := &pq.Error{Severity: "FATAL", Code: "22023", Message: `invalid value for parameter "TimeZone": "X"`}
+	cases := []struct {
+		name string
+		tz   string
+		err  error
+	}{
+		{"auth failure with zone", "Europe/Kyiv", authErr},
+		{"wrapped auth failure", "Europe/Kyiv", fmt.Errorf("otel: %w", authErr)},
+		{"plain error", "Europe/Kyiv", errors.New("dial tcp: connection refused")},
+		{"TimeZone error without zone", "", tzErr},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			calls := 0
+			origConnect := dbConnect
+			dbConnect = func(string, string) (*sqlx.DB, error) {
+				calls++
+				return nil, tc.err
+			}
+			t.Cleanup(func() { dbConnect = origConnect })
+			m := NewManager(&config.Prest{PGDatabase: "testdb", PGHost: "localhost", PGTimezone: tc.tz})
+
+			_, err := m.AddDatabaseToPool("testdb")
+			require.ErrorIs(t, err, tc.err)
+			require.Equal(t, 1, calls)
+		})
+	}
 }

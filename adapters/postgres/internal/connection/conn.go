@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/lib/pq"
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/internal/logsafe"
@@ -364,7 +365,7 @@ func (m *Manager) AddDatabaseToPool(name string) (*sqlx.DB, error) {
 			return nil, errTooManyPools
 		}
 
-		DB, err := dbConnect(m.driverName, uri)
+		DB, err := m.connect(name, uri)
 		if err != nil {
 			return nil, err
 		}
@@ -395,6 +396,45 @@ func (m *Manager) AddDatabaseToPool(name string) (*sqlx.DB, error) {
 		return nil, errors.New("unexpected connection pool result")
 	}
 	return DB, nil
+}
+
+// connect opens uri. When the server rejects its session timezone (its tzdata
+// lacks a zone Go accepted), it warns and reconnects once without the zone, so
+// the database keeps the server default instead of failing every request. The
+// probe ping of sqlx.Connect makes this decision once per pool.
+func (m *Manager) connect(name, uri string) (*sqlx.DB, error) {
+	DB, err := dbConnect(m.driverName, uri)
+	if err == nil || !isTimezoneRejected(err) {
+		return DB, err
+	}
+	fallback := withoutTimezone(uri)
+	if fallback == uri {
+		return nil, err
+	}
+	slog.Warn("postgres rejected session timezone, using server default", "database", name, "error", err)
+	return dbConnect(m.driverName, fallback)
+}
+
+// isTimezoneRejected reports whether err is the server refusing the TimeZone
+// startup parameter (SQLSTATE 22023 invalid_parameter_value).
+func isTimezoneRejected(err error) bool {
+	var pqErr *pq.Error
+	return errors.As(err, &pqErr) && pqErr.Code == "22023" &&
+		strings.Contains(strings.ToLower(pqErr.Message), `"timezone"`)
+}
+
+// withoutTimezone drops the session timezone that GetURI/BuildURI added: every
+// timezone pair of a URL DSN, or the trailing " timezone=<zone>" of a
+// key/value DSN (validated zones contain no spaces).
+func withoutTimezone(dsn string) string {
+	if stripped := urlWithTimezone(dsn, ""); stripped != dsn {
+		return stripped
+	}
+	i := strings.LastIndex(dsn, " "+timezoneParam+"=")
+	if i < 0 || strings.Contains(dsn[i+1:], " ") {
+		return dsn
+	}
+	return dsn[:i]
 }
 
 // MustGet get postgres connection
