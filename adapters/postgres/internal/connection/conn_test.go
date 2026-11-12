@@ -2,6 +2,8 @@ package connection
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -874,4 +876,263 @@ func TestManager_RegisteredAliases(t *testing.T) {
 
 		require.Equal(t, []string{"first", "second", "third"}, aliases)
 	})
+}
+
+// The configured session zone travels as the lib/pq `timezone` startup
+// parameter in key/value DSNs; the entry value wins over the global default.
+func TestBuildURI_Timezone(t *testing.T) {
+	t.Parallel()
+
+	base := "user=u dbname=db host=h port=5432 sslmode=disable connect_timeout=10"
+	tests := []struct {
+		name     string
+		conf     config.DatabaseConf
+		defaults *config.Prest
+		want     string
+	}{
+		{
+			name:     "entry timezone",
+			conf:     config.DatabaseConf{Host: "h", Port: 5432, User: "u", Database: "db", Timezone: "America/Sao_Paulo"},
+			defaults: &config.Prest{PGSSLMode: "disable", PGConnTimeout: 10},
+			want:     base + " timezone=America/Sao_Paulo",
+		},
+		{
+			name:     "falls back to default timezone",
+			conf:     config.DatabaseConf{Host: "h", Port: 5432, User: "u", Database: "db"},
+			defaults: &config.Prest{PGSSLMode: "disable", PGConnTimeout: 10, PGTimezone: "America/Sao_Paulo"},
+			want:     base + " timezone=America/Sao_Paulo",
+		},
+		{
+			name:     "entry wins over default",
+			conf:     config.DatabaseConf{Host: "h", Port: 5432, User: "u", Database: "db", Timezone: "America/Sao_Paulo"},
+			defaults: &config.Prest{PGSSLMode: "disable", PGConnTimeout: 10, PGTimezone: "UTC"},
+			want:     base + " timezone=America/Sao_Paulo",
+		},
+		{
+			name: "timezone follows password and ssl keys",
+			conf: config.DatabaseConf{
+				Host: "h", Port: 5432, User: "u", Pass: "pw", Database: "db", Timezone: "UTC",
+				SSL: config.DatabaseSSLConf{RootCert: "/r"},
+			},
+			defaults: &config.Prest{PGSSLMode: "disable", PGConnTimeout: 10},
+			want:     base + " password=pw sslrootcert=/r timezone=UTC",
+		},
+		{
+			name:     "unset timezone emits no key",
+			conf:     config.DatabaseConf{Host: "h", Port: 5432, User: "u", Database: "db"},
+			defaults: &config.Prest{PGSSLMode: "disable", PGConnTimeout: 10},
+			want:     base,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.want, BuildURI(tt.conf, tt.defaults))
+		})
+	}
+}
+
+// URL DSNs get any user-supplied timezone key (any case) replaced by the
+// configured zone; everything else in the URL, including an escaped
+// password, survives. Without a zone or a timezone key the input is untouched.
+func TestBuildURI_URLTimezone(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		url      string
+		entryTZ  string
+		globalTZ string
+		want     string
+	}{
+		{
+			name:    "adds configured zone",
+			url:     "postgres://user:p%40ss@localhost:5432/db?sslmode=disable&connect_timeout=5",
+			entryTZ: "America/Sao_Paulo",
+			want:    "postgres://user:p%40ss@localhost:5432/db?sslmode=disable&connect_timeout=5&timezone=America%2FSao_Paulo",
+		},
+		{
+			name:    "other pairs kept byte-for-byte in their order",
+			url:     "postgres://u@h/db?application_name=my%20app&TimeZone=Foo&b=1&a=2",
+			entryTZ: "UTC",
+			want:    "postgres://u@h/db?application_name=my%20app&b=1&a=2&timezone=UTC",
+		},
+		{
+			name:     "default zone used when entry is empty",
+			url:      "postgresql://user:p%40ss@localhost/db",
+			globalTZ: "America/Sao_Paulo",
+			want:     "postgresql://user:p%40ss@localhost/db?timezone=America%2FSao_Paulo",
+		},
+		{
+			name: "strips user timezone when no zone configured",
+			url:  "postgres://user:p%40ss@localhost/db?TimeZone=Foo/Bar&sslmode=require",
+			want: "postgres://user:p%40ss@localhost/db?sslmode=require",
+		},
+		{
+			name:     "replaces every user timezone key with exactly one configured",
+			url:      "postgres://u@h/db?timezone=Foo&TIMEZONE=Bar&TimeZone=Baz&connect_timeout=3",
+			entryTZ:  "America/Sao_Paulo",
+			globalTZ: "UTC",
+			want:     "postgres://u@h/db?connect_timeout=3&timezone=America%2FSao_Paulo",
+		},
+		{
+			name:    "scheme match is case-insensitive",
+			url:     "POSTGRES://u@h/db",
+			entryTZ: "UTC",
+			want:    "postgres://u@h/db?timezone=UTC",
+		},
+		{
+			name: "unset zone and no timezone key returns exact input",
+			url:  "postgres://user:p%21ss@localhost/db?sslmode=disable&b=1&a=2",
+			want: "postgres://user:p%21ss@localhost/db?sslmode=disable&b=1&a=2",
+		},
+		{
+			name:    "non-postgres scheme returned verbatim",
+			url:     "mysql://u@h/db?timezone=Foo",
+			entryTZ: "UTC",
+			want:    "mysql://u@h/db?timezone=Foo",
+		},
+		{
+			name:    "key/value string in URL field returned verbatim",
+			url:     "host=h user=u dbname=db",
+			entryTZ: "UTC",
+			want:    "host=h user=u dbname=db",
+		},
+		{
+			name:    "unparsable URL returned verbatim",
+			url:     "postgres://u@h:bad port/db",
+			entryTZ: "UTC",
+			want:    "postgres://u@h:bad port/db",
+		},
+		// A malformed query pair must not let a raw timezone key slip through:
+		// lib/pq drops only the bad pair and would still apply the rest.
+		{
+			name: "malformed query: user timezone stripped when no zone configured",
+			url:  "postgres://u:p@h/db?a=%zz&TimeZone=Foo/Bar",
+			want: "postgres://u:p@h/db?a=%zz",
+		},
+		{
+			name:    "malformed query: user timezone replaced by configured zone",
+			url:     "postgres://u:p@h/db?a=%zz&TimeZone=Foo/Bar&sslmode=disable",
+			entryTZ: "America/Sao_Paulo",
+			want:    "postgres://u:p@h/db?a=%zz&sslmode=disable&timezone=America%2FSao_Paulo",
+		},
+		{
+			name: "malformed query: escaped timezone key stripped",
+			url:  "postgres://u@h/db?%74ime%5Aone=Foo&a=%zz&TIMEZONE=Bar",
+			want: "postgres://u@h/db?a=%zz",
+		},
+		{
+			name:    "malformed query: invalid timezone value replaced",
+			url:     "postgres://u@h/db?timezone=%zz",
+			entryTZ: "UTC",
+			want:    "postgres://u@h/db?timezone=UTC",
+		},
+		{
+			name:     "malformed query alone gets the configured zone appended",
+			url:      "postgres://u@h/db?a=%zz&sslmode=disable",
+			globalTZ: "UTC",
+			want:     "postgres://u@h/db?a=%zz&sslmode=disable&timezone=UTC",
+		},
+		{
+			name: "malformed query alone with zone unset returned unchanged",
+			url:  "postgres://u@h/db?a=%zz&sslmode=disable",
+			want: "postgres://u@h/db?a=%zz&sslmode=disable",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			conf := config.DatabaseConf{URL: tt.url, Timezone: tt.entryTZ}
+			defaults := &config.Prest{PGTimezone: tt.globalTZ}
+			got := BuildURI(conf, defaults)
+			require.Equal(t, tt.want, got)
+			requireOnlyConfiguredTimezone(t, got, tt.entryTZ, tt.globalTZ)
+		})
+	}
+}
+
+// requireOnlyConfiguredTimezone parses a rewritten postgres URL the way lib/pq
+// does (url.Parse + Query) and requires that the only session timezone it
+// would send is the configured one, or none when no zone is configured.
+func requireOnlyConfiguredTimezone(t *testing.T, dsn, entryTZ, globalTZ string) {
+	t.Helper()
+	u, err := url.Parse(dsn)
+	if err != nil || (u.Scheme != "postgres" && u.Scheme != "postgresql") {
+		return
+	}
+	tz := entryTZ
+	if tz == "" {
+		tz = globalTZ
+	}
+	var got []string
+	for key, vals := range u.Query() {
+		if strings.EqualFold(key, "timezone") {
+			got = append(got, vals...)
+		}
+	}
+	if tz == "" {
+		require.Empty(t, got, dsn)
+		return
+	}
+	require.Equal(t, []string{tz}, got, dsn)
+}
+
+// The legacy single-database DSN carries the global zone only when it is set.
+func TestGetURI_Timezone(t *testing.T) {
+	t.Parallel()
+
+	cfg := &config.Prest{
+		PGDatabase: "testdb", PGHost: "localhost", PGPort: 5432, PGUser: "u",
+		PGPass: "secret", PGSSLMode: "disable", PGConnTimeout: 10,
+		PGSSLRootCert: "/r", PGTimezone: "America/Sao_Paulo",
+	}
+	require.Equal(t,
+		"user=u dbname=testdb host=localhost port=5432 sslmode=disable connect_timeout=10 password=secret sslrootcert=/r timezone=America/Sao_Paulo",
+		NewManager(cfg).GetURI(""))
+
+	require.NotContains(t, testManager(t).GetURI(""), "timezone")
+}
+
+// Manager.Get hands the connector a DSN that carries the configured zone, for
+// both a registry alias and the legacy database.
+func TestManager_Get_passesTimezoneToConnector(t *testing.T) {
+	var (
+		mu   sync.Mutex
+		dsns []string
+	)
+	origConnect := dbConnect
+	dbConnect = func(_, dataSourceName string) (*sqlx.DB, error) {
+		mu.Lock()
+		dsns = append(dsns, dataSourceName)
+		mu.Unlock()
+		mockDB, _, err := sqlmock.New()
+		if err != nil {
+			return nil, err
+		}
+		return sqlx.NewDb(mockDB, "sqlmock"), nil
+	}
+	t.Cleanup(func() { dbConnect = origConnect })
+
+	m := NewManager(&config.Prest{
+		PGDatabase: "legacydb", PGHost: "localhost", PGPort: 5432, PGUser: "u",
+		PGSSLMode: "disable", PGTimezone: "UTC",
+		Databases: []config.DatabaseConf{
+			{Alias: "tenant-a", Host: "h", Database: "a", Timezone: "America/Sao_Paulo"},
+			{Alias: "tenant-b", URL: "postgres://u@h/b?TimeZone=Foo"},
+		},
+	})
+	t.Cleanup(m.CloseAllAndResetPool)
+
+	for _, name := range []string{"tenant-a", "tenant-b", "legacydb"} {
+		m.SetDatabase(name)
+		_, err := m.Get()
+		require.NoError(t, err)
+	}
+
+	require.Len(t, dsns, 3)
+	require.Contains(t, dsns[0], " timezone=America/Sao_Paulo")
+	require.Equal(t, "postgres://u@h/b?timezone=UTC", dsns[1])
+	require.Contains(t, dsns[2], "dbname=legacydb")
+	require.Contains(t, dsns[2], " timezone=UTC")
 }

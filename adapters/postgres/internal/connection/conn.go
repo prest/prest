@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
+	"strings"
 	"sync"
 
 	"github.com/prest/prest/v2/adapters"
@@ -127,13 +129,20 @@ func (m *Manager) GetURI(name string) string {
 	if m.cfg.PGSSLRootCert != "" {
 		dbURI += " sslrootcert=" + m.cfg.PGSSLRootCert
 	}
+	if m.cfg.PGTimezone != "" {
+		dbURI += " timezone=" + m.cfg.PGTimezone
+	}
 	return dbURI
 }
 
 // BuildURI builds a postgres connection URI from a database profile.
 func BuildURI(conf config.DatabaseConf, defaults *config.Prest) string {
+	tz := conf.Timezone
+	if tz == "" {
+		tz = defaults.PGTimezone
+	}
 	if conf.URL != "" {
-		return conf.URL
+		return urlWithTimezone(conf.URL, tz)
 	}
 
 	dbName := conf.Database
@@ -179,7 +188,76 @@ func BuildURI(conf config.DatabaseConf, defaults *config.Prest) string {
 	if conf.SSL.RootCert != "" {
 		dbURI += " sslrootcert=" + conf.SSL.RootCert
 	}
+	if tz != "" {
+		dbURI += " timezone=" + tz
+	}
 	return dbURI
+}
+
+// timezoneParam is the lib/pq startup parameter that sets the session TimeZone.
+const timezoneParam = "timezone"
+
+// urlWithTimezone makes the configured zone the only session timezone of a
+// postgres URL DSN: every timezone query pair (any case, raw or %-escaped key)
+// is dropped, the other pairs are kept byte-for-byte, and tz, when set, is
+// appended. A URL that does not parse, is not postgres/postgresql, or needs no
+// change is returned verbatim.
+func urlWithTimezone(raw, tz string) string {
+	u, err := url.Parse(raw)
+	if err != nil || !isPostgresScheme(u.Scheme) {
+		return raw
+	}
+	rawQuery, removed := stripTimezonePairs(u.RawQuery)
+	if !removed && tz == "" {
+		return raw
+	}
+	u.RawQuery = appendTimezone(rawQuery, tz)
+	return u.String()
+}
+
+// isPostgresScheme reports whether a URL scheme selects lib/pq.
+func isPostgresScheme(scheme string) bool {
+	return strings.EqualFold(scheme, "postgres") || strings.EqualFold(scheme, "postgresql")
+}
+
+// stripTimezonePairs drops every "&"-separated pair of a raw query whose key
+// is timezone, keeping the other pairs byte-for-byte, malformed ones included
+// (lib/pq skips only those and applies the rest). It reports whether a pair
+// was dropped.
+func stripTimezonePairs(rawQuery string) (string, bool) {
+	pairs := strings.Split(rawQuery, "&")
+	kept := pairs[:0]
+	removed := false
+	for _, pair := range pairs {
+		key, _, _ := strings.Cut(pair, "=")
+		if isTimezoneKey(key) {
+			removed = true
+			continue
+		}
+		kept = append(kept, pair)
+	}
+	return strings.Join(kept, "&"), removed
+}
+
+// isTimezoneKey reports whether a raw query key, as written or unescaped,
+// names the timezone parameter in any case.
+func isTimezoneKey(key string) bool {
+	if strings.EqualFold(key, timezoneParam) {
+		return true
+	}
+	unescaped, err := url.QueryUnescape(key)
+	return err == nil && strings.EqualFold(unescaped, timezoneParam)
+}
+
+// appendTimezone adds timezone=<tz> to a raw query; an empty tz adds nothing.
+func appendTimezone(rawQuery, tz string) string {
+	if tz == "" {
+		return rawQuery
+	}
+	if rawQuery != "" {
+		rawQuery += "&"
+	}
+	return rawQuery + timezoneParam + "=" + url.QueryEscape(tz)
 }
 
 // Get gets a Postgres connection adding it to the pool if needed
