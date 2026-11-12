@@ -2,7 +2,9 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -809,4 +811,163 @@ func Test_fillPoolDefaults(t *testing.T) {
 	nilCfg := &DatabaseConf{}
 	fillPoolDefaults(nilCfg, nil)
 	require.Zero(t, nilCfg.MaxOpenConn)
+}
+
+func registryTOML(t *testing.T, body string) *viper.Viper {
+	t.Helper()
+	v := viper.New()
+	v.SetConfigType("toml")
+	require.NoError(t, v.ReadConfig(strings.NewReader(body)))
+	return v
+}
+
+func unsetRegistryEnv(t *testing.T) {
+	t.Helper()
+	for i := 1; i <= 3; i++ {
+		unsetEnvForTest(t, fmt.Sprintf("DATABASE_ALIAS_%d", i))
+		unsetEnvForTest(t, fmt.Sprintf("DATABASE_URL_%d", i))
+		unsetEnvForTest(t, fmt.Sprintf("PREST_DATABASE_ALIAS_%d", i))
+		unsetEnvForTest(t, fmt.Sprintf("PREST_DATABASE_URL_%d", i))
+	}
+}
+
+func timezonesByAlias(cfg *Prest) map[string]string {
+	out := make(map[string]string, len(cfg.Databases))
+	for _, db := range cfg.Databases {
+		out[db.Alias] = db.Timezone
+	}
+	return out
+}
+
+// TOML entries: entry URL > entry timezone > global pg.timezone > unset. An
+// invalid value at any level falls through to the next one.
+func TestParseDatabaseRegistry_TimezoneTOMLPrecedence(t *testing.T) {
+	unsetRegistryEnv(t)
+	buf := captureSlog(t)
+	v := registryTOML(t, `
+[[databases]]
+alias = "inherits"
+database = "a"
+
+[[databases]]
+alias = "own"
+database = "b"
+timezone = "Asia/Tokyo"
+
+[[databases]]
+alias = "badown"
+database = "c"
+timezone = "UTC password=x"
+
+[[databases]]
+alias = "url"
+url = "postgres://u:p@h:5432/d?TimeZone=Etc/GMT%2B3"
+timezone = "Asia/Tokyo"
+
+[[databases]]
+alias = "badurl"
+url = "postgres://u:p@h:5432/d?timezone=Mars/Olympus"
+timezone = "Asia/Tokyo"
+
+[[databases]]
+alias = "my"
+engine = "mysql"
+user = "root"
+database = "shop"
+
+[[databases]]
+alias = "mybad"
+engine = "mysql"
+user = "root"
+database = "shop"
+timezone = "UTC'"
+
+[[databases]]
+alias = "myurl"
+url = "mysql://root:p@h:3306/shop?timezone=UTC"
+`)
+	cfg := &Prest{PGTimezone: "America/Sao_Paulo"}
+	parseDatabaseRegistry(v, cfg)
+	require.Equal(t, map[string]string{
+		"inherits": "America/Sao_Paulo",
+		"own":      "Asia/Tokyo",
+		"badown":   "America/Sao_Paulo",
+		"url":      "Etc/GMT+3",
+		"badurl":   "Asia/Tokyo",
+		"my":       "",
+		"mybad":    "",
+		"myurl":    "",
+	}, timezonesByAlias(cfg))
+
+	logged := buf.String()
+	require.Contains(t, logged, `key=databases.timezone alias=badown`)
+	require.Contains(t, logged, `key="databases.url timezone" alias=badurl`)
+	require.Contains(t, logged, `key=databases.timezone alias=mybad`)
+	require.Contains(t, logged, `value="UTC password=x"`, "logged value is quoted")
+}
+
+// With no global zone an entry without its own stays unset (server default).
+func TestParseDatabaseRegistry_TimezoneUnset(t *testing.T) {
+	unsetRegistryEnv(t)
+	v := registryTOML(t, "[[databases]]\nalias = \"a\"\ndatabase = \"a\"\n")
+	t.Setenv("DATABASE_ALIAS_1", "env")
+	t.Setenv("DATABASE_URL_1", "postgres://u:p@h:5432/e")
+	cfg := &Prest{}
+	parseDatabaseRegistry(v, cfg)
+	require.Equal(t, map[string]string{"a": "", "env": ""}, timezonesByAlias(cfg))
+}
+
+// Env entries: URL timezone wins; otherwise the global zone is inherited; a
+// mysql:// entry is never filled.
+func TestParseDatabaseRegistry_TimezoneEnvEntries(t *testing.T) {
+	unsetRegistryEnv(t)
+	buf := captureSlog(t)
+	t.Setenv("DATABASE_ALIAS_1", "inherits")
+	t.Setenv("DATABASE_URL_1", "postgres://u:p@h:5432/a")
+	t.Setenv("DATABASE_ALIAS_2", "url")
+	t.Setenv("DATABASE_URL_2", "postgres://u:p@h:5432/b?timezone=Asia/Tokyo")
+	t.Setenv("DATABASE_ALIAS_3", "my")
+	t.Setenv("DATABASE_URL_3", "mysql://root:p@h:3306/shop")
+	cfg := &Prest{PGTimezone: "UTC"}
+	parseDatabaseRegistry(viper.New(), cfg)
+	require.Equal(t, map[string]string{
+		"inherits": "UTC",
+		"url":      "Asia/Tokyo",
+		"my":       "",
+	}, timezonesByAlias(cfg))
+	require.NotContains(t, buf.String(), tzWarn)
+}
+
+// An invalid env URL timezone warns and the entry keeps the global zone.
+func TestParseDatabaseRegistry_TimezoneEnvInvalidURL(t *testing.T) {
+	unsetRegistryEnv(t)
+	buf := captureSlog(t)
+	t.Setenv("DATABASE_ALIAS_1", "bad")
+	t.Setenv("DATABASE_URL_1", "postgres://u:p@h:5432/a?timezone=UTC%27")
+	cfg := &Prest{PGTimezone: "UTC"}
+	parseDatabaseRegistry(viper.New(), cfg)
+	require.Equal(t, map[string]string{"bad": "UTC"}, timezonesByAlias(cfg))
+	require.Contains(t, buf.String(), `key="databases.url timezone" alias=bad`)
+}
+
+// fillTimezoneDefault: nil cfg is safe, and a mysql entry keeps no zone even
+// when one was set by hand.
+func Test_fillTimezoneDefault(t *testing.T) {
+	db := &DatabaseConf{Alias: "a"}
+	fillTimezoneDefault(db, nil)
+	require.Empty(t, db.Timezone)
+
+	db = &DatabaseConf{Alias: "a", Timezone: " Asia/Tokyo "}
+	fillTimezoneDefault(db, &Prest{PGTimezone: "UTC"})
+	require.Equal(t, "Asia/Tokyo", db.Timezone)
+
+	my := &DatabaseConf{Alias: "m", Engine: "mysql"}
+	fillTimezoneDefault(my, &Prest{PGTimezone: "UTC"})
+	require.Empty(t, my.Timezone)
+
+	// A hand-set zone on a mysql entry is validated (never inherited), so the
+	// struct only ever holds validated zones.
+	my = &DatabaseConf{Alias: "m", Engine: "mysql", Timezone: "UTC'"}
+	fillTimezoneDefault(my, &Prest{PGTimezone: "UTC"})
+	require.Empty(t, my.Timezone)
 }

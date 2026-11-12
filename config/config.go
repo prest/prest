@@ -110,6 +110,7 @@ type Prest struct {
 	PGSSLCert            string
 	PGSSLKey             string
 	PGSSLRootCert        string
+	PGTimezone           string // validated PostgreSQL session TimeZone; empty means the server default
 	ContextPath          string
 	PGMaxIdleConn        int
 	PGMaxOpenConn        int

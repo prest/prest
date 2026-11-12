@@ -86,7 +86,7 @@ services:
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3000/_health || exit 1"]
       interval: 5s
       timeout: 5s
-      retries: 30
+      retries: 60
       start_period: 90s
 
   prestd-multicluster:
@@ -111,7 +111,7 @@ services:
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3001/_health || exit 1"]
       interval: 5s
       timeout: 5s
-      retries: 30
+      retries: 60
       start_period: 90s
 
   prestd-auth:
@@ -137,7 +137,7 @@ services:
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3002/_health || exit 1"]
       interval: 5s
       timeout: 5s
-      retries: 30
+      retries: 60
       start_period: 90s
 
   prestd-cache:
@@ -161,7 +161,7 @@ services:
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3004/_health || exit 1"]
       interval: 5s
       timeout: 5s
-      retries: 30
+      retries: 60
       start_period: 90s
 
   prestd-queries:
@@ -186,7 +186,7 @@ services:
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3003/_health || exit 1"]
       interval: 5s
       timeout: 5s
-      retries: 30
+      retries: 60
       start_period: 90s
 
   prestd-samehost:
@@ -217,7 +217,33 @@ services:
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3005/_health || exit 1"]
       interval: 5s
       timeout: 5s
-      retries: 30
+      retries: 60
+      start_period: 90s
+
+  prestd-timezone:
+    <<: *prestd-service
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *prest-env
+      PREST_CONF: /workspace/testdata/prest.toml
+      PREST_DEBUG: "true"
+      PREST_JWT_DEFAULT: "false"
+      PREST_CACHE_ENABLED: "false"
+      PREST_ACCESS_RESTRICT: "false"
+      PREST_PG_ALLOWED_DATABASES: ""
+      PREST_PG_TIMEZONE: America/Sao_Paulo
+      PREST_HTTP_PORT: "3006"
+    command: >-
+      bash -lc "export PATH=/usr/local/go/bin:/go/bin:$$PATH && apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && go run ./cmd/prestd/main.go"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3006/_health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
       start_period: 90s
 
   tests:
@@ -235,6 +261,8 @@ services:
         condition: service_healthy
       prestd-samehost:
         condition: service_healthy
+      prestd-timezone:
+        condition: service_healthy
     environment:
       <<: *prest-env
       PREST_CONF: /workspace/testdata/prest.toml
@@ -244,5 +272,6 @@ services:
       PREST_AUTH_TEST_URL: http://prestd-auth:3002
       PREST_CACHE_TEST_URL: http://prestd-cache:3004
       PREST_QUERIES_TEST_URL: http://prestd-queries:3003
+      PREST_TIMEZONE_TEST_URL: http://prestd-timezone:3006
     command: >-
       bash -lc "apt-get update && apt-get install -y --no-install-recommends postgresql-client git ca-certificates && bash -x ./testdata/runtest.sh ./integration/suites/... ./integration/postgres/..."

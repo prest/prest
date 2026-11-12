@@ -33,6 +33,7 @@ type DatabaseConf struct {
 	Pass        string          `mapstructure:"pass"`
 	Database    string          `mapstructure:"database"`
 	SSL         DatabaseSSLConf `mapstructure:"ssl"`
+	Timezone    string          `mapstructure:"timezone"` // validated PostgreSQL session TimeZone for this entry; empty means the server default
 	MaxOpenConn int             `mapstructure:"maxopenconn"`
 	MaxIdleConn int             `mapstructure:"maxidleconn"`
 }
@@ -48,7 +49,9 @@ func parseDatabaseRegistry(v *viper.Viper, cfg *Prest) {
 	merged := make(map[string]DatabaseConf)
 
 	for _, db := range parseDatabaseRegistryFromEnv() {
-		// Pool limits only: the URL stays authoritative for host and credentials.
+		// Pool limits and timezone only: the URL stays authoritative for host
+		// and credentials.
+		fillTimezoneDefault(&db, cfg)
 		fillPoolDefaults(&db, cfg)
 		addDatabaseConf(merged, db)
 	}
@@ -220,6 +223,7 @@ func applyURLToDatabaseConf(db *DatabaseConf) {
 	if mode := u.Query().Get("sslmode"); mode != "" {
 		db.SSL.Mode = mode
 	}
+	applyURLTimezone(&db.Timezone, "databases.url timezone", db.Alias, u.Query())
 }
 
 func applyMySQLURL(db *DatabaseConf, u *url.URL) {
@@ -254,6 +258,8 @@ func applyMySQLURL(db *DatabaseConf, u *url.URL) {
 }
 
 func fillDatabaseDefaults(db *DatabaseConf, cfg *Prest) {
+	// Validates the entry zone on every engine; inherits only for Postgres.
+	fillTimezoneDefault(db, cfg)
 	if EffectiveEngine(db, cfg) == EngineMySQL {
 		fillMySQLDatabaseDefaults(db, cfg)
 		return

@@ -91,6 +91,10 @@ conntimeout = 10 # seconds
 allowed_databases = []
 # Enables query result caching against this database (see [cache] below).
 cache = true
+# Session TimeZone for each connection (affects timestamptz output and now()). IANA name, e.g. America/Sao_Paulo; empty = server default.
+# Env: PREST_PG_TIMEZONE (PREST_DB_TIMEZONE wins). A ?timezone= on the connection URL overrides this.
+# Invalid values are logged and ignored. MySQL ignores it.
+# timezone = "America/Sao_Paulo"
 
 # TLS for the connection to PostgreSQL itself. This is unrelated to [https]
 # above, which is about pREST's own HTTP listener.
@@ -125,6 +129,7 @@ mode = "disable" # disable | require | verify-ca | verify-full
 # url = "postgres://user:pass@localhost:5432/app_db?sslmode=disable"
 # maxopenconn = 10
 # maxidleconn = 0
+# timezone = "UTC"  # overrides [pg] timezone for this alias
 #
 #   [databases.ssl]
 #   mode = "disable"

@@ -59,3 +59,5 @@ studio/dist/
 integration-test.log
 .integration-status*
 dev/signoz/common/clickhouse/user_scripts/histogramQuantile
+
+.loops/

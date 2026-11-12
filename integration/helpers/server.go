@@ -42,6 +42,13 @@ func QueriesServerURL(t *testing.T) string {
 	return envURL(t, "PREST_QUERIES_TEST_URL")
 }
 
+// TimezoneServerURL returns the base URL for the prestd service started with
+// PREST_PG_TIMEZONE=America/Sao_Paulo.
+func TimezoneServerURL(t *testing.T) string {
+	t.Helper()
+	return envURL(t, "PREST_TIMEZONE_TEST_URL")
+}
+
 // RegistryServerURL returns the base URL for the prestd service configured with
 // a [[databases]] registry (MySQL: testdata/prest_mysql_registry.toml).
 func RegistryServerURL(t *testing.T) string {
