@@ -286,7 +286,7 @@ func (m *Manager) AddDatabaseToPool(name string) (*sqlx.DB, error) {
 			return nil, errTooManyPools
 		}
 
-		DB, err := dbConnect(m.driverName, uri)
+		DB, err := dbConnect(m.driverName, appendApplicationName(uri, m.cfg.PGApplicationName))
 		if err != nil {
 			return nil, err
 		}
