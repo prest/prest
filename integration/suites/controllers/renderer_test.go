@@ -1,12 +1,15 @@
 package controllers_test
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 	"testing"
 
 	"github.com/prest/prest/v2/integration/helpers"
 	"github.com/prest/prest/v2/integration/testutils"
 	"github.com/stretchr/testify/require"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type rowsResponse struct {
@@ -76,4 +79,62 @@ func TestRowsRendererResponseShapes(t *testing.T) {
 	// An error is not tabular data: the usual {"error": ...} body comes back.
 	testutils.DoRequest(t, base+"/prest-test/public/test_group_by_table?_select=nope&_renderer=rows", nil, http.MethodGet, http.StatusBadRequest, "RenderRowsError",
 		`"error"`)
+}
+
+// getResponse sends a GET request and returns the status, the media type and
+// the body of the response.
+func getResponse(t *testing.T, url string) (status int, contentType, body string) {
+	t.Helper()
+	resp, err := http.Get(url)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	byt, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	return resp.StatusCode, resp.Header.Get("Content-Type"), string(byt)
+}
+
+// msgpackAsJSON decodes a msgpack body and writes it back as JSON, so it can
+// be compared with what the default renderer returns.
+func msgpackAsJSON(t *testing.T, body string) string {
+	t.Helper()
+	var decoded any
+	require.NoError(t, msgpack.Unmarshal([]byte(body), &decoded))
+	asJSON, err := json.Marshal(decoded)
+	require.NoError(t, err)
+	return string(asJSON)
+}
+
+// TestMsgpackRenderer: _renderer=msgpack returns the same data as the default
+// renderer, encoded as MessagePack, for every kind of response a read returns.
+func TestMsgpackRenderer(t *testing.T) {
+	base := helpers.ServerURL(t)
+
+	for _, tc := range []struct {
+		description string
+		query       string
+		status      int
+	}{
+		{"rows of a table", "test_group_by_table?_select=id,name,age&_order=id", http.StatusOK},
+		{"nested jsonb values", "test_jsonb_bug?_order=id", http.StatusOK},
+		{"array values", "testarray?_select=id,data", http.StatusOK},
+		{"fractional numbers", "test_group_by_table?_select=age,avg:salary&_groupby=age&_order=age", http.StatusOK},
+		{"an aggregate is a single row", "test_group_by_table?_count=*", http.StatusOK},
+		{"an empty table is an empty array", "test_empty_table?_select=id", http.StatusOK},
+		{"an error keeps its {\"error\": ...} body", "test_group_by_table?_select=nope", http.StatusBadRequest},
+	} {
+		t.Run(tc.description, func(t *testing.T) {
+			url := base + "/prest-test/public/" + tc.query
+
+			// The default renderer is the reference.
+			status, _, want := getResponse(t, url)
+			require.Equal(t, tc.status, status)
+
+			// The msgpack renderer: same status, the msgpack media type, and a
+			// body that decodes to the same values.
+			status, contentType, body := getResponse(t, url+"&_renderer=msgpack")
+			require.Equal(t, tc.status, status)
+			require.Equal(t, "application/vnd.msgpack", contentType)
+			require.JSONEq(t, want, msgpackAsJSON(t, body))
+		})
+	}
 }
