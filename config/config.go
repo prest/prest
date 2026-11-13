@@ -156,16 +156,19 @@ type Prest struct {
 const defaultCfgFile = "./prest.toml"
 
 // Load reads pREST configuration from the TOML file named by PREST_CONF, or
-// ./prest.toml when that variable is unset. Environment variables with the
-// PREST_ prefix override file values (keys use underscores instead of dots).
+// ./prest.toml when that variable is unset. Application config in
+// PREST_CONFIG_JSON (or PREST_CONFIG_JSON_B64) is merged over the file, and
+// environment variables with the PREST_ prefix override both (keys use
+// underscores instead of dots). See applyConfigJSON for the merge rules.
 //
 // It populates a Prest via Parse, ensures the queries directory when possible,
 // and when cache is enabled ensures the cache storage directory exists.
 // On success it configures cfg.Logger and the process-wide default logger via
 // setupLogger (level debug, overridable with PREST_LOG_LEVEL).
 //
-// Parse logs warnings and falls back to viper defaults when the config file
-// is missing, unreadable, malformed, or contains invalid structured keys.
+// A missing, unreadable, or malformed config file logs a warning and falls
+// back to viper defaults; so do invalid structured keys. A PREST_CONFIG_JSON
+// document that cannot be decoded returns an error.
 // Load never returns an error for queries or cache storage path issues: it
 // retries default paths and disables the feature when both configured and
 // fallback paths are unavailable. Unsafe JWT/auth settings (enabled without
@@ -176,6 +179,9 @@ const defaultCfgFile = "./prest.toml"
 // Returns the populated *Prest and nil on success.
 func Load() (*Prest, error) {
 	v, configPath := viperCfg()
+	if err := loadConfigJSONFromEnv(v); err != nil {
+		return nil, err
+	}
 	cfg := &Prest{}
 	if err := Parse(v, cfg, configPath); err != nil {
 		return nil, err
@@ -248,6 +254,10 @@ func viperCfg() (*viper.Viper, string) {
 	setCacheDefaults(v)
 	setQueriesDefaults(v)
 	setOtelDefaults(v)
+
+	if err := v.ReadInConfig(); err != nil {
+		slog.Warn("config file unavailable, falling back to default settings", "file", configPath, "err", err)
+	}
 	return v, configPath
 }
 
@@ -287,17 +297,12 @@ func getPrestConfFile(prestConf string) string {
 	return defaultCfgFile
 }
 
-// Parse pREST config. Invalid or missing config files log warnings and fall
-// back to viper defaults and environment overrides; structured keys that fail
-// to unmarshal use zero values. A mysql URL that cannot be parsed, including
-// a non-numeric or overflowing port, and an invalid auth.token_ttl return an
+// Parse pREST config from v, which viperCfg has already loaded from the
+// config file. Structured keys that fail to unmarshal use zero values. A
+// mysql URL that cannot be parsed, including a non-numeric or overflowing
+// port, and an invalid auth.token_ttl return an
 // error. Other config content does not fail startup.
 func Parse(v *viper.Viper, cfg *Prest, configPath string) error {
-	if err := v.ReadInConfig(); err != nil {
-		slog.Warn("config file unavailable, falling back to default settings", "file", configPath, "err", err)
-		cfg.PGSSLMode = "disable"
-	}
-
 	if err := parseAuthConfig(v, cfg); err != nil {
 		return err
 	}

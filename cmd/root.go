@@ -59,9 +59,11 @@ func Execute(ctx context.Context, cfg *config.Prest) {
 	migrateCmd.AddCommand(redoCmd)
 	migrateCmd.AddCommand(upCmd)
 	migrateCmd.AddCommand(resetCmd)
+	configCmd.AddCommand(configExportJSONCmd)
 	RootCmd.AddCommand(versionCmd)
 	RootCmd.AddCommand(migrateCmd)
 	RootCmd.AddCommand(newAuthCmd())
+	RootCmd.AddCommand(configCmd)
 	migrateCmd.PersistentFlags().StringVar(&path, "path", cfg.MigrationsPath, "Migrations directory")
 
 	RootCmd.SetContext(withConfig(ctx, cfg))

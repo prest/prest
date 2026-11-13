@@ -7,6 +7,14 @@
 #
 # None of the sections below are required: pREST runs with sane defaults
 # even if this file is missing entirely.
+#
+# Running without this file: the application sections can travel as one
+# JSON document in PREST_CONFIG_JSON (or base64 in PREST_CONFIG_JSON_B64),
+# merged over this file and overridden by PREST_* env vars. Convert a file
+# with `prestd config export-json -f prest.toml` (add --pretty to read it).
+# [http], [https], engine, [pg], [mysql], [[databases]] and
+# queries.location are never read from the JSON: set them with their env
+# vars. The export can hold secrets such as jwt.key; store it as a secret.
 
 version = 1
 
