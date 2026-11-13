@@ -1,9 +1,12 @@
 package controllers_test
 
 import (
+	"encoding/csv"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/prest/prest/v2/integration/helpers"
@@ -137,4 +140,78 @@ func TestMsgpackRenderer(t *testing.T) {
 			require.JSONEq(t, want, msgpackAsJSON(t, body))
 		})
 	}
+}
+
+// TestCSVRenderer: _renderer=csv returns the same rows as the default renderer
+// as CSV, with a header record of column names, as text/csv.
+func TestCSVRenderer(t *testing.T) {
+	base := helpers.ServerURL(t)
+	const path = "/prest-test/public/test_group_by_table?_select=id,name,age&_order=id"
+
+	// The default renderer is the reference: an array of row objects.
+	var objects []map[string]any
+	testutils.DoRequestJSON(t, base+path, nil, http.MethodGet, http.StatusOK, "RenderObjects", &objects)
+	require.NotEmpty(t, objects)
+
+	status, contentType, body := getResponse(t, base+path+"&_renderer=csv")
+	require.Equal(t, http.StatusOK, status)
+	require.Equal(t, "text/csv; charset=utf-8", contentType)
+
+	records, err := csv.NewReader(strings.NewReader(body)).ReadAll()
+	require.NoError(t, err)
+	require.Len(t, records, len(objects)+1)
+	header := records[0]
+	require.ElementsMatch(t, []string{"id", "name", "age"}, header)
+	for r, object := range objects {
+		for c, name := range header {
+			require.Equal(t, fmt.Sprint(object[name]), records[r+1][c], "row %d, column %s", r, name)
+		}
+	}
+}
+
+// TestCSVRendererResponseShapes: the csv renderer handles an aggregate, an
+// empty table and nested jsonb, and leaves error responses as JSON.
+func TestCSVRendererResponseShapes(t *testing.T) {
+	base := helpers.ServerURL(t)
+
+	// An aggregate is a single row with a single column.
+	status, contentType, body := getResponse(t, base+"/prest-test/public/test_group_by_table?_count=*&_renderer=csv")
+	require.Equal(t, http.StatusOK, status)
+	require.Equal(t, "text/csv; charset=utf-8", contentType)
+	records, err := csv.NewReader(strings.NewReader(body)).ReadAll()
+	require.NoError(t, err)
+	require.Len(t, records, 2)
+	require.Equal(t, []string{"count"}, records[0])
+
+	// A table with no rows has no columns to name: an empty file.
+	status, contentType, body = getResponse(t, base+"/prest-test/public/test_empty_table?_renderer=csv")
+	require.Equal(t, http.StatusOK, status)
+	require.Equal(t, "text/csv; charset=utf-8", contentType)
+	require.Empty(t, body)
+
+	// A jsonb value is written as its JSON text, which parses back to the
+	// value the default renderer returns.
+	var objects []map[string]any
+	testutils.DoRequestJSON(t, base+"/prest-test/public/test_jsonb_bug?_order=id", nil, http.MethodGet, http.StatusOK, "RenderJSONB", &objects)
+	require.NotEmpty(t, objects)
+	status, _, body = getResponse(t, base+"/prest-test/public/test_jsonb_bug?_order=id&_renderer=csv")
+	require.Equal(t, http.StatusOK, status)
+	records, err = csv.NewReader(strings.NewReader(body)).ReadAll()
+	require.NoError(t, err)
+	require.Len(t, records, len(objects)+1)
+	for c, name := range records[0] {
+		for r, object := range objects {
+			if nested, ok := object[name].(map[string]any); ok {
+				want, err := json.Marshal(nested)
+				require.NoError(t, err)
+				require.JSONEq(t, string(want), records[r+1][c], "row %d, column %s", r, name)
+			}
+		}
+	}
+
+	// An error is not tabular data: the usual {"error": ...} body comes back.
+	status, contentType, body = getResponse(t, base+"/prest-test/public/test_group_by_table?_select=nope&_renderer=csv")
+	require.Equal(t, http.StatusBadRequest, status)
+	require.Equal(t, "application/json", contentType)
+	require.Contains(t, body, `"error"`)
 }
