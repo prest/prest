@@ -385,6 +385,7 @@ func Test_Auth(t *testing.T) {
 	require.Equal(t, "username", cfg.AuthUsername)
 	require.Equal(t, "password", cfg.AuthPassword)
 	require.Equal(t, "bcrypt", cfg.AuthEncrypt)
+	require.Equal(t, DefaultAuthTokenTTL, cfg.AuthTokenTTL)
 
 	metadata := []string{"first_name", "last_name", "last_login"}
 	require.Equal(t, len(metadata), len(cfg.AuthMetadata))

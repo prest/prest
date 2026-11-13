@@ -76,6 +76,13 @@ INSERT INTO employee_badge (emp_id, badge) VALUES (1, 'badge-001'), (2, 'badge-0
 -- precision and numeric arrays.
 CREATE TABLE batch_defaults(id serial PRIMARY KEY, a text, b text DEFAULT 'dflt', c text NOT NULL DEFAULT 'req', big bigint, nums int[]);
 
+-- Filter values holding "$word." sequences must reach the database unchanged.
+CREATE TABLE where_operator_values(id serial PRIMARY KEY, name text);
+
+-- Writes with _returning whose statement fails in the database (unique and
+-- check violations, a filter value of the wrong type) must answer 400.
+CREATE TABLE returning_errors(id serial PRIMARY KEY, code text UNIQUE, qty int CHECK (qty >= 0));
+
 -- Write-field allowlist fixtures (GHSA-h25q-9rmj-646h). role is the privilege
 -- column a field-restricted caller must neither set nor see echoed back.
 -- write_fields_restricted: read+write limited to id, name.

@@ -9,7 +9,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
 	"reflect"
 	"regexp"
 	"slices"
@@ -71,6 +70,7 @@ var (
 	_ adapters.DatabasePinger           = (*postgres)(nil)
 	_ adapters.QueryRegistry            = (*postgres)(nil)
 	_ adapters.ScriptPermissionsChecker = (*postgres)(nil)
+	_ adapters.RequestColumnsLister     = (*postgres)(nil)
 )
 
 // New creates a Postgres adapter without connecting.
@@ -274,7 +274,10 @@ func (s *Stmt) PrepareContext(ctx context.Context, dbKey string, db *sqlx.DB, tx
 }
 
 func init() {
-	removeOperatorRegex = regexp.MustCompile(`\$[a-z]+.`)
+	// Anchored so only a leading $op token is an operator: the rest of the value
+	// is user data and may itself contain "$word." sequences. The separator is
+	// optional so value-less operators like $null match.
+	removeOperatorRegex = regexp.MustCompile(`^\$[a-z]+(?:[. ]|$)`)
 	insertTableNameRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.|-]*\.)*([\w|-]+)\s*\(`)
 	insertTableNameQuotesRegex = regexp.MustCompile(`(?i)INTO\s+([\w|\.|"|-]*\.)*"([\w|-]+)"\s*\(`)
 	groupRegex = regexp.MustCompile(`\"(.+?)\"`)
@@ -597,6 +600,10 @@ func (adapter *postgres) whereKeyAndValue(rawKey, v string, pid *int) (key strin
 				key = fmt.Sprintf(`%s = %s ($%d)`, jsonLeft, op, *pid)
 				values = append(values, formatters.FormatArray(strings.Split(value, ",")))
 				*pid++
+			case "CONTAINS":
+				// ->> yields text, which has no array containment.
+				err = ErrInvalidOperator
+				return
 			case "IS NULL", "IS NOT NULL", "IS TRUE", "IS NOT TRUE", "IS FALSE", "IS NOT FALSE":
 				key = fmt.Sprintf(`%s %s`, jsonLeft, op)
 			default: // "=", "!=", ">", ">=", "<", "<="
@@ -658,6 +665,10 @@ func (adapter *postgres) whereKeyAndValue(rawKey, v string, pid *int) (key strin
 		key = fmt.Sprintf(`%s %s (%s)`, quotedKey, op, strings.Join(keyParams, ","))
 	case "ANY", "SOME", "ALL":
 		key = fmt.Sprintf(`%s = %s ($%d)`, quotedKey, op, *pid)
+		values = append(values, formatters.FormatArray(strings.Split(value, ",")))
+		*pid++
+	case "CONTAINS":
+		key = fmt.Sprintf(`%s @> $%d`, quotedKey, *pid)
 		values = append(values, formatters.FormatArray(strings.Split(value, ",")))
 		*pid++
 	case "IS NULL", "IS NOT NULL", "IS TRUE", "IS NOT TRUE", "IS FALSE", "IS NOT FALSE":
@@ -1605,41 +1616,7 @@ func (adapter *postgres) delete(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQ
 		return &scanner.PrestScanner{Error: err}
 	}
 	if strings.Contains(SQL, "RETURNING") {
-		var rows *sql.Rows
-		if ctx != nil {
-			rows, _ = stmt.QueryContext(ctx, params...)
-		} else {
-			rows, _ = stmt.Query(params...)
-		}
-		cols, _ := rows.Columns()
-		var data []map[string]interface{}
-		for rows.Next() {
-			columns := make([]interface{}, len(cols))
-			columnPointers := make([]interface{}, len(cols))
-			for i := range columns {
-				columnPointers[i] = &columns[i]
-			}
-			if err := rows.Scan(columnPointers...); err != nil {
-				slog.Error("row scan error", "err", err)
-				os.Exit(1)
-			}
-			m := make(map[string]interface{})
-			for i, colName := range cols {
-				val := columnPointers[i].(*interface{})
-				switch (*val).(type) {
-				case []uint8:
-					m[colName] = string((*val).([]byte))
-				default:
-					m[colName] = *val
-				}
-			}
-			data = append(data, m)
-		}
-		jsonData, _ := json.Marshal(data)
-		return &scanner.PrestScanner{
-			Error: err,
-			Buff:  bytes.NewBuffer(jsonData),
-		}
+		return queryReturning(ctx, stmt, SQL, params...)
 	}
 	var result sql.Result
 	var rowsAffected int64
@@ -1661,6 +1638,64 @@ func (adapter *postgres) delete(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQ
 	data["rows_affected"] = rowsAffected
 	var jsonData []byte
 	jsonData, err = json.Marshal(data)
+	return &scanner.PrestScanner{
+		Error: err,
+		Buff:  bytes.NewBuffer(jsonData),
+	}
+}
+
+// queryReturning runs a DELETE or UPDATE that has a RETURNING clause and
+// encodes the returned rows as a JSON array. A statement that fails, whether
+// when it starts (a constraint violation, a value of the wrong type) or while
+// its rows are read, is reported through the scanner like the Exec path does.
+func queryReturning(ctx context.Context, stmt *sql.Stmt, SQL string, params ...interface{}) adapters.Scanner {
+	var rows *sql.Rows
+	var err error
+	if ctx != nil {
+		rows, err = stmt.QueryContext(ctx, params...)
+	} else {
+		rows, err = stmt.Query(params...)
+	}
+	if err != nil {
+		slog.Error("could not execute sql", "err", logsafe.Error(err))
+		logFailedSQL(SQL)
+		return &scanner.PrestScanner{Error: err}
+	}
+	defer rows.Close()
+	cols, err := rows.Columns()
+	if err != nil {
+		slog.Error("could not read returned columns", "err", logsafe.Error(err))
+		return &scanner.PrestScanner{Error: err}
+	}
+	var data []map[string]interface{}
+	for rows.Next() {
+		columns := make([]interface{}, len(cols))
+		columnPointers := make([]interface{}, len(cols))
+		for i := range columns {
+			columnPointers[i] = &columns[i]
+		}
+		if err = rows.Scan(columnPointers...); err != nil {
+			slog.Error("row scan error", "err", logsafe.Error(err))
+			return &scanner.PrestScanner{Error: err}
+		}
+		m := make(map[string]interface{})
+		for i, colName := range cols {
+			val := columnPointers[i].(*interface{})
+			switch (*val).(type) {
+			case []uint8:
+				m[colName] = string((*val).([]byte))
+			default:
+				m[colName] = *val
+			}
+		}
+		data = append(data, m)
+	}
+	if err = rows.Err(); err != nil {
+		slog.Error("could not execute sql", "err", logsafe.Error(err))
+		logFailedSQL(SQL)
+		return &scanner.PrestScanner{Error: err}
+	}
+	jsonData, err := json.Marshal(data)
 	return &scanner.PrestScanner{
 		Error: err,
 		Buff:  bytes.NewBuffer(jsonData),
@@ -1713,41 +1748,7 @@ func (adapter *postgres) update(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQ
 	}
 	slog.Debug("generated SQL", "sql", SQL, "parameter_count", len(params))
 	if strings.Contains(SQL, "RETURNING") {
-		var rows *sql.Rows
-		if ctx != nil {
-			rows, _ = stmt.QueryContext(ctx, params...)
-		} else {
-			rows, _ = stmt.Query(params...)
-		}
-		cols, _ := rows.Columns()
-		var data []map[string]interface{}
-		for rows.Next() {
-			columns := make([]interface{}, len(cols))
-			columnPointers := make([]interface{}, len(cols))
-			for i := range columns {
-				columnPointers[i] = &columns[i]
-			}
-			if err := rows.Scan(columnPointers...); err != nil {
-				slog.Error("row scan error", "err", err)
-				os.Exit(1)
-			}
-			m := make(map[string]interface{})
-			for i, colName := range cols {
-				val := columnPointers[i].(*interface{})
-				switch (*val).(type) {
-				case []uint8:
-					m[colName] = string((*val).([]byte))
-				default:
-					m[colName] = *val
-				}
-			}
-			data = append(data, m)
-		}
-		jsonData, _ := json.Marshal(data)
-		return &scanner.PrestScanner{
-			Error: err,
-			Buff:  bytes.NewBuffer(jsonData),
-		}
+		return queryReturning(ctx, stmt, SQL, params...)
 	}
 	var result sql.Result
 	var rowsAffected int64
@@ -1805,6 +1806,10 @@ func GetQueryOperator(op string) (string, error) {
 		return "SOME", nil
 	case "all":
 		return "ALL", nil
+	case "contains":
+		// Rendered as @> with an array parameter by whereKeyAndValue; the ltree
+		// operators also map to @> but bind a scalar, so it needs its own token.
+		return "CONTAINS", nil
 	case "notnull":
 		return "IS NOT NULL", nil
 	case "null":

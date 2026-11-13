@@ -56,7 +56,32 @@ export PREST_DB_URL='mysql://user:pass@localhost:3306/mydb'
 
 A missing user or database fails startup. Postgres defaults (user `postgres`, database `prest`, port 5432) are not copied onto a MySQL engine. Guide: [MySQL](https://docs.prestd.com/databases/mysql).
 
+Set `PREST_PG_TIMEZONE` (IANA name, e.g. `America/Sao_Paulo`) to choose the PostgreSQL session TimeZone; see [`samples/prest.sample.toml`](samples/prest.sample.toml). Postgres and TimescaleDB only; MySQL ignores it.
+
+Set `PREST_HTTP_ALLOWED_HOSTS` (or `http.allowed_hosts`) to the host names pREST serves, e.g. `api.example.com,.example.org`, to answer any other `Host` header with 400 Bad Request; see [`samples/prest.sample.toml`](samples/prest.sample.toml). Unset, every host is served.
+
 See [Configuring pREST](https://docs.prestd.com/get-started/configuring-prest) for auth, ACL, custom queries, and MCP.
+
+### Configuration as JSON
+
+Containers can run without a mounted `prest.toml`. Put the application config (auth, JWT, ACL, queries, cache, CORS, …) in one JSON document in `PREST_CONFIG_JSON`, and keep the listener and database settings in their usual env vars:
+
+```sh
+prestd config export-json -f prest.toml > app-config.json
+kubectl create secret generic prest-app-config --from-file=config.json=app-config.json
+```
+
+```sh
+export PREST_PG_URL='postgres://user:pass@db:5432/prest'
+export PREST_CONFIG_JSON="$(cat app-config.json)"
+# or, where multi-line values get mangled:
+export PREST_CONFIG_JSON_B64="$(base64 < app-config.json | tr -d '\n')"
+```
+
+- The document is merged over `prest.toml` when there is one. An array replaces the file's array whole, and a `null` is skipped. `PREST_*` env vars still override the document.
+- `[http]`, `[https]`, `engine`, `[pg]`, `[mysql]`, `[[databases]]` and `queries.location` are never read from it: they are ignored with a warning, so a stale export cannot move the port or switch the database.
+- A document that is not a valid JSON object, is over 1 MiB, or puts a value where a table belongs (or the reverse) fails startup instead of falling back to defaults.
+- The export can hold secrets such as `jwt.key`. Store it as a secret.
 
 ## Serving several databases
 

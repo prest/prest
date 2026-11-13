@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/prest/prest/v2/adapters/mock"
@@ -29,6 +30,7 @@ func TestNewDepsFromConfig(t *testing.T) {
 		AuthUsername: "username",
 		AuthPassword: "password",
 		AuthEncrypt:  "MD5",
+		AuthTokenTTL: 30 * time.Minute,
 		Cache:        cache.Config{Enabled: true},
 		AccessConf:   config.AccessConf{AllowUnscopedWrites: true},
 	}
@@ -42,6 +44,7 @@ func TestNewDepsFromConfig(t *testing.T) {
 	require.True(t, deps.Auth.Enabled)
 	require.Equal(t, "body", deps.Auth.AuthType)
 	require.Equal(t, "test-jwt-hmac-secret-key-32bytes", deps.Auth.JWTKey)
+	require.Equal(t, 30*time.Minute, deps.Auth.TokenTTL)
 	require.True(t, deps.AllowUnscopedWrites)
 }
 

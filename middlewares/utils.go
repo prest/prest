@@ -82,6 +82,11 @@ func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, fo
 			m := map[string]string{"error": trimmed}
 			byt, _ = json.MarshalIndent(m, "", "\t")
 		}
+	} else if format == rowsRenderer || format == columnsRenderer {
+		// Only a successful response is row data; an error keeps its
+		// {"error": ...} body so clients handle it the same way for every
+		// renderer.
+		byt = renderTable(byt, format == columnsRenderer)
 	}
 	switch format {
 	case "xml":
@@ -94,6 +99,17 @@ func renderFormat(w http.ResponseWriter, recorder *httptest.ResponseRecorder, fo
 		w.Header().Set("Content-Type", "application/xml")
 		w.WriteHeader(recorder.Code)
 		w.Write([]byte(xmlStr))
+	case msgpackRenderer:
+		// Errors are encoded too, as XML encodes them, so a client decodes
+		// every response it gets the same way. A body that is not JSON has
+		// no msgpack form and goes out unchanged, as application/json.
+		if packed, ok := renderMsgpack(byt); ok {
+			w.Header().Set("Content-Type", msgpackContentType)
+			w.WriteHeader(recorder.Code)
+			w.Write(packed)
+			return
+		}
+		fallthrough
 	default:
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(recorder.Code)

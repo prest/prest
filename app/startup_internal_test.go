@@ -192,3 +192,15 @@ func TestEnsureSchemaMigrated_NoRegistryMigratesPrimaryOnly(t *testing.T) {
 	require.NoError(t, ensureSchemaMigrated(cfg, registry, nil))
 	require.NoError(t, sqlMock.ExpectationsWereMet())
 }
+
+// TestScopedConfig_Timezone: the entry timezone replaces the global one in the
+// scoped copy (an empty entry clears it) and the root config is untouched.
+func TestScopedConfig_Timezone(t *testing.T) {
+	cfg := &config.Prest{PGTimezone: "UTC"}
+	got := scopedConfig(cfg, &config.DatabaseConf{Alias: "a", Timezone: "Asia/Tokyo"})
+	require.Equal(t, "Asia/Tokyo", got.PGTimezone)
+	require.Equal(t, "UTC", cfg.PGTimezone)
+
+	got = scopedConfig(cfg, &config.DatabaseConf{Alias: "a"})
+	require.Equal(t, "", got.PGTimezone)
+}

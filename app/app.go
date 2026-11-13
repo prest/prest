@@ -455,6 +455,7 @@ func scopedConfig(cfg *config.Prest, dbConf *config.DatabaseConf) config.Prest {
 	dbCfg.PGSSLCert = dbConf.SSL.Cert
 	dbCfg.PGSSLKey = dbConf.SSL.Key
 	dbCfg.PGSSLRootCert = dbConf.SSL.RootCert
+	dbCfg.PGTimezone = dbConf.Timezone
 	if dbConf.URL != "" && (eng != config.EngineMySQL || strings.HasPrefix(strings.ToLower(dbConf.URL), "mysql://")) {
 		dbCfg.PGURL = dbConf.URL
 	}

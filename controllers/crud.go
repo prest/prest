@@ -99,6 +99,18 @@ func (h *CRUDHandler) Select(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Filters, _or, _count, _groupby/HAVING and _order must only name columns
+	// the caller can read, or they leak values (GHSA-48r9-g6f9-x3gm).
+	unreadable, err := h.unreadableColumn(r, database, schema, table, userName)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if unreadable != "" {
+		jsonError(w, fmt.Sprintf(columnNotReadableMsg, unreadable), http.StatusForbidden)
+		return
+	}
+
 	selectStr, err := h.sql.SelectFields(cols)
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
@@ -116,7 +128,13 @@ func (h *CRUDHandler) Select(w http.ResponseWriter, r *http.Request) {
 		query = strings.Replace(query, "SELECT", distinct, 1)
 	}
 
-	countQuery, err := h.builder.CountByRequest(r)
+	// CountByRequest re-reads _select; hand it the ACL-filtered list so the
+	// count projection drops what the select list drops (GHSA-48r9-g6f9-x3gm).
+	countReq := r
+	if queries.Get("_select") != "" {
+		countReq = countRequest(r, cols)
+	}
+	countQuery, err := h.builder.CountByRequest(countReq)
 	if err != nil {
 		err = fmt.Errorf("could not perform CountByRequest: %v", err)
 		jsonError(w, err.Error(), http.StatusBadRequest)

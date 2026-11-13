@@ -21,6 +21,11 @@ func BaseStack(timeout int) []negroni.Handler {
 func New(cfg *config.Prest) *negroni.Negroni {
 	stack := BaseStack(cfg.HTTPTimeout)
 
+	// Ahead of CORS so a request for a host pREST does not serve is rejected
+	// before any other layer answers it, preflight requests included.
+	if cfg.HTTPAllowedHosts != nil {
+		stack = append(stack, AllowedHostsMiddleware(cfg.HTTPAllowedHosts))
+	}
 	if cfg.CORSAllowOrigin != nil {
 		stack = append(
 			stack,

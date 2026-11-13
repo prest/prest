@@ -7,6 +7,14 @@
 #
 # None of the sections below are required: pREST runs with sane defaults
 # even if this file is missing entirely.
+#
+# Running without this file: the application sections can travel as one
+# JSON document in PREST_CONFIG_JSON (or base64 in PREST_CONFIG_JSON_B64),
+# merged over this file and overridden by PREST_* env vars. Convert a file
+# with `prestd config export-json -f prest.toml` (add --pretty to read it).
+# [http], [https], engine, [pg], [mysql], [[databases]] and
+# queries.location are never read from the JSON: set them with their env
+# vars. The export can hold secrets such as jwt.key; store it as a secret.
 
 version = 1
 
@@ -56,6 +64,14 @@ pluginpath = "./lib"
 host = "0.0.0.0"
 port = 3000
 timeout = 60 # seconds
+# Host header values pREST answers; any other host gets 400 Bad Request,
+# which blocks HTTP Host header attacks. Unset or empty answers every host.
+# Entries are matched case-insensitively and without the port. A leading dot
+# is a subdomain wildcard (".example.com" matches example.com and
+# www.example.com), "*" matches everything. Include the host your health
+# checks and load balancer use (often an IP address). Env (comma separated):
+# PREST_HTTP_ALLOWED_HOSTS=api.example.com,.example.org,127.0.0.1
+# allowed_hosts = ["api.example.com", ".example.org", "127.0.0.1", "[::1]"]
 
 
 # ------------------------------------------------------------------------
@@ -91,6 +107,10 @@ conntimeout = 10 # seconds
 allowed_databases = []
 # Enables query result caching against this database (see [cache] below).
 cache = true
+# Session TimeZone for each connection (affects timestamptz output and now()). IANA name, e.g. America/Sao_Paulo; empty = server default.
+# Env: PREST_PG_TIMEZONE (PREST_DB_TIMEZONE wins). A ?timezone= on the connection URL overrides this.
+# Invalid values are logged and ignored. MySQL ignores it.
+# timezone = "America/Sao_Paulo"
 
 # TLS for the connection to PostgreSQL itself. This is unrelated to [https]
 # above, which is about pREST's own HTTP listener.
@@ -125,6 +145,7 @@ mode = "disable" # disable | require | verify-ca | verify-full
 # url = "postgres://user:pass@localhost:5432/app_db?sslmode=disable"
 # maxopenconn = 10
 # maxidleconn = 0
+# timezone = "UTC"  # overrides [pg] timezone for this alias
 #
 #   [databases.ssl]
 #   mode = "disable"
@@ -164,6 +185,9 @@ metadata = ["first_name", "last_name"]
 # Where credentials are read from on login: request body, basic auth header,
 # etc.
 type = "body"
+# How long a token issued by /auth stays valid: a duration ("30m", "12h") or
+# a number of seconds. A value that is invalid or under 1s stops startup.
+token_ttl = "6h"
 
 
 # ------------------------------------------------------------------------

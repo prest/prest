@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	_ "time/tzdata" // backs timezone validation in images without zoneinfo
 
 	"github.com/prest/prest/v2/cmd"
 	"github.com/prest/prest/v2/config"

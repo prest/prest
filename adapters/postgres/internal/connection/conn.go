@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
+	"strings"
 	"sync"
 
+	"github.com/lib/pq"
 	"github.com/prest/prest/v2/adapters"
 	"github.com/prest/prest/v2/config"
 	"github.com/prest/prest/v2/internal/logsafe"
@@ -127,13 +130,20 @@ func (m *Manager) GetURI(name string) string {
 	if m.cfg.PGSSLRootCert != "" {
 		dbURI += " sslrootcert=" + m.cfg.PGSSLRootCert
 	}
+	if m.cfg.PGTimezone != "" {
+		dbURI += " timezone=" + m.cfg.PGTimezone
+	}
 	return dbURI
 }
 
 // BuildURI builds a postgres connection URI from a database profile.
 func BuildURI(conf config.DatabaseConf, defaults *config.Prest) string {
+	tz := conf.Timezone
+	if tz == "" {
+		tz = defaults.PGTimezone
+	}
 	if conf.URL != "" {
-		return conf.URL
+		return urlWithTimezone(conf.URL, tz)
 	}
 
 	dbName := conf.Database
@@ -179,7 +189,76 @@ func BuildURI(conf config.DatabaseConf, defaults *config.Prest) string {
 	if conf.SSL.RootCert != "" {
 		dbURI += " sslrootcert=" + conf.SSL.RootCert
 	}
+	if tz != "" {
+		dbURI += " timezone=" + tz
+	}
 	return dbURI
+}
+
+// timezoneParam is the lib/pq startup parameter that sets the session TimeZone.
+const timezoneParam = "timezone"
+
+// urlWithTimezone makes the configured zone the only session timezone of a
+// postgres URL DSN: every timezone query pair (any case, raw or %-escaped key)
+// is dropped, the other pairs are kept byte-for-byte, and tz, when set, is
+// appended. A URL that does not parse, is not postgres/postgresql, or needs no
+// change is returned verbatim.
+func urlWithTimezone(raw, tz string) string {
+	u, err := url.Parse(raw)
+	if err != nil || !isPostgresScheme(u.Scheme) {
+		return raw
+	}
+	rawQuery, removed := stripTimezonePairs(u.RawQuery)
+	if !removed && tz == "" {
+		return raw
+	}
+	u.RawQuery = appendTimezone(rawQuery, tz)
+	return u.String()
+}
+
+// isPostgresScheme reports whether a URL scheme selects lib/pq.
+func isPostgresScheme(scheme string) bool {
+	return strings.EqualFold(scheme, "postgres") || strings.EqualFold(scheme, "postgresql")
+}
+
+// stripTimezonePairs drops every "&"-separated pair of a raw query whose key
+// is timezone, keeping the other pairs byte-for-byte, malformed ones included
+// (lib/pq skips only those and applies the rest). It reports whether a pair
+// was dropped.
+func stripTimezonePairs(rawQuery string) (string, bool) {
+	pairs := strings.Split(rawQuery, "&")
+	kept := pairs[:0]
+	removed := false
+	for _, pair := range pairs {
+		key, _, _ := strings.Cut(pair, "=")
+		if isTimezoneKey(key) {
+			removed = true
+			continue
+		}
+		kept = append(kept, pair)
+	}
+	return strings.Join(kept, "&"), removed
+}
+
+// isTimezoneKey reports whether a raw query key, as written or unescaped,
+// names the timezone parameter in any case.
+func isTimezoneKey(key string) bool {
+	if strings.EqualFold(key, timezoneParam) {
+		return true
+	}
+	unescaped, err := url.QueryUnescape(key)
+	return err == nil && strings.EqualFold(unescaped, timezoneParam)
+}
+
+// appendTimezone adds timezone=<tz> to a raw query; an empty tz adds nothing.
+func appendTimezone(rawQuery, tz string) string {
+	if tz == "" {
+		return rawQuery
+	}
+	if rawQuery != "" {
+		rawQuery += "&"
+	}
+	return rawQuery + timezoneParam + "=" + url.QueryEscape(tz)
 }
 
 // Get gets a Postgres connection adding it to the pool if needed
@@ -286,7 +365,7 @@ func (m *Manager) AddDatabaseToPool(name string) (*sqlx.DB, error) {
 			return nil, errTooManyPools
 		}
 
-		DB, err := dbConnect(m.driverName, uri)
+		DB, err := m.connect(name, uri)
 		if err != nil {
 			return nil, err
 		}
@@ -317,6 +396,53 @@ func (m *Manager) AddDatabaseToPool(name string) (*sqlx.DB, error) {
 		return nil, errors.New("unexpected connection pool result")
 	}
 	return DB, nil
+}
+
+// connect opens uri. When the server rejects its session timezone (its tzdata
+// lacks a zone Go accepted), it warns and reconnects once without the zone, so
+// the database keeps the server default instead of failing every request. The
+// probe ping of sqlx.Connect makes this decision once per pool. Errors name the
+// database and the failed attempt, wrap the driver error, and omit the DSN.
+func (m *Manager) connect(name, uri string) (*sqlx.DB, error) {
+	DB, err := dbConnect(m.driverName, uri)
+	if err == nil {
+		return DB, nil
+	}
+	if !isTimezoneRejected(err) {
+		return nil, fmt.Errorf("connect database %q: %w", name, err)
+	}
+	fallback := withoutTimezone(uri)
+	if fallback == uri {
+		return nil, fmt.Errorf("connect database %q: %w", name, err)
+	}
+	slog.Warn("postgres rejected session timezone, using server default", "database", name, "error", err)
+	DB, err = dbConnect(m.driverName, fallback)
+	if err != nil {
+		return nil, fmt.Errorf("connect database %q without session timezone: %w", name, err)
+	}
+	return DB, nil
+}
+
+// isTimezoneRejected reports whether err is the server refusing the TimeZone
+// startup parameter (SQLSTATE 22023 invalid_parameter_value).
+func isTimezoneRejected(err error) bool {
+	var pqErr *pq.Error
+	return errors.As(err, &pqErr) && pqErr.Code == "22023" &&
+		strings.Contains(strings.ToLower(pqErr.Message), `"timezone"`)
+}
+
+// withoutTimezone drops the session timezone that GetURI/BuildURI added: every
+// timezone pair of a URL DSN, or the trailing " timezone=<zone>" of a
+// key/value DSN (validated zones contain no spaces).
+func withoutTimezone(dsn string) string {
+	if stripped := urlWithTimezone(dsn, ""); stripped != dsn {
+		return stripped
+	}
+	i := strings.LastIndex(dsn, " "+timezoneParam+"=")
+	if i < 0 || strings.Contains(dsn[i+1:], " ") {
+		return dsn
+	}
+	return dsn[:i]
 }
 
 // MustGet get postgres connection

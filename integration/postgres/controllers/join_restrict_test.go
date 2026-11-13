@@ -594,3 +594,156 @@ func sortedKeys(set map[string]bool) []string {
 	sort.Strings(keys)
 	return keys
 }
+
+// GHSA-48r9-g6f9-x3gm: _count rebuilt the projection from the raw _select, and
+// filters, _or, _groupby/HAVING, _order and _count named columns without the
+// field ACL. These run against testdata/prest.toml (restrict = true).
+
+// secretJoin joins department to employee_secret, which is joinable but never
+// readable in testdata/prest.toml.
+const secretJoin = "/prest-test/public/department" +
+	"?_join=inner:employee_secret:department.emp_id:$eq:employee_secret.emp_id"
+
+// doAuthBody sends an authenticated GET, asserts its status and returns the
+// body, for checks on what the response must not contain.
+func doAuthBody(t *testing.T, url, token string, wantStatus int) string {
+	t.Helper()
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, wantStatus, resp.StatusCode, "body: %s", body)
+	return string(body)
+}
+
+// TestJoinRestricted_CountCannotReadUnreadableColumn is the advisory's EXP-1:
+// _count plus _groupby on a joined, unreadable column returned the SSNs.
+// Expected: 403, and no SSN in the body.
+func TestJoinRestricted_CountCannotReadUnreadableColumn(t *testing.T) {
+	base := helpers.AuthServerURL(t)
+	token := helpers.LoginToken(t, base, "test@postgres.rest", "123456")
+
+	body := doAuthBody(t, base+secretJoin+
+		"&_select=dept,employee_secret.ssn&_count=*&_groupby=dept,employee_secret.ssn",
+		token, http.StatusForbidden)
+	require.Contains(t, body, "is not readable on this table")
+	require.NotContains(t, body, "ssn-top-secret")
+}
+
+// TestJoinRestricted_CountDropsUnreadableSelect: an unreadable column named
+// only in _select is dropped from the count projection, exactly as it is
+// dropped from a plain select. Expected: 200 with count and dept only.
+func TestJoinRestricted_CountDropsUnreadableSelect(t *testing.T) {
+	base := helpers.AuthServerURL(t)
+	token := helpers.LoginToken(t, base, "test@postgres.rest", "123456")
+
+	var rows []joinRow
+	helpers.DoAuthRequestJSON(t, base+secretJoin+"&_select=dept,employee_secret.ssn&_count=*&_groupby=dept",
+		nil, http.MethodGet, token, http.StatusOK, "CountDropsUnreadableSelect", &rows)
+	keys := keysOf(t, rows)
+	require.False(t, keys["ssn"], "unreadable column leaked: %v", rows)
+	require.Equal(t, []string{"count", "dept"}, sortedKeys(keys))
+}
+
+// TestJoinRestricted_CountWithPermittedColumnsWorks is the reporter's control:
+// counting by a readable column still works. Expected: 200, one row per dept.
+func TestJoinRestricted_CountWithPermittedColumnsWorks(t *testing.T) {
+	base := helpers.AuthServerURL(t)
+	token := helpers.LoginToken(t, base, "test@postgres.rest", "123456")
+
+	var rows []joinRow
+	helpers.DoAuthRequestJSON(t, base+"/prest-test/public/department?_select=dept&_count=*&_groupby=dept",
+		nil, http.MethodGet, token, http.StatusOK, "CountPermitted", &rows)
+	require.Len(t, rows, 2)
+}
+
+// TestJoinRestricted_ReferenceOraclesRejected: every position that names a
+// column (filter, _or, _order, _count, HAVING, a _groupby function, a bare
+// name) must be readable, or it becomes a value oracle. Expected: 403 each.
+func TestJoinRestricted_ReferenceOraclesRejected(t *testing.T) {
+	base := helpers.AuthServerURL(t)
+	token := helpers.LoginToken(t, base, "test@postgres.rest", "123456")
+
+	var testCases = []struct {
+		description string
+		suffix      string
+	}{
+		{"a filter on an unreadable joined column is rejected",
+			"&employee_secret.ssn=$like.ssn%25"},
+		{"an _or group on an unreadable joined column is rejected",
+			"&_or=employee_secret.ssn=$eq.x%20OR%20dept=$eq.Maths"},
+		{"ordering by an unreadable joined column is rejected",
+			"&_order=employee_secret.ssn"},
+		{"counting an unreadable joined column is rejected",
+			"&_count=employee_secret.ssn"},
+		{"a HAVING aggregate over an unreadable joined column is rejected",
+			"&_select=dept&_groupby=dept->>having:count:employee_secret.ssn:$gt:0"},
+		{"a _groupby function over an unreadable joined column is rejected",
+			"&_select=dept&_groupby=dept,lower(employee_secret.ssn)"},
+		{"a bare name that resolves to the unreadable joined table is rejected",
+			"&ssn=$like.%25"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			body := doAuthBody(t, base+secretJoin+tc.suffix, token, http.StatusForbidden)
+			require.Contains(t, body, "is not readable on this table")
+			require.NotContains(t, body, "ssn-top-secret")
+		})
+	}
+}
+
+// TestJoinRestricted_ReadableReferencesStillWork: filtering and ordering by
+// readable columns, bare or qualified, is unaffected. Expected: 200, one row.
+func TestJoinRestricted_ReadableReferencesStillWork(t *testing.T) {
+	base := helpers.AuthServerURL(t)
+	token := helpers.LoginToken(t, base, "test@postgres.rest", "123456")
+
+	for _, suffix := range []string{"&dept=$eq.Computer", "&employee.name=$eq.gopher&_order=-d_id"} {
+		t.Run(suffix, func(t *testing.T) {
+			var rows []joinRow
+			helpers.DoAuthRequestJSON(t, base+departmentEmployeeJoin+suffix,
+				nil, http.MethodGet, token, http.StatusOK, "ReadableReferences", &rows)
+			require.Len(t, rows, 1)
+		})
+	}
+}
+
+// TestRestricted_UnjoinedUnreadableColumnRejected: the oracle also exists
+// without a join, on a table whose ACL lists only some columns
+// (test_list_only_id allows id, not name). Expected: 403.
+func TestRestricted_UnjoinedUnreadableColumnRejected(t *testing.T) {
+	base := helpers.AuthServerURL(t)
+	token := helpers.LoginToken(t, base, "test@postgres.rest", "123456")
+
+	body := doAuthBody(t, base+"/prest-test/public/test_list_only_id?name=$like.%25", token, http.StatusForbidden)
+	require.Contains(t, body, `column \"name\" is not readable on this table`)
+}
+
+// TestJoinRestricted_ReservedJoinStillRejected is the advisory's EXP-2:
+// joining prest_users to read password hashes stays rejected (#1070).
+// Expected: not 200, and no hash in the body.
+func TestJoinRestricted_ReservedJoinStillRejected(t *testing.T) {
+	base := helpers.AuthServerURL(t)
+	token := helpers.LoginToken(t, base, "test@postgres.rest", "123456")
+
+	req, err := http.NewRequest(http.MethodGet, base+"/prest-test/public/department"+
+		"?_join=inner:prest_users:department.emp_id:$eq:prest_users.id"+
+		"&_select=dept,prest_users.username,prest_users.password"+
+		"&_count=*&_groupby=dept,prest_users.username,prest_users.password", nil)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NotEqual(t, http.StatusOK, resp.StatusCode, "body: %s", body)
+	require.NotContains(t, string(body), "e10adc3949ba59abbe56e057f20f883e")
+}
