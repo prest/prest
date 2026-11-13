@@ -96,4 +96,15 @@ func TestParseAllowedHosts(t *testing.T) {
 		requireParse(t, v, cfg, configPath)
 		require.Equal(t, []string{"file.example.com"}, cfg.HTTPAllowedHosts)
 	})
+
+	// A value with entries but none usable must not read as "unset".
+	t.Run("only unusable entries serve no host", func(t *testing.T) {
+		t.Setenv("PREST_CONF", filepath.Join(t.TempDir(), "missing.toml"))
+		t.Setenv("PREST_HTTP_ALLOWED_HOSTS", ". , :8080")
+		v, configPath := viperCfg()
+		cfg := &Prest{}
+		requireParse(t, v, cfg, configPath)
+		require.NotNil(t, cfg.HTTPAllowedHosts)
+		require.Empty(t, cfg.HTTPAllowedHosts)
+	})
 }

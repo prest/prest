@@ -99,7 +99,7 @@ type Prest struct {
 	HTTPHost             string // HTTPHost Declare which http address the PREST used
 	HTTPPort             int    // HTTPPort Declare which http port the PREST used
 	HTTPTimeout          int
-	HTTPAllowedHosts     []string // http.allowed_hosts: Host header values served; empty serves every host
+	HTTPAllowedHosts     []string // http.allowed_hosts: Host header values served; nil serves every host, empty non-nil serves none
 	PGHost               string
 	PGPort               int
 	PGUser               string

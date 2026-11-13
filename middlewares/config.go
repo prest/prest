@@ -23,7 +23,7 @@ func New(cfg *config.Prest) *negroni.Negroni {
 
 	// Ahead of CORS so a request for a host pREST does not serve is rejected
 	// before any other layer answers it, preflight requests included.
-	if len(cfg.HTTPAllowedHosts) > 0 {
+	if cfg.HTTPAllowedHosts != nil {
 		stack = append(stack, AllowedHostsMiddleware(cfg.HTTPAllowedHosts))
 	}
 	if cfg.CORSAllowOrigin != nil {

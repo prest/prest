@@ -115,6 +115,15 @@ func TestNew_AllowedHosts(t *testing.T) {
 		require.Equal(t, http.StatusOK, rec.Code)
 	})
 
+	t.Run("empty non-nil list serves no host", func(t *testing.T) {
+		t.Parallel()
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Host = "api.example.com"
+		rec := serve(newApp(&config.Prest{HTTPAllowedHosts: []string{}}), req)
+		require.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
 	t.Run("allowed host is served", func(t *testing.T) {
 		t.Parallel()
 

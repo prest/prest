@@ -12,7 +12,9 @@ import (
 // environment (PREST_HTTP_ALLOWED_HOSTS) takes a comma-separated list, the
 // config file an array or a comma-separated string. Every entry is normalized
 // with normalizeAllowedHost and empty entries are dropped. nil means unset, and
-// the Host header is then not checked.
+// the Host header is then not checked. A value that names entries but leaves
+// none usable (".", ":8080") returns an empty, non-nil list, which serves no
+// host: a broken setting must not silently turn the check off.
 func parseAllowedHosts(v *viper.Viper) []string {
 	const key = "http.allowed_hosts"
 	var raw []string
@@ -22,10 +24,17 @@ func parseAllowedHosts(v *viper.Viper) []string {
 		raw = v.GetStringSlice(key)
 	}
 	var hosts []string
+	invalid := false
 	for _, entry := range raw {
 		if host := normalizeAllowedHost(entry); host != "" {
 			hosts = append(hosts, host)
+		} else if strings.TrimSpace(entry) != "" {
+			invalid = true
+			slog.Error("http.allowed_hosts entry is not a host name, ignoring it", "entry", entry)
 		}
+	}
+	if hosts == nil && invalid {
+		return []string{}
 	}
 	return hosts
 }
