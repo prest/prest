@@ -150,6 +150,7 @@ type Prest struct {
 	PluginPath           string
 	PluginMiddlewareList []PluginMiddleware
 	Otel                 OtelConf
+	Guard                GuardConf
 	Logger               *slog.Logger
 }
 
@@ -254,6 +255,7 @@ func viperCfg() (*viper.Viper, string) {
 	setCacheDefaults(v)
 	setQueriesDefaults(v)
 	setOtelDefaults(v)
+	setGuardDefaults(v)
 
 	if err := v.ReadInConfig(); err != nil {
 		slog.Warn("config file unavailable, falling back to default settings", "file", configPath, "err", err)
@@ -353,6 +355,7 @@ func Parse(v *viper.Viper, cfg *Prest, configPath string) error {
 	cfg.StudioConf.Enabled = v.GetBool("studio.enabled")
 
 	parseOtelConfig(v, cfg)
+	parseGuardConfig(v, cfg)
 
 	cfg.AccessConf.Tables = unmarshalKeyOrZero[[]TablesConf](v, "access.tables")
 	cfg.AccessConf.Users = unmarshalKeyOrZero[[]UsersConf](v, "access.users")
