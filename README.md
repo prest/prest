@@ -58,6 +58,8 @@ A missing user or database fails startup. Postgres defaults (user `postgres`, da
 
 Set `PREST_PG_TIMEZONE` (IANA name, e.g. `America/Sao_Paulo`) to choose the PostgreSQL session TimeZone; see [`samples/prest.sample.toml`](samples/prest.sample.toml). Postgres and TimescaleDB only; MySQL ignores it.
 
+Set `PREST_HTTP_ALLOWED_HOSTS` (or `http.allowed_hosts`) to the host names pREST serves, e.g. `api.example.com,.example.org`, to answer any other `Host` header with 400 Bad Request; see [`samples/prest.sample.toml`](samples/prest.sample.toml). Unset, every host is served.
+
 See [Configuring pREST](https://docs.prestd.com/get-started/configuring-prest) for auth, ACL, custom queries, and MCP.
 
 ## Serving several databases

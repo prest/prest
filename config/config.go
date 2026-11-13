@@ -99,6 +99,7 @@ type Prest struct {
 	HTTPHost             string // HTTPHost Declare which http address the PREST used
 	HTTPPort             int    // HTTPPort Declare which http port the PREST used
 	HTTPTimeout          int
+	HTTPAllowedHosts     []string // http.allowed_hosts: Host header values served; nil serves every host, empty non-nil serves none
 	PGHost               string
 	PGPort               int
 	PGUser               string
@@ -387,6 +388,7 @@ func parseHTTPConfig(v *viper.Viper, cfg *Prest) {
 	cfg.HTTPHost = v.GetString("http.host")
 	cfg.HTTPPort = v.GetInt("http.port")
 	cfg.HTTPTimeout = v.GetInt("http.timeout")
+	cfg.HTTPAllowedHosts = parseAllowedHosts(v)
 
 	cfg.HTTPSMode = v.GetBool("https.mode")
 	cfg.HTTPSCert = v.GetString("https.cert")

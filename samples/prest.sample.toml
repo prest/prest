@@ -56,6 +56,14 @@ pluginpath = "./lib"
 host = "0.0.0.0"
 port = 3000
 timeout = 60 # seconds
+# Host header values pREST answers; any other host gets 400 Bad Request,
+# which blocks HTTP Host header attacks. Unset or empty answers every host.
+# Entries are matched case-insensitively and without the port. A leading dot
+# is a subdomain wildcard (".example.com" matches example.com and
+# www.example.com), "*" matches everything. Include the host your health
+# checks and load balancer use (often an IP address). Env (comma separated):
+# PREST_HTTP_ALLOWED_HOSTS=api.example.com,.example.org,127.0.0.1
+# allowed_hosts = ["api.example.com", ".example.org", "127.0.0.1", "[::1]"]
 
 
 # ------------------------------------------------------------------------
