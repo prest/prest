@@ -72,6 +72,15 @@ timeout = 60 # seconds
 # checks and load balancer use (often an IP address). Env (comma separated):
 # PREST_HTTP_ALLOWED_HOSTS=api.example.com,.example.org,127.0.0.1
 # allowed_hosts = ["api.example.com", ".example.org", "127.0.0.1", "[::1]"]
+# Header carrying a request (correlation) ID; unset or empty adds none.
+# The ID a client or proxy sent in it is kept when it is 1 to 200 visible
+# ASCII characters, otherwise a random 32-character hex ID is generated. The
+# ID is returned in the same response header (errors included), exposed to
+# CORS clients, logged at the end of each access log line and stored in the
+# request context for plugins. Browsers sending their own ID cross-origin
+# need it in [cors] allowheaders. An invalid header name is ignored with a
+# warning. Env: PREST_HTTP_REQUEST_ID_HEADER=X-Request-Id
+# request_id_header = "X-Request-Id"
 
 
 # ------------------------------------------------------------------------

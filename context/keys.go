@@ -8,5 +8,6 @@ const (
 	HTTPTimeoutKey
 	UserInfoKey
 	PrestConfigKey
-	AdapterKey // Selected adapter for multi-database requests
+	AdapterKey   // Selected adapter for multi-database requests
+	RequestIDKey // Request (correlation) ID string set by the request ID middleware
 )
