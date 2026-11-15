@@ -194,6 +194,14 @@ Deploy to Heroku and get a realtime RESTful API backed by Heroku Postgres:
 
 More: [Deploy in Heroku](https://docs.prestd.com/deployment/deploy-in-heroku).
 
+### Railway
+
+Deploy to Railway and get a JWT-protected REST and MCP API backed by a private Railway Postgres:
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/prest)
+
+The JWT signing key and the admin password are generated per deployment, and the admin user is seeded on first deploy. Get a token with `POST /auth` and the `PREST_ADMIN_USER` / `PREST_ADMIN_PASSWORD` service variables.
+
 ## Contributing
 
 Contributions are welcome. See the [Development Guide](https://docs.prestd.com/get-prest/development-guide) and [Contributing to pREST](https://docs.prestd.com/readme/contributing-to-prestd). Please sign the [CLA](https://cla-assistant.io/prest/prest).
