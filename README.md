@@ -60,6 +60,8 @@ Set `PREST_PG_TIMEZONE` (IANA name, e.g. `America/Sao_Paulo`) to choose the Post
 
 Set `PREST_HTTP_ALLOWED_HOSTS` (or `http.allowed_hosts`) to the host names pREST serves, e.g. `api.example.com,.example.org`, to answer any other `Host` header with 400 Bad Request; see [`samples/prest.sample.toml`](samples/prest.sample.toml). Unset, every host is served.
 
+Set `PREST_HTTP_REQUEST_ID_HEADER` (or `http.request_id_header`) to a header name such as `X-Request-Id` to give every request a correlation ID: the ID a client or proxy sent in that header is kept, otherwise one is generated, and it is returned in the same response header and logged at the end of each access log line; see [`samples/prest.sample.toml`](samples/prest.sample.toml). Unset, no request ID is added.
+
 See [Configuring pREST](https://docs.prestd.com/get-started/configuring-prest) for auth, ACL, custom queries, and MCP.
 
 ### Configuration as JSON
