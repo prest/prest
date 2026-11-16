@@ -57,6 +57,13 @@ func AllowedHostsServerURL(t *testing.T) string {
 	return envURL(t, "PREST_ALLOWED_HOSTS_TEST_URL")
 }
 
+// RequestIDServerURL returns the base URL for the prestd service started with
+// PREST_HTTP_REQUEST_ID_HEADER=X-Request-Id.
+func RequestIDServerURL(t *testing.T) string {
+	t.Helper()
+	return envURL(t, "PREST_REQUEST_ID_TEST_URL")
+}
+
 // RegistryServerURL returns the base URL for the prestd service configured with
 // a [[databases]] registry (MySQL: testdata/prest_mysql_registry.toml).
 func RegistryServerURL(t *testing.T) string {

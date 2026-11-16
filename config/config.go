@@ -100,6 +100,7 @@ type Prest struct {
 	HTTPPort             int    // HTTPPort Declare which http port the PREST used
 	HTTPTimeout          int
 	HTTPAllowedHosts     []string // http.allowed_hosts: Host header values served; nil serves every host, empty non-nil serves none
+	HTTPRequestIDHeader  string   // http.request_id_header: canonical header carrying the request ID; empty disables request IDs
 	PGHost               string
 	PGPort               int
 	PGUser               string
@@ -397,6 +398,7 @@ func parseHTTPConfig(v *viper.Viper, cfg *Prest) {
 	cfg.HTTPPort = v.GetInt("http.port")
 	cfg.HTTPTimeout = v.GetInt("http.timeout")
 	cfg.HTTPAllowedHosts = parseAllowedHosts(v)
+	cfg.HTTPRequestIDHeader = parseRequestIDHeader(v)
 
 	cfg.HTTPSMode = v.GetBool("https.mode")
 	cfg.HTTPSCert = v.GetString("https.cert")

@@ -73,8 +73,7 @@ func (h *CatalogHandler) listRegistryDatabases(w http.ResponseWriter) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	//nolint
-	w.Write(body)
+	writeBody(w, body)
 }
 
 // ListDatabases lists all (or filter) databases.
@@ -124,8 +123,7 @@ func (h *CatalogHandler) ListDatabases(w http.ResponseWriter, r *http.Request) {
 		writeStatementError(w, err, "", "", "", "")
 		return
 	}
-	//nolint
-	w.Write(sc.Bytes())
+	writeBody(w, sc.Bytes())
 }
 
 // ListSchemas lists all (or filter) schemas.
@@ -171,8 +169,7 @@ func (h *CatalogHandler) ListSchemas(w http.ResponseWriter, r *http.Request) {
 		writeStatementError(w, err, "", "", "", "")
 		return
 	}
-	//nolint
-	w.Write(sc.Bytes())
+	writeBody(w, sc.Bytes())
 }
 
 // ListTables lists all (or filter) tables.
@@ -220,7 +217,7 @@ func (h *CatalogHandler) ListTables(w http.ResponseWriter, r *http.Request) {
 		writeStatementError(w, err, "", "", "", "")
 		return
 	}
-	w.Write(sc.Bytes())
+	writeBody(w, sc.Bytes())
 }
 
 // ListTablesByDatabaseAndSchema lists tables for a database and schema.
@@ -284,5 +281,5 @@ func (h *CatalogHandler) ListTablesByDatabaseAndSchema(w http.ResponseWriter, r 
 		writeStatementError(w, err, schema, "", "", "")
 		return
 	}
-	w.Write(sc.Bytes())
+	writeBody(w, sc.Bytes())
 }

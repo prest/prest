@@ -39,7 +39,7 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			slog.Error("could not check DB connection", "err", logsafe.Error(err))
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusServiceUnavailable)
-			fmt.Fprintf(w, jsonErrorMsg, unavailableMsg)
+			writeBody(w, fmt.Appendf(nil, jsonErrorMsg, unavailableMsg))
 			return
 		}
 	}
@@ -49,7 +49,7 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `{"adapter":%q}`, h.adapterName)
+	writeBody(w, fmt.Appendf(nil, `{"adapter":%q}`, h.adapterName))
 }
 
 // Handler returns an http.HandlerFunc for route registration.

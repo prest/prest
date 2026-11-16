@@ -9,17 +9,29 @@ import (
 
 // BaseStack returns the default middleware handlers without config-specific layers.
 func BaseStack(timeout int) []negroni.Handler {
-	return []negroni.Handler{
-		negroni.Handler(negroni.NewRecovery()),
-		negroni.Handler(negroni.NewLogger()),
+	return baseStack(timeout, "")
+}
+
+// baseStack returns the default middleware handlers. A non-empty
+// requestIDHeader adds RequestIDMiddleware ahead of the access log, which
+// then ends each line with the request ID.
+func baseStack(timeout int, requestIDHeader string) []negroni.Handler {
+	stack := []negroni.Handler{negroni.NewRecovery()}
+	logger := negroni.NewLogger()
+	if requestIDHeader != "" {
+		stack = append(stack, RequestIDMiddleware(requestIDHeader))
+		logger.SetFormat(requestIDLogFormat(requestIDHeader))
+	}
+	return append(stack,
+		logger,
 		HandlerSet(),
 		SetTimeoutToContext(timeout),
-	}
+	)
 }
 
 // New builds the negroni middleware stack from config.
 func New(cfg *config.Prest) *negroni.Negroni {
-	stack := BaseStack(cfg.HTTPTimeout)
+	stack := baseStack(cfg.HTTPTimeout, cfg.HTTPRequestIDHeader)
 
 	// Ahead of CORS so a request for a host pREST does not serve is rejected
 	// before any other layer answers it, preflight requests included.
@@ -33,6 +45,7 @@ func New(cfg *config.Prest) *negroni.Negroni {
 				AllowedOrigins:   cfg.CORSAllowOrigin,
 				AllowedMethods:   cfg.CORSAllowMethods,
 				AllowedHeaders:   cfg.CORSAllowHeaders,
+				ExposedHeaders:   exposedHeaders(cfg),
 				AllowCredentials: cfg.CORSAllowCredentials,
 			}))
 	}
@@ -64,4 +77,13 @@ func New(cfg *config.Prest) *negroni.Negroni {
 	}
 
 	return negroni.New(stack...)
+}
+
+// exposedHeaders lists the response headers browser scripts may read on a
+// cross-origin response: the request ID header, when one is configured.
+func exposedHeaders(cfg *config.Prest) []string {
+	if cfg.HTTPRequestIDHeader == "" {
+		return nil
+	}
+	return []string{cfg.HTTPRequestIDHeader}
 }

@@ -239,6 +239,8 @@ services:
       # Also the http.allowed_hosts server: its service name for the tests and
       # 127.0.0.1 for the healthcheck; every other Host gets a 400.
       PREST_HTTP_ALLOWED_HOSTS: prestd-timezone,127.0.0.1
+      # And the http.request_id_header server.
+      PREST_HTTP_REQUEST_ID_HEADER: X-Request-Id
       PREST_HTTP_PORT: "3006"
     command: >-
       bash -lc "export PATH=/usr/local/go/bin:/go/bin:$$PATH && apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && go run ./cmd/prestd/main.go"
@@ -277,5 +279,6 @@ services:
       PREST_QUERIES_TEST_URL: http://prestd-queries:3003
       PREST_TIMEZONE_TEST_URL: http://prestd-timezone:3006
       PREST_ALLOWED_HOSTS_TEST_URL: http://prestd-timezone:3006
+      PREST_REQUEST_ID_TEST_URL: http://prestd-timezone:3006
     command: >-
       bash -lc "apt-get update && apt-get install -y --no-install-recommends postgresql-client git ca-certificates && bash -x ./testdata/runtest.sh ./integration/suites/... ./integration/postgres/..."

@@ -71,5 +71,5 @@ func (h *TableHandler) Show(w http.ResponseWriter, r *http.Request) {
 		writeStatementError(w, err, schema, table, prefix, prefix)
 		return
 	}
-	w.Write(sc.Bytes())
+	writeBody(w, sc.Bytes())
 }

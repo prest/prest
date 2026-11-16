@@ -127,8 +127,7 @@ func writeFiltered(w http.ResponseWriter, status int, body []byte, columns []str
 		body = filtered
 	}
 	w.WriteHeader(status)
-	//nolint
-	w.Write(body)
+	writeBody(w, body)
 }
 
 // filterColumns keeps only the listed keys of a row object or an array of row
