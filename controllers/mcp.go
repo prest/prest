@@ -14,6 +14,7 @@ import (
 	"github.com/prest/prest/v2/config"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
+	"github.com/prest/prest/v2/helpers"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -23,11 +24,15 @@ import (
 )
 
 const (
+	// mcpProtocolVersion is the version reported by the GET discovery payload.
 	mcpProtocolVersion = "0.1"
-	mcpServerName      = "prest"
-	mcpSelectPrefix    = "prest.select."
-	mcpMaxRows         = 100
-	mcpTracerName      = "github.com/prest/prest/v2/controllers/mcp"
+	// mcpLatestProtocolVersion is the newest MCP protocol revision answered by
+	// initialize when the client requests one this server does not support.
+	mcpLatestProtocolVersion = "2025-06-18"
+	mcpServerName            = "prest"
+	mcpSelectPrefix          = "prest.select."
+	mcpMaxRows               = 100
+	mcpTracerName            = "github.com/prest/prest/v2/controllers/mcp"
 )
 
 // MCPHandler serves a read-only MCP-style HTTP endpoint.
@@ -188,7 +193,6 @@ type mcpSelectResult struct {
 
 func (h *MCPHandler) handleRPC(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
 
 	var req mcpJSONRPCRequest
 	if err := dec.Decode(&req); err != nil {
@@ -246,7 +250,8 @@ func (h *MCPHandler) dispatchRPC(r *http.Request, method string, params json.Raw
 	switch method {
 	case "initialize":
 		return map[string]any{
-			"serverInfo": map[string]any{"name": mcpServerName, "version": mcpProtocolVersion},
+			"protocolVersion": negotiateMCPProtocolVersion(params),
+			"serverInfo":      map[string]any{"name": mcpServerName, "version": helpers.PrestReleaseVersion()},
 			"capabilities": map[string]any{
 				"tools": map[string]any{"listChanged": false},
 			},
@@ -263,6 +268,27 @@ func (h *MCPHandler) dispatchRPC(r *http.Request, method string, params json.Raw
 	default:
 		return nil, fmt.Errorf("unsupported method: %s", method)
 	}
+}
+
+// mcpSupportedProtocolVersions lists the MCP protocol revisions initialize accepts.
+var mcpSupportedProtocolVersions = []string{mcpLatestProtocolVersion, "2025-03-26", "2024-11-05"}
+
+// negotiateMCPProtocolVersion returns the protocol version requested by the
+// client when it is supported, and the latest supported version otherwise.
+func negotiateMCPProtocolVersion(params json.RawMessage) string {
+	var payload struct {
+		ProtocolVersion any `json:"protocolVersion"`
+	}
+	if len(params) > 0 && json.Unmarshal(params, &payload) == nil {
+		if requested, ok := payload.ProtocolVersion.(string); ok {
+			for _, v := range mcpSupportedProtocolVersions {
+				if v == requested {
+					return v
+				}
+			}
+		}
+	}
+	return mcpLatestProtocolVersion
 }
 
 func (h *MCPHandler) discoveryPayload(r *http.Request) mcpDiscoveryPayload {
