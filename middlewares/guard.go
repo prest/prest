@@ -241,7 +241,7 @@ func applyTrustedProxy(r *http.Request, trusted *trustedProxySet) {
 	}
 	hops := strings.Split(xff, ",")
 	for i := len(hops) - 1; i >= 0; i-- {
-		hop := net.ParseIP(strings.TrimSpace(hops[i]))
+		hop := parseForwardedHop(hops[i])
 		if hop == nil {
 			// Malformed hop: the chain cannot be trusted, keep the peer.
 			return
@@ -253,11 +253,26 @@ func applyTrustedProxy(r *http.Request, trusted *trustedProxySet) {
 		return
 	}
 	// All hops are trusted proxies: fall back to the leftmost entry.
-	leftmost := net.ParseIP(strings.TrimSpace(hops[0]))
+	leftmost := parseForwardedHop(hops[0])
 	if leftmost == nil {
 		return
 	}
 	r.RemoteAddr = net.JoinHostPort(leftmost.String(), "0")
+}
+
+// parseForwardedHop parses one X-Forwarded-For entry. Some proxies (Azure
+// Application Gateway, for one) append the client port, as 203.0.113.7:51234
+// or [2001:db8::1]:51234, so an entry that is not a bare IP is retried as
+// host:port before it counts as malformed.
+func parseForwardedHop(hop string) net.IP {
+	hop = strings.TrimSpace(hop)
+	if ip := net.ParseIP(hop); ip != nil {
+		return ip
+	}
+	if host, _, err := net.SplitHostPort(hop); err == nil {
+		return net.ParseIP(host)
+	}
+	return nil
 }
 
 // requestClientHost extracts the bare host from RemoteAddr, tolerating

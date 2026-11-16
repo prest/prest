@@ -481,6 +481,11 @@ func TestApplyTrustedProxyEdgeCases(t *testing.T) {
 		{"all hops trusted uses leftmost", trusted, "10.0.0.1:1", []string{"10.0.0.5, 10.0.0.6"}, "10.0.0.5:0"},
 		{"peer without port", trusted, "10.0.0.1", []string{"1.2.3.4"}, "1.2.3.4:0"},
 		{"untrusted peer ignored", trusted, "9.9.9.9:1", []string{"1.2.3.4"}, "9.9.9.9:1"},
+		{"hop with port", trusted, "10.0.0.1:1", []string{"1.2.3.4:51234"}, "1.2.3.4:0"},
+		{"ipv6 hop with port", trusted, "10.0.0.1:1", []string{"[2001:db8::1]:51234"}, "[2001:db8::1]:0"},
+		{"trusted hop with port is skipped", trusted, "10.0.0.1:1", []string{"1.2.3.4, 10.0.0.7:443"}, "1.2.3.4:0"},
+		{"bare ipv6 hop", trusted, "10.0.0.1:1", []string{"2001:db8::1"}, "[2001:db8::1]:0"},
+		{"untrusted hop with port stays untrusted", trusted, "10.0.0.1:1", []string{"1.2.3.4, 9.9.9.9:80"}, "9.9.9.9:0"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
