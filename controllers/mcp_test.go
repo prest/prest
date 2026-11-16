@@ -15,6 +15,7 @@ import (
 	"github.com/prest/prest/v2/config"
 	pctx "github.com/prest/prest/v2/context"
 	"github.com/prest/prest/v2/controllers/auth"
+	"github.com/prest/prest/v2/helpers"
 	"github.com/stretchr/testify/require"
 )
 
@@ -315,6 +316,68 @@ func TestMCPHandler_DispatchRPC_Initialize(t *testing.T) {
 	result, err := h.dispatchRPC(httptest.NewRequest(http.MethodPost, "/_mcp", nil), "initialize", nil)
 	require.NoError(t, err)
 	require.NotNil(t, result)
+}
+
+func mcpInitialize(t *testing.T, body string) map[string]any {
+	t.Helper()
+
+	rec := httptest.NewRecorder()
+	h := NewMCPHandler(Deps{})
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/_mcp", bytes.NewBufferString(body)))
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+
+	var resp struct {
+		Result map[string]any `json:"result"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	return resp.Result
+}
+
+func TestMCPHandler_Initialize_NegotiatesProtocolVersion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		requested string
+		expected  string
+	}{
+		{"supported latest", `"2025-06-18"`, "2025-06-18"},
+		{"supported older", `"2024-11-05"`, "2024-11-05"},
+		{"unsupported", `"1999-01-01"`, mcpLatestProtocolVersion},
+		{"not a string", `42`, mcpLatestProtocolVersion},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			result := mcpInitialize(t, `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":`+tc.requested+`,"capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}`)
+			require.Equal(t, tc.expected, result["protocolVersion"])
+		})
+	}
+
+	t.Run("missing params", func(t *testing.T) {
+		t.Parallel()
+
+		result := mcpInitialize(t, `{"jsonrpc":"2.0","id":1,"method":"initialize"}`)
+		require.Equal(t, mcpLatestProtocolVersion, result["protocolVersion"])
+	})
+}
+
+func TestMCPHandler_Initialize_ServerInfoReportsReleaseVersion(t *testing.T) {
+	t.Parallel()
+
+	result := mcpInitialize(t, `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}`)
+	serverInfo, ok := result["serverInfo"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, mcpServerName, serverInfo["name"])
+	require.Equal(t, helpers.PrestReleaseVersion(), serverInfo["version"])
+}
+
+func TestMCPHandler_HandleRPC_AcceptsUnknownFields(t *testing.T) {
+	t.Parallel()
+
+	result := mcpInitialize(t, `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","_meta":{"progressToken":"abc"}},"_meta":{"trace":"x"}}`)
+	require.Equal(t, "2025-06-18", result["protocolVersion"])
 }
 
 func TestMCPHandler_DispatchRPC_ToolsList(t *testing.T) {

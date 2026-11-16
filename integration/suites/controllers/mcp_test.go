@@ -47,6 +47,90 @@ func TestMCPInitialize(t *testing.T) {
 	)
 }
 
+type mcpInitializeResponse struct {
+	JSONRPC string `json:"jsonrpc"`
+	Result  struct {
+		ProtocolVersion string `json:"protocolVersion"`
+		ServerInfo      struct {
+			Name    string `json:"name"`
+			Version string `json:"version"`
+		} `json:"serverInfo"`
+	} `json:"result"`
+}
+
+func TestMCPInitializeNegotiatesProtocolVersion(t *testing.T) {
+	base := helpers.ServerURL(t)
+
+	cases := []struct {
+		description string
+		requested   string
+		expected    string
+	}{
+		// A supported older revision is echoed back.
+		{"supported older version", "2025-03-26", "2025-03-26"},
+		// An unknown revision is answered with the latest supported one.
+		{"unsupported version", "1999-01-01", "2025-06-18"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.description, func(t *testing.T) {
+			payload := map[string]any{
+				"jsonrpc": "2.0",
+				"id":      1,
+				"method":  "initialize",
+				"params": map[string]any{
+					"protocolVersion": tc.requested,
+					"capabilities":    map[string]any{},
+					"clientInfo":      map[string]any{"name": "prest-integration", "version": "1.0"},
+				},
+			}
+
+			var resp mcpInitializeResponse
+			testutils.DoRequestJSON(t, base+"/_mcp", payload, http.MethodPost, http.StatusOK, "MCPInitialize "+tc.description, &resp)
+			assert.Equal(t, tc.expected, resp.Result.ProtocolVersion)
+		})
+	}
+}
+
+func TestMCPInitializeReportsReleaseVersion(t *testing.T) {
+	base := helpers.ServerURL(t)
+	payload := map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "initialize",
+		"params":  map[string]any{"protocolVersion": "2025-06-18"},
+	}
+
+	// The compose setup runs prestd with `go run` and no -ldflags, so the exact
+	// release version depends on the build; it must not be the protocol constant.
+	var resp mcpInitializeResponse
+	testutils.DoRequestJSON(t, base+"/_mcp", payload, http.MethodPost, http.StatusOK, "MCPInitializeReleaseVersion", &resp)
+	assert.Equal(t, "prest", resp.Result.ServerInfo.Name)
+	assert.NotEmpty(t, resp.Result.ServerInfo.Version)
+	assert.NotEqual(t, "0.1", resp.Result.ServerInfo.Version)
+}
+
+func TestMCPInitializeAcceptsMeta(t *testing.T) {
+	base := helpers.ServerURL(t)
+	payload := map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "initialize",
+		"_meta":   map[string]any{"trace": "integration"},
+		"params": map[string]any{
+			"protocolVersion": "2025-06-18",
+			"_meta":           map[string]any{"progressToken": "integration"},
+		},
+	}
+
+	// Requests carrying _meta (top level and in params) are accepted.
+	var resp mcpInitializeResponse
+	testutils.DoRequestJSON(t, base+"/_mcp", payload, http.MethodPost, http.StatusOK, "MCPInitializeMeta", &resp)
+	assert.Equal(t, "2.0", resp.JSONRPC)
+	assert.Equal(t, "2025-06-18", resp.Result.ProtocolVersion)
+	assert.Equal(t, "prest", resp.Result.ServerInfo.Name)
+}
+
 func TestMCPToolsList(t *testing.T) {
 	base := helpers.ServerURL(t)
 	payload := map[string]any{
