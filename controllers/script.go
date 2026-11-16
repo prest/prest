@@ -95,8 +95,7 @@ func (h *ScriptHandler) Execute(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" && h.cache != nil {
 		h.cache.BuntSet(middlewares.CacheKey(r), string(result))
 	}
-	//nolint
-	w.Write(result)
+	writeBody(w, result)
 }
 
 // ExecuteScriptQuery runs a script and returns the result bytes.

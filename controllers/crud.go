@@ -226,8 +226,7 @@ func (h *CRUDHandler) Select(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" && h.cache != nil {
 		h.cache.BuntSet(middlewares.CacheKey(r), string(sc.Bytes()))
 	}
-	//nolint
-	w.Write(sc.Bytes())
+	writeBody(w, sc.Bytes())
 }
 
 // Insert performs an INSERT on a table.
