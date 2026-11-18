@@ -174,3 +174,23 @@ studio-e2e:
 test-studio: studio-check
 
 check-all: test-unit studio-check
+
+# Upgrade Go modules and studio deps, then rebuild the studio bundle
+# (internal/studio/dist, embedded by prestd) and the prestd binary.
+# Studio deps stay within package.json ranges; pass
+# STUDIO_UPDATE_FLAGS=--latest to also take major versions.
+# vendor/ is gitignored, but when present Go builds with -mod=vendor,
+# so it is re-synced after the upgrade.
+STUDIO_UPDATE_FLAGS ?=
+.PHONY: deps-upgrade deps-upgrade-go deps-upgrade-studio
+deps-upgrade: deps-upgrade-go deps-upgrade-studio
+	$(MAKE) studio-build
+	$(MAKE) build
+
+deps-upgrade-go:
+	go get -u ./...
+	go mod tidy
+	if [ -d vendor ]; then go mod vendor; fi
+
+deps-upgrade-studio:
+	cd studio && corepack enable && pnpm update $(STUDIO_UPDATE_FLAGS)
