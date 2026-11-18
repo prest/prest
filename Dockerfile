@@ -2,7 +2,7 @@
 
 # Go toolchain for the release image. Plugins only load when they are built with
 # the exact Go version that built prestd, so goreleaser passes the patch version.
-ARG GO_VERSION=1.26
+ARG GO_VERSION=1.27
 
 # --- Studio frontend ---
 FROM node:24-bookworm AS studio
@@ -14,7 +14,7 @@ COPY studio/ ./
 RUN pnpm build
 
 # --- Go binary ---
-FROM registry.hub.docker.com/library/golang:1.26 AS builder
+FROM registry.hub.docker.com/library/golang:1.27 AS builder
 WORKDIR /workspace
 COPY . .
 COPY --from=studio /workspace/internal/studio/dist /workspace/internal/studio/dist
@@ -33,7 +33,7 @@ RUN apt-get update && apt-get upgrade -y && \
 
 # Full-repo build (default for docker build .)
 # Needs go to compile the plugin system
-FROM registry.hub.docker.com/library/golang:1.26 AS full
+FROM registry.hub.docker.com/library/golang:1.27 AS full
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 ENV CGO_ENABLED=1
 ENV PREST_BUILD_PLUGINS=1

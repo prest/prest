@@ -35,7 +35,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: 1.26
+          go-version: 1.27
 
       # The plugin image must use the exact Go patch that builds prestd, or
       # plugin.Open rejects the plugins it compiles at startup.
