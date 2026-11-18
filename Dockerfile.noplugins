@@ -10,7 +10,7 @@ COPY studio/ ./
 RUN pnpm build
 
 # --- Go binary ---
-FROM registry.hub.docker.com/library/golang:1.26 AS builder
+FROM registry.hub.docker.com/library/golang:1.27 AS builder
 WORKDIR /workspace
 COPY . .
 COPY --from=studio /workspace/internal/studio/dist /workspace/internal/studio/dist

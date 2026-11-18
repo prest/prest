@@ -11,7 +11,7 @@ x-prest-env: &prest-env
   GOPROXY: https://proxy.golang.org,direct
 
 x-prestd-service: &prestd-service
-  image: golang:1.26-bookworm
+  image: golang:1.27-bookworm
   working_dir: /workspace
   volumes:
     - ../..:/workspace
