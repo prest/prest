@@ -21,6 +21,7 @@ func setPostgresDefaults(v *viper.Viper) {
 	v.SetDefault("pg.maxopenconn", 10)
 	v.SetDefault("pg.conntimeout", 10)
 	v.SetDefault("pg.cache", true)
+	v.SetDefault("pg.application_name", "prestd")
 	// todo: replace this with prefer, will need to replace lib/pq
 	// https://github.com/jackc/pgx/blob/47d631e34be7128997a0aa89b75885cc4ad4c82e/pgconn/config.go#L218
 	v.SetDefault("pg.ssl.mode", "disable")
@@ -43,6 +44,9 @@ func parseDBConfig(v *viper.Viper, cfg *Prest) error {
 	}
 	warnDeprecatedSingle(v)
 	cfg.AllowedDatabases = configuredStringList(v, "pg.allowed_databases")
+	// Read before the engine split: a MySQL root engine can still serve
+	// Postgres registry entries, and their pools need the name too.
+	cfg.PGApplicationName = configuredString(v, "pg.application_name")
 	if cfg.Engine == EngineMySQL {
 		return parseMySQLDBConfig(v, cfg)
 	}
