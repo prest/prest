@@ -49,6 +49,20 @@ export class ApiError extends Error {
 		return this.kind === 'unauthorized' || this.kind === 'forbidden'
 	}
 
+	/**
+	 * 401 with `{"error":"unauthorized listing"}`: the exposure middleware denied
+	 * catalog listing, which is a restriction rather than a missing token.
+	 */
+	get isListingDenied(): boolean {
+		if (this.status !== 401) return false
+		const body = this.body
+		return (
+			typeof body === 'object' &&
+			body !== null &&
+			(body as { error?: unknown }).error === 'unauthorized listing'
+		)
+	}
+
 	/** 403/404 responses are treated as "feature disabled" during discovery. */
 	get isDisabled(): boolean {
 		return this.kind === 'forbidden' || this.kind === 'not_found'
@@ -66,6 +80,19 @@ export function kindFromStatus(status: number): ApiErrorKind {
 	return 'unknown'
 }
 
+const MAX_SERVER_MESSAGE = 300
+
+/** Trim a server-provided message and cap it at 300 chars with an ellipsis. */
+export function capMessage(msg: string): string {
+	const trimmed = msg.trim()
+	if (trimmed.length <= MAX_SERVER_MESSAGE) return trimmed
+	let end = MAX_SERVER_MESSAGE
+	const last = trimmed.charCodeAt(end - 1)
+	// Do not leave a lone high surrogate at the cut.
+	if (last >= 0xd800 && last <= 0xdbff) end--
+	return trimmed.slice(0, end) + '…'
+}
+
 /** Human-friendly, non-leaking message for a status code. */
 export function messageFromStatus(status: number, fallback?: string): string {
 	switch (status) {
@@ -77,6 +104,7 @@ export function messageFromStatus(status: number, fallback?: string): string {
 			return 'Not found – the resource or endpoint is unavailable.'
 		case 400:
 		case 422:
+			if (fallback && fallback.trim()) return `Bad request – ${capMessage(fallback)}`
 			return 'Bad request – check filters and parameters.'
 		default:
 			if (status >= 500) return `Server error (${status}).`

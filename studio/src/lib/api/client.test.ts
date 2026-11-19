@@ -221,3 +221,18 @@ describe('PrestClient failure handling', () => {
 		expect(res.status).toBe(200)
 	})
 })
+
+describe('PrestClient lossless parsing', () => {
+	it('returns unsafe numbers as strings and safe ones as numbers', async () => {
+		const client = new PrestClient({
+			fetchImpl: async () => jsonResponse('{"id":9007199254740993,"n":1}'),
+		})
+		const res = await client.requestJson<{ id: unknown; n: unknown }>('/t')
+		expect(res.data).toEqual({ id: '9007199254740993', n: 1 })
+	})
+
+	it('still maps invalid JSON to a parse ApiError', async () => {
+		const client = new PrestClient({ fetchImpl: async () => jsonResponse('{nope') })
+		await expect(client.requestJson('/t')).rejects.toMatchObject({ kind: 'parse' })
+	})
+})

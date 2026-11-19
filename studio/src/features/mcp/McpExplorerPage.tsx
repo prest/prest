@@ -14,6 +14,7 @@ import {
 	type InitializeResult,
 	type McpTool,
 } from '@/lib/mcp/client'
+import { buildFormArgs } from '@/lib/mcp/args'
 import { cn } from '@/lib/utils'
 
 interface HistoryEntry {
@@ -38,15 +39,6 @@ function schemaProps(tool: McpTool | null): [string, SchemaProp][] {
 function requiredFields(tool: McpTool | null): Set<string> {
 	const req = tool?.inputSchema?.required
 	return new Set(Array.isArray(req) ? (req as string[]) : [])
-}
-
-function coerce(value: string, type?: string): unknown {
-	if (type === 'number' || type === 'integer') {
-		const n = Number(value)
-		return Number.isNaN(n) ? value : n
-	}
-	if (type === 'boolean') return value === 'true'
-	return value
 }
 
 export function McpExplorerPage() {
@@ -110,16 +102,7 @@ export function McpExplorerPage() {
 			return parsed as Record<string, unknown>
 		}
 		const required = requiredFields(selected)
-		const args: Record<string, unknown> = {}
-		for (const [name, prop] of schemaProps(selected)) {
-			const raw = formArgs[name]
-			if (raw !== undefined && raw !== '') args[name] = coerce(raw, prop.type)
-		}
-		const missing = [...required].filter((name) => !(name in args))
-		if (missing.length > 0) {
-			throw new Error(`Missing required fields: ${missing.join(', ')}`)
-		}
-		return args
+		return buildFormArgs(schemaProps(selected), required, formArgs)
 	}
 
 	const invoke = async () => {

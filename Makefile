@@ -140,7 +140,7 @@ mockgen:
 	mockgen -destination=adapters/mockgen/database_pinger.go -package=mockgen github.com/prest/prest/v2/adapters DatabasePinger
 	mockgen -destination=adapters/mockgen/readiness_checker.go -package=mockgen github.com/prest/prest/v2/adapters ReadinessChecker
 
-.PHONY: studio-install studio-dev studio-format studio-lint studio-typecheck studio-test studio-test-coverage studio-build studio-check studio-e2e test-studio check-all
+.PHONY: studio-install studio-dev studio-format studio-lint studio-typecheck studio-test studio-test-coverage studio-build studio-check studio-e2e studio-e2e-up studio-e2e-run studio-e2e-down studio-e2e-smoke test-studio check-all
 studio-install:
 	cd studio && corepack enable && pnpm install
 
@@ -168,7 +168,30 @@ studio-build:
 studio-check:
 	cd studio && pnpm check
 
+STUDIO_E2E_BIN ?= studio/e2e/.bin/prestd
+STUDIO_E2E_COMPOSE = docker compose -p prest-studio-e2e -f studio/e2e/docker-compose.yml
+
+# Full-stack Studio e2e: Postgres + two prestd instances + Playwright, always torn down.
+studio-e2e-up:
+	$(STUDIO_E2E_COMPOSE) up -d --wait
+	go build -o $(STUDIO_E2E_BIN) ./cmd/prestd
+
+studio-e2e-run:
+	cd studio && STUDIO_E2E_STACK=1 STUDIO_E2E_BIN=$(abspath $(STUDIO_E2E_BIN)) pnpm test:e2e
+
+studio-e2e-down:
+	$(STUDIO_E2E_COMPOSE) down -v --remove-orphans
+
 studio-e2e:
+	$(MAKE) studio-e2e-up && $(MAKE) studio-e2e-run; \
+	status=$$?; \
+	$(MAKE) studio-e2e-down; \
+	down=$$?; \
+	if [ $$status -eq 0 ]; then status=$$down; fi; \
+	exit $$status
+
+# Old path: smoke spec only, via vite preview of a throwaway build.
+studio-e2e-smoke:
 	cd studio && pnpm test:e2e
 
 test-studio: studio-check

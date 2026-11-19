@@ -141,3 +141,74 @@ func TestHandlerHead(t *testing.T) {
 	body, _ := io.ReadAll(rec.Body)
 	_ = body
 }
+
+// Missing asset-like paths must 404; extensionless client routes fall back to the SPA.
+func TestHandlerMissingStaticFile(t *testing.T) {
+	t.Parallel()
+	h := Handler(true)
+	tests := []struct {
+		name     string
+		target   string
+		wantCode int
+		wantHTML bool
+	}{
+		{"missing js under assets", "/_studio/assets/nope.js", http.StatusNotFound, false},
+		{"missing extensionless under assets", "/_studio/assets/nope", http.StatusNotFound, false},
+		{"missing png", "/_studio/nope.png", http.StatusNotFound, false},
+		{"missing nested ext", "/_studio/a/b/nope.css", http.StatusNotFound, false},
+		{"client route", "/_studio/data", http.StatusOK, true},
+		{"client route with query", "/_studio/data?x=1", http.StatusOK, true},
+		{"deep client route", "/_studio/data/deep/link", http.StatusOK, true},
+		{"unknown route", "/_studio/nope", http.StatusOK, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.target, nil))
+			require.Equal(t, tt.wantCode, rec.Code)
+			require.Equal(t, "nosniff", rec.Header().Get("X-Content-Type-Options"))
+			if tt.wantHTML {
+				require.Contains(t, rec.Header().Get("Content-Type"), "text/html")
+				require.Contains(t, rec.Body.String(), "pREST Studio")
+			} else {
+				require.NotContains(t, rec.Header().Get("Content-Type"), "text/html")
+			}
+		})
+	}
+}
+
+// The assets directory path is never SPA html: FileServer redirects it (301,
+// relative Location "assets/"), and the resolved target is a 404.
+func TestHandlerAssetsDirPath(t *testing.T) {
+	t.Parallel()
+	h := Handler(true)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/_studio/assets/", nil))
+	require.Equal(t, http.StatusMovedPermanently, rec.Code)
+	require.Equal(t, "assets/", rec.Header().Get("Location"))
+	require.NotContains(t, rec.Body.String(), "pREST Studio")
+
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/_studio/assets/assets/", nil))
+	require.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+// An existing hashed asset is still served with immutable caching.
+func TestHandlerExistingAssetServed(t *testing.T) {
+	t.Parallel()
+	entries, err := distFS.ReadDir("dist/assets")
+	require.NoError(t, err)
+	var name string
+	for _, e := range entries {
+		if isHashedAsset("assets/" + e.Name()) {
+			name = e.Name()
+			break
+		}
+	}
+	require.NotEmpty(t, name, "no hashed asset in embedded dist")
+	rec := httptest.NewRecorder()
+	Handler(true).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/_studio/assets/"+name, nil))
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Header().Get("Cache-Control"), "immutable")
+}

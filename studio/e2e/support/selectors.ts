@@ -1,0 +1,30 @@
+// Working Studio locators (research/defects.md harness notes); import and reuse instead of re-deriving.
+import type { Page } from '@playwright/test'
+
+export const sel = {
+	tokenButton: (p: Page) => p.getByRole('button', { name: 'Configure bearer token' }),
+	tokenInput: (p: Page) => p.locator('#token-input'),
+	saveToken: (p: Page) => p.getByRole('button', { name: 'Save' }),
+	rememberToken: (p: Page) => p.getByRole('checkbox', { name: 'Remember for this tab' }),
+	clearToken: (p: Page) => p.getByRole('button', { name: 'Clear token' }),
+	themeToggle: (p: Page) => p.getByRole('button', { name: /^Theme:/ }),
+	restPath: (p: Page) => p.locator('#rest-path'),
+	restKey: (p: Page) => p.getByPlaceholder('key'),
+	restValue: (p: Page) => p.getByPlaceholder(/value/),
+	send: (p: Page) => p.getByRole('button', { name: 'Send' }),
+	mcpConnect: (p: Page) => p.getByRole('button', { name: 'Connect', exact: true }),
+	mcpRawToggle: (p: Page) => p.getByRole('button', { name: 'Raw JSON' }),
+	mcpFormToggle: (p: Page) => p.getByRole('button', { name: 'Form' }),
+	mcpArg: (p: Page, name: string) => p.locator(`#arg-${name}`),
+	mcpInvoke: (p: Page) => p.getByRole('button', { name: 'Invoke tool' }),
+	mcpSearch: (p: Page) => p.getByPlaceholder('Search tools…'),
+	treeTable: (p: Page, name: string) => p.getByRole('button', { name, exact: true }),
+	filterColumn: (p: Page) => p.getByPlaceholder('column'),
+	filterValue: (p: Page) => p.getByPlaceholder('value'),
+	filterOperator: (p: Page) => p.locator('select').nth(1),
+	addFilter: (p: Page) => p.getByRole('button', { name: 'Add filter' }),
+	removeFilter: (p: Page) => p.locator('[aria-label^="Remove filter"]'),
+	refreshRows: (p: Page) => p.getByRole('button', { name: 'Refresh rows' }),
+	primaryNav: (p: Page) => p.getByRole('navigation', { name: 'Primary' }),
+	sidebarLinks: (p: Page) => p.locator('aside a'),
+}

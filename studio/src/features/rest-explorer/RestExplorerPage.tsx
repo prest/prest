@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { CopyButton } from '@/components/copy-button'
 import { usePrestClient } from '@/app/providers'
 import { buildCurl } from '@/lib/api/curl'
+import { formatJsonText } from '@/lib/api/json'
+import { absoluteUrl } from '@/lib/api/url'
 import { toErrorMessage } from '@/lib/errors'
 
 interface Param {
@@ -45,11 +47,7 @@ function buildQuery(params: Param[]): string {
 
 function prettify(text: string, contentType: string): string {
 	if (!contentType.includes('json')) return text
-	try {
-		return JSON.stringify(JSON.parse(text), null, 2)
-	} catch {
-		return text
-	}
+	return formatJsonText(text)
 }
 
 export function RestExplorerPage() {
@@ -62,6 +60,7 @@ export function RestExplorerPage() {
 
 	const query = buildQuery(params)
 	const relativeUrl = client.resolve(path, query)
+	const copyUrl = absoluteUrl(relativeUrl, window.location.origin)
 	const curl = buildCurl({ url: relativeUrl, origin: window.location.origin })
 
 	const send = async () => {
@@ -169,7 +168,7 @@ export function RestExplorerPage() {
 						<code className="flex-1 overflow-x-auto rounded-md bg-muted px-3 py-2 font-mono text-xs">
 							{relativeUrl}
 						</code>
-						<CopyButton value={relativeUrl} label="Copy URL" />
+						<CopyButton value={copyUrl} label="Copy URL" />
 						<CopyButton value={curl} label="Copy curl" />
 					</div>
 				</CardContent>

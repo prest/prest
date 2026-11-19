@@ -114,6 +114,13 @@ func Handler(enabled bool) http.Handler {
 			return
 		}
 
+		// Missing asset-like paths are real 404s; only extensionless client
+		// routes fall back to the SPA.
+		if strings.HasPrefix(rel, "assets/") || path.Ext(rel) != "" {
+			http.NotFound(w, r)
+			return
+		}
+
 		// Client-side route fallback
 		serveIndex(w, r, content)
 	})
