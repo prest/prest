@@ -1,0 +1,22 @@
+# Main e2e prestd: open API, Studio on, port and pg port from PREST_HTTP_PORT / PREST_PG_PORT.
+[http]
+port = 39991
+[jwt]
+default = false
+[pg]
+host = "127.0.0.1"
+port = 55432
+user = "postgres"
+pass = "postgres"
+database = "prest"
+[pg.ssl]
+mode = "disable"
+[expose]
+enabled = true
+databases = true
+schemas = true
+tables = true
+[studio]
+enabled = true
+[cache]
+enabled = false

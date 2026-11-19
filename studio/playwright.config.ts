@@ -21,6 +21,15 @@ if (stack && !external && !existsSync(bin)) {
 	throw new Error(`prestd binary not found at ${bin}; run make studio-e2e-up first`)
 }
 
+// prestd falls back to defaults (no JWT, wrong DB) when PREST_CONF is missing, so fail loudly instead.
+const CONFIGS = ['prest-main.toml', 'prest-auth.toml'] as const
+if (stack && !external) {
+	const missing = CONFIGS.map(conf).filter((path) => !existsSync(path))
+	if (missing.length > 0) {
+		throw new Error(`prestd config not found: ${missing.join(', ')}`)
+	}
+}
+
 const instance = (port: number, confFile: string) => ({
 	command: bin,
 	env: {

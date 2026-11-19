@@ -38,7 +38,12 @@ test.describe('mobile nav', () => {
 		// Scenario: document width must not exceed the 390px viewport.
 		await page.goto('.')
 		await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible()
-		await expect(page.getByText('Version', { exact: true })).toBeVisible()
+		// Wait for /_studio/api/meta values (not just captions): long values are what could overflow.
+		const versionValue = page
+			.getByText('Version', { exact: true })
+			.locator('xpath=following-sibling::span')
+		await expect(versionValue).not.toHaveText('—')
+		await expect(page.getByText('/_mcp', { exact: true })).toBeVisible()
 		expect((await overflow(page)).scroll).toBeLessThanOrEqual(390)
 	})
 

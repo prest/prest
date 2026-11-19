@@ -186,6 +186,8 @@ studio-e2e:
 	$(MAKE) studio-e2e-up && $(MAKE) studio-e2e-run; \
 	status=$$?; \
 	$(MAKE) studio-e2e-down; \
+	down=$$?; \
+	if [ $$status -eq 0 ]; then status=$$down; fi; \
 	exit $$status
 
 # Old path: smoke spec only, via vite preview of a throwaway build.

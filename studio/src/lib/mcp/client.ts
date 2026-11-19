@@ -209,9 +209,11 @@ export class McpClient {
 		}
 
 		if (!raw.ok) {
+			// Only a response to this request may replace the HTTP diagnostic.
 			let rpcError: JsonRpcResponse<T>['error']
 			try {
-				rpcError = parseRpcBody<T>(raw.text, id).error
+				const body = parseRpcBody<T>(raw.text, id)
+				rpcError = body.id === id ? body.error : undefined
 			} catch {
 				rpcError = undefined
 			}

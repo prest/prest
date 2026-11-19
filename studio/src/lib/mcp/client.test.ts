@@ -161,6 +161,21 @@ describe('McpClient error handling', () => {
 		expect(err.data).toEqual({ t: 1 })
 	})
 
+	it('keeps the HTTP error when a non-2xx JSON-RPC body answers a different id', async () => {
+		const { client } = mcpClient(
+			() =>
+				new Response(
+					JSON.stringify({ jsonrpc: '2.0', id: 99, error: { code: -32602, message: 'other' } }),
+					{ status: 400 },
+				),
+		)
+		const err = await client.initialize().catch((e) => e)
+		expect(err).toBeInstanceOf(McpError)
+		expect(err.kind).toBe('transport')
+		expect(err.code).toBe(400)
+		expect(err.message).toBe('MCP transport error (HTTP 400).')
+	})
+
 	it('surfaces an SSE-framed JSON-RPC error on a non-2xx response', async () => {
 		const body = `event: message\ndata: ${JSON.stringify({ jsonrpc: '2.0', id: 1, error: { code: -1, message: 'sse bad' } })}\n\n`
 		const { client } = mcpClient(() => new Response(body, { status: 400 }))

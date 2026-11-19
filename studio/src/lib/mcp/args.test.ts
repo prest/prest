@@ -67,6 +67,26 @@ describe('coerceArg', () => {
 		expect(() => coerceArg('filters', 'null', 'object')).toThrow(msg)
 		expect(() => coerceArg('filters', '{bad', 'object')).toThrow(msg)
 	})
+
+	it('rejects integers that cannot be sent exactly, including nested ones', () => {
+		const msg = 'Field "filters" has an integer beyond ±9007199254740991; send it as a string.'
+		expect(() => coerceArg('filters', '{"id": 9007199254740993}', 'object')).toThrow(msg)
+		expect(() => coerceArg('filters', '{"a": {"b": [-9007199254740993]}}', 'object')).toThrow(msg)
+	})
+
+	it('keeps safe integers, decimals and exponent literals in objects', () => {
+		expect(coerceArg('f', '{"id": 9007199254740991, "p": 1.5, "e": 1e300}', 'object')).toEqual({
+			id: 9007199254740991,
+			p: 1.5,
+			e: 1e300,
+		})
+	})
+
+	it('rejects unsafe integers in JSON array fields too', () => {
+		expect(() => coerceArg('ids', '[1, 9007199254740993]', 'array')).toThrow(
+			'Field "ids" has an integer beyond ±9007199254740991; send it as a string.',
+		)
+	})
 })
 
 describe('buildFormArgs', () => {
