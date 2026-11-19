@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { buildFormArgs, coerceArg } from '@/lib/mcp/args'
 
 describe('coerceArg', () => {
@@ -69,7 +69,8 @@ describe('coerceArg', () => {
 	})
 
 	it('rejects integers that cannot be sent exactly, including nested ones', () => {
-		const msg = 'Field "filters" has an integer beyond ±9007199254740991; send it as a string.'
+		const msg =
+			'Field "filters" has an integer literal outside ±9007199254740991 that would lose precision; send it as a string.'
 		expect(() => coerceArg('filters', '{"id": 9007199254740993}', 'object')).toThrow(msg)
 		expect(() => coerceArg('filters', '{"a": {"b": [-9007199254740993]}}', 'object')).toThrow(msg)
 	})
@@ -84,7 +85,7 @@ describe('coerceArg', () => {
 
 	it('rejects unsafe integers in JSON array fields too', () => {
 		expect(() => coerceArg('ids', '[1, 9007199254740993]', 'array')).toThrow(
-			'Field "ids" has an integer beyond ±9007199254740991; send it as a string.',
+			'Field "ids" has an integer literal outside ±9007199254740991 that would lose precision; send it as a string.',
 		)
 	})
 })
@@ -126,5 +127,34 @@ describe('buildFormArgs', () => {
 		expect(() => buildFormArgs(props, new Set(), { limit: 'x' })).toThrow(
 			'Field "limit" must be an integer.',
 		)
+	})
+})
+
+// JSON.parse is stubbed globally here, so this block must not run concurrently with others.
+describe('coerceArg without JSON.parse source access', { concurrent: false }, () => {
+	it('accepts exponent and decimal values and rejects only unsafe integer literals', () => {
+		// Scenario: older runtimes call the reviver without `context.source`.
+		const parse = JSON.parse
+		const spy = vi.spyOn(JSON, 'parse').mockImplementation((text, reviver) =>
+			parse(
+				text,
+				reviver &&
+					function (this: unknown, key: string, value: unknown) {
+						return reviver.call(this, key, value)
+					},
+			),
+		)
+		try {
+			expect(coerceArg('f', '{"e": 1e300, "p": 1.5, "s": "9007199254740993"}', 'object')).toEqual({
+				e: 1e300,
+				p: 1.5,
+				s: '9007199254740993',
+			})
+			expect(() => coerceArg('f', '{"id": 9007199254740993}', 'object')).toThrow(
+				'Field "f" has an integer literal outside ±9007199254740991 that would lose precision; send it as a string.',
+			)
+		} finally {
+			spy.mockRestore()
+		}
 	})
 })

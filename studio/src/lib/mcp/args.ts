@@ -3,31 +3,34 @@ const INTEGER = /^[+-]?\d+$/
 
 type Coercer = (name: string, raw: string) => unknown
 
+/** JSON strings (skipped) or number literals, matched over text already known to be valid JSON. */
+const JSON_STRING_OR_NUMBER = /"(?:[^"\\]|\\.)*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g
 const INTEGER_LITERAL = /^-?\d+$/
 
+/** True when `raw` has a plain integer literal (no fraction or exponent) that a double cannot hold exactly. */
+function hasUnsafeIntegerLiteral(raw: string): boolean {
+	for (const [token] of raw.matchAll(JSON_STRING_OR_NUMBER)) {
+		if (INTEGER_LITERAL.test(token) && !Number.isSafeInteger(Number(token))) return true
+	}
+	return false
+}
+
 /**
- * Parse form JSON. Integer literals outside the safe range would be rounded
- * when the request is serialized, so they are rejected instead.
- * `context.source` (when the runtime provides it) tells `1e300` from an integer literal.
+ * Parse form JSON. Policy, the same on every runtime: plain integer literals outside
+ * ±(2^53 - 1) are rejected because serializing the request would round them; decimal and
+ * exponent literals (`1.5`, `1e300`) are sent as JS numbers.
  */
 function parseJsonOrThrow(name: string, raw: string, message: string): unknown {
-	let unsafe = false
 	let parsed: unknown
 	try {
-		parsed = JSON.parse(raw, (_key: string, value: unknown, context?: { source?: string }) => {
-			if (typeof value !== 'number' || Number.isSafeInteger(value)) return value
-			const integer =
-				context?.source === undefined
-					? Number.isInteger(value)
-					: INTEGER_LITERAL.test(context.source)
-			if (integer) unsafe = true
-			return value
-		})
+		parsed = JSON.parse(raw)
 	} catch {
 		throw new Error(message)
 	}
-	if (unsafe) {
-		throw new Error(`Field "${name}" has an integer beyond ±9007199254740991; send it as a string.`)
+	if (hasUnsafeIntegerLiteral(raw)) {
+		throw new Error(
+			`Field "${name}" has an integer literal outside ±9007199254740991 that would lose precision; send it as a string.`,
+		)
 	}
 	return parsed
 }
