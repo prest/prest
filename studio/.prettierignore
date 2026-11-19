@@ -1,5 +1,9 @@
 dist
 coverage
 node_modules
+e2e/.bin
+.e2e-preview
+playwright-report
+test-results
 pnpm-lock.yaml
 src/routeTree.gen.ts

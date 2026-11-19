@@ -102,14 +102,14 @@ export function AuthProvider({
 	const setToken = React.useCallback(
 		(token: string, remember?: boolean) => {
 			store.set(token, remember)
-			queryClient.clear()
+			void queryClient.resetQueries()
 		},
 		[store, queryClient],
 	)
 
 	const clearToken = React.useCallback(() => {
 		store.clear()
-		queryClient.clear()
+		void queryClient.resetQueries()
 	}, [store, queryClient])
 
 	const value = React.useMemo<AuthContextValue>(

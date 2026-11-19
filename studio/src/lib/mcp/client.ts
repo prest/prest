@@ -209,6 +209,19 @@ export class McpClient {
 		}
 
 		if (!raw.ok) {
+			let rpcError: JsonRpcResponse<T>['error']
+			try {
+				rpcError = parseRpcBody<T>(raw.text, id).error
+			} catch {
+				rpcError = undefined
+			}
+			if (rpcError) {
+				throw new McpError(rpcError.message || 'MCP protocol error.', {
+					kind: 'protocol',
+					code: rpcError.code,
+					data: rpcError.data,
+				})
+			}
 			throw new McpError(`MCP transport error (HTTP ${raw.status}).`, {
 				kind: 'transport',
 				code: raw.status,

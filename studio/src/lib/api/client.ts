@@ -8,7 +8,8 @@
  *  - Normalize failures into {@link ApiError} with a discriminable `kind`.
  */
 
-import { ApiError, kindFromStatus, messageFromStatus } from '@/lib/errors'
+import { parseJsonLossless } from '@/lib/api/json'
+import { ApiError, capMessage, kindFromStatus, messageFromStatus } from '@/lib/errors'
 
 export type TokenProvider = () => string | null
 
@@ -238,7 +239,7 @@ async function safeReadBody(res: Response): Promise<unknown> {
 function bodyMessage(body: unknown): string | undefined {
 	if (body && typeof body === 'object' && 'error' in body) {
 		const e = (body as { error: unknown }).error
-		if (typeof e === 'string') return e
+		if (typeof e === 'string') return capMessage(e)
 	}
 	if (typeof body === 'string' && body.length > 0 && body.length < 300) return body
 	return undefined
@@ -247,7 +248,7 @@ function bodyMessage(body: unknown): string | undefined {
 function parseJson<T>(text: string, url: string): T {
 	if (!text) return undefined as T
 	try {
-		return JSON.parse(text) as T
+		return parseJsonLossless(text) as T
 	} catch (err) {
 		throw new ApiError('Failed to parse JSON response.', { kind: 'parse', url, cause: err })
 	}

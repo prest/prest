@@ -21,6 +21,7 @@
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
 		"test:e2e": "playwright test",
+		"test:e2e:stack": "STUDIO_E2E_STACK=1 playwright test",
 		"test:e2e:ui": "playwright test --ui",
 		"check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm build"
 	},

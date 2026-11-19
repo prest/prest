@@ -26,7 +26,9 @@ import {
 	showTable,
 	NAME_KEYS,
 } from '@/lib/api/prest'
+import { groupBySchema, orderColumns } from '@/lib/catalog/relations'
 import {
+	absoluteUrl,
 	buildUrl,
 	FILTER_OPS,
 	UNARY_OPS,
@@ -45,24 +47,6 @@ const routeApi = getRouteApi('/data')
 interface TableNode {
 	schema: string
 	table: string
-}
-
-function detectSchema(record: Row): string {
-	return pickName(record, [...NAME_KEYS.schema]) || 'public'
-}
-
-function groupBySchema(items: Row[]): Map<string, string[]> {
-	const groups = new Map<string, string[]>()
-	for (const record of items) {
-		const table = pickName(record, [...NAME_KEYS.table])
-		if (!table) continue
-		const schema = detectSchema(record)
-		const list = groups.get(schema) ?? []
-		list.push(table)
-		groups.set(schema, list)
-	}
-	for (const list of groups.values()) list.sort()
-	return groups
 }
 
 export function DataExplorerPage() {
@@ -136,7 +120,8 @@ export function DataExplorerPage() {
 	}
 
 	const columns = React.useMemo<string[]>(() => {
-		if (rows.data && rows.data.rows.length > 0) return Object.keys(rows.data.rows[0])
+		if (rows.data && rows.data.rows.length > 0)
+			return orderColumns(Object.keys(rows.data.rows[0]), structure.data)
 		return (structure.data ?? [])
 			.map((c) => c.column_name)
 			.filter((c): c is string => typeof c === 'string')
@@ -193,6 +178,9 @@ export function DataExplorerPage() {
 									onBlur={(e) => setDatabase(e.target.value.trim())}
 								/>
 							)}
+							{databases.data?.error ? (
+								<p className="text-xs text-destructive">{databases.data.error}</p>
+							) : null}
 						</div>
 					</CardHeader>
 					<CardContent className="max-h-[60vh] overflow-auto">
@@ -200,6 +188,8 @@ export function DataExplorerPage() {
 							<p className="text-xs text-muted-foreground">Table listing is restricted.</p>
 						) : tables.isLoading ? (
 							<p className="text-xs text-muted-foreground">Loading…</p>
+						) : tables.data?.error ? (
+							<p className="text-xs text-destructive">{tables.data.error}</p>
 						) : groups.size === 0 ? (
 							<p className="text-xs text-muted-foreground">No tables found.</p>
 						) : (
@@ -218,15 +208,20 @@ export function DataExplorerPage() {
 					) : (
 						<>
 							<Card>
-								<CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
-									<CardTitle className="flex items-center gap-2 text-sm">
+								<CardHeader className="flex flex-col items-start justify-between gap-2 space-y-0 sm:flex-row sm:items-center">
+									<CardTitle className="flex min-w-0 items-center gap-2 text-sm">
 										<Table2 className="size-4" />
 										<span className="font-mono">
 											{selected.schema}.{selected.table}
 										</span>
 									</CardTitle>
-									<div className="flex items-center gap-2">
-										{fullUrl ? <CopyButton value={fullUrl} label="Copy URL" /> : null}
+									<div className="flex flex-wrap items-center gap-2">
+										{fullUrl ? (
+											<CopyButton
+												value={absoluteUrl(fullUrl, window.location.origin)}
+												label="Copy URL"
+											/>
+										) : null}
 										{curl ? <CopyButton value={curl} label="Copy curl" /> : null}
 										<Button
 											variant="outline"
@@ -238,7 +233,7 @@ export function DataExplorerPage() {
 										</Button>
 									</div>
 								</CardHeader>
-								<CardContent className="flex flex-col gap-3">
+								<CardContent className="flex min-w-0 flex-col gap-3">
 									<FilterBar
 										columns={columns}
 										filters={filters}

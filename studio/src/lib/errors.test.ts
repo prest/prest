@@ -18,6 +18,37 @@ describe('kindFromStatus', () => {
 })
 
 describe('messageFromStatus', () => {
+	it('surfaces the server message for 400/422', () => {
+		expect(messageFromStatus(400, 'invalid identifier in path')).toBe(
+			'Bad request – invalid identifier in path',
+		)
+		expect(messageFromStatus(422, '  nope  ')).toBe('Bad request – nope')
+	})
+
+	it('falls back to generic text for 400 with empty or blank message', () => {
+		expect(messageFromStatus(400, '')).toBe('Bad request – check filters and parameters.')
+		expect(messageFromStatus(400, '   ')).toBe('Bad request – check filters and parameters.')
+		expect(messageFromStatus(400)).toBe('Bad request – check filters and parameters.')
+	})
+
+	it('caps long 400 messages at 300 chars with an ellipsis', () => {
+		const msg = messageFromStatus(400, 'x'.repeat(500))
+		expect(msg).toBe('Bad request – ' + 'x'.repeat(300) + '…')
+	})
+
+	it('does not split a surrogate pair at the cap boundary', () => {
+		const msg = messageFromStatus(400, 'x'.repeat(299) + '😀' + 'y')
+		expect(msg).toBe('Bad request – ' + 'x'.repeat(299) + '…')
+		expect(msg).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/)
+	})
+
+	it('leaves 401/403/404/5xx texts unchanged when a message is given', () => {
+		expect(messageFromStatus(401, 'm')).toMatch(/^Unauthorized/)
+		expect(messageFromStatus(403, 'm')).toMatch(/^Forbidden/)
+		expect(messageFromStatus(404, 'm')).toMatch(/^Not found/)
+		expect(messageFromStatus(502, 'm')).toBe('Server error (502).')
+	})
+
 	it('returns specific messages for known statuses', () => {
 		expect(messageFromStatus(401)).toMatch(/Unauthorized/)
 		expect(messageFromStatus(403)).toMatch(/Forbidden/)

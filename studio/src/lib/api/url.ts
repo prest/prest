@@ -93,6 +93,8 @@ function filterToParam(f: Filter): [string, string] | null {
 		return [f.column, `$${f.op}`]
 	}
 	const value = f.value ?? ''
+	// pREST full-text search uses `column:tsquery=value`, not `$tsquery.value`.
+	if (f.op === 'tsquery') return [`${f.column}:tsquery`, value]
 	return [f.column, `$${f.op}.${value}`]
 }
 
@@ -141,4 +143,15 @@ export function buildUrl(path: string, spec?: QuerySpec): string {
 	if (!spec) return path
 	const qs = buildQueryString(spec)
 	return qs ? `${path}?${qs}` : path
+}
+
+/**
+ * Make a relative API URL absolute: `origin` (trailing slash removed) plus
+ * `relative` (leading slash ensured). An input that already starts with
+ * `http://` or `https://` is returned unchanged.
+ */
+export function absoluteUrl(relative: string, origin: string): string {
+	if (/^https?:\/\//i.test(relative)) return relative
+	const base = origin.replace(/\/+$/, '')
+	return base + (relative.startsWith('/') ? relative : `/${relative}`)
 }

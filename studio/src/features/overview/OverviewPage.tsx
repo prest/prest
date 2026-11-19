@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { Activity, ArrowRight, CheckCircle2, Database, Send, Sparkles, XCircle } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { usePrestClient, useAuth } from '@/app/providers'
 import {
@@ -12,6 +13,7 @@ import {
 	listTables,
 	probeMcp,
 } from '@/lib/api/prest'
+import { countCatalog } from '@/lib/catalog/relations'
 import type { PrestClient } from '@/lib/api/client'
 
 function useProbe(name: string, fn: (c: PrestClient) => Promise<{ ok: boolean; status: number }>) {
@@ -116,6 +118,8 @@ export function OverviewPage() {
 	const schemas = useQuery({ queryKey: ['schemas'], queryFn: () => listSchemas(client) })
 	const tables = useQuery({ queryKey: ['tables'], queryFn: () => listTables(client) })
 
+	const counts = countCatalog(schemas.data?.items, tables.data?.items)
+
 	return (
 		<div className="flex flex-col gap-6">
 			<div>
@@ -137,7 +141,7 @@ export function OverviewPage() {
 				<CountCard
 					icon={Database}
 					label="Schemas"
-					count={schemas.data?.items?.length}
+					count={counts.schemas}
 					disabled={schemas.data?.disabled}
 					error={schemas.data?.error}
 					isError={schemas.isError}
@@ -145,7 +149,7 @@ export function OverviewPage() {
 				<CountCard
 					icon={Database}
 					label="Tables"
-					count={tables.data?.items?.length}
+					count={counts.tables}
 					disabled={tables.data?.disabled}
 					error={tables.data?.error}
 					isError={tables.isError}
@@ -251,7 +255,9 @@ function MetaRow({ label, value, mono }: { label: string; value?: string; mono?:
 	return (
 		<div className="flex items-center justify-between gap-2">
 			<span className="text-muted-foreground">{label}</span>
-			<span className={mono ? 'font-mono text-xs' : ''}>{value || '—'}</span>
+			<span className={cn('min-w-0 break-all text-right', mono && 'font-mono text-xs')}>
+				{value || '—'}
+			</span>
 		</div>
 	)
 }

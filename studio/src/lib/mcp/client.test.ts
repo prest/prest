@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { PrestClient } from '@/lib/api/client'
 import {
 	McpClient,
@@ -8,11 +8,30 @@ import {
 	type CallToolResult,
 } from '@/lib/mcp/client'
 
+type FetchCall = [unknown, RequestInit | undefined]
+interface RecordingFetch {
+	(url: unknown, init?: RequestInit): Promise<Response>
+	mock: { calls: FetchCall[] }
+}
+
+/** Plain per-test recorder (no shared vi spies, safe under concurrent/shuffled runs). */
+function recordingFetch(
+	impl: (url: unknown, init?: RequestInit) => Promise<Response>,
+): RecordingFetch {
+	const calls: FetchCall[] = []
+	const fn = (async (url: unknown, init?: RequestInit) => {
+		calls.push([url, init])
+		return impl(url, init)
+	}) as RecordingFetch
+	fn.mock = { calls }
+	return fn
+}
+
 function mcpClient(handler: (body: unknown) => Response): {
 	client: McpClient
-	fetchImpl: ReturnType<typeof vi.fn>
+	fetchImpl: RecordingFetch
 } {
-	const fetchImpl = vi.fn(async (_url: unknown, init?: RequestInit) => {
+	const fetchImpl = recordingFetch(async (_url: unknown, init?: RequestInit) => {
 		const body = init?.body ? JSON.parse(String(init.body)) : undefined
 		return handler(body)
 	})
@@ -29,7 +48,7 @@ function rpc(result: unknown, id = 1): Response {
 
 describe('McpClient.initialize', () => {
 	it('sends a JSON-RPC initialize request and returns the result', async () => {
-		const fetchImpl = vi.fn(async (_url: unknown, init?: RequestInit) => {
+		const fetchImpl = recordingFetch(async (_url: unknown, init?: RequestInit) => {
 			const body = init?.body ? JSON.parse(String(init.body)) : undefined
 			if (body?.method === 'initialize') {
 				return new Response(
@@ -120,6 +139,53 @@ describe('McpClient error handling', () => {
 		expect(err).toBeInstanceOf(McpError)
 		expect(err.kind).toBe('transport')
 		expect(err.code).toBe(500)
+	})
+
+	it('surfaces a JSON-RPC error body on a non-2xx response', async () => {
+		const { client } = mcpClient(
+			() =>
+				new Response(
+					JSON.stringify({
+						jsonrpc: '2.0',
+						id: 1,
+						error: { code: -32602, message: 'table not found', data: { t: 1 } },
+					}),
+					{ status: 400 },
+				),
+		)
+		const err = await client.initialize().catch((e) => e)
+		expect(err).toBeInstanceOf(McpError)
+		expect(err.kind).toBe('protocol')
+		expect(err.code).toBe(-32602)
+		expect(err.message).toBe('table not found')
+		expect(err.data).toEqual({ t: 1 })
+	})
+
+	it('surfaces an SSE-framed JSON-RPC error on a non-2xx response', async () => {
+		const body = `event: message\ndata: ${JSON.stringify({ jsonrpc: '2.0', id: 1, error: { code: -1, message: 'sse bad' } })}\n\n`
+		const { client } = mcpClient(() => new Response(body, { status: 400 }))
+		const err = await client.initialize().catch((e) => e)
+		expect(err.kind).toBe('protocol')
+		expect(err.message).toBe('sse bad')
+	})
+
+	it('keeps the transport error for non-JSON or empty non-2xx bodies', async () => {
+		for (const text of ['<html>bad</html>', '']) {
+			const { client } = mcpClient(() => new Response(text, { status: 400 }))
+			const err = await client.initialize().catch((e) => e)
+			expect(err.kind).toBe('transport')
+			expect(err.code).toBe(400)
+			expect(err.message).toBe('MCP transport error (HTTP 400).')
+		}
+	})
+
+	it('keeps the transport error for a non-2xx JSON-RPC body without an error', async () => {
+		const { client } = mcpClient(
+			() => new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: {} }), { status: 502 }),
+		)
+		const err = await client.initialize().catch((e) => e)
+		expect(err.kind).toBe('transport')
+		expect(err.message).toBe('MCP transport error (HTTP 502).')
 	})
 
 	it('wraps a network failure as a transport McpError', async () => {

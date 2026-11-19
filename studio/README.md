@@ -49,7 +49,8 @@ Copy `.env.example` to `.env` to override the proxy target.
 | `pnpm lint` / `pnpm lint:fix`       | ESLint                                                            |
 | `pnpm format` / `pnpm format:check` | Prettier                                                          |
 | `pnpm test` / `pnpm test:coverage`  | Vitest (unit)                                                     |
-| `pnpm test:e2e`                     | Playwright smoke tests                                            |
+| `pnpm test:e2e`                     | Playwright smoke test (vite preview of `.e2e-preview`)            |
+| `pnpm test:e2e:stack`               | Playwright full stack (needs `make studio-e2e-up`)                |
 | `pnpm check`                        | `format:check` + `lint` + `typecheck` + `test:coverage` + `build` |
 
 ## Architecture
@@ -79,8 +80,22 @@ enforced there (see `vite.config.ts`). Run:
 pnpm test:coverage
 ```
 
-Playwright smoke tests live in `e2e/`. Backend-dependent specs are skipped
-unless `PREST_TEST_URL` is set.
+Playwright specs live in `e2e/`. Three modes:
+
+- `pnpm test:e2e` (default): only `smoke.spec.ts`, against `vite preview` of a
+  throwaway build in `.e2e-preview` (never touches `internal/studio/dist`).
+- `make studio-e2e` (from the repo root): full stack. Starts Postgres 18 via
+  `e2e/docker-compose.yml` (seeded from `e2e/fixtures/seed.sql`, databases `prest`
+  and `prest_auth`), builds `e2e/.bin/prestd`, runs every spec against two prestd
+  instances (main on `STUDIO_E2E_PORT` 39991, JWT-enforcing on
+  `STUDIO_E2E_AUTH_PORT` 39992), then tears everything down. Use
+  `make studio-e2e-up`, `pnpm test:e2e:stack` and `make studio-e2e-down` to iterate.
+- `STUDIO_E2E_BASE_URL=http://host:port/_studio/ pnpm test:e2e`: an external server,
+  no webServer started.
+
+Shared helpers (ports, JWT signer, selectors, `authPage` fixture) are in
+`e2e/support/`. The auth instance needs a JWT key of 32+ characters; shorter keys
+silently disable auth.
 
 ## Security notes
 
