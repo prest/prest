@@ -182,6 +182,7 @@ func TestCSVRendererResponseShapes(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, records, 2)
 	require.Equal(t, []string{"count"}, records[0])
+	require.Regexp(t, `^[0-9]+$`, records[1][0])
 
 	// A table with no rows has no columns to name: an empty file.
 	status, contentType, body = getResponse(t, base+"/prest-test/public/test_empty_table?_renderer=csv")
