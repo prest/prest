@@ -36,6 +36,7 @@ cache/test
 prest-*
 !.cursor/skills/prest-integration-tests/
 !.cursor/skills/prest-integration-tests/**
+!studio/e2e/fixtures/prest-*.toml
 prestd
 main
 /dist

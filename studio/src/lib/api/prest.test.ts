@@ -70,6 +70,20 @@ describe('discovery endpoints', () => {
 		expect(await listDatabases(missing)).toEqual({ disabled: true })
 	})
 
+	it('treats 401 "unauthorized listing" as disabled', async () => {
+		const client = clientReturning(() => json({ error: 'unauthorized listing' }, 401))
+		expect(await listTables(client)).toEqual({ disabled: true })
+	})
+
+	it('keeps other 401s as errors', async () => {
+		const client = clientReturning(() => json({ error: 'token expired' }, 401))
+		const res = await listTables(client)
+		expect(res.disabled).toBe(false)
+		expect(res.error).toMatch(/Unauthorized/)
+		const bare = clientReturning(() => new Response('', { status: 401 }))
+		expect((await listTables(bare)).disabled).toBe(false)
+	})
+
 	it('reports unexpected errors without disabling', async () => {
 		const client = clientReturning(() => json({ error: 'boom' }, 500))
 		const res = await listSchemas(client)
@@ -125,5 +139,21 @@ describe('pickName', () => {
 
 	it('returns empty string when no string values exist', () => {
 		expect(pickName({ n: 1 }, ['x'])).toBe('')
+	})
+})
+
+describe('queryTable lossless numbers', () => {
+	it('keeps big integer and high-precision numerics as source strings', async () => {
+		const body = '[{"id":9007199254740993,"n":12345678901234567890.1234567891,"q":2}]'
+		const client = new PrestClient({
+			fetchImpl: async () =>
+				new Response(body, { status: 200, headers: { 'content-type': 'application/json' } }),
+		})
+		const res = await queryTable(client, 'db', 'public', 'big', {})
+		expect(res.rows[0]).toEqual({
+			id: '9007199254740993',
+			n: '12345678901234567890.1234567891',
+			q: 2,
+		})
 	})
 })

@@ -28,7 +28,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: 1.26
+          go-version: 1.27
 
       - name: Export Go version for the image
         run: echo "GO_VERSION=$(go env GOVERSION | sed 's/^go//')" >> "$GITHUB_ENV"
@@ -49,7 +49,8 @@ jobs:
           version: '~> v2'
           args: build --snapshot --clean --id prestd-docker
 
-      # Runtime image (golang:1.26, Debian bookworm) ships glibc 2.36.
+      # Runtime image (golang:1.27, Debian trixie) ships glibc 2.41; 2.36 keeps
+      # binaries loadable on bookworm-based images too.
       - name: Check glibc symbol versions
         run: |
           max_allowed=2.36

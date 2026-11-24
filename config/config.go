@@ -113,6 +113,7 @@ type Prest struct {
 	PGSSLKey             string
 	PGSSLRootCert        string
 	PGTimezone           string // validated PostgreSQL session TimeZone; empty means the server default
+	PGApplicationName    string // pg.application_name: fallback application_name of pooled connections; empty disables
 	ContextPath          string
 	PGMaxIdleConn        int
 	PGMaxOpenConn        int

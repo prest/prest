@@ -110,7 +110,7 @@ dockers_v2:
       - --target=release
     build_args:
       # Must equal the toolchain that built prestd-docker (CI exports it).
-      GO_VERSION: '{{ envOrDefault "GO_VERSION" "1.26" }}'
+      GO_VERSION: '{{ envOrDefault "GO_VERSION" "1.27" }}'
     labels:
       org.opencontainers.image.created: '{{ .Date }}'
       org.opencontainers.image.name: '{{ .ProjectName }}'

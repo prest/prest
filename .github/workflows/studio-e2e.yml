@@ -1,0 +1,79 @@
+# Full-stack Studio e2e: Postgres (compose) + prestd + Playwright via `make studio-e2e`
+name: studio-e2e
+
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - "studio/**"
+      - "internal/studio/**"
+      - "router/**"
+      - "middlewares/**"
+      - "controllers/**"
+      - "config/**"
+      - "app/**"
+      - "cmd/prestd/**"
+      - "go.mod"
+      - "go.sum"
+      - "Makefile"
+      - ".github/workflows/studio-e2e.yml"
+  pull_request:
+    paths: *paths
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: studio/.node-version
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Get pnpm store path
+        id: pnpm-cache
+        working-directory: studio
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('studio/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install
+        working-directory: studio
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        working-directory: studio
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Studio e2e
+        env:
+          CI: "true"
+        run: make studio-e2e
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-e2e-report
+          path: studio/playwright-report
+          if-no-files-found: ignore
+          retention-days: 14

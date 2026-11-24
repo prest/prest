@@ -404,7 +404,7 @@ func (m *Manager) AddDatabaseToPool(name string) (*sqlx.DB, error) {
 // probe ping of sqlx.Connect makes this decision once per pool. Errors name the
 // database and the failed attempt, wrap the driver error, and omit the DSN.
 func (m *Manager) connect(name, uri string) (*sqlx.DB, error) {
-	DB, err := dbConnect(m.driverName, uri)
+	DB, err := m.dial(uri)
 	if err == nil {
 		return DB, nil
 	}
@@ -416,11 +416,19 @@ func (m *Manager) connect(name, uri string) (*sqlx.DB, error) {
 		return nil, fmt.Errorf("connect database %q: %w", name, err)
 	}
 	slog.Warn("postgres rejected session timezone, using server default", "database", name, "error", err)
-	DB, err = dbConnect(m.driverName, fallback)
+	DB, err = m.dial(fallback)
 	if err != nil {
 		return nil, fmt.Errorf("connect database %q without session timezone: %w", name, err)
 	}
 	return DB, nil
+}
+
+// dial opens dsn with pg.application_name added as lib/pq's
+// fallback_application_name. The name is added here, after GetURI and after
+// withoutTimezone, so it never sits between a DSN and the timezone pair that
+// withoutTimezone strips from its end.
+func (m *Manager) dial(dsn string) (*sqlx.DB, error) {
+	return dbConnect(m.driverName, appendApplicationName(dsn, m.cfg.PGApplicationName))
 }
 
 // isTimezoneRejected reports whether err is the server refusing the TimeZone

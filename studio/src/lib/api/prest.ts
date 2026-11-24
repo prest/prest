@@ -41,7 +41,7 @@ async function discover<T = Row>(
 		const items = Array.isArray(res.data) ? res.data : []
 		return { items, disabled: false }
 	} catch (err) {
-		if (err instanceof ApiError && err.isDisabled) {
+		if (err instanceof ApiError && (err.isDisabled || err.isListingDenied)) {
 			return { disabled: true }
 		}
 		return { disabled: false, error: toErrorMessage(err) }

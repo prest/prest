@@ -3,6 +3,7 @@ import {
 	buildPath,
 	buildQueryString,
 	buildSearchParams,
+	absoluteUrl,
 	buildUrl,
 	encodeSegment,
 	showPath,
@@ -96,5 +97,34 @@ describe('buildQueryString / buildUrl', () => {
 
 	it('returns the bare path when the spec is empty', () => {
 		expect(buildUrl('/t', {})).toBe('/t')
+	})
+})
+
+describe('tsquery filter', () => {
+	it('uses the column:tsquery key form', () => {
+		const p = buildSearchParams({ filters: [{ column: 'name', op: 'tsquery', value: 'item' }] })
+		expect(p.get('name:tsquery')).toBe('item')
+		expect(p.toString()).toBe('name%3Atsquery=item')
+	})
+
+	it('still emits an empty value', () => {
+		const p = buildSearchParams({ filters: [{ column: 'name', op: 'tsquery' }] })
+		expect(p.toString()).toBe('name%3Atsquery=')
+	})
+})
+
+describe('absoluteUrl', () => {
+	it('joins origin and relative path', () => {
+		expect(absoluteUrl('/prest/public/items', 'http://h:1')).toBe('http://h:1/prest/public/items')
+	})
+	it('ensures the leading slash', () => {
+		expect(absoluteUrl('prest/x?a=1', 'http://h')).toBe('http://h/prest/x?a=1')
+	})
+	it('strips origin trailing slashes', () => {
+		expect(absoluteUrl('/x', 'http://h/')).toBe('http://h/x')
+	})
+	it('returns absolute input unchanged', () => {
+		expect(absoluteUrl('https://o/x', 'http://h')).toBe('https://o/x')
+		expect(absoluteUrl('http://o/x', 'http://h')).toBe('http://o/x')
 	})
 })

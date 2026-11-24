@@ -1221,6 +1221,29 @@ func TestAddDatabaseToPool_RetriesWithoutRejectedTimezone(t *testing.T) {
 	}
 }
 
+// The application name is added when each DSN is dialled, after the
+// timezone is stripped, so the retry still carries it and the trailing
+// timezone of a key/value DSN can still be found and removed.
+func TestAddDatabaseToPool_RetryKeepsApplicationName(t *testing.T) {
+	cfg := &config.Prest{PGDatabase: "testdb", PGHost: "localhost", PGPort: 5432,
+		PGUser: "u", PGPass: "secret", PGSSLMode: "disable", PGTimezone: "Europe/Kyiv",
+		PGApplicationName: "prestd"}
+	_ = captureLogs(t)
+	var dsns []string
+	rejectTimezoneConnect(t, &dsns, false)
+	m := NewManager(cfg)
+
+	db, err := m.AddDatabaseToPool("testdb")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+
+	require.Len(t, dsns, 2)
+	require.Contains(t, dsns[0], "timezone=Europe/Kyiv")
+	require.Contains(t, dsns[0], "fallback_application_name=prestd")
+	require.NotContains(t, dsns[1], "timezone")
+	require.Contains(t, dsns[1], "fallback_application_name=prestd")
+}
+
 // Only the server's TimeZone rejection triggers the retry: other connect
 // errors, and a TimeZone error on a DSN without a zone, are returned as-is.
 func TestAddDatabaseToPool_NoRetryForOtherErrors(t *testing.T) {

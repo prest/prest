@@ -209,6 +209,21 @@ export class McpClient {
 		}
 
 		if (!raw.ok) {
+			// Only a response to this request may replace the HTTP diagnostic.
+			let rpcError: JsonRpcResponse<T>['error']
+			try {
+				const body = parseRpcBody<T>(raw.text, id)
+				rpcError = body.id === id ? body.error : undefined
+			} catch {
+				rpcError = undefined
+			}
+			if (rpcError) {
+				throw new McpError(rpcError.message || 'MCP protocol error.', {
+					kind: 'protocol',
+					code: rpcError.code,
+					data: rpcError.data,
+				})
+			}
 			throw new McpError(`MCP transport error (HTTP ${raw.status}).`, {
 				kind: 'transport',
 				code: raw.status,

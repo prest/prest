@@ -3,6 +3,9 @@ dist
 coverage
 playwright-report
 test-results
+blob-report
+e2e/.bin/
+.e2e-preview/
 .env
 .env.local
 *.log

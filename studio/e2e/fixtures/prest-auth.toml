@@ -1,0 +1,26 @@
+# Auth e2e prestd: [auth] enabled; jwt.key must equal E2E_JWT_KEY in support/env.ts (>= 32 chars or auth is silently off).
+[http]
+port = 39992
+[jwt]
+default = false
+key = "studio-e2e-jwt-key-0123456789-abcdef"
+algo = "HS256"
+[auth]
+enabled = true
+[pg]
+host = "127.0.0.1"
+port = 55432
+user = "postgres"
+pass = "postgres"
+database = "prest_auth"
+[pg.ssl]
+mode = "disable"
+[expose]
+enabled = true
+databases = true
+schemas = true
+tables = true
+[studio]
+enabled = true
+[cache]
+enabled = false
