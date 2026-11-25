@@ -244,6 +244,53 @@ func TestHandlerSet_MsgpackRendererKeepsNonJSONBody(t *testing.T) {
 	require.Equal(t, "not json", rec.Body.String())
 }
 
+func TestHandlerSet_CSVRenderer(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequest(http.MethodGet, "/?_renderer=csv", nil)
+	rec := httptest.NewRecorder()
+
+	HandlerSet().ServeHTTP(rec, req, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`[{"name":"joao","age":20},{"name":"maria, jr","age":null}]`))
+	})
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "text/csv; charset=utf-8", rec.Header().Get("Content-Type"))
+	require.Equal(t, "name,age\njoao,20\n\"maria, jr\",\n", rec.Body.String())
+}
+
+func TestHandlerSet_CSVRendererKeepsJSONForErrorsAndNonRows(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		desc   string
+		status int
+		body   string
+		want   string
+	}{
+		{"error already JSON", http.StatusBadRequest, `{"error":"invalid column"}`, `{"error":"invalid column"}`},
+		{"plain-text error", http.StatusNotFound, "table not found\n", `{"error":"table not found"}`},
+		{"a body that is not rows", http.StatusOK, `["a","b"]`, `["a","b"]`},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			t.Parallel()
+
+			req := httptest.NewRequest(http.MethodGet, "/?_renderer=csv", nil)
+			rec := httptest.NewRecorder()
+
+			HandlerSet().ServeHTTP(rec, req, func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tc.status)
+				w.Write([]byte(tc.body))
+			})
+
+			require.Equal(t, tc.status, rec.Code)
+			require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+			require.JSONEq(t, tc.want, rec.Body.String())
+		})
+	}
+}
+
 func TestSetTimeoutToContext(t *testing.T) {
 	t.Parallel()
 
