@@ -110,8 +110,8 @@ github.com/redis/go-redis/v9 v9.23.0 h1:/TTVdJa8BRNsybwwGGnmiYktHNlUXtbOQxlWpHBP
 github.com/redis/go-redis/v9 v9.23.0/go.mod h1:EWP2UUk+XDaI1s5nQB5mablZN6vccXlmBQTyfnF87D0=
 github.com/rennf93/guard-core-go/v4 v4.4.1 h1:tRLMLUGpbD9vNpP5xjPUWFayCrhiS04y66/ypzZhdq0=
 github.com/rennf93/guard-core-go/v4 v4.4.1/go.mod h1:6KcajSAwPjYhYxY48nqdrgihH+sXf0NIt6lGMNpKyaU=
-github.com/rennf93/nethttp-guard v1.4.0 h1:7CArpfVqAbfk0I5HYVr1Vvcbb2P9D8RiPbv3wrgiBDE=
-github.com/rennf93/nethttp-guard v1.4.0/go.mod h1:DP766KRBdBQXFJ44j08drxWLjV9WvO1vA4gXMJqTu+k=
+github.com/rennf93/nethttp-guard v1.5.0 h1:i+ByOlfazOraR/YGsd3TddMo6LmX20h3f8NFmp+Og1Y=
+github.com/rennf93/nethttp-guard v1.5.0/go.mod h1:tobelI4/Z3CNMBjpCCcvSAoBG1FFouDq5MWvckE/pJ4=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
 github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
 github.com/rs/cors v1.11.1 h1:eU3gRzXLRK57F5rKMGMZURNdIG4EoAmX8k94r9wXWHA=
